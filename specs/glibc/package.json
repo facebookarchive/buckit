@@ -1,0 +1,15 @@
+{
+  "author": "GNU Foundation",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Sets up the system-installed glibc tools for use with buck",
+  "flat": true,
+  "license": "GPLv2",
+  "name": "@buckpkg/glibc",
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

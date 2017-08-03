@@ -1,0 +1,20 @@
+{
+  "author": "PCRE",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Sets up the system-installed pcre tools for use with buck",
+  "flat": true,
+  "license": "BSD",
+  "name": "@buckpkg/pcre",
+  "version": "0.0.1",
+  "buckit": {
+    "required_system_packages": {
+      "darwin": ["pcre"]
+    }
+  },
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

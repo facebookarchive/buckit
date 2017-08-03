@@ -1,0 +1,6 @@
+[repositories]
+patchelf = $(config repository_aliases.yarn|@buckpkg/patchelf)
+gflags = $(config repository_aliases.yarn|@buckpkg/gflags)
+glog = $(config repository_aliases.yarn|@buckpkg/glog)
+
+buckit = $(config repository_aliases.yarn|@buckpkg/buckit)

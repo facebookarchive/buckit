@@ -1,0 +1,19 @@
+{
+  "author": "Google Inc",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "double-conversion",
+  "flat": true,
+  "license": "BSD 3-Clause",
+  "name": "@buckpkg/double_conversion",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/google/double-conversion.git",
+    "tag": "v2.0.1"
+  },
+  "version": "2.0.1",
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+}

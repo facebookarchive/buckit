@@ -1,0 +1,5 @@
+[repositories]
+buckit = $(config repository_aliases.yarn|@buckpkg/buckit)
+glibc = $(config repository_aliases.yarn|@buckpkg/glibc)
+openssl = $(config repository_aliases.yarn|@buckpkg/openssl)
+patchelf = $(config repository_aliases.yarn|@buckpkg/patchelf)

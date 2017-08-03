@@ -1,0 +1,20 @@
+{
+  "author": "Facebook Inc",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "zstd package that sets up the system zstd",
+  "flat": true,
+  "license": "BSD 3-Clause + PATENTS",
+  "name": "@buckpkg/zstd",
+  "buckit": {
+    "required_system_packages": {
+      "darwin": ["zstd"]
+    }
+  },
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

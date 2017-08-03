@@ -1,0 +1,23 @@
+{
+  "author": "Guido van Rossum, Jukka Lehtosalo, Łukasz Langa",
+  "descrxiption": "typing package from pip",
+  "flat": true,
+  "license": "PSF",
+  "name": "@buckpkg/typing",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typing/typing.git",
+    "pip_info": {
+      "pip2_package": "typing",
+      "install_subdir": "typing",
+      "main_rule": "typing-py"
+    }
+  },
+  "version": "0.0.1",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+}

@@ -1,0 +1,574 @@
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+# vim: set filetype=python
+
+from collections import namedtuple
+with allow_unsafe_import():  # noqa
+    import pipes
+    import multiprocessing
+    import platform
+    import os
+    import glob as realglob
+
+LINK_STYLE_ANY = 'any'
+LINK_STYLE_SHARED = 'shared'
+LINK_STYLE_STATIC = 'static'
+
+PLATFORM_ALL = 'all'
+PLATFORM_ALL_REGEX = '.*'
+PLATFORM_LINUX = 'linux'
+PLATFORM_LINUX_REGEX = '.*(linux|glibc).*'
+PLATFORM_MAC = 'macos'
+PLATFORM_MAC_REGEX = '.*(macos|darwin).*'
+PLATFORM_WINDOWS = 'windows'
+PLATFORM_WINDOWS_REGEX = '.*windows.*'
+PLATFORM_UNKNOWN = 'unknown'
+
+CURRENT_SYSTEM_PLATFORM = platform.system()
+if CURRENT_SYSTEM_PLATFORM == 'Linux':
+    CURRENT_SYSTEM_PLATFORM = PLATFORM_LINUX
+elif CURRENT_SYSTEM_PLATFORM == 'Darwin':
+    CURRENT_SYSTEM_PLATFORM = PLATFORM_MAC
+elif CURRENT_SYSTEM_PLATFORM == 'Windows':
+    CURRENT_SYSTEM_PLATFORM = PLATFORM_WINDOWS
+else:
+    CURRENT_SYSTEM_PLATFORM = PLATFORM_UNKNOWN
+
+PLATFORM_REGEX_MAP = {
+    PLATFORM_ALL: PLATFORM_ALL_REGEX,
+    PLATFORM_LINUX: PLATFORM_LINUX_REGEX,
+    PLATFORM_MAC: PLATFORM_MAC_REGEX,
+    PLATFORM_WINDOWS: PLATFORM_WINDOWS_REGEX,
+    PLATFORM_UNKNOWN: PLATFORM_ALL_REGEX,
+}
+
+_LibraryRule = namedtuple(
+    'LibraryRule', ['lib_name', 'deps', 'rule_name', 'link_style']
+)
+
+
+def LibraryRule(lib_name, deps=None, rule_name=None, link_style=LINK_STYLE_ANY):
+    return _LibraryRule(
+        lib_name, tuple(deps or []), rule_name or lib_name, link_style
+    )
+
+
+autoconf_cmd = r"""
+mkdir -p "${{ORIG_SRC_DIR}}/../build" && \
+cd "${{ORIG_SRC_DIR}}/../build" && \
+autoreconf -i "${{ORIG_SRC_DIR}}" && \
+"${{ORIG_SRC_DIR}}/configure" --prefix="$ESCAPED_INSTALL_PREFIX" {args} && \
+make -j "$BUCKIT_PARALLELISM" && \
+make install && \
+make clean
+"""
+
+cmake_cmd = r"""
+mkdir -p "${{ORIG_SRC_DIR}}/../build" && \
+cd "${{ORIG_SRC_DIR}}/../build" && \
+cmake {cmake_args} "${{ORIG_SRC_DIR}}" && \
+make -j "$BUCKIT_PARALLELISM" && \
+make install && \
+make clean
+"""
+
+patchelf_text = r"""
+# Strip out versioning information so that buck does not get confused
+# and link things incorrectly
+PATCHELF="$(location patchelf//patchelf:__build)/bin/patchelf"
+
+function short_sofile() {
+    basename "$@" | sed -E 's/(.*\.so).*/\1/'
+}
+
+for sofile in "${INSTALL_PREFIX}/lib/"*.so; do
+  if [ ! -e "$sofile" ]; then continue; fi
+  short_sofile="\$(short_sofile "$sofile")"
+  soname="\$("$PATCHELF" --print-soname "$sofile")"
+  "$PATCHELF" --set-soname "$short_sofile" "$sofile"
+  for other_file in "${INSTALL_PREFIX}"/lib/*.so; do
+    if [ ! -e "$other_file" ]; then continue; fi
+    if [ "$sofile" == "$other_file" ]; then
+      continue
+    fi
+    "$PATCHELF" --replace-needed "$soname" "$short_sofile" "$other_file"
+  done
+done
+"""
+
+otool_text = r"""
+# Strip out versioning information so that buck does not get confused
+# and link things incorrectly
+function short_dylib() {
+  basename "$@" | sed -E 's/(.*)(\.[0-9]+).dylib/\1.dylib/'
+}
+
+for sofile in "${INSTALL_PREFIX}/lib/"*.dylib; do
+  if [ ! -e "$sofile" ]; then continue; fi
+  short_dylib="\$(short_dylib "$sofile")"
+  existing_name="\$(otool -D "$sofile" | tail -n 1)"
+  replacement_name="@rpath/${short_dylib}"
+  install_name_tool -id "$replacement_name" "$sofile"
+  for other_file in "${INSTALL_PREFIX}"/lib/*.dylib; do
+    if [ ! -e "$other_file" ]; then continue; fi
+    if [ "$sofile" == "$other_file" ]; then
+      continue
+    fi
+    install_name_tool -change "$existing_name" "$replacement_name" "$other_file"
+  done
+done
+"""
+
+
+def __ldflags_cmd_text():
+    """
+    Returns a bash function that will convert arbitrary ldflags (and
+    library files, .so, .dylib, etc) into LDFLAGS that can be used by
+    third party scripts.
+
+    - .so, .dylib etc are converted into -L<path> arguments
+    - -Wl,-rpath is added so that any sibling files can be properly linked
+    - Extra linker flags are removed
+    """
+
+    return r'''
+function ldflags() {
+    # Change .so / .a paths to -L paths
+    ret=""
+    for i in "$@"; do
+      ret="$ret \$(escape "$(echo "$i" | sed -E -e "s/'/\\\\'/g" \
+        -e 's/-l[a-zA-Z0-9_\-]*//g' \
+        -e 's;(.*)[/\\].*\.(so|dylib|a|dll)$;-L\1 -Wl,-rpath,\1;g')")"
+    done
+    echo "$ret" | tr '\n' ' ' | sed -E -e 's;-Wl,-rpath -Xlinker @executable_path[^[:space:]]*;;g'
+}
+'''
+
+
+def __build_rule_text(
+    platform_name,
+    build_command,
+    escape_install_prefix,
+    paralellism,
+    add_patchelf=True
+):
+    text = __ldflags_cmd_text() + r'''
+
+function escape() {
+'''
+    if escape_install_prefix:
+        text += r'''
+# Escape '#' optionally, as it can wreak havoc on configure scripts
+echo "$@" | sed 's;#;\\#;g'
+'''.strip()
+    else:
+        text += r'''echo "$@"'''.strip()
+    text += r'''
+}
+export BUCKIT_PARALLELISM=''' + str(
+        paralellism
+    ) + r'''
+export LDFLAGS="`ldflags $(ldflags-shared :__build_deps)` `ldflags $(ldflags-static :__build_deps)`"
+export CFLAGS="`escape $(cflags :__build_deps)`"
+export CPPFLAGS="`escape $(cppflags :__build_deps)`"
+export CXXFLAGS="`escape $(cxxflags :__build_deps)`"
+export CXXPPFLAGS="`escape $(cxxppflags :__build_deps)`"
+export CC="`escape $(cc :__build_deps)`"
+export CXX="`escape $(cxx :__build_deps)`"
+
+export ESCAPED_INSTALL_PREFIX="\$(escape "$OUT")"
+export INSTALL_PREFIX="$OUT"
+
+SRC="\$(echo "$SRCS" | awk {'print $1'})"
+ORIG_SRC_DIR="\$(dirname "$SRC")"
+cd "$ORIG_SRC_DIR"
+'''
+    text += build_command
+    if add_patchelf and (
+        PLATFORM_LINUX in platform_name or
+        CURRENT_SYSTEM_PLATFORM == PLATFORM_LINUX
+    ):
+        text += patchelf_text
+    elif PLATFORM_MAC in platform_name or CURRENT_SYSTEM_PLATFORM == PLATFORM_MAC:
+        text += otool_text
+    return text
+
+
+def __general_cxx_cmd(dep_rule, cmd):
+    """
+    Get a bash command that will export CC, CXX, CFLAGS, CPPFLAGS, etc based on
+    a rule
+    """
+
+    full_cmd = __ldflags_cmd_text()
+    full_cmd += r'''
+
+export LDFLAGS="`ldflags $(ldflags-shared {dep})` `ldflags $(ldflags-static {dep})`"
+export CFLAGS="`echo $(cflags {dep})`"
+export CPPFLAGS="`echo $(cppflags {dep})`"
+export CXXFLAGS="`echo $(cxxflags {dep})`"
+export CXXPPFLAGS="`echo $(cxxppflags {dep})`"
+export CC="`echo $(cc {dep})`"
+export CXX="`echo $(cxx {dep})`"
+
+'''.format(dep=dep_rule)
+    full_cmd += cmd
+    return full_cmd
+
+
+def __is_current_platform(platform):
+    return platform == PLATFORM_ALL or platform == CURRENT_SYSTEM_PLATFORM
+
+
+def __platform_name(base, platform_name):
+    return base + '_' + platform_name
+
+
+def buckit_cpp_autoconf_library(
+    main_rule,
+    libs,
+    srcs=None,
+    additional_configure_args=None,
+    escape_install_prefix=True,
+    build_rule_visibility=None
+):
+    srcs = srcs if srcs is not None else ["configure.ac"]
+    additional_configure_args = additional_configure_args or []
+    if not isinstance(additional_configure_args, list):
+        raise Exception(
+            'additional_configure_args should be a list of arguments '
+            'to send to ./configure, got "{}"'.
+            format(additional_configure_args)
+        )
+    additional_configure_args = " ".join(additional_configure_args)
+    buckit_cpp_custom_library(
+        main_rule,
+        libs,
+        srcs,
+        autoconf_cmd.format(args=additional_configure_args),
+        escape_install_prefix=escape_install_prefix,
+        build_rule_visibility=build_rule_visibility,
+    )
+
+
+def buckit_cpp_cmake_library(
+    main_rule,
+    libs,
+    srcs=None,
+    additional_cmake_args=None,
+    escape_install_prefix=False,
+    build_rule_visibility=None,
+    build_extra_with_use_shared_libs=False,
+):
+    srcs = srcs if srcs is not None else ['CMakeLists.txt']
+    additional_args = additional_cmake_args or {}
+    if not isinstance(additional_args, dict):
+        raise Exception(
+            'additional_args should be a mapping of cmake variables '
+            'to their values, got {}'.format(additional_args)
+        )
+
+    additional_args['CMAKE_INSTALL_PREFIX'] = additional_args.get(
+        'CMAKE_INSTALL_PREFIX', '$ESCAPED_INSTALL_PREFIX'
+    )
+    cmake_args = [
+        '"-D{}={}"'.format(pipes.quote(k), pipes.quote(v))
+        for k, v in additional_args.items()
+    ]
+
+    cmd = cmake_cmd.format(cmake_args=' '.join(cmake_args))
+    # Build a second time with BUILD_SHARED_LIBS
+    if build_extra_with_use_shared_libs:
+        cmake_args = [
+            '"-D{}={}"'.format(pipes.quote(k), pipes.quote(v))
+            for k, v in additional_args.items() if k != 'BUILD_SHARED_LIBS'
+        ]
+        cmake_args.append('"-DBUILD_SHARED_LIBS=ON"')
+        cmd = cmd.rstrip() + ' && \\\n'
+        cmd += cmake_cmd.format(cmake_args=' '.join(cmake_args))
+
+    buckit_cpp_custom_library(
+        main_rule,
+        libs,
+        srcs,
+        cmd,
+        escape_install_prefix=escape_install_prefix,
+        build_rule_visibility=build_rule_visibility,
+    )
+
+
+def buckit_cpp_custom_library(
+    main_rule,
+    libs,
+    srcs,
+    cmd,
+    escape_install_prefix=False,
+    build_rule_visibility=None,
+    src_dir='src',
+):
+    """
+    Builds all of the rules necessary to use this library
+
+    Arguments:
+        main_rule: The name of the main rule that must exist. If it is not
+                   in libs, this will be created as a header only rule
+        libs: A list of LibraryRule objects, or a list of tuples of
+             (platform name, [LibraryRule]) if platform deps are needed
+        srcs: A list of files underneath srcs that should be used to determine
+              whether the build script should be run again. This supports glob
+              syntax
+        cmd: The command to run to build the package. The following environment
+             variables are available:
+                BUCKIT_PARALLELISM: What parallelism to build at
+                INSTALL_PREFIX: An unescaped install prefix. Perfect for putting
+                                in quotes
+                ESCAPED_INSTALL_PREFIX: If `escape_install_prefix` is set, this
+                                        is the install prefix, but with some
+                                        characters (like #) escaped with '\\'.
+                                        This can be useful for things like
+                                        autoconf that don't always like '#'. If
+                                        `escape_install_prefix` is false, this
+                                        is just INSTALL_PREFIX.
+                ORIG_SRC_DIR: The original source directory. This is where the
+                              downloaded source is. It is divined from the first
+                              element in the 'srcs' list
+        escape_install_prefix: Whether to escape certain characters in the
+                               install prefix
+        build_rule_visibility: If set, use this for the visibility of the
+                               implicit __build rule
+        src_dir: Directory containing source. buckit fetch will make this src
+                 by default
+    """
+
+    libs = __get_libs_for_current_platform(libs)
+    platform_deps = set(
+        (rule for l in libs for rule in l.deps if not rule.startswith(':'))
+    )
+
+    cxx_library(  # noqa
+        name='__build_deps',
+        srcs=[],
+        exported_platform_headers=[('.*', [])],
+        exported_platform_deps=[('.*', platform_deps)],
+    )
+
+    built_rules = set()
+    cxx_genrule(  # noqa
+        name='__build',
+        srcs=glob([os.path.join(src_dir, s) for s in srcs]),  # noqa
+        visibility=build_rule_visibility,
+        out='prefix',
+        cmd=__build_rule_text(
+            CURRENT_SYSTEM_PLATFORM,
+            cmd,
+            escape_install_prefix,
+            read_config('buckit', 'parallelism', multiprocessing.cpu_count()),  # noqa
+            add_patchelf=main_rule != 'patchelf'
+        )
+    )
+
+    for lib in libs:
+        prebuilt_cxx_library(  # noqa
+            name=lib.rule_name,
+            lib_dir='$(location :__build)/lib',
+            lib_name=lib.lib_name,
+            include_dirs=['$(location :__build)/include'],
+            exported_deps=lib.deps,
+            visibility=['PUBLIC'],
+            preferred_linkage=lib.link_style,
+        )
+        built_rules.add(lib.rule_name)
+
+    for rule in ('headers', main_rule):
+        if rule not in built_rules:
+            prebuilt_cxx_library(  # noqa
+                name=rule,
+                header_only=True,
+                include_dirs=['$(location :__build)/include'],
+                visibility=['PUBLIC'],
+            )
+            built_rules.add(rule)
+
+
+def __find_pkg_config_details(pkg_config_name, pkg_config_version):
+    with allow_unsafe_import():  # noqa
+        import subprocess
+    win_flags = [] if CURRENT_SYSTEM_PLATFORM != PLATFORM_WINDOWS else [
+        '--msvc-syntax'
+    ]
+    name_and_version = '{} {}'.format(pkg_config_name, pkg_config_version)
+    ldflags = subprocess.check_output(
+        [
+            'pkg-config',
+            '--libs-only-L',
+            '--libs-only-other',
+            name_and_version,
+        ] + win_flags,
+    ).strip().split()
+    cppflags = subprocess.check_output(
+        [
+            'pkg-config',
+            '--cflags',
+            name_and_version,
+        ] + win_flags,
+    ).strip().split()
+    libflags = subprocess.check_output(
+        [
+            'pkg-config',
+            '--libs-only-l',
+            name_and_version,
+        ] + win_flags,
+    ).strip().split()
+    return cppflags, ldflags, libflags
+
+
+def __get_system_build_cmd_and_ldflags(ldflags, libs, search_dir_names):
+    """
+    Get a command to setup symlinks for system libraries based on ldflags,
+    or file existence. Also returns ldflags with correct rpath in place
+    of -L flags
+    """
+
+    # Often comes from pkg-config, but take the first lib path if available
+    lib_path = next((l[2:] for l in ldflags if l.startswith('-L')), "")
+    if not lib_path:
+        all_lib_paths = read_config("buckit",
+                                    "system_lib_paths",
+                                    "/usr/local/lib,/usr/lib64,/usr/lib")
+        all_lib_paths = [p.format(name=dir_name) for p in all_lib_paths.split(',') for dir_name in search_dir_names]
+        for p in all_lib_paths:
+            if realglob.glob(os.path.join(p, 'lib' + libs[0].lib_name + '.*')):
+                lib_path = p
+                ldflags.append('-L' + lib_path)
+                break
+        else:
+            lib_path = '/usr/lib'
+            ldflags.append('-L/usr/lib')
+
+    lib_path = os.path.split(lib_path)[0]
+    # Setup the correct root for this library
+    cmd = 'libdir=' + pipes.quote(lib_path) + '\nmkdir -p "${OUT}/lib"\n'
+    for l in libs:
+        cmd += r'''
+for i in "${libdir}/lib/lib''' + l.lib_name + r'''."*; do
+  if [ -e "${i}" ] && [ ! -e "${OUT}/lib/\$(basename "${i}")" ]; then
+    ln -s "${i}" "${OUT}/lib/"
+  fi
+done
+'''
+    cmd += r'ln -s "${libdir}/include" "${OUT}/include"'
+    ldflags = [
+        f.replace('-L', '-Wl,-rpath,', 1) if f.startswith('-L') else f
+        for f in ldflags
+    ]
+    return cmd, ldflags
+
+
+def __get_libs_for_current_platform(all_libs):
+    single_platform = all((isinstance(l, _LibraryRule) for l in all_libs))
+    if single_platform:
+        return all_libs
+    elif not all((len(l) == 2 for l in all_libs)):
+        raise Exception(
+            'libs should either be a list of LibraryRule objects, or a list of '
+            'tuples of the form (<platform name>, '
+            '[LibraryRule]. e.g. [("linux", [LibraryRule("libunwind")]'
+        )
+    else:
+        ret = next((
+            libs for plat, libs in all_libs if __is_current_platform(plat)), None)
+        if ret is None:
+            raise Exception(
+                'No dependencies were found in {} for the current '
+                'platform: {}'.format(all_libs, CURRENT_SYSTEM_PLATFORM))
+        else:
+            return ret
+
+
+def buckit_system_library(
+    main_rule,
+    libs,
+    binaries=None,
+    use_pkg_config=True,
+    pkg_config_version='',
+    pkg_config_name=None,
+    force_pkg_config=False,
+    search_dir_names=None,
+):
+    search_dir_names = search_dir_names or (main_rule,)
+    libs = __get_libs_for_current_platform(libs)
+
+    built_rules = set()
+    cppflags = []
+    ldflags = []
+    libflags = ['-l' + lib.lib_name for lib in libs]
+    binaries = binaries or []
+
+    if use_pkg_config:
+        try:
+            cppflags, ldflags, libflags = __find_pkg_config_details(
+                pkg_config_name or main_rule, pkg_config_version
+            )
+        except Exception:
+            pass
+
+    cmd, ldflags = __get_system_build_cmd_and_ldflags(ldflags, libs, search_dir_names)
+    genrule(
+        name="__build",
+        cmd=cmd,
+        out="root",
+    )
+    for lib in libs:
+        linker_flags = list(ldflags)
+        lname = '-l' + lib.lib_name
+        if lname in libflags:
+            linker_flags += [lname]
+        prebuilt_cxx_library(  # noqa
+            name=lib.rule_name,
+            deps=lib.deps,
+            lib_dir="$(location :__build)/lib",
+            include_dirs=["$(location :__build)/include"],
+            lib_name=lib.lib_name,
+            exported_deps=lib.deps,
+            preferred_linkage=lib.link_style,
+            visibility=['PUBLIC'],
+        )
+        built_rules.add(lib.rule_name)
+
+    for rule, bin in binaries:
+        sh_binary(name=rule, main=bin, visibility=['PUBLIC'])  # noqa
+        built_rules.add(rule)
+
+    for rule in ('headers', main_rule):
+        if rule not in built_rules:
+            prebuilt_cxx_library(  # noqa
+                name=rule,
+                header_only=True,
+                exported_linker_flags=[],
+                exported_preprocessor_flags=cppflags,
+                exported_deps=[],
+                visibility=['PUBLIC'],
+            )
+            built_rules.add(rule)
+
+
+def buckit_use_system(library_name):
+    this_library = read_config(  # noqa
+        'buckit', 'use_system.{}'.format(library_name), 'false'
+    ).lower() == 'true'
+    all_libraries = read_config(
+        'buckit',
+        'use_system_for_all',  # noqa
+        'false'
+    ).lower() == 'true'
+    return this_library or all_libraries
+
+
+def buckit_cpp_genrule(dep_rule, cmd, *args, **kwargs):
+    kwargs['cmd'] = __general_cxx_cmd(dep_rule, cmd)
+    cxx_genrule(*args, **kwargs)

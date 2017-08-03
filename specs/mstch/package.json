@@ -1,0 +1,26 @@
+{
+  "author": "Daniel Sipka",
+  "dependencies": {
+    "@buckpkg/boost": "*",
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Builds mstch for use with BUCK",
+  "flat": true,
+  "license": "MIT",
+  "name": "@buckpkg/mstch",
+  "buckit": {
+    "system_packages": {
+      "darwin": ["mstch"]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/no1msd/mstch.git",
+    "commit": "0fde1cf94c26ede7fa267f4b64c0efe5da81a77a"
+  },
+  "version": "0.2.0",
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+
+}

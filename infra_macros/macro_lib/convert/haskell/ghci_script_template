@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+DIR="$(dirname "$(readlink -f ${BASH_SOURCE[0]})")"
+if ! test -d $DIR; then
+  echo Cannot locate directory containing GHCi script; exit 1
+fi
+rm -rf /tmp/<name>-$$
+mkdir -m 700 /tmp/<name>-$$
+cp $DIR/<start_ghci> /tmp/<name>-$$
+
+LD_LIBRARY_PATH=${DIR}/<ld_library_path> PATH=<binutils_path>:"$PATH" <ghc_path> -pgml<cxx_path> -pgmc<cc_path> -optc-B<binutils_path> -pgma<cc_path> -opta-B<binutils_path> -pgmP<cpp_path> -optP-undef -optP-traditional-cpp -I. -no-global-package-db -no-user-package-db -hide-all-packages <exposed_packages> <package_dbs> <compiler_flags> --interactive <srcs> ${DIR}/<squashed_so> -ghci-script /tmp/<name>-$$/start.ghci "$@"
+rm -rf /tmp/<name>-$$

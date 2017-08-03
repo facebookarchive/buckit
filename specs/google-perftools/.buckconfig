@@ -1,0 +1,4 @@
+[repositories]
+patchelf = $(config repository_aliases.yarn|@buckpkg/patchelf)
+libunwind = $(config repository_aliases.yarn|@buckpkg/libunwind)
+buckit = $(config repository_aliases.yarn|@buckpkg/buckit)

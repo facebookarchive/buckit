@@ -1,0 +1,20 @@
+{
+  "author": "Yann Collet",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "lz4 package that sets up the system lz4",
+  "flat": true,
+  "license": "GPLv2/BSD 2-Clause",
+  "name": "@buckpkg/lz4",
+  "buckit": {
+    "required_system_packages": {
+      "darwin": ["lz4"]
+    }
+  },
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

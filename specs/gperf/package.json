@@ -1,0 +1,14 @@
+{
+  "author": "GNU Foundation",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Use system installation of gperf",
+  "flat": true,
+  "license": "GPLv3",
+  "name": "@buckpkg/gperf",
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+}

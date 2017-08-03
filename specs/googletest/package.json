@@ -1,0 +1,22 @@
+{
+  "author": "Google Inc",
+  "dependencies": {
+    "@buckpkg/buckit": "*",
+    "@buckpkg/gflags": "*",
+    "@buckpkg/glog": "*"
+  },
+  "description": "Google Test and Google Mock",
+  "flat": true,
+  "license": "BSD 3-Clause",
+  "name": "@buckpkg/googletest",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/google/googletest.git",
+    "tag": "release-1.8.0"
+  },
+  "version": "1.8.0",
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+}
+

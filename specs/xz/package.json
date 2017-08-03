@@ -1,0 +1,20 @@
+{
+  "author": "Tukaani",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Sets up the system-installed xz/lzma tools for use with buck",
+  "flat": true,
+  "license": "Public Domain + others",
+  "name": "@buckpkg/xz",
+  "buckit": {
+    "required_system_packages": {
+      "darwin": ["xz"]
+    }
+  },
+  "version": "0.0.1",
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

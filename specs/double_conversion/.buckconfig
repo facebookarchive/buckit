@@ -1,0 +1,3 @@
+[repositories]
+buckit = $(config repository_aliases.yarn|@buckpkg/buckit)
+patchelf = $(config repository_aliases.yarn|@buckpkg/patchelf)

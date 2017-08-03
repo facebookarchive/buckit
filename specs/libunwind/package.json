@@ -1,0 +1,20 @@
+{
+  "author": "Dave Watson",
+  "dependencies": {
+    "@buckpkg/xz": "*",
+    "@buckpkg/buckit": "*"
+  },
+  "description": "libunwind package that sets up the system libunwind",
+  "flat": true,
+  "license": "X11 License",
+  "name": "@buckpkg/libunwind",
+  "version": "1.2.0",
+  "repository": {
+    "type": "tarball",
+    "url": "http://download.savannah.nongnu.org/releases/libunwind/libunwind-1.2.tar.gz",
+    "sha256": "1de38ffbdc88bd694d10081865871cd2bfbb02ad8ef9e1606aee18d65532b992"
+  },
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+}

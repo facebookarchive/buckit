@@ -1,0 +1,20 @@
+{
+  "author": "Michael Riepe",
+  "dependencies": {
+    "@buckpkg/buckit": "*"
+  },
+  "description": "Sets up the system-installed libelf tools for use with buck",
+  "flat": true,
+  "license": "LGPLv2",
+  "name": "@buckpkg/libelf",
+  "version": "0.0.1",
+  "buckit": {
+    "required_system_packages": {
+      "darwin": ["libelf"]
+    }
+  },
+  "scripts": {
+    "postinstall": "buckit buckconfig"
+  }
+
+}

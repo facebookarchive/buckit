@@ -1,0 +1,281 @@
+#!/usr/bin/env python2
+
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import collections
+import pipes
+import os.path
+
+from . import rust
+from .base import ThirdPartyRuleTarget
+from ..rule import Rule
+
+FLAGFILTER = '''\
+# Extract just -D, -I and -isystem options
+flagfilter() {{
+    while [ $# -gt 0 ]; do
+        local f=$1
+        shift
+        case $f in
+            -I?*|-D?*) echo "$f";;
+            -I|-D) echo "$f$1"; shift;;
+            -isystem) echo "$f $1"; shift;;
+            -std=*) echo "$f";;
+            -nostdinc) echo "$f";;
+            -fno-canonical-system-headers) ;; # skip unknown
+            -f*) echo "$f";;
+        esac
+    done
+}}
+'''
+
+PPFLAGS = '''\
+
+declare -a ppflags
+ppflags=($(cxxppflags{deps}))
+
+'''
+
+CLANG_ARGS = '''\
+    \$(flagfilter {base_clang_flags}) \
+    {clang_flags} \
+    --gcc-toolchain=third-party-buck/{platform}/tools/gcc/ \
+    -x c++ \
+    \$(flagfilter "${{ppflags[@]}}") \
+    -I$(location {includes}) \
+'''
+
+PREPROC_TMPL = \
+    FLAGFILTER + \
+    PPFLAGS + \
+    '''\
+(
+cd {fbcode} && \
+FBPLATFORM={platform} \
+$(cxx) \
+    -o $OUT \
+    -E \
+    $SRCS \
+''' + CLANG_ARGS + '''\
+)
+'''
+
+BINDGEN_TMPL = \
+    FLAGFILTER + \
+    PPFLAGS + \
+    '''\
+(
+cd {fbcode} && \
+FBPLATFORM={platform} \
+$(exe {bindgen}) \
+    --output $OUT \
+    --no-unstable-rust \
+    {bindgen_flags} \
+    {blacklist} \
+    {opaque} \
+    {wl_funcs} \
+    {wl_types} \
+    {wl_vars} \
+    {generate} \
+    $SRCS \
+    -- \
+''' + CLANG_ARGS + '''\
+)
+'''
+
+
+class RustBindgenLibraryConverter(rust.RustConverter):
+    def __init__(self, context):
+        super(RustBindgenLibraryConverter, self).\
+            __init__(context, 'rust_library')
+
+    def get_fbconfig_rule_type(self):
+        return 'rust_bindgen_library'
+
+    def get_buck_rule_type(self):
+        return 'rust_library'
+
+    def get_exported_include_tree(self, name):
+        return name + '-bindgen-includes'
+
+    def get_allowed_args(self):
+        return set([
+            'name',
+            'srcs',
+            'cpp_deps',
+            'deps',
+            'external_deps',
+            'src_includes',
+            'header',
+            'generate',
+            'cxx_namespaces',
+            'opaque_types',
+            'blacklist_types',
+            'whitelist_funcs',
+            'whitelist_types',
+            'whitelist_vars',
+            'bindgen_flags',
+            'clang_flags',
+            'rustc_flags',
+            'link_style',
+            'linker_flags',
+        ])
+
+    def generate_bindgen_rule(
+        self,
+        base_path,
+        name,
+        header,
+        cpp_deps,
+        cxx_namespaces=False,
+        blacklist_types=(),
+        opaque_types=(),
+        whitelist_funcs=(),
+        whitelist_types=(),
+        whitelist_vars=(),
+        bindgen_flags=None,
+        clang_flags=(),
+        generate=(),
+        src_includes=None,
+        **kwargs
+    ):
+        rules = []
+
+        attrs = collections.OrderedDict()
+
+        src = 'lib.rs'
+        gen_name = name + '-bindgen'
+
+        attrs['name'] = gen_name
+        attrs['out'] = os.path.join(os.curdir, src)
+        attrs['srcs'] = [header]
+        attrs['visibility'] = []
+
+        if generate:
+            generate = '--generate ' + ','.join(generate)
+        else:
+            generate = ''
+
+        base_bindgen_flags = [
+            '--raw-line=#![allow(non_snake_case)]',
+            '--raw-line=#![allow(non_camel_case_types)]',
+            '--raw-line=#![allow(non_upper_case_globals)]',
+
+            '--raw-line=#[link(name = "stdc++")] extern {}',
+        ]
+
+        # Include extra sources the user wants.
+        # We need to make the include path absolute, because otherwise rustc
+        # will interpret as relative to the source that's including it, which
+        # is in the cxx_genrule build dir.
+        for s in (src_includes or []):
+            base_bindgen_flags.append('--raw-line=include!("%s");' %
+                os.path.abspath(os.path.join(base_path, s)))
+
+        if cxx_namespaces:
+            base_bindgen_flags.append('--enable-cxx-namespaces')
+        bindgen_flags = base_bindgen_flags + (bindgen_flags or [])
+
+        # rust-bindgen is clang-based, so we can't directly use the cxxppflags
+        # in a gcc build. This means we need to fetch the appropriate flags
+        # here, and also filter out inappropriate ones we get from the
+        # $(cxxppflags) macro in the cxxgenrule.
+        base_clang_flags = '%s %s' % (
+            self._context.buck_ops.read_config('cxx', 'clang_cxxppflags'),
+            self._context.buck_ops.read_config('cxx', 'clang_cxxflags'))
+        base_clang_flags = base_clang_flags.split(' ')
+
+        def formatter(fmt):
+            return fmt.format(
+                fbcode=os.path.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
+                bindgen=self.get_tool_target(
+                    ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen')),
+                bindgen_flags=' '.join(map(pipes.quote, bindgen_flags)),
+                base_clang_flags=' '.join(map(pipes.quote, base_clang_flags)),
+                clang_flags=' '.join(map(pipes.quote, clang_flags)),
+                blacklist=' '.join(['--blacklist-type ' + pipes.quote(ty)
+                                    for ty in blacklist_types]),
+                opaque=' '.join(['--opaque-type ' + pipes.quote(ty)
+                                    for ty in opaque_types]),
+                wl_types=' '.join(['--whitelist-type ' + pipes.quote(ty)
+                                    for ty in whitelist_types]),
+                wl_funcs=' '.join(['--whitelist-function ' + pipes.quote(fn)
+                                    for fn in whitelist_funcs]),
+                wl_vars=' '.join(['--whitelist-var ' + pipes.quote(v)
+                                    for v in whitelist_vars]),
+                generate=generate,
+                deps=''.join(' ' + d for d in cpp_deps),
+                includes=self.get_exported_include_tree(':' + name),
+                platform=self.get_default_platform(),
+            )
+
+        # Actual bindgen rule
+        attrs['bash'] = formatter(BINDGEN_TMPL)
+
+        rules.append(Rule('cxx_genrule', attrs))
+
+        # Rule to generate pre-processed output, to make debugging
+        # bindgen problems easier.
+        ppattrs = collections.OrderedDict()
+
+        ppattrs['name'] = name + '-preproc'
+        ppattrs['out'] = os.path.join(os.curdir, name + '.i')
+        ppattrs['srcs'] = [header]
+
+        ppattrs['bash'] = formatter(PREPROC_TMPL)
+
+        rules.append(Rule('cxx_genrule', ppattrs))
+
+        return ':{}'.format(gen_name), rules
+
+    def convert(
+            self,
+            base_path,
+            name,
+            header,
+            cpp_deps,
+            deps=(),
+            src_includes=None,
+            **kwargs):
+        rules = []
+
+        # Setup the exported include tree to dependents.
+        rules.append(
+            self.generate_merge_tree_rule(
+                base_path,
+                self.get_exported_include_tree(name),
+                [header],
+                []))
+
+        genrule, extra_rules = self.generate_bindgen_rule(
+            base_path,
+            name,
+            header,
+            [self.convert_build_target(base_path, d) for d in cpp_deps],
+            src_includes=src_includes,
+            **kwargs)
+
+        rules.extend(extra_rules)
+
+        # Use normal converter to make build+test rules
+        extra_rules = super(RustBindgenLibraryConverter, self).convert(
+            base_path,
+            name,
+            srcs=[genrule] + (src_includes or []),
+            deps=list(cpp_deps) + list(deps),
+            crate_root=genrule,
+            **kwargs)
+
+        rules.extend(extra_rules)
+
+        return rules

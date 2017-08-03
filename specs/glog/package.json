@@ -1,0 +1,26 @@
+{
+  "author": "Google Inc",
+  "dependencies": {
+    "@buckpkg/buckit": "*",
+    "@buckpkg/libunwind": "*",
+    "@buckpkg/gflags": "*"
+  },
+  "description": "glog",
+  "flat": true,
+  "license": "BSD 3-Clause",
+  "name": "@buckpkg/glog",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/google/glog.git",
+    "tag": "v0.3.4"
+  },
+  "version": "0.3.4",
+  "buckit": {
+    "system_packages": {
+      "darwin": ["glog"]
+    }
+  },
+  "scripts": {
+    "postinstall": "buckit fetch"
+  }
+}
