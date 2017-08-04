@@ -213,12 +213,12 @@ def convert(context, base_path, rules):
     ]
     if use_internal_java_converters:
         converters += [
-            java.JavaConverter(context, 'java_library'),
-            java.JavaConverter(context, 'java_binary'),
+            java.JavaLibraryConverter(context, 'java_library'),
+            java.JavaBinaryConverter(context, 'java_binary'),
             java_plugins.JarShadeConverter(context),
             javafoundations.JavaTestConverter(
                 context,
-                java.JavaConverter(context, 'java_unittest')),
+                java.JavaTestConverter(context, 'java_unittest')),
         ]
 
     # Passthrough support for fbconfig rules prefixed with "buck_".
