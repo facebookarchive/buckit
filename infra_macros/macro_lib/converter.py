@@ -218,7 +218,7 @@ def convert(context, base_path, rules):
             java_plugins.JarShadeConverter(context),
             javafoundations.JavaTestConverter(
                 context,
-                java.JavaTestConverter(context, 'java_unittest')),
+                java.JavaTestConverter(context)),
         ]
 
     # Passthrough support for fbconfig rules prefixed with "buck_".
