@@ -111,7 +111,6 @@ FBCODE_RULES = [
     'rust_unittest',
     'rust_bindgen_library',
     'rust_external_library',
-    'scala_binary',
     'scala_library',
     'swig_library',
     'thrift_library',
