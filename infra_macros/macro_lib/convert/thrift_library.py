@@ -1076,6 +1076,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
     NORMAL = 'normal'
     TWISTED = 'twisted'
     ASYNCIO = 'asyncio'
+    PYI = 'pyi'
 
     THRIFT_PY_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'py')
     THRIFT_PY_TWISTED_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'twisted')
@@ -1089,12 +1090,14 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             **kwargs
         )
         self._flavor = flavor
+        self._ext = '.py' if flavor != self.PYI else '.pyi'
 
     def get_name(self, prefix, sep):
-        if self._flavor == self.TWISTED:
-            prefix += sep + 'twisted'
-        elif self._flavor == self.ASYNCIO:
-            prefix += sep + 'asyncio'
+        if self._flavor == self.PYI:
+            return self._flavor
+
+        if self._flavor in (self.TWISTED, self.ASYNCIO):
+            prefix += sep + self._flavor
         return prefix
 
     def get_names(self):
@@ -1106,6 +1109,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return self.get_name('py', '-')
 
     def get_compiler_lang(self):
+        if self._flavor == self.PYI:
+            return 'mstch_pyi'
         return 'py'
 
     def get_thrift_base(self, thrift_src):
@@ -1156,11 +1161,11 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         thrift_dir = self.get_thrift_dir(base_path, thrift_src, **kwargs)
 
         output_dir = os.path.join(out_dir, 'gen-py', thrift_dir)
-        ttypes_path = os.path.join(output_dir, 'ttypes.py')
+        ttypes_path = os.path.join(output_dir, 'ttypes' + self._ext)
 
         msg = [
             'Compiling %s did not generate source in %s'
-            % (os.path.join(base_path, thrift_src), output_dir)
+            % (os.path.join(base_path, thrift_src), ttypes_path)
         ]
         msg.append(
             'Does the "\\"namespace py\\"" directive in the thrift file '
@@ -1223,15 +1228,15 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         genfiles = []
 
-        genfiles.append('constants.py')
-        genfiles.append('ttypes.py')
+        genfiles.append('constants' + self._ext)
+        genfiles.append('ttypes' + self._ext)
 
         for service in services:
             # "<service>.py" and "<service>-remote" are generated for each
             # service
-            genfiles.append('{}.py'.format(service))
+            genfiles.append(service + self._ext)
             if self._flavor == self.NORMAL:
-                genfiles.append('{}-remote'.format(service))
+                genfiles.append(service + '-remote')
 
         def add_ext(path, ext):
             if not path.endswith(ext):
@@ -1239,8 +1244,15 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             return path
 
         return collections.OrderedDict(
-            [(add_ext(os.path.join(thrift_base, path), '.py'),
+            [(add_ext(os.path.join(thrift_base, path), self._ext),
               os.path.join('gen-py', thrift_dir, path)) for path in genfiles])
+
+    def get_pyi_dependency(self, name):
+        if name.endswith('-asyncio'):
+            name = name[:-len('-asyncio')]
+        if name.endswith('-py'):
+            name = name[:-len('-py')]
+        return name + '-pyi'
 
     def get_language_rule(
             self,
@@ -1275,6 +1287,9 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         if self._flavor == self.ASYNCIO or 'asyncio' in options:
             out_deps.append(
                 self.get_dep_target(self.THRIFT_PY_ASYNCIO_LIB_RULE_NAME))
+
+        if self._flavor in (self.NORMAL,):  # FIXME: asyncio support
+            out_deps.append(':' + self.get_pyi_dependency(name))
 
         attrs['deps'] = out_deps
 
@@ -1544,6 +1559,10 @@ class ThriftLibraryConverter(base.Converter):
                 *args,
                 flavor=LegacyPythonThriftConverter.TWISTED,
                 **kwargs),
+            LegacyPythonThriftConverter(
+                *args,
+                flavor=LegacyPythonThriftConverter.PYI,
+                **kwargs),
         ]
         self._converters = {}
         self._name_to_lang = {}
@@ -1783,6 +1802,10 @@ class ThriftLibraryConverter(base.Converter):
                     kwargs.get('thrift_cpp2_options', ())))
             if 'compatibility' in cpp2_options:
                 languages.add('cpp')
+
+        # Types are generated for all legacy Python Thrift
+        if 'py' in languages:  # FIXME: asyncio support
+            languages.add('pyi')
 
         # Generate rules for all supported languages.
         for lang in languages:
