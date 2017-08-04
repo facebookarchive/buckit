@@ -213,7 +213,7 @@ def convert(context, base_path, rules):
     ]
     if use_internal_java_converters:
         converters += [
-            java.JavaLibraryConverter(context, 'java_library'),
+            java.JavaLibraryConverter(context),
             java.JavaBinaryConverter(context, 'java_binary'),
             java_plugins.JarShadeConverter(context),
             javafoundations.JavaTestConverter(
