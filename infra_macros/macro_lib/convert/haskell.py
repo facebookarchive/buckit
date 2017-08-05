@@ -643,12 +643,8 @@ class HaskellConverter(base.Converter):
             dependencies.append(self.get_dep_for_package('HUnit'))
             dependencies.append(RootRuleTarget('tools/test/stubs', 'fbhsunit'))
 
-        attributes['deps'] = (
-            self.format_deps([d for d in dependencies if d.repo is None]))
-        attributes['platform_deps'] = (
-            self.format_platform_deps(
-                self.to_platform_deps(
-                    [d for d in dependencies if d.repo is not None])))
+        attributes['deps'], attributes['platform_deps'] = (
+            self.format_all_deps(dependencies))
 
         # we could restrict this to auto-generated deps but I think it's
         # a better tradeoff to let iteration on deps construction to be

@@ -133,13 +133,9 @@ class JavaSwigConverter(SwigLangConverter):
             'lib{}.so'.format(
                 module if java_library_name is None else java_library_name))
         attrs['link_style'] = kwargs.get('java_link_style')
-        attrs['deps'] = (
-            [self.get_dep_target(d) for d in cpp_deps if d.repo is None])
-        attrs['platform_deps'] = (
-            self.format_platform_deps(
-                self.to_platform_deps(
-                    [d for d in cpp_deps if d.repo is not None] +
-                    [ThirdPartyRuleTarget('openjdk', 'jvm')])))
+        attrs['deps'], attrs['platform_deps'] = (
+            self.format_all_deps(
+                cpp_deps + [ThirdPartyRuleTarget('openjdk', 'jvm')]))
         # When using e.g. %feature("director") in Something.i, SWIG includes
         # "Something.h" in the source code of the C/C++ Java extension.
         attrs['headers'] = [hdr]
@@ -223,13 +219,9 @@ class PythonSwigConverter(SwigLangConverter):
             out_compiler_flags.append('-Wno-shadow-compatible-local')
         attrs['compiler_flags'] = out_compiler_flags
         attrs['module_name'] = '_' + module
-        attrs['deps'] = (
-            [self.get_dep_target(d) for d in cpp_deps if d.repo is None])
-        attrs['platform_deps'] = (
-            self.format_platform_deps(
-                self.to_platform_deps(
-                    [d for d in cpp_deps if d.repo is not None] +
-                    [ThirdPartyRuleTarget('python', 'python')])))
+        attrs['deps'], attrs['platform_deps'] = (
+            self.format_all_deps(
+                cpp_deps + [ThirdPartyRuleTarget('python', 'python')]))
         if py_base_module is not None:
             attrs['base_module'] = py_base_module
         rules.append(Rule('cxx_python_extension', attrs))

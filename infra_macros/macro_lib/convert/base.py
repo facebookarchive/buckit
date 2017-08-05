@@ -617,6 +617,18 @@ class Converter(object):
 
         return platform_deps
 
+    def format_all_deps(self, deps):
+        """
+        Return a tuple of formatted internal and external deps, to be installed
+        in rules via the `deps` and `platform_deps` parameters, respectively.
+        """
+
+        return (
+            [self.get_dep_target(d) for d in deps if d.repo is None],
+            self.format_platform_deps(
+                self.to_platform_deps(
+                    [d for d in deps if d.repo is not None])))
+
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
