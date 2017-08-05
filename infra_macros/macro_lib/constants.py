@@ -90,7 +90,7 @@ FBCODE_RULES = [
     'haskell_unittest',
     'java_binary',
     'java_library',
-    'java_unittest',
+    'java_test',
     'java_shaded_jar',
     'js_executable',
     'js_library',
