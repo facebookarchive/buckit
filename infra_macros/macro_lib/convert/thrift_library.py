@@ -791,32 +791,28 @@ class HaskellThriftConverter(ThriftLangConverter):
         attrs['name'] = name
         attrs['srcs'] = self.merge_sources_map(sources_map)
 
-        out_deps = []
+        dependencies = []
         if not self._is_hs2:
-            for dep in self.THRIFT_DEPS:
-                out_deps.append(self.get_dep_target(dep, source=dep))
+            dependencies.extend(self.THRIFT_DEPS)
             if 'new_deps' in options:
-                for dep in self.THRIFT_HS_LIBS:
-                    out_deps.append(self.get_dep_target(dep, source=dep))
+                dependencies.extend(self.THRIFT_HS_LIBS)
             else:
-                for dep in self.THRIFT_HS_LIBS_DEPRECATED:
-                    out_deps.append(self.get_dep_target(dep, source=dep))
+                dependencies.extend(self.THRIFT_HS_LIBS_DEPRECATED)
         else:
             for services in thrift_srcs.itervalues():
                 if services:
-                    for dep in self.THRIFT_HS2_SERVICE_LIBS:
-                        out_deps.append(self.get_dep_target(dep, source=dep))
+                    dependencies.extend(self.THRIFT_HS2_SERVICE_LIBS)
                     break
-            for dep in self.THRIFT_HS2_DEPS + self.THRIFT_HS2_LIBS:
-                out_deps.append(self.get_dep_target(dep, source=dep))
+            dependencies.extend(self.THRIFT_HS2_DEPS)
+            dependencies.extend(self.THRIFT_HS2_LIBS)
             for pkg in hs_packages or []:
-                out_deps.append(
-                    self.get_dep_target(
-                        self._hs_converter.get_dep_for_package(pkg)))
+                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
             for dep in hs2_deps:
-                out_deps.append(self.convert_build_target(base_path, dep))
-        out_deps.extend(deps)
-        attrs['deps'] = out_deps
+                dependencies.append(self.normalize_dep(dep, base_path))
+        for dep in deps:
+            dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
+        attrs['deps'], attrs['platform_deps'] = (
+            self.format_all_deps(dependencies))
 
         return [Rule('haskell_library', attrs)]
 
