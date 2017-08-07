@@ -812,6 +812,7 @@ class CppConverter(base.Converter):
             srcs=[],
             src=None,
             deps=[],
+            arch_compiler_flags={},
             compiler_flags=(),
             known_warnings=[],
             headers=None,
@@ -821,6 +822,7 @@ class CppConverter(base.Converter):
             output_subdir=None,
             tags=(),
             linker_flags=None,
+            arch_preprocessor_flags={},
             preprocessor_flags=(),
             prefix_header=None,
             precompiled_header=ABSENT,
@@ -923,9 +925,16 @@ class CppConverter(base.Converter):
             out_lang_compiler_flags['c_cpp_output'].extend(profile_args)
             out_lang_compiler_flags['cxx_cpp_output'].extend(profile_args)
 
-
         if out_lang_compiler_flags:
             attributes['lang_compiler_flags'] = out_lang_compiler_flags
+
+        # Form platform-specific compiler flags.
+        out_platform_compiler_flags = []
+        out_platform_compiler_flags.extend(
+            self.get_platform_flags_from_arch_flags(arch_compiler_flags))
+        if out_platform_compiler_flags:
+            attributes['platform_compiler_flags'] = (
+                out_platform_compiler_flags)
 
         # Form preprocessor flags.
         out_preprocessor_flags = []
@@ -969,6 +978,14 @@ class CppConverter(base.Converter):
             self.get_extra_cxxppflags())
         if out_lang_preprocessor_flags:
             attributes['lang_preprocessor_flags'] = out_lang_preprocessor_flags
+
+        # Form platform-specific processor flags.
+        out_platform_preprocessor_flags = []
+        out_platform_preprocessor_flags.extend(
+            self.get_platform_flags_from_arch_flags(arch_preprocessor_flags))
+        if out_platform_preprocessor_flags:
+            attributes['platform_preprocessor_flags'] = (
+                out_platform_preprocessor_flags)
 
         if lib_name is not None:
             attributes['soname'] = 'lib{}.so'.format(lib_name)
@@ -1521,6 +1538,8 @@ class CppConverter(base.Converter):
 
         # Arguments that apply to all C/C++ rules.
         args = {
+            'arch_compiler_flags',
+            'arch_preprocessor_flags',
             'auto_headers',
             'compiler_flags',
             'compiler_specific_flags',

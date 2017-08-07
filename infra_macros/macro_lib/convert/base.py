@@ -294,6 +294,37 @@ class Converter(object):
     def get_third_party_config(self, platform):
         return self._context.third_party_config['platforms'][platform]
 
+    def get_platforms_for_arch(self, arch):
+        """
+        Return all platforms building for the given arch.
+        """
+
+        platforms = []
+
+        platform_configs = self._context.third_party_config['platforms']
+        for name, config in platform_configs.items():
+            if arch == config['architecture']:
+                platforms.append(name)
+
+        return platforms
+
+    def get_platform_flags_from_arch_flags(self, arch_flags):
+        """
+        Format a dict of architecture names to flags into a platform flag list
+        for Buck.
+        """
+
+        out_platform_flags = []
+
+        for arch, flags in arch_flags.items():
+            platforms = self.get_platforms_for_arch(arch)
+            if platforms:
+                out_platform_flags.append(
+                    ('|'.join('^' + re.escape(p) + '$' for p in platforms),
+                     flags))
+
+        return out_platform_flags
+
     def get_tool_version(self, platform, project):
         conf = self._context.third_party_config['platforms'][platform]
         return LooseVersion(conf['tools']['projects'][project])
