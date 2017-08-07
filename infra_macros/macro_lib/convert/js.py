@@ -48,9 +48,11 @@ class JsConverter(base.Converter):
     def get_node_path(self, version_string):
         path_template = '/usr/local/fbcode/{}/bin/node-{}'
 
+        platform = self.get_default_platform()
+        config = self.get_third_party_config(platform)
         fallback_path = path_template.format(
-            self.get_default_platform(),
-            self.get_third_party_config()['build']['projects']['node'],
+            platform,
+            config['build']['projects']['node'],
         )
 
         if (version_string):

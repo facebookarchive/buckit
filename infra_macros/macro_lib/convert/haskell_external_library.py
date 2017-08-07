@@ -85,7 +85,8 @@ class HaskellExternalLibraryConverter(base.Converter):
             [os.path.join(lib_dir, 'lib{}.a'.format(l)) for l in libs])
         attributes['profiled_static_libs'] = (
             [os.path.join(lib_dir, 'lib{}_p.a'.format(l)) for l in libs])
-        ghc_version = self.get_third_party_config()['tools']['projects']['ghc']
+        tp_config = self.get_third_party_config(platform)
+        ghc_version = tp_config['tools']['projects']['ghc']
         shlibs = (
             [os.path.join(lib_dir, 'lib{}-ghc{}.so'.format(lib, ghc_version))
                 for lib in libs])

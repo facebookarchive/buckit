@@ -291,8 +291,7 @@ class Converter(object):
         else:
             return self.get_third_party_build_root(platform)
 
-    def get_third_party_config(self):
-        platform = self.get_default_platform()
+    def get_third_party_config(self, platform):
         return self._context.third_party_config['platforms'][platform]
 
     def get_tool_version(self, platform, project):
@@ -300,7 +299,8 @@ class Converter(object):
         return LooseVersion(conf['tools']['projects'][project])
 
     def get_auxiliary_versions(self):
-        return self.get_third_party_config()['build']['auxiliary_versions']
+        config = self.get_third_party_config(self.get_default_platform())
+        return config['build']['auxiliary_versions']
 
     def get_target(self, repo, path, name):
         """
@@ -1539,11 +1539,11 @@ class Converter(object):
             .format(constraints))
 
     def get_py2_version(self):
-        conf = self.get_third_party_config()
+        conf = self.get_third_party_config(self.get_default_platform())
         return conf['build']['projects']['python'][0][1]
 
     def get_py3_version(self):
-        conf = self.get_third_party_config()
+        conf = self.get_third_party_config(self.get_default_platform())
         return conf['build']['projects']['python'][1][1]
 
     def get_python_platform(self, platform, python_version):
