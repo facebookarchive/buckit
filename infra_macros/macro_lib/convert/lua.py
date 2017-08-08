@@ -206,7 +206,7 @@ class LuaConverter(base.Converter):
         ]
         rules.append(Rule('lua_library', attrs))
 
-        return ':' + attrs['name'], source_attrs['out'], rules
+        return attrs['name'], source_attrs['out'], rules
 
     def create_cpp_main_library(
             self,
@@ -314,13 +314,19 @@ class LuaConverter(base.Converter):
 
         dependencies = []
         if self.is_tp2(base_path):
-            dependencies.append(self.get_tp2_project_dep(base_path))
+            dependencies.append(
+                self.get_tp2_project_target(
+                    self.get_tp2_project_name(base_path)))
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(self.normalize_dep(target, base_path))
         for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
+            dependencies.append(self.normalize_external_dep(target))
         if dependencies:
-            attributes['deps'] = dependencies
+            platform = (
+                self.get_tp2_platform(base_path)
+                if self.is_tp2(base_path) else None)
+            attributes['deps'], attributes['platform_deps'] = (
+                self.format_all_deps(dependencies, platform=platform))
 
         return [Rule('lua_library', attributes)]
 
@@ -362,7 +368,7 @@ class LuaConverter(base.Converter):
                     srcs=srcs,
                     deps=deps,
                     external_deps=external_deps))
-            dependencies.append(':' + lib_name)
+            dependencies.append(RootRuleTarget(base_path, lib_name))
             deps = []
             external_deps = []
 
@@ -389,7 +395,7 @@ class LuaConverter(base.Converter):
                     main_module=main_module,
                     base_module=base_module))
             rules.extend(extra_rules)
-            dependencies.append(lib)
+            dependencies.append(RootRuleTarget(base_path, lib))
 
         # Generate the native starter library.
         cpp_main_lib, extra_rules = (
@@ -414,16 +420,17 @@ class LuaConverter(base.Converter):
 
         # Tests depend on FB lua test lib.
         if self.is_test():
-            dependencies.append('//fblualib/luaunit:luaunit')
+            dependencies.append(RootRuleTarget('fblualib/luaunit', 'luaunit'))
 
         # Add in `dep` and `external_deps` parameters to the dependency list.
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(self.normalize_dep(target, base_path))
         for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
+            dependencies.append(self.normalize_external_dep(target))
 
         if dependencies:
-            attributes['deps'] = dependencies
+            attributes['deps'], attributes['platform_deps'] = (
+                self.format_all_deps(dependencies))
 
         return [Rule('lua_binary', attributes)] + rules
 

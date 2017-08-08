@@ -655,17 +655,29 @@ class Converter(object):
 
         return platform_deps
 
-    def format_all_deps(self, deps):
+    def format_all_deps(self, deps, platform=None):
         """
         Return a tuple of formatted internal and external deps, to be installed
         in rules via the `deps` and `platform_deps` parameters, respectively.
         """
 
-        return (
-            [self.get_dep_target(d) for d in deps if d.repo is None],
-            self.format_platform_deps(
-                self.to_platform_deps(
-                    [d for d in deps if d.repo is not None])))
+        out_deps = []
+        out_deps.extend(self.get_dep_target(d) for d in deps if d.repo is None)
+        # If we have an explicit platform (as is the case with tp2 projects),
+        # we can pass the tp2 deps using the `deps` parameter.
+        if platform is not None:
+            out_deps.extend(
+                self.get_dep_target(d, platform=platform)
+                for d in deps if d.repo is not None)
+
+        out_platform_deps = []
+        if platform is None:
+            out_platform_deps.extend(
+                self.format_platform_deps(
+                    self.to_platform_deps(
+                        [d for d in deps if d.repo is not None])))
+
+        return out_deps, out_platform_deps
 
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
