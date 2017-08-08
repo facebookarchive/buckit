@@ -70,6 +70,7 @@ class CustomRuleConverter(base.Converter):
                 '`build_script_path` is not supported in `strict` mode')
 
         out = self.get_output_dir(name)
+        platform = self.get_platform(base_path)
         extra_rules = []
 
         attributes = collections.OrderedDict()
@@ -89,10 +90,10 @@ class CustomRuleConverter(base.Converter):
         path = []
         tool_bin_rules = []
         for tool in sorted(tools):
-            tool_path = self.get_tp2_tool_path(tool)
+            tool_path = self.get_tp2_tool_path(tool, platform)
             tool_bin_rules.append(
                 '//{}/tools:{}/bin'
-                .format(self.get_third_party_root(self.get_default_platform()), tool))
+                .format(self.get_third_party_root(platform), tool))
 
             # It's possible that the tool that the user wants hasn't been
             # added to buck's tp2 setup.  In this case, throw a hard error
@@ -200,7 +201,7 @@ class CustomRuleConverter(base.Converter):
 
             # Otherwise, just pass the build args directly.
             else:
-                cmd += ' ' + self.convert_blob_with_macros(base_path, build_args)
+                cmd += ' ' + self.convert_blob_with_macros(base_path, build_args, platform=platform)
 
         if bin_refs < len(deps):
             # Some dependencies were not converted into $(location) macros. Buck

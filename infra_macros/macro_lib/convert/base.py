@@ -523,13 +523,13 @@ class Converter(object):
 
         return target
 
-    def convert_build_target(self, base_path, target):
+    def convert_build_target(self, base_path, target, platform=None):
         """
         Convert the given build target into a buck build target.
         """
 
         parsed = self.normalize_dep(target, base_path=base_path)
-        return self.get_dep_target(parsed, source=target)
+        return self.get_dep_target(parsed, source=target, platform=platform)
 
     def convert_source(self, base_path, src):
         """
@@ -559,7 +559,12 @@ class Converter(object):
                 self.convert_source(base_path, v))
         return converted
 
-    def convert_blob_with_macros(self, base_path, blob, extra_handlers=None):
+    def convert_blob_with_macros(
+            self,
+            base_path,
+            blob,
+            extra_handlers=None,
+            platform=None):
         """
         Convert build targets inside macros.
         """
@@ -569,7 +574,7 @@ class Converter(object):
         def convert_target_expander(name, target):
             return '$({} {})'.format(
                 name,
-                self.convert_build_target(base_path, target))
+                self.convert_build_target(base_path, target, platform=platform))
 
         def as_is_converter(name, *args):
             return '$({})'.format(' '.join([name] + list(args)))
@@ -600,13 +605,15 @@ class Converter(object):
 
         return MACRO_PATTERN.sub(repl, blob)
 
-    def convert_args_with_macros(self, base_path, blobs):
-        return [self.convert_blob_with_macros(base_path, b) for b in blobs]
+    def convert_args_with_macros(self, base_path, blobs, platform=None):
+        return [self.convert_blob_with_macros(base_path, b, platform=platform)
+                for b in blobs]
 
-    def convert_env_with_macros(self, base_path, env):
+    def convert_env_with_macros(self, base_path, env, platform=None):
         new_env = {}
         for k, v in env.iteritems():
-            new_env[k] = self.convert_blob_with_macros(base_path, v)
+            new_env[k] = (
+                self.convert_blob_with_macros(base_path, v, platform=platform))
         return new_env
 
     def merge_platform_deps(self, dst, src):

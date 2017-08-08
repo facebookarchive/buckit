@@ -45,6 +45,7 @@ class CustomUnittestConverter(base.Converter):
             env=None):
 
         extra_rules = []
+        platform = self.get_platform(base_path)
 
         attributes = collections.OrderedDict()
 
@@ -54,7 +55,11 @@ class CustomUnittestConverter(base.Converter):
             bin_refs = 0
 
             # Convert any macros to their Buck-equivalents.
-            command = self.convert_args_with_macros(base_path, command)
+            command = (
+                self.convert_args_with_macros(
+                    base_path,
+                    command,
+                    platform=platform))
 
             # If the first parameter is a location macro, just extract the
             # build target and use that.
@@ -115,7 +120,11 @@ class CustomUnittestConverter(base.Converter):
         out_env = collections.OrderedDict()
         if env:
             out_env.update(
-                sorted(self.convert_env_with_macros(base_path, env).items()))
+                sorted(
+                    self.convert_env_with_macros(
+                        base_path,
+                        env,
+                        platform=platform).items()))
         out_env['FBCODE_BUILD_TOOL'] = 'buck'
         out_env['FBCODE_BUILD_MODE'] = self._context.mode
         attributes['env'] = out_env
