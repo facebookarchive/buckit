@@ -528,6 +528,8 @@ class HaskellConverter(base.Converter):
             dlls={}):
 
         rules = []
+        out_compiler_flags = []
+        out_linker_flags = []
         out_link_style = self.get_link_style()
 
         attributes = collections.OrderedDict()
@@ -543,6 +545,7 @@ class HaskellConverter(base.Converter):
             attributes['preferred_linkage'] = 'static'
 
         if self.get_fbconfig_rule_type() == 'haskell_ghci':
+            out_compiler_flags.append('-fexternal-interpreter')
             if enable_profiling is not None:
                 attributes['enable_profiling'] = enable_profiling
 
@@ -554,12 +557,10 @@ class HaskellConverter(base.Converter):
             attributes['ghci_init'] = self.convert_source(base_path, ghci_init)
 
         validated_compiler_flags = []
-        out_linker_flags = []
         validated_compiler_flags.extend(
             self.get_compiler_flags(compiler_flags, fb_haskell))
         out_linker_flags.extend(validated_compiler_flags)
 
-        out_compiler_flags = []
         out_compiler_flags.extend(self.get_warnings_flags(warnings_flags))
         out_compiler_flags.extend(validated_compiler_flags)
         out_compiler_flags.extend(
