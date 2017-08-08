@@ -422,11 +422,37 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
+    def _get_dep_rule(self, name, deps):
+        """
+        Sets up a dummy rule with the given dep objects formatted and installed
+        using `deps` and `platform_deps` to support multi-platform builds.
+
+        This is useful to package a given dep list, which requires multi-
+        platform dep parameter support, into a single target that can be used
+        in interfaces that don't have this support (e.g. macros in `genrule`s
+        and `cxx_genrule`).
+        """
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = name
+        attrs['preferred_linkage'] = 'static'
+        attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        return Rule('cxx_library', attrs)
+
     def convert_c2hs(self, name, source, deps):
         """
         Construct the rules to generate a haskell source from the given `c2hs`
         source.
         """
+
+        rules = []
+
+        # Macros in the `cxx_genrule` below don't support the `platform_deps`
+        # parameter that we rely on to support multi-platform builds.  So use
+        # a helper rule for this, and just depend on the helper.
+        deps_name = name + '-' + source + '-deps'
+        all_deps = deps + self.get_binary_link_deps()
+        rules.append(self._get_dep_rule(deps_name, all_deps))
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
@@ -437,19 +463,27 @@ class HaskellConverter(base.Converter):
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
                 stackage=self.get_tp2_tool_path('stackage-lts'),
-                deps=''.join([
-                    ' ' + d
-                    for d in self.format_deps(
-                        deps + self.get_binary_link_deps())])))
+                deps=' :' + deps_name))
         attrs['srcs'] = [source]
         attrs['out'] = os.path.splitext(source)[0] + '.hs'
-        return (':' + attrs['name'], [Rule('cxx_genrule', attrs)])
+        rules.append(Rule('cxx_genrule', attrs))
+
+        return (':' + attrs['name'], rules)
 
     def convert_hsc2hs(self, name, source, deps):
         """
         Construct the rules to generate a haskell source from the given
         `hsc2hs` source.
         """
+
+        rules = []
+
+        # Macros in the `cxx_genrule` below don't support the `platform_deps`
+        # parameter that we rely on to support multi-platform builds.  So use
+        # a helper rule for this, and just depend on the helper.
+        deps_name = name + '-' + source + '-deps'
+        all_deps = deps + self.get_binary_link_deps()
+        rules.append(self._get_dep_rule(deps_name, all_deps))
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
@@ -462,13 +496,12 @@ class HaskellConverter(base.Converter):
                 ghc_tool=self.get_tp2_tool_path('ghc'),
                 ghc=self.get_tp2_dep_path('ghc'),
                 link_style=self._context.link_style,
-                deps=''.join([
-                    ' ' + d
-                    for d in self.format_deps(
-                        deps + self.get_binary_link_deps())])))
+                deps=' :' + deps_name))
         attrs['srcs'] = [source]
         attrs['out'] = os.path.splitext(source)[0] + '.hs'
-        return (':' + attrs['name'], [Rule('cxx_genrule', attrs)])
+        rules.append(Rule('cxx_genrule', attrs))
+
+        return (':' + attrs['name'], rules)
 
     def convert_rule(
             self,
