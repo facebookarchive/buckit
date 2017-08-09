@@ -179,31 +179,42 @@ class Converter(object):
         Parse the given platform file and return its platform.
         """
 
-        platform = None
-
+        # Parse platform file.
+        parsed_platforms = []
+        all_platforms = self.get_platforms(native=False)
         with open(filename) as f:
             for line in f:
                 line = line.strip()
+
                 # Ignore empty lines and lines starting with '#'
                 if not line or line.startswith('#'):
                     continue
-                # Ensure that there is only one non-comment line
-                if platform is not None:
-                    raise Exception('found multiple platform lines in "%s"' %
-                                    (filename,))
-                platform = line
+
+                # Make sure this is a valid platform name.
+                if line not in all_platforms:
+                    raise Exception(
+                        'invalid platform "{}" specified in "{}"'
+                        .format(line, filename))
+
+                parsed_platforms.append(line)
 
         # Make sure we found a platform name
-        if platform is None:
+        if not parsed_platforms:
             raise Exception('no platform information present in "%s"' %
                             (filename,))
 
-        # Make sure the name is valid
-        if platform not in self.get_platforms():
-            raise Exception('invalid platform specified in "%s"' %
-                            (filename,))
+        # We don't currently support cross-building, so filter out non-native
+        # platforms.
+        native_platforms = self.get_platforms(native=True)
+        platforms = [p for p in parsed_platforms if p in native_platforms]
 
-        return platform
+        # There should be only one active platform.
+        if len(platforms) > 1:
+            raise Exception(
+                'found multiple active platforms ({}) in "{}"'
+                .format(', '.join('"' + p + '"' for p in platforms), filename))
+
+        return None if not platforms else platforms[0]
 
     def find_platform_for_path(self, base_path):
         """
@@ -227,7 +238,8 @@ class Converter(object):
             self._context.buck_ops.add_build_file_dep('//' + platform_file)
             if os.path.isfile(platform_file):
                 platform = self.parse_platform_file(platform_file)
-                break
+                if platform is not None:
+                    break
 
         # Otherwise, walk up the dir tree.
         if platform is None and base_path:
@@ -252,7 +264,7 @@ class Converter(object):
         # Otherwise, use the global default.
         return self.get_default_platform()
 
-    def get_platforms(self):
+    def get_platforms(self, native=True):
         """
         Return all fbcode platforms we can build against.
         """
@@ -263,7 +275,7 @@ class Converter(object):
                 self._context.third_party_config['platforms'].iteritems()):
             # We only support native building, so exclude platforms spporting
             # incompatible architectures.
-            if platmod.machine() == config['architecture']:
+            if not native or platmod.machine() == config['architecture']:
                 platforms.add(platform)
 
         return sorted(platforms)
