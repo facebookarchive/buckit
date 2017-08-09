@@ -531,6 +531,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags = []
         out_linker_flags = []
         out_link_style = self.get_link_style()
+        platform = self.get_default_platform() if self.is_binary() else None
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -630,7 +631,7 @@ class HaskellConverter(base.Converter):
         out_dep_queries = []
         if dlls:
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                convert_dlls(base_path, name, self.get_platform(base_path),
+                convert_dlls(base_path, name, platform,
                              dlls, self.get_fbcode_dir_from_gen_dir()))
             rules.extend(dll_rules)
             dependencies.extend(dll_deps)
@@ -649,6 +650,17 @@ class HaskellConverter(base.Converter):
             if out_link_style == 'shared':
                 out_link_style = 'static_pic'
 
+        # Add the C/C++ build info lib to deps.
+        if self.is_binary():
+            cxx_build_info, cxx_build_info_rules = (
+                self.create_cxx_build_info_rule(
+                    base_path,
+                    name,
+                    self.get_fbconfig_rule_type(),
+                    platform))
+            dependencies.append(cxx_build_info)
+            rules.extend(cxx_build_info_rules)
+
         if out_dep_queries:
             attributes['deps_query'] = ' union '.join(out_dep_queries)
             attributes['link_deps_query_whole'] = True
@@ -656,19 +668,8 @@ class HaskellConverter(base.Converter):
         if out_linker_flags:
             attributes['linker_flags'] = out_linker_flags
 
-        if self.is_binary() or self.is_test():
+        if self.is_binary():
             attributes['link_style'] = out_link_style
-
-        # Add the C/C++ build info lib to deps.
-        if self.get_fbconfig_rule_type() == 'haskell_binary':
-            cxx_build_info, cxx_build_info_rules = (
-                self.create_cxx_build_info_rule(
-                    base_path,
-                    name,
-                    self.get_fbconfig_rule_type(),
-                    self.get_default_platform()))
-            dependencies.append(cxx_build_info)
-            rules.extend(cxx_build_info_rules)
 
         # Add in binary-specific link deps.
         if self.is_binary():
