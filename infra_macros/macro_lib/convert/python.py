@@ -17,6 +17,7 @@ from distutils.version import LooseVersion
 import os
 import operator
 import pipes
+import platform
 
 from . import base
 from .base import ThirdPartyRuleTarget
@@ -387,6 +388,8 @@ class PythonConverter(base.Converter):
         return self.read_bool(
             'python',
             'helpers',
+            # TODO(T20877452): Python helpers can't build on aarch64.
+            platform.processor() == 'x86_64' and
             self._context.mode.startswith('dev'))
 
     def convert_interp_rules(
