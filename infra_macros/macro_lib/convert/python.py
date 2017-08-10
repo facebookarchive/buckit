@@ -360,12 +360,13 @@ class PythonConverter(base.Converter):
             build_args.extend(['--passthrough=' + a for a in passthrough_args])
 
             # Arguments for stripping libomnibus. dbg builds should never strip.
-            if self._context.mode.startswith('dbg') or strip_libpar is False:
-                build_args.append('--omnibus-debug-info=separate')
-            elif strip_libpar == 'extract':
-                build_args.append('--omnibus-debug-info=extract')
-            else:
-                build_args.append('--omnibus-debug-info=strip')
+            if not self._context.mode.startswith('dbg'):
+                if strip_libpar is True:
+                    build_args.append('--omnibus-debug-info=strip')
+                elif strip_libpar == 'extract':
+                    build_args.append('--omnibus-debug-info=extract')
+                else:
+                    build_args.append('--omnibus-debug-info=separate')
 
             # Add arguments to populate build info.
             build_args.append('--build-info-mode=' + self._context.mode)
