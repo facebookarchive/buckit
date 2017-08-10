@@ -1010,7 +1010,7 @@ class PythonConverter(base.Converter):
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = name + '-testmodules-lib'
         lib_attrs['base_module'] = ''
-        lib_attrs['deps'] = ['//python:testmain', ':' + name]
+        lib_attrs['deps'] = ['//python:fbtestmain', ':' + name]
         lib_attrs['srcs'] = {'__test_modules__.py': ':' + gen_attrs['name']}
         yield Rule('python_library', lib_attrs)
 
