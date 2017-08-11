@@ -276,7 +276,8 @@ class HaskellConverter(base.Converter):
     def is_binary(self):
         return self.get_fbconfig_rule_type() in (
             'haskell_binary',
-            'haskell_unittest')
+            'haskell_unittest',
+            'haskell_ghci')
 
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
@@ -669,7 +670,11 @@ class HaskellConverter(base.Converter):
             attributes['linker_flags'] = out_linker_flags
 
         if self.is_binary():
-            attributes['link_style'] = out_link_style
+            attributes['platform'] = platform
+
+            # TODO: support `link_style` for `haskell_ghci` rule.
+            if self.get_fbconfig_rule_type() != 'haskell_ghci':
+                attributes['link_style'] = out_link_style
 
         # Add in binary-specific link deps.
         if self.is_binary():
