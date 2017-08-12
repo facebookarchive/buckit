@@ -1037,7 +1037,13 @@ class Converter(object):
 
         return ldflags
 
-    def get_binary_ldflags(self, base_path, name, rule_type):
+    def read_shlib_interfaces(self, platform):
+        return self.read_choice(
+            'cxx#' + platform,
+            'shlib_interfaces',
+            ['disabled', 'enabled', 'defined_only'])
+
+    def get_binary_ldflags(self, base_path, name, rule_type, platform):
         """
         Return ldflags set via various `.buckconfig` settings.
         """
@@ -1047,6 +1053,25 @@ class Converter(object):
         # If we're using TSAN, we need to build PIEs.
         if self._context.sanitizer == 'thread':
             ldflags.append('-pie')
+
+        # It's rare, but some libraries use variables defined in object files
+        # in the top-level binary.  This works as, when linking the binary, the
+        # linker sees this undefined reference in the dependent shared library
+        # and so makes sure to export this symbol definition to the binary's
+        # dynamic symbol table.  However, when using shared library interfaces
+        # in `defined_only` mode, undefined references are stripped from shared
+        # libraries, so the linker never knows to export these symbols to the
+        # binary's dynamic symbol table, and the binary fails to load at
+        # runtime, as the dynamic loader can't resolve that symbol.
+        #
+        # So, when linking a binary when using shared library interfaces in
+        # `defined_only` mode, pass `--export-dynamic` to the linker to force
+        # everything onto the dynamic symbol table.  Since this only affects
+        # object files from sources immediately owned by `cpp_binary` rules,
+        # this shouldn't have much of a performance issue.
+        if (self.get_link_style() == 'shared' and
+                self.read_shlib_interfaces(platform) == 'defined_only'):
+            ldflags.append('-Wl,--export-dynamic')
 
         return ldflags
 
@@ -1133,7 +1158,7 @@ class Converter(object):
 
         # 3. Add in flags specific for linking a binary.
         if binary:
-            ldflags.extend(self.get_binary_ldflags(base_path, name, rule_type))
+            ldflags.extend(self.get_binary_ldflags(base_path, name, rule_type, platform))
 
         # 4. Add in the build info linker flags.
         # In OSS, we don't need to actually use the build info (and the
