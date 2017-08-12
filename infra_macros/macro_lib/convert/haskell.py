@@ -566,6 +566,20 @@ class HaskellConverter(base.Converter):
         validated_compiler_flags = []
         validated_compiler_flags.extend(
             self.get_compiler_flags(compiler_flags, fb_haskell))
+        ldflags = (
+            self.get_ldflags(
+                base_path,
+                name,
+                self.get_fbconfig_rule_type(),
+                binary=self.is_binary(),
+                # Never apply stripping flags to library rules, as they only
+                # get linked when using dynamic linking (which we avoid
+                # applying stripping to anyway), and added unused linker flags
+                # affect rule keys up the tree.
+                strip_mode=None if self.is_deployable() else 'none',
+                platform=platform))
+        for ldflag in ldflags:
+            out_linker_flags.extend(['-optl', ldflag])
         out_linker_flags.extend(validated_compiler_flags)
 
         out_compiler_flags.extend(self.get_warnings_flags(warnings_flags))
