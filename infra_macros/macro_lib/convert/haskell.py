@@ -278,6 +278,12 @@ class HaskellConverter(base.Converter):
             'haskell_binary',
             'haskell_unittest')
 
+    def is_deployable(self):
+        return self.get_fbconfig_rule_type() in (
+            'haskell_binary',
+            'haskell_unittest',
+            'haskell_ghci')
+
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
 
@@ -531,7 +537,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags = []
         out_linker_flags = []
         out_link_style = self.get_link_style()
-        platform = self.get_default_platform() if self.is_binary() else None
+        platform = self.get_default_platform() if self.is_deployable() else None
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -577,7 +583,7 @@ class HaskellConverter(base.Converter):
 
         # If this is binary and we're using the shared link style, set this in
         # the output attributes.
-        if self.is_binary() and self._context.link_style == 'shared':
+        if self.is_deployable() and self._context.link_style == 'shared':
             out_link_style = 'shared'
 
         # Collect all deps specified by the user.
@@ -651,7 +657,7 @@ class HaskellConverter(base.Converter):
                 out_link_style = 'static_pic'
 
         # Add the C/C++ build info lib to deps.
-        if self.is_binary():
+        if self.is_deployable():
             cxx_build_info, cxx_build_info_rules = (
                 self.create_cxx_build_info_rule(
                     base_path,
@@ -668,8 +674,12 @@ class HaskellConverter(base.Converter):
         if out_linker_flags:
             attributes['linker_flags'] = out_linker_flags
 
-        if self.is_binary():
-            attributes['link_style'] = out_link_style
+        if self.is_deployable():
+            attributes['platform'] = platform
+
+            # TODO: support `link_style` for `haskell_ghci` rule.
+            if self.get_fbconfig_rule_type() != 'haskell_ghci':
+                attributes['link_style'] = out_link_style
 
         # Add in binary-specific link deps.
         if self.is_binary():
