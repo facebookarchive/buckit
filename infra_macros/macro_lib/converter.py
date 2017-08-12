@@ -224,6 +224,8 @@ def convert(context, base_path, rules):
     # Passthrough support for fbconfig rules prefixed with "buck_".
     if use_internal_java_converters:
         converters.append(
+            java.JavaLibraryConverter(context, 'buck_java_library'))
+        converters.append(
             javafoundations.PrebuiltJarConverter(
                 context,
                 passthrough.PassthroughConverter(
@@ -264,7 +266,6 @@ def convert(context, base_path, rules):
     for buck_rule in (
             'export_file',
             'genrule',
-            'java_library',
             'java_binary',
             'project_config',
             'python_binary',
