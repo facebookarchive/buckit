@@ -28,7 +28,7 @@ RELPATH = ' '.join([
     'python',
     '-c',
     '"import sys, os; '
-        'sys.stdout.write(os.path.relpath(sys.argv[1], sys.argv[2]))"',
+    'sys.stdout.write(os.path.relpath(sys.argv[1], sys.argv[2]))"',
 ])
 
 
@@ -43,7 +43,8 @@ class CustomRuleConverter(base.Converter):
     def get_output_dir(self, name):
         return name + '-outputs'
 
-    def convert_main_rule(self,
+    def convert_main_rule(
+            self,
             base_path,
             name,
             copy=None,
@@ -220,7 +221,8 @@ class CustomRuleConverter(base.Converter):
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
 
-    def convert_output_rule(self,
+    def convert_output_rule(
+            self,
             base_path,
             name,
             out_name,
@@ -242,7 +244,8 @@ class CustomRuleConverter(base.Converter):
 
         return [Rule(self.get_buck_rule_type(), attributes)]
 
-    def convert(self,
+    def convert(
+            self,
             base_path,
             name=None,
             output_gen_files=[],
@@ -250,6 +253,12 @@ class CustomRuleConverter(base.Converter):
             **kwargs):
 
         rules = []
+
+        # Ensure that we let people know if they misused the lib
+        if not isinstance(output_gen_files, (list, tuple)):
+            raise ValueError(
+                'custom_rule(): {}:{}: output_gen_files must be a list of '
+                'filenames, got {!r}'.format(base_path, name, output_gen_files))
 
         outs = []
         outs.extend(output_gen_files)
