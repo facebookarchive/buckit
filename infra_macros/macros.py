@@ -394,6 +394,11 @@ def invalid_buck_rule(rule_type, *args, **kwargs):
         .format(rule=rule_type))
 
 
+# Helper rule to ignore a Buck rule if requested by buck config.
+def ignored_buck_rule(rule_type, *args, **kwargs):
+    pass
+
+
 def _install_converted_rules(globals, **context_kwargs):
     old_globals = globals.copy()
 
@@ -407,6 +412,16 @@ def _install_converted_rules(globals, **context_kwargs):
             ('buck_' + r for r in constants.BUCK_RULES)):
         globals[rule_type] = functools.partial(
             rule_handler, context_kwargs, old_globals, rule_type)
+
+    # On laptop, we only support a small set of buck rules that are needed for Java projects,
+    # and some buck operations, eg buck query, may not be able to process other rules (eg cpp)
+    # that rely on existance of third party folders.  For these rules, fbcode:ignore_buck_rules
+    # setting in buck config is used to instruct buck config script to ignore them.
+    requested_ignored_rules = read_config('fbcode', 'ignored_buck_rules', None)
+    if requested_ignored_rules is not None:
+        for rule_type in requested_ignored_rules.split():
+            globals[rule_type] = functools.partial(ignored_buck_rule, rule_type)
+
 
 __all__.append('install_converted_rules')
 def install_converted_rules(globals, **context_kwargs):
