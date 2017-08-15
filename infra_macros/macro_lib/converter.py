@@ -216,29 +216,21 @@ def convert(context, base_path, rules):
             java.JavaLibraryConverter(context),
             java.JavaBinaryConverter(context),
             java_plugins.JarShadeConverter(context),
-            javafoundations.JavaTestConverter(
-                context,
-                java.JavaTestConverter(context)),
+            java.JavaTestConverter(context),
         ]
 
     # Passthrough support for fbconfig rules prefixed with "buck_".
     if use_internal_java_converters:
-        converters.append(
-            java.JavaLibraryConverter(context, 'buck_java_library'))
-        converters.append(
+        converters += [
+            java.JavaLibraryConverter(context, 'buck_java_library'),
+            java.JavaTestConverter(context, 'buck_java_test'),
             javafoundations.PrebuiltJarConverter(
                 context,
                 passthrough.PassthroughConverter(
                     context,
                     'buck_prebuilt_jar',
-                    'prebuilt_jar')))
-        converters.append(
-            javafoundations.JavaTestConverter(
-                context,
-                passthrough.PassthroughConverter(
-                    context,
-                    'buck_java_test',
-                    'java_test')))
+                    'prebuilt_jar'))
+        ]
     converters.append(
         passthrough.PassthroughConverter(
             context,
