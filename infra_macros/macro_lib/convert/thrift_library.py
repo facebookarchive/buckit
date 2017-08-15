@@ -645,6 +645,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         RootRuleTarget('common/hs/thrift/lib', 'protocol'),
         RootRuleTarget('common/hs/thrift/lib', 'channel'),
         RootRuleTarget('common/hs/thrift/lib', 'types'),
+        RootRuleTarget('common/hs/thrift/lib', 'codegen'),
     ]
 
     THRIFT_HS2_SERVICE_LIBS = [
