@@ -79,7 +79,6 @@ cd {fbcode} && \
 FBPLATFORM={platform} \
 $(exe {bindgen}) \
     --output $OUT \
-    --no-unstable-rust \
     {bindgen_flags} \
     {blacklist} \
     {opaque} \
