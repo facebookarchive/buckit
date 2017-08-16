@@ -1212,11 +1212,9 @@ class CppConverter(base.Converter):
                 attributes['run_test_separately'] = True
             if type != 'gtest':
                 attributes['framework'] = type
-
-            # C/C++ gtest tests implicitly depend on gtest libs.
-            if type == 'gtest':
+            else:
                 dependencies.append(
-                    RootRuleTarget('common/gtest', 'light_main'))
+                    self.normalize_dep(self._context.config.gtest_dependency))
 
         allocator = self.get_allocator(allocator)
 
