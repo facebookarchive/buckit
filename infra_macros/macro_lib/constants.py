@@ -22,6 +22,7 @@ BUCK_RULES = [
     'android_resource',
     'apk_genrule',
     'cxx_binary',
+    'cxx_genrule',
     'cxx_library',
     'cxx_precompiled_header',
     'cxx_test',
