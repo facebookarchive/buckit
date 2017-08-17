@@ -537,7 +537,8 @@ class HaskellConverter(base.Converter):
         out_compiler_flags = []
         out_linker_flags = []
         out_link_style = self.get_link_style()
-        platform = self.get_default_platform() if self.is_deployable() else None
+        platform = (
+            self.get_platform(base_path) if self.is_deployable() else None)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
