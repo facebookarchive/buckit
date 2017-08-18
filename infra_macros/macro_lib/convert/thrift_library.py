@@ -21,6 +21,7 @@ from . import base
 from .base import RootRuleTarget, ThirdPartyRuleTarget
 from . import cpp
 from . import haskell
+from . import java
 from . import js
 from . import cython
 from ..rule import Rule
@@ -823,6 +824,10 @@ class JavaThriftConverter(ThriftLangConverter):
     Specializer to support generating Java libraries from thrift sources.
     """
 
+    def __init__(self, context, *args, **kwargs):
+        super(JavaThriftConverter, self).__init__(context, *args, **kwargs)
+        self._java_library_converter = java.JavaLibraryConverter(context)
+
     # DO NOT USE
     # This was an initial attempt to build without some of the supporting
     # fbcode infrastructure. For now, it is present to help with developers
@@ -853,6 +858,7 @@ class JavaThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            java_thrift_mavenify_coords=None,
             **kwargs):
 
         rules = []
@@ -873,14 +879,15 @@ class JavaThriftConverter(ThriftLangConverter):
 
         # Wrap the source zip in a java library rule, with an implicit dep on
         # the thrift library.
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        attrs['srcs'] = out_srcs
         out_deps = []
         out_deps.extend(deps)
         out_deps.append('//thrift/lib/java:thrift')
-        attrs['exported_deps'] = out_deps
-        rules.append(Rule('java_library', attrs))
+        rules.extend(self._java_library_converter.convert(
+            base_path,
+            name=name,
+            srcs=out_srcs,
+            exported_deps=out_deps,
+            mavenify_coords=java_thrift_mavenify_coords))
 
         return rules
 
@@ -964,6 +971,10 @@ class JavaSwiftConverter(ThriftLangConverter):
                          'generate_beans',
                          'use_java_namespace'])
 
+    def __init__(self, context, *args, **kwargs):
+        super(JavaSwiftConverter, self).__init__(context, *args, **kwargs)
+        self._java_library_converter = java.JavaLibraryConverter(context)
+
     def get_lang(self):
         return 'java-swift'
 
@@ -1027,6 +1038,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            java_swift_mavenify_coords=None,
             **kwargs):
         rules = []
         out_srcs = []
@@ -1044,9 +1056,6 @@ class JavaSwiftConverter(ThriftLangConverter):
             rules.append(Rule('zip_file', attrs))
             out_srcs.append(':' + src_zip_name)
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        attrs['srcs'] = out_srcs
         out_deps = []
         out_deps.extend(deps)
         out_deps.append('//third-party-java/com.google.guava:guava')
@@ -1059,8 +1068,12 @@ class JavaSwiftConverter(ThriftLangConverter):
         out_deps.append(
             '//third-party-java/com.facebook.swift.fbcode:swift-client')
 
-        attrs['exported_deps'] = out_deps
-        rules.append(Rule('java_library', attrs))
+        rules.extend(self._java_library_converter.convert(
+            base_path,
+            name=name,
+            srcs=out_srcs,
+            exported_deps=out_deps,
+            mavenify_coords=java_swift_mavenify_coords))
 
         return rules
 
@@ -1891,6 +1904,8 @@ class ThriftLibraryConverter(base.Converter):
             'hs_required_symbols',
             'hs2_deps',
             'java_deps',
+            'java_thrift_mavenify_coords',
+            'java_swift_mavenify_coords',
             'languages',
             'name',
             'py_asyncio_base_module',
