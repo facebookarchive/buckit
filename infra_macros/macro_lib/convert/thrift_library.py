@@ -24,6 +24,7 @@ from . import haskell
 from . import java
 from . import js
 from . import cython
+from . import ocaml
 from ..rule import Rule
 
 
@@ -1306,6 +1307,106 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return [Rule('python_library', attrs)]
 
 
+class OCamlThriftConverter(ThriftLangConverter):
+    """
+    Specializer to support generating OCaml libraries from thrift sources.
+    """
+
+    THRIFT_OCAML_LIBS = [
+        RootRuleTarget('common/ocaml/thrift', 'thrift'),
+    ]
+
+    THRIFT_OCAML_DEPS = [
+        RootRuleTarget('hphp/hack/src/third-party/core', 'core'),
+    ]
+
+    def __init__(self, context, *args, **kwargs):
+        super(OCamlThriftConverter, self).__init__(context, *args, **kwargs)
+        self._ocaml_converter = (
+            ocaml.OCamlConverter(context, 'ocaml_library'))
+
+    def get_compiler(self):
+        return self._context.config.thrift_ocaml_compiler
+
+    def get_lang(self):
+        return 'ocaml2'
+
+    def get_extra_includes(self, **kwargs):
+        return []
+
+    def get_compiler_args(
+            self,
+            flags,
+            options,
+            **kwargs):
+        """
+        Return compiler args when compiling for ocaml.
+        """
+
+        args = []
+
+        # The OCaml compiler relies on the HS2 compiler to parse .thrift sources to JSON
+        args.append('-c')
+        args.append('$(exe {})'.format(self._context.config.thrift_hs2_compiler))
+
+        # Format the options and pass them into the ocaml compiler.
+        for option, val in options.iteritems():
+            flag = '--' + option
+            if val is not None:
+                flag += '=' + val
+            args.append(flag)
+
+        # Include rule-specific flags.
+        args.extend(flags)
+
+        return args
+
+    def get_generated_sources(
+            self,
+            base_path,
+            name,
+            thrift_src,
+            services,
+            options,
+            **kwargs):
+
+        thrift_base = os.path.splitext(os.path.basename(thrift_src))[0]
+        thrift_base = capitalize(thrift_base)
+
+        genfiles = []
+
+        genfiles.append('%s_consts.ml' % thrift_base)
+        genfiles.append('%s_types.ml' % thrift_base)
+        for service in services:
+            service = capitalize(service)
+            genfiles.append('%s.ml' % service)
+
+        return collections.OrderedDict(
+            [(path, path) for path in genfiles])
+
+    def get_language_rule(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            **kwargs):
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = name
+        attrs['srcs'] = self.merge_sources_map(sources_map).values()
+
+        dependencies = []
+        dependencies.extend(self.THRIFT_OCAML_DEPS)
+        dependencies.extend(self.THRIFT_OCAML_LIBS)
+        for dep in deps:
+            dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
+        attrs['deps'] = (self.format_all_deps(dependencies))[0]
+
+        return [Rule('ocaml_library', attrs)]
+
 class Python3ThriftConverter(ThriftLangConverter):
     CYTHON_GENFILES = (
         'services.pxd',
@@ -1556,6 +1657,7 @@ class ThriftLibraryConverter(base.Converter):
             JavaThriftConverter(*args, **kwargs),
             JsThriftConverter(*args, **kwargs),
             JavaSwiftConverter(*args, **kwargs),
+            OCamlThriftConverter(*args, **kwargs),
             Python3ThriftConverter(*args, **kwargs),
             LegacyPythonThriftConverter(
                 *args,

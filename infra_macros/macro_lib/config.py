@@ -186,6 +186,11 @@ class FbcodeOptions(object):
         'The target for the haskell thrift compiler',
     )
 
+    thrift_ocaml_compiler = FacebookInternalOption(
+        'thrift', 'ocaml_compiler', '',
+        'The target for the OCaml thrift compiler',
+    )
+
     thrift_swift_compiler = FacebookInternalOption(
         'thrift', 'swift_compiler', '',
         'The target for the swift thrift compiler',
