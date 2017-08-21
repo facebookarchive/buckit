@@ -318,7 +318,7 @@ class Converter(object):
             if arch == config['architecture']:
                 platforms.append(name)
 
-        return platforms
+        return sorted(platforms)
 
     def get_platform_flags_from_arch_flags(self, arch_flags):
         """
