@@ -93,6 +93,12 @@ class RustConverter(base.Converter):
         libc = self.get_dep_target(ThirdPartyRuleTarget('glibc', 'c'))
         if libc not in deps:
             deps.append(libc)
+
+        # Always explicitly add libstdc++ - except for sanitizer modes, since
+        # they already add them
+        libgcc = self.get_dep_target(ThirdPartyRuleTarget('libgcc', 'stdc++'))
+        if libgcc not in deps:
+            deps.append(libgcc)
         return deps
 
     def convert(self,
