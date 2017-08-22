@@ -95,6 +95,8 @@ class HaskellExternalLibraryConverter(base.Converter):
         # Forward C/C++ include dirs.
         attributes['cxx_header_dirs'] = include_dirs
 
+        attributes['enable_profiling'] = self.read_hs_profile()
+
         # If this is a tp2 project, verify that we just have a single inlined
         # build.  When this stops being true, we'll need to add versioned
         # subdir support for `prebuilt_haskell_library` rules (e.g. D4297963).

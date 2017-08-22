@@ -821,6 +821,9 @@ class Converter(object):
             return default
         return val.split()
 
+    def read_hs_profile(self):
+        return self.read_bool('fbcode', 'hs_profile', False)
+
     def is_core_tool(self, base_path, name):
         """
         Returns whether the target represented by the given base path and name

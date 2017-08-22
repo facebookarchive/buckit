@@ -523,7 +523,7 @@ class HaskellConverter(base.Converter):
             lang_opts=(),
             enable_haddock=False,
             haddock_flags=None,
-            enable_profiling=False,
+            enable_profiling=None,
             ghci_bin_dep=None,
             ghci_init=None,
             eventlog=None,
@@ -554,8 +554,6 @@ class HaskellConverter(base.Converter):
 
         if self.get_fbconfig_rule_type() == 'haskell_ghci':
             out_compiler_flags.append('-fexternal-interpreter')
-            if enable_profiling is not None:
-                attributes['enable_profiling'] = enable_profiling
 
         if ghci_bin_dep is not None:
             bin_dep_target = self.convert_build_target(base_path, ghci_bin_dep)
@@ -563,6 +561,8 @@ class HaskellConverter(base.Converter):
 
         if ghci_init is not None:
             attributes['ghci_init'] = self.convert_source(base_path, ghci_init)
+
+        attributes['enable_profiling'] = self.read_hs_profile()
 
         validated_compiler_flags = []
         validated_compiler_flags.extend(
