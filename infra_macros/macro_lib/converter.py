@@ -210,6 +210,11 @@ def convert(context, base_path, rules):
             context,
             'remote_file',
             'remote_file'),
+        passthrough.PassthroughConverter(
+            context,
+            'buck_command_alias',
+            'command_alias',
+            convert_targets_on=['exe'])
     ]
     if use_internal_java_converters:
         converters += [

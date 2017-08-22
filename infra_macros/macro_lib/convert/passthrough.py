@@ -30,13 +30,15 @@ class PassthroughConverter(base.Converter):
             buck_rule_type,
             default_attrs=None,
             whitelist=None,
-            whitelist_error_msg=None):
+            whitelist_error_msg=None,
+            convert_targets_on=None):
         super(PassthroughConverter, self).__init__(context)
         self._fbconfig_rule_type = fbconfig_rule_type
         self._buck_rule_type = buck_rule_type
         self._default_attrs = default_attrs or {}
         self._whitelist = whitelist
         self._whitelist_error_msg = whitelist_error_msg
+        self._convert_targets_on = convert_targets_on
 
     def get_fbconfig_rule_type(self):
         return self._fbconfig_rule_type
@@ -55,6 +57,20 @@ class PassthroughConverter(base.Converter):
                 msg = 'rule is not whitelisted'
             raise ValueError(
                 '{}(): {}'.format(self.get_fbconfig_rule_type(), msg))
+
+        if self._convert_targets_on:
+            for key in self._convert_targets_on:
+                val = kwargs.get(key)
+                if isinstance(val, basestring):
+                    val = self.get_dep_target(self.normalize_dep(val, base_path))
+                    kwargs[key] = val
+                elif isinstance(val, list):
+                    val = [
+                        self.get_dep_target(self.normalize_dep(target, base_path))
+                        for target in val
+                    ]
+                    kwargs[key] = val
+
 
         attributes = collections.OrderedDict()
         attributes.update(self._default_attrs)

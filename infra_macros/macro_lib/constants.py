@@ -21,6 +21,7 @@ BUCK_RULES = [
     'android_prebuilt_aar',
     'android_resource',
     'apk_genrule',
+    'command_alias',
     'cxx_binary',
     'cxx_genrule',
     'cxx_library',
