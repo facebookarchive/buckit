@@ -1,0 +1,10 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('jemalloc'),
+]
+
+buckit_system_library(
+    main_rule='jemalloc',
+    libs=libs,
+)

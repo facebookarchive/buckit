@@ -1,0 +1,11 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('crypto'),
+    LibraryRule('ssl'),
+]
+
+buckit_system_library(
+    main_rule='openssl',
+    libs=libs,
+)

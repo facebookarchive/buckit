@@ -1,0 +1,10 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('elf'),
+]
+
+buckit_system_library(
+    main_rule='libelf',
+    libs=libs,
+)

@@ -1,0 +1,70 @@
+# We use a `python_binary` rule to package the macro lib into a zip file,
+# but this is not runnable.
+python_library(
+    name = "macro_lib",
+    srcs = glob(["**/*.py"]),
+    # Buckification macros must be runnable from source tree and so *cannot*
+    # have any deps.
+    deps = [],
+    external_deps = [],
+)
+
+# Export `BuildMode.py` for fbbuild.
+python_library(
+    name = "build_mode",
+    srcs = [
+        "BuildMode.py",
+    ],
+    # BUILD_MODE files and fbbuild expect this to have no base module.
+    base_module = "",
+)
+
+# Export `global_defns.py` for fbbuild.
+python_library(
+    name = "global_defns",
+    srcs = [
+        "global_defns.py",
+    ],
+    # BUILD_MODE files and fbbuild expect this to have no base module.
+    base_module = "",
+)
+
+python_library(
+    name = "cxx_sources",
+    srcs = [
+        "cxx_sources.py",
+    ],
+)
+
+python_library(
+    name = "rule",
+    srcs = [
+        "rule.py",
+    ],
+    # Buckification macros must be runnable from source tree and so *cannot*
+    # have any deps.
+    deps = [],
+    external_deps = [],
+)
+
+python_library(
+    name = "constants",
+    srcs = [
+        "constants.py",
+    ],
+    # Buckification macros must be runnable from source tree and so *cannot*
+    # have any deps.
+    deps = [],
+    external_deps = [],
+)
+
+python_library(
+    name = "target",
+    srcs = [
+        "target.py",
+    ],
+    # Buckification macros must be runnable from source tree and so *cannot*
+    # have any deps.
+    deps = [],
+    external_deps = [],
+)

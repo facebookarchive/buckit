@@ -1,0 +1,11 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('pcre'),
+]
+
+buckit_system_library(
+    main_rule='pcre',
+    libs=libs,
+    pkg_config_name='libpcre',
+)

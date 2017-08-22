@@ -1,0 +1,23 @@
+python_library(
+    name = "utils",
+    srcs = [
+        "utils.py",
+    ],
+    deps = [
+        "@/tools/build/buck/infra_macros/macro_lib:macro_lib",
+    ],
+)
+
+python_unittest(
+    name = "tests",
+    srcs = [
+        "base_tests.py",
+        "cpp_library_external_tests.py",
+        "cpp_library_tests.py",
+    ],
+    py_version = "<3",
+    deps = [
+        ":utils",
+        "@/tools/build/buck/infra_macros/macro_lib:macro_lib",
+    ],
+)

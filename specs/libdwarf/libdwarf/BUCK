@@ -1,0 +1,10 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('dwarf'),
+]
+
+buckit_system_library(
+    main_rule='libdwarf',
+    libs=libs,
+)

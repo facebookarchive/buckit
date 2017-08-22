@@ -1,0 +1,7 @@
+include_defs('buckit//DEFS')
+
+sh_binary(
+    name='bison',
+    main='bin/bison',
+    visibility=['PUBLIC'],
+)

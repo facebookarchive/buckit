@@ -1,0 +1,14 @@
+# A dummy rule used by `tools/build/test/TARGETS` to make sure changes to any
+# of these files trigger thoses tests on diffs.
+python_library(
+    name = "infra_macros",
+    srcs = (
+        glob(["macro_lib/**/*.py"]) + [
+            "macros.py",
+        ]
+    ),
+    # Buckification macros must be runnable from source tree and so *cannot*
+    # have any deps.
+    deps = [],
+    external_deps = [],
+)

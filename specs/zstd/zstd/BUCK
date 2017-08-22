@@ -1,0 +1,11 @@
+include_defs('buckit//DEFS')
+
+libs = [
+    LibraryRule('zstd'),
+]
+
+buckit_system_library(
+    main_rule='zstd',
+    libs=libs,
+    use_pkg_config=False,
+)

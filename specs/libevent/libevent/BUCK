@@ -1,0 +1,43 @@
+include_defs('buckit//DEFS')
+
+deps_mac = [
+    'glibc//glibc:c',
+    'glibc//glibc:dl',
+    'glibc//glibc:resolv',
+    'openssl//openssl:crypto',
+    'openssl//openssl:ssl',
+]
+
+deps_linux = [
+    'glibc//glibc:c',
+    'glibc//glibc:rt',
+    'glibc//glibc:dl',
+    'glibc//glibc:resolv',
+    'glibc//glibc:nsl',
+    'openssl//openssl:crypto',
+    'openssl//openssl:ssl',
+]
+
+libs = [
+    (PLATFORM_LINUX, [
+      LibraryRule('event', deps_linux, 'libevent'),
+      LibraryRule('event_core', deps_linux, 'libevent_core'),
+      LibraryRule('event_extra', deps_linux, 'libevent_extra'),
+    ]),
+    (PLATFORM_MAC, [
+      LibraryRule('event', deps_mac, 'libevent'),
+      LibraryRule('event_core', deps_mac, 'libevent_core'),
+      LibraryRule('event_extra', deps_mac, 'libevent_extra'),
+    ]),
+]
+
+if not buckit_use_system('libevent'):
+    buckit_cpp_autoconf_library(
+        main_rule='libevent',
+        libs=libs,
+    )
+else:
+    buckit_system_library(
+        main_rule='libevent',
+        libs=libs,
+)

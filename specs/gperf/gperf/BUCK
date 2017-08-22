@@ -1,0 +1,13 @@
+include_defs('buckit//DEFS')
+
+sh_binary(
+    name='gperf',
+    main='bin/gperf',
+    visibility=['PUBLIC'],
+)
+
+sh_binary(
+    name='bin/gperf',
+    main='bin/gperf',
+    visibility=['PUBLIC'],
+)
