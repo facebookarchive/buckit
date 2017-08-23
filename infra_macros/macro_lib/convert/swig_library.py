@@ -184,7 +184,7 @@ class PythonSwigConverter(SwigLangConverter):
         return [
             '-threads',
             '-safecstrings',
-            '-classic',
+            '-builtin',
         ]
 
     def get_generated_sources(self, module):
