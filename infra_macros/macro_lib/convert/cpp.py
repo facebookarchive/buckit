@@ -769,6 +769,30 @@ class CppConverter(base.Converter):
 
         return platform_deps
 
+    def verify_linker_flags(self, flags):
+        """
+        Check for invalid linker flags.
+        """
+
+        # PLEASE DON'T UPDATE WITHOUT REACHING OUT TO FBCODE FOUNDATION FIRST.
+        # Using arbitrary linker flags in libraries can cause unexpected issues
+        # for upstream dependencies, so we make sure to restrict to a safe(r)
+        # subset of potential flags.
+        prefixes = [
+            '-L',
+            '-u',
+            '-rpath',
+            '--wrap',
+            '--dynamic-list',
+            '--export-dynamic',
+            '--enable-new-dtags',
+        ]
+
+        for flag in flags:
+            if not re.match('|'.join(prefixes), flag):
+                raise ValueError(
+                    'using disallowed linker flag in a library: ' + flag)
+
     def verify_preprocessor_flags(self, param, flags):
         """
         Make sure the given flags are valid preprocessor flags.
@@ -821,7 +845,7 @@ class CppConverter(base.Converter):
             supports_coverage=None,
             output_subdir=None,
             tags=(),
-            linker_flags=None,
+            linker_flags=(),
             arch_preprocessor_flags={},
             preprocessor_flags=(),
             prefix_header=None,
@@ -1065,7 +1089,9 @@ class CppConverter(base.Converter):
                 out_link_style = 'static_pic'
 
         # Add in user-specified linker flags.
-        for flag in (linker_flags or []):
+        if self.is_library():
+            self.verify_linker_flags(linker_flags)
+        for flag in linker_flags:
             macro_handlers = {}
             if self.is_binary(dlopen_info):
                 macro_handlers['platform'] = lambda: platform
