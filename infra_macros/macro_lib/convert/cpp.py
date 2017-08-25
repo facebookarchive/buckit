@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 
 import collections
 from distutils.version import LooseVersion
+import itertools
 import os
 import pipes
 import platform as plat
@@ -25,7 +26,6 @@ from .base import RootRuleTarget, ThirdPartyRuleTarget
 from ..rule import Rule
 from ..global_defns import AutoHeaders
 from ..cxx_sources import HEADER_SUFFIXES
-
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')
@@ -273,6 +273,7 @@ class AbsentParameter(object):
     defaulted in a function's arg list, vs. actually passed in from the caller
     with such a value.
     """
+
     def __len__(self):
         "If `len` is zero, this is considered falsey by `if (x)` or `bool(x)`."
         return 0
@@ -883,7 +884,9 @@ class CppConverter(base.Converter):
             versions=None,
             visibility=None,
             auto_headers=None,
-            preferred_linkage=None):
+            preferred_linkage=None,
+            os_deps=None,
+            os_linker_flags=None):
 
         extra_rules = []
         out_srcs = []
@@ -892,6 +895,8 @@ class CppConverter(base.Converter):
         out_ldflags = []
         out_dep_queries = []
         dependencies = []
+        os_deps = os_deps or []
+        os_linker_flags = os_linker_flags or []
         out_link_style = self.get_link_style()
         build_mode = self.get_build_mode()
         cuda = self.is_cuda(srcs)
@@ -912,7 +917,6 @@ class CppConverter(base.Converter):
                 self.get_lua_base_module(base_path, base_module))
         elif rule_type == 'cpp_python_extension' and base_module is not None:
             attributes['base_module'] = base_module
-
 
         if self.is_library():
             if preferred_linkage:
@@ -1222,6 +1226,11 @@ class CppConverter(base.Converter):
             if out_link_style == 'shared':
                 out_link_style = 'static_pic'
 
+        # Get any linker flags for the current OS
+        for os_short_name, flags in os_linker_flags:
+            if os_short_name == self._context.config.current_os:
+                out_exported_ldflags.extend(flags)
+
         # Set the linker flags parameters.
         if self.get_buck_rule_type() == 'cxx_library':
             attributes['exported_linker_flags'] = out_exported_ldflags
@@ -1261,12 +1270,21 @@ class CppConverter(base.Converter):
         if additional_coverage_targets:
             attributes['additional_coverage_targets'] = additional_coverage_targets
 
-        # Translate dependencies.
-        for target in deps:
-            dependencies.append(self.normalize_dep(target, base_path))
-
-        # Add-in py3-sensitive deps
-        for target in py3_sensitive_deps:
+        # Convert three things here:
+        # - Translate dependencies.
+        # - Add and translate py3 sensitive deps
+        # -  Grab OS specific dependencies and add them to the normal
+        #    list of dependencies. We bypass buck's platform support because it
+        #    requires us to parse a bunch of extra files we know we won't use,
+        #    and because it's just a little fragile
+        for target in itertools.chain(
+                deps,
+                py3_sensitive_deps,
+                *[
+                    target
+                    for os, target in os_deps
+                    if os == self._context.config.current_os
+                ]):
             dependencies.append(self.normalize_dep(target, base_path))
 
         # If we include any lex sources, implicitly add a dep on the lex lib.
@@ -1618,6 +1636,8 @@ class CppConverter(base.Converter):
                 'hs_profile',
                 'nodefaultlibs',
                 'split_symbols',
+                'os_deps',
+                'os_linker_flags',
             ])
 
         if rtype in ('cpp_benchmark', 'cpp_binary', 'cpp_unittest'):
@@ -1633,6 +1653,8 @@ class CppConverter(base.Converter):
                 'link_whole',
                 'preferred_linkage',
                 'propagated_pp_flags',
+                'os_deps',
+                'os_linker_flags',
             ])
 
         if rtype == 'cpp_precompiled_header':

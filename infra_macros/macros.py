@@ -80,7 +80,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 config_py_path = os.path.join(MACRO_LIB_DIR, 'config.py')
 add_build_file_dep('//{}'.format(config_py_path))
 include_defs('//{}'.format(config_py_path))
-config = FbcodeOptions(read_config).values
+config = FbcodeOptions(read_config, allow_unsafe_import).values
 
 
 class Loader(object):

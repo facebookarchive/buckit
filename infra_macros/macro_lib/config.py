@@ -242,9 +242,37 @@ class FbcodeOptions(object):
         'fbcode', 'gtest_dependency', None,
         'The target that will provide gtest C++ tests\' main function')
 
-    def __init__(self, read_config_func):
+    def __init__(self, read_config_func, allow_unsafe_import_func):
         self.read_config = read_config_func
+        self.allow_unsafe_import = allow_unsafe_import_func
         self.read_values()
+
+    def get_current_os(self):
+        """
+        Looks at fbcode.os_family, cxx.default_platform and finally
+        platform.system() in order to determine what the current OS family is.
+        This should be one of linux, mac or windows
+        """
+        os_family = self.read_config('fbcode', 'os_family', None)
+        os_platform_to_family = {
+            'linux': 'linux',
+            'darwin': 'mac',
+            'windows': 'windows'
+        }
+
+        if os_family:
+            if os_family not in os_platform_to_family.values():
+                os_family = None
+        else:
+            with self.allow_unsafe_import():
+                import platform
+            os_family = os_platform_to_family.get(platform.system().lower())
+        if not os_family:
+            raise KeyError(
+                'Could not determine os family. Either set fbcode.os_family to '
+                'a value containing linux, macos or windows, or run on one '
+                'of those platforms (as determined by platform.system()')
+        return os_family
 
     def read_boolean(self, option):
         val = self.read_config(*option)
@@ -287,6 +315,7 @@ class FbcodeOptions(object):
             else:
                 continue
 
+        attrs['current_os'] = self.get_current_os()
         attrs['allocators'] = {
             k: filter(None, self.read_config(*v).split(','))
             for k, v in self.allocators.items()

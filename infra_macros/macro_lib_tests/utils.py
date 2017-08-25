@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import contextlib
 import json
 import os
 import platform
@@ -22,6 +23,7 @@ import unittest
 
 from ..macro_lib.convert.base import BuckOperations, Context
 from ..macro_lib.config import FbcodeOptions
+from ..macro_lib import BuildMode
 
 
 ConverterState = (
@@ -85,20 +87,24 @@ class ConverterTestCase(unittest.TestCase):
         def read_config_func(s, f, d=None):
             return configs.get((s, f), d)
 
-        parsed_config = FbcodeOptions(read_config_func).values
+        @contextlib.contextmanager
+        def import_func():
+            yield
+
+        parsed_config = FbcodeOptions(read_config_func, import_func).values
 
         build_file_deps = []
         include_defs = []
         buck_ops = (
             BuckOperations(
                 add_build_file_dep=lambda dep: build_file_deps.append(dep),
-                glob=lambda *a, **kw: None,
+                glob=lambda *a, **kw: [],
                 include_defs=lambda dep: include_defs.append(dep),
                 read_config=read_config_func))
         context = (
             Context(
                 buck_ops=buck_ops,
-                build_mode='opt',
+                build_mode=BuildMode.DEV,
                 compiler='gcc',
                 coverage=False,
                 link_style='shared',
@@ -107,6 +113,7 @@ class ConverterTestCase(unittest.TestCase):
                 supports_lto=False,
                 third_party_config={
                     'platforms': {
+                        'gcc-4.9-glibc-2.20-fb': {'architecture': platform.machine()},
                         'platform': {'architecture': platform.machine()},
                     },
                 },
