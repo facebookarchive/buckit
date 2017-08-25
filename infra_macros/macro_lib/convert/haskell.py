@@ -213,6 +213,7 @@ args+=("--ld=$(ld)")
 
 # Add in the linker flags.
 ldflags=($(ldflags-{link_style}{deps}))
+ldflags+=("-o" "`dirname $OUT`/{out_obj}")
 for ldflag in "${{ldflags[@]}}"; do
   args+=(--lflag="$ldflag")
 done
@@ -491,6 +492,8 @@ class HaskellConverter(base.Converter):
         all_deps = deps + self.get_binary_link_deps()
         rules.append(self._get_dep_rule(deps_name, all_deps))
 
+        out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
+
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
         attrs['cmd'] = (
@@ -502,7 +505,8 @@ class HaskellConverter(base.Converter):
                 ghc_tool=self.get_tp2_tool_path('ghc'),
                 ghc=self.get_tp2_dep_path('ghc'),
                 link_style=self._context.link_style,
-                deps=' :' + deps_name))
+                deps=' :' + deps_name,
+                out_obj=out_obj))
         attrs['srcs'] = [source]
         attrs['out'] = os.path.splitext(source)[0] + '.hs'
         rules.append(Rule('cxx_genrule', attrs))
@@ -578,6 +582,7 @@ class HaskellConverter(base.Converter):
                 # applying stripping to anyway), and added unused linker flags
                 # affect rule keys up the tree.
                 strip_mode=None if self.is_deployable() else 'none',
+                build_info=self.is_deployable(),
                 platform=platform))
         for ldflag in ldflags:
             out_linker_flags.extend(['-optl', ldflag])
@@ -670,17 +675,6 @@ class HaskellConverter(base.Converter):
             # `--as-needed`.
             if out_link_style == 'shared':
                 out_link_style = 'static_pic'
-
-        # Add the C/C++ build info lib to deps.
-        if self.is_deployable():
-            cxx_build_info, cxx_build_info_rules = (
-                self.create_cxx_build_info_rule(
-                    base_path,
-                    name,
-                    self.get_fbconfig_rule_type(),
-                    platform))
-            dependencies.append(cxx_build_info)
-            rules.extend(cxx_build_info_rules)
 
         if out_dep_queries:
             attributes['deps_query'] = ' union '.join(out_dep_queries)
