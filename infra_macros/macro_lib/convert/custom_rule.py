@@ -47,7 +47,6 @@ class CustomRuleConverter(base.Converter):
             self,
             base_path,
             name,
-            copy=None,
             deployable=None,
             build_script=None,
             build_script_path=None,
