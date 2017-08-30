@@ -81,10 +81,36 @@ class HaskellExternalLibraryConverter(base.Converter):
             out_linker_flags.append(flag)
         attributes['exported_linker_flags'] = out_linker_flags
 
-        attributes['static_libs'] = (
-            [os.path.join(lib_dir, 'lib{}.a'.format(l)) for l in libs])
-        attributes['profiled_static_libs'] = (
-            [os.path.join(lib_dir, 'lib{}_p.a'.format(l)) for l in libs])
+        prof = self.read_hs_profile()
+        dbug = self.read_hs_debug()
+        eventlog = self.read_hs_eventlog()
+
+        # GHC's RTS requires linking against a different library depending
+        # on what functionality is desired. We default to using the threaded
+        # runtime, and reimplement the logic around what's allowed.
+        if prof + dbug + eventlog > 1:
+            raise ValueError(
+                'Cannot mix profiling, debug, and eventlog. Pick one')
+        if name == "rts":
+            if dbug:
+                libs = ['HSrts_thr_debug']
+            elif eventlog:
+                libs = ['HSrts_thr_l']
+
+            # profiling is handled special since the _p suffix goes everywhere
+            if prof:
+                attributes['static_libs'] = []
+                attributes['profiled_static_libs'] = (
+                    [os.path.join(lib_dir, 'lib{}_p.a'.format(l)) for l in libs])
+            else:
+                attributes['static_libs'] = (
+                    [os.path.join(lib_dir, 'lib{}.a'.format(l)) for l in libs])
+                attributes['profiled_static_libs'] = []
+        else:
+            attributes['static_libs'] = (
+                [os.path.join(lib_dir, 'lib{}.a'.format(l)) for l in libs])
+            attributes['profiled_static_libs'] = (
+                [os.path.join(lib_dir, 'lib{}_p.a'.format(l)) for l in libs])
         tp_config = self.get_third_party_config(platform)
         ghc_version = tp_config['tools']['projects']['ghc']
         shlibs = (
@@ -95,7 +121,8 @@ class HaskellExternalLibraryConverter(base.Converter):
         # Forward C/C++ include dirs.
         attributes['cxx_header_dirs'] = include_dirs
 
-        attributes['enable_profiling'] = self.read_hs_profile()
+        # Whether to build the library profiled
+        attributes['enable_profiling'] = prof
 
         # If this is a tp2 project, verify that we just have a single inlined
         # build.  When this stops being true, we'll need to add versioned

@@ -570,6 +570,10 @@ class HaskellConverter(base.Converter):
             attributes['ghci_init'] = self.convert_source(base_path, ghci_init)
 
         attributes['enable_profiling'] = self.read_hs_profile()
+        if self.read_hs_eventlog():
+            out_linker_flags.append('-eventlog')
+        if self.read_hs_debug():
+            out_linker_flags.append('-debug')
 
         validated_compiler_flags = []
         validated_compiler_flags.extend(

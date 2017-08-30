@@ -821,6 +821,12 @@ class Converter(object):
             return default
         return val.split()
 
+    def read_hs_debug(self):
+        return self.read_bool('fbcode', 'hs_debug', False)
+
+    def read_hs_eventlog(self):
+        return self.read_bool('fbcode', 'hs_eventlog', False)
+
     def read_hs_profile(self):
         return self.read_bool('fbcode', 'hs_profile', False)
 
