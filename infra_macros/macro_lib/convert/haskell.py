@@ -370,6 +370,9 @@ class HaskellConverter(base.Converter):
         if fb_haskell:
             compiler_flags.extend(FB_HASKELL_COMPILER_FLAGS)
 
+        if self._context.sanitizer == 'address':
+            compiler_flags.append('-optP-D__SANITIZE_ADDRESS__')
+
         return tuple(compiler_flags)
 
     def get_language_options(self, options, fb_haskell):
