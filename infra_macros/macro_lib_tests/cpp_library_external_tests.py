@@ -27,10 +27,15 @@ class CppLibraryExternalConverterTest(utils.ConverterTestCase):
                 self._state.context,
                 'cpp_library_external'))
 
-    def test_get_solib_path(self):
+    def test_get_lib_path(self):
         self.assertEquals(
-            self._converter.get_solib_path('base/path', 'foo', 'lib', 'bar'),
+            self._converter.get_lib_path(
+                'base/path',
+                'foo',
+                'lib',
+                'bar',
+                '.so'),
             'base/path/lib/libbar.so')
         self.assertEquals(
-            self._converter.get_solib_path('base/path', 'foo', 'lib', None),
-            'base/path/lib/libfoo.so')
+            self._converter.get_lib_path('base/path', 'foo', 'lib', None, '.a'),
+            'base/path/lib/libfoo.a')

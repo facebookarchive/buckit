@@ -20,8 +20,33 @@ from . import base
 from .base import ThirdPartyRuleTarget
 from ..rule import Rule
 
+
 PYTHON = ThirdPartyRuleTarget('python', 'python')
 PYTHON3 = ThirdPartyRuleTarget('python3', 'python')
+
+
+Inputs = (
+    collections.namedtuple(
+        'Inputs',
+        ['static_lib',
+         'static_pic_lib',
+         'shared_lib',
+         'includes']))
+
+
+def prefix_path(prefix, path):
+    if path is None:
+        return None
+    return os.path.join(prefix, path)
+
+
+def prefix_inputs(prefix, inputs):
+    return Inputs(
+        static_lib=prefix_path(prefix, inputs.static_lib),
+        static_pic_lib=prefix_path(prefix, inputs.static_pic_lib),
+        shared_lib=prefix_path(prefix, inputs.shared_lib),
+        includes=[os.path.join(prefix, i) for i in inputs.includes])
+
 
 def get_soname(lib):
     try:
@@ -48,9 +73,19 @@ class CppLibraryExternalConverter(base.Converter):
     def get_buck_rule_type(self):
         return 'prebuilt_cxx_library'
 
-    def get_solib_path(self, base_path, name, lib_dir, lib_name):
+    def get_lib(self, name, lib_dir, lib_name, ext):
         """
-        Get the path to the shared library.
+        Get a base-path relative library path with the given extension.
+        """
+
+        parts = []
+        parts.append(lib_dir)
+        parts.append('lib{}{}'.format(lib_name or name, ext))
+        return os.path.join(*parts)
+
+    def get_lib_path(self, base_path, name, lib_dir, lib_name, ext):
+        """
+        Get the path to a library.
         """
 
         parts = []
@@ -63,10 +98,94 @@ class CppLibraryExternalConverter(base.Converter):
             build = project_builds.values()[0]
             parts.append(build.subdir)
 
-        parts.append(lib_dir)
-        parts.append('lib{}.so'.format(lib_name or name))
+        parts.append(self.get_lib(name, lib_dir, lib_name, ext))
 
         return os.path.join(*parts)
+
+    def get_inputs(
+            self,
+            base_path,
+            name,
+            lib_dir,
+            lib_name,
+            includes,
+            header_only,
+            force_shared,
+            force_static,
+            shared_only,
+            mode,
+            relevant_deps=None):
+        """
+        Get the base-path relative libraries and include dirs in the form of a
+        tuple of unversioned inputs and versioned inputs.
+        """
+
+        # Build the base inputs relative the base path.
+        inputs = (
+            Inputs(
+                static_lib=self.get_lib(name, lib_dir, lib_name, '.a'),
+                static_pic_lib=self.get_lib(name, lib_dir, lib_name, '_pic.a'),
+                shared_lib=self.get_lib(name, lib_dir, lib_name, '.so'),
+                includes=includes))
+
+        # Header-only rules have no libs.
+        if header_only or (mode is not None and not mode):
+            inputs = (
+                inputs._replace(
+                    static_lib=None,
+                    static_pic_lib=None,
+                    shared_lib=None))
+
+        # Filter out static libs based on parameters.
+        if force_shared or shared_only:
+            inputs = inputs._replace(static_lib=None, static_pic_lib=None)
+
+        # Filter out shared libs based on paramaters.
+        if force_static:
+            inputs = inputs._replace(shared_lib=None)
+
+        # Filter out shared libs based on existence.
+        if inputs.shared_lib is not None:
+            shared_path = (
+                self.get_lib_path(base_path, name, lib_dir, lib_name, '.so'))
+            self._context.buck_ops.add_build_file_dep('//' + shared_path)
+            if not os.path.exists(shared_path):
+                inputs = inputs._replace(shared_lib=None)
+
+        # Filter out static pic libs based on existence.
+        if inputs.static_pic_lib is not None:
+            static_pic_path = (
+                self.get_lib_path(base_path, name, lib_dir, lib_name, '_pic.a'))
+            self._context.buck_ops.add_build_file_dep('//' + static_pic_path)
+            if not os.path.exists(static_pic_path):
+                inputs = inputs._replace(static_pic_lib=None)
+
+        # Setup the version sub-dir parameter, which tells Buck to select the
+        # correct build based on the versions of transitive deps it selected.
+        if self.is_tp2(base_path):
+            project_builds = (
+                self.get_tp2_project_builds(
+                    base_path,
+                    relevant_deps=relevant_deps))
+            if (len(project_builds) > 1 or
+                    project_builds.values()[0].subdir != ''):
+                versioned_inputs = Inputs([], [], [], [])
+                for build in project_builds.values():
+                    build_inputs = prefix_inputs(build.subdir, inputs)
+                    if build_inputs.shared_lib is not None:
+                        versioned_inputs.shared_lib.append(
+                            (build.project_deps, build_inputs.shared_lib))
+                    if build_inputs.static_lib is not None:
+                        versioned_inputs.static_lib.append(
+                            (build.project_deps, build_inputs.static_lib))
+                    if build_inputs.static_pic_lib is not None:
+                        versioned_inputs.static_pic_lib.append(
+                            (build.project_deps, build_inputs.static_pic_lib))
+                    versioned_inputs.includes.append(
+                        (build.project_deps, build_inputs.includes))
+                return None, versioned_inputs
+
+        return inputs, None
 
     def convert(
             self,
@@ -96,32 +215,74 @@ class CppLibraryExternalConverter(base.Converter):
             self.get_tp2_build_dat(base_path)['platform']
             if self.is_tp2(base_path) else None)
 
+        # Normalize include dir param.
+        if isinstance(include_dir, basestring):
+            include_dir = [include_dir]
+
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
 
         # If the `soname` parameter isn't set, try to guess it from inspecting
         # the DSO.
-        solib_path = self.get_solib_path(base_path, name, lib_dir, lib_name)
+        solib_path = (
+            self.get_lib_path(base_path, name, lib_dir, lib_name, '.so'))
         self._context.buck_ops.add_build_file_dep('//' + solib_path)
         # Use size to avoid parse warnings for linker scripts
         # 228 was the largest linker script, and 5K the smallest real .so file
         if (soname is None and os.path.exists(solib_path) and
-             os.path.getsize(solib_path) > 2048):
+                os.path.getsize(solib_path) > 2048):
             soname = get_soname(solib_path)
         if soname is not None:
             attributes['soname'] = soname
         if soname is None and os.path.exists(solib_path):
             attributes['link_without_soname'] = True
 
-        attributes['lib_name'] = lib_name or name
-        attributes['lib_dir'] = lib_dir
+        # Parse external deps.
+        out_ext_deps = []
+        for target in external_deps:
+            out_ext_deps.append(self.normalize_external_dep(target))
 
-        if force_static:
-            attributes['force_static'] = force_static
+        # Install the libs and includes.
+        inputs, versioned_inputs = (
+            self.get_inputs(
+                base_path,
+                name,
+                lib_dir,
+                lib_name,
+                include_dir,
+                header_only,
+                force_shared,
+                force_static,
+                shared_only,
+                mode,
+                relevant_deps=(
+                    None
+                    if implicit_project_deps
+                    else {d.base_path for d in out_ext_deps})))
+        if inputs is not None:
+            attributes['static_lib'] = inputs.static_lib
+            attributes['static_pic_lib'] = inputs.static_pic_lib
+            attributes['shared_lib'] = inputs.shared_lib
+            attributes['header_dirs'] = inputs.includes
+        if versioned_inputs is not None:
+            if versioned_inputs.static_lib:
+                attributes['versioned_static_lib'] = versioned_inputs.static_lib
+            if versioned_inputs.static_pic_lib:
+                attributes['versioned_static_pic_lib'] = (
+                    versioned_inputs.static_pic_lib)
+            if versioned_inputs.shared_lib:
+                attributes['versioned_shared_lib'] = versioned_inputs.shared_lib
+            attributes['versioned_header_dirs'] = versioned_inputs.includes
+
+        # Set preferred linkage.
+        if force_shared or shared_only:
+            attributes['preferred_linkage'] = 'shared'
+        elif force_static:
+            attributes['preferred_linkage'] = 'static'
 
         if force_shared:
-            attributes['provided'] = force_shared
+            attributes['provided'] = True
 
         # We're header only if explicitly set, or if `mode` is set to an empty
         # list.
@@ -130,11 +291,6 @@ class CppLibraryExternalConverter(base.Converter):
 
         if link_whole:
             attributes['link_whole'] = link_whole
-
-        if include_dir:
-            if isinstance(include_dir, basestring):
-                include_dir = [include_dir]
-            attributes['include_dirs'] = include_dir
 
         out_linker_flags = []
         for flag in linker_flags:
@@ -148,28 +304,6 @@ class CppLibraryExternalConverter(base.Converter):
 
         if propagated_pp_flags:
             attributes['exported_preprocessor_flags'] = propagated_pp_flags
-
-        # Parse external deps.
-        out_ext_deps = []
-        for target in external_deps:
-            out_ext_deps.append(self.normalize_external_dep(target))
-
-        # Setup the version sub-dir parameter, which tells Buck to select the
-        # correct build based on the versions of transitive deps it selected.
-        if self.is_tp2(base_path):
-            project_builds = (
-                self.get_tp2_project_builds(
-                    base_path,
-                    None
-                    if implicit_project_deps
-                    else {d.base_path for d in out_ext_deps}))
-            if (len(project_builds) > 1 or
-                    project_builds.values()[0].subdir != ''):
-                versioned_sub_dir = []
-                for build in project_builds.values():
-                    versioned_sub_dir.append(
-                        (build.project_deps, build.subdir))
-                attributes['versioned_sub_dir'] = versioned_sub_dir
 
         dependencies = []
 
