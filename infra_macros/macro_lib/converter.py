@@ -48,6 +48,11 @@ from .convert import rust_bindgen_library
 from .convert import rust_library_external
 from .convert import swig_library
 from .convert import thrift_library
+try:
+    from .convert.facebook import get_fbonly_converters
+except ImportError:
+    def get_fbonly_converters(context):
+        return []
 
 
 FBCODE_UI_MESSAGE = (
@@ -223,6 +228,8 @@ def convert(context, base_path, rules):
             java_plugins.JarShadeConverter(context),
             java.JavaTestConverter(context),
         ]
+
+    converters += get_fbonly_converters(context)
 
     # Passthrough support for fbconfig rules prefixed with "buck_".
     if use_internal_java_converters:
