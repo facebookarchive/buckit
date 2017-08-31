@@ -1641,6 +1641,127 @@ class Python3ThriftConverter(ThriftLangConverter):
             yield rule
 
 
+class ThriftdocPythonThriftConverter(ThriftLangConverter):
+    '''
+    Given a `thrift_library`:
+     - Runs the `json_experimental` Thrift generator for each of its
+       `.thrift` files.
+     - Converts each of the resulting `.json` into a PAR-importable
+       `thriftdoc_ast.py` file, while parsing the Thriftdoc validation DSL.
+     - Packaged the ASTs into a `python_library` that can be used for Thrift
+       struct validation.
+
+    Import this to get started with Thriftdoc validation:
+        tupperware.thriftdoc.validator.validate_thriftdoc
+    Documentation is at:
+        https://our.intern.facebook.com/intern/wiki/ThriftdocGuide
+    '''
+
+    AST_FILE = 'thriftdoc_ast.py'
+
+    def __init__(self, context, *args, **kwargs):
+        super(ThriftdocPythonThriftConverter, self).__init__(
+            context, *args, **kwargs
+        )
+
+    def get_lang(self):
+        return 'thriftdoc-py'
+
+    def get_compiler_lang(self):
+        return 'json_experimental'
+
+    def get_generated_sources(
+            self,
+            base_path,
+            name,
+            thrift_src,
+            services,
+            options,
+            **kwargs):
+        # The Thrift compiler will make us a `gen-json_experimental`
+        # directory per `.thrift` source file.  Use the input filename as
+        # the keys to keep them from colliding in `merge_sources_map`.
+        return collections.OrderedDict([(thrift_src, 'gen-json_experimental')])
+
+    def get_language_rule(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            **kwargs):
+
+        generator_binary = \
+            '$(exe //tupperware/thriftdoc/validator:generate_thriftdoc_ast)'
+        source_suffix = '=gen-json_experimental'
+
+        rules = []
+        py_library_srcs = {}
+
+        # `sources_map` has genrules that produce `json_experimental`
+        # outputs.  This loop feeds their outputs into genrules that convert
+        # each JSON into a PAR-includable `thriftdoc_ast.py` file, to be
+        # collated into a `python_library` at the very end.
+        for thrift_filename, json_experimental_rule in \
+                self.merge_sources_map(sources_map).iteritems():
+            # This genrule will end up writing its output here:
+            #
+            #   base_path/
+            #     ThriftRule-thriftdoc-py-SourceFile.thrift=thriftdoc_ast.py/
+            #       thriftdoc_ast.py
+            #
+            # The `=thriftdoc_ast.py` suffix is used to differentiate our
+            # output from the Thrift-generated target named:
+            #
+            #   ThriftRuleName-thriftdoc-py-SourceFile.thrift
+            #
+            # In contrast to `gen_srcs`, nothing splits the rule name on `='.
+            assert json_experimental_rule.endswith(source_suffix)
+            thriftdoc_rule = json_experimental_rule.replace(
+                source_suffix, '=' + self.AST_FILE
+            )
+
+            assert thrift_filename.endswith('.thrift')
+            # The output filename should be unique in our Python library's
+            # linktree, and should be importable from Python.  The filename
+            # below is a slight modification of the `.thrift` file's
+            # original fbcode path, so it will be unique.  We could
+            # guarantee a Python-safe path using `py_base_module` for the
+            # base, but this does not seem worth it -- almost all paths in
+            # fbcode are Python-safe.
+            output_file = os.path.join(
+                base_path,
+                thrift_filename[:-len('.thrift')],
+                self.AST_FILE,
+            )
+            assert output_file not in py_library_srcs
+            py_library_srcs[output_file] = thriftdoc_rule
+
+            assert thriftdoc_rule.startswith(':')
+            rules.append(Rule('genrule', collections.OrderedDict(
+                name=thriftdoc_rule[1:],  # Get rid of the initial ':',
+                out=self.AST_FILE,
+                srcs=[json_experimental_rule],
+                cmd=' && '.join([
+                    # json_experimental gives us a single source file at the
+                    # moment.  Should that ever change, the JSON generator
+                    # will get an unknown positional arg, and fail loudly.
+                    generator_binary + ' --format py > "$OUT" < "$SRCS"/*',
+                ]),
+            )))
+
+        rules.append(Rule('python_library', collections.OrderedDict(
+            name=name,
+            # tupperware.thriftdoc.validator.registry recursively loads this:
+            base_module='tupperware.thriftdoc.generated_asts',
+            srcs=self.convert_source_map(base_path, py_library_srcs),
+            deps=deps,
+        )))
+        return rules
+
+
 class ThriftLibraryConverter(base.Converter):
 
     def __init__(self, *args, **kwargs):
@@ -1658,6 +1779,7 @@ class ThriftLibraryConverter(base.Converter):
             JsThriftConverter(*args, **kwargs),
             JavaSwiftConverter(*args, **kwargs),
             OCamlThriftConverter(*args, **kwargs),
+            ThriftdocPythonThriftConverter(*args, **kwargs),
             Python3ThriftConverter(*args, **kwargs),
             LegacyPythonThriftConverter(
                 *args,
