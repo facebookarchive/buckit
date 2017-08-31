@@ -226,6 +226,13 @@ done
 args+=("--lflag=-Xlinker")
 args+=("--lflag=-s")
 
+# When linking in `dev` mode, make sure that the ASAN symbols that get linked
+# into the top-level binary are made available for any dependent libraries.
+if [ "{link_style}" == "shared" ]; then
+  args+=("--lflag=-Xlinker")
+  args+=("--lflag=--export-dynamic")
+fi;
+
 # The output file and input source.
 args+=("-o" "$OUT")
 args+=("$SRCS")
