@@ -407,19 +407,19 @@ def _install_converted_rules(globals, **context_kwargs):
     for rule_type in constants.BUCK_RULES:
         globals[rule_type] = functools.partial(invalid_buck_rule, rule_type)
 
-    for rule_type in itertools.chain(
-            constants.FBCODE_RULES,
-            ('buck_' + r for r in constants.BUCK_RULES)):
+    all_rule_types = constants.FBCODE_RULES + \
+        ['buck_' + r for r in constants.BUCK_RULES]
+    for rule_type in all_rule_types:
         globals[rule_type] = functools.partial(
             rule_handler, context_kwargs, old_globals, rule_type)
 
-    # On laptop, we only support a small set of buck rules that are needed for Java projects,
-    # and some buck operations, eg buck query, may not be able to process other rules (eg cpp)
-    # that rely on existance of third party folders.  For these rules, fbcode:ignore_buck_rules
-    # setting in buck config is used to instruct buck config script to ignore them.
-    requested_ignored_rules = read_config('fbcode', 'ignored_buck_rules', None)
-    if requested_ignored_rules is not None:
-        for rule_type in requested_ignored_rules.split():
+    # If fbcode.enabled_rule_types is specified, then all rule types that aren't
+    # whitelisted should be redirected to a handler that's a no-op. For example,
+    # only a small set of rules are supported for folks building on laptop.
+    enabled_rule_types = read_config('fbcode', 'enabled_rule_types', None)
+    if enabled_rule_types is not None:
+        enabled_rule_types = map(unicode.strip, enabled_rule_types.split(','))
+        for rule_type in set(all_rule_types) - set(enabled_rule_types):
             globals[rule_type] = functools.partial(ignored_buck_rule, rule_type)
 
 
