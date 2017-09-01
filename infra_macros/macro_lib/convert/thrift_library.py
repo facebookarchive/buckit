@@ -629,7 +629,7 @@ class GoThriftConverter(ThriftLangConverter):
 
 class HaskellThriftConverter(ThriftLangConverter):
     """
-    Specializer to support generating D libraries from thrift sources.
+    Specializer to support generating Haskell libraries from thrift sources.
     """
 
     THRIFT_HS_LIBS = [
@@ -816,6 +816,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(dependencies))
+        attrs['enable_profiling'] = self.read_hs_profile()
 
         return [Rule('haskell_library', attrs)]
 
