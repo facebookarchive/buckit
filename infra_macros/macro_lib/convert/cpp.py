@@ -53,6 +53,7 @@ SANITIZER_FLAGS = {
     'address': [
         '-fsanitize=address',
         '-fsanitize-address-use-after-scope',
+        '-fsanitize=nullability-arg',
         '-fsanitize=nullability-assign',
         '-fsanitize=nullability-return',
         '-fsanitize=return',
