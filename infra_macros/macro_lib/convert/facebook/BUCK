@@ -1,0 +1,6 @@
+custom_rule(
+    name = "busybox-tgz",
+    build_args = "$(location @/third-party:busybox:bin/busybox)",
+    build_script = "make_busybox_tgz.sh",
+    output_bin_files = ["busybox.tgz"],
+)
