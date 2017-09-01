@@ -248,7 +248,7 @@ OPT = BuildMode(help='optimized build', settings=BuildSettings(
     PARFLAGS=['--optimize'],
     # See above about --build-id.
     LDFLAGS=['-O3', '-Wl,--build-id'],
-    GHCFLAGS=['-O'],
+    GHCFLAGS=['-O2'],
 ))
 
 class BuildModeLoader(object):
