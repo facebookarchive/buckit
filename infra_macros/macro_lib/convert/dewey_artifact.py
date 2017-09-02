@@ -28,17 +28,20 @@ class DeweyArtifactConverter(base.Converter):
             'commit',
             'artifact',
             'path',
+            'deps',
             'visibility',
         ])
 
     def get_prebuilt_jar_rule(
             self,
             name,
+            deps,
             visibility,
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
         attributes['binary_jar'] = ':' + name + '_remote_file'
+        attributes['deps'] = deps
         attributes['visibility'] = visibility
         return Rule('prebuilt_jar', attributes)
 
@@ -71,10 +74,11 @@ class DeweyArtifactConverter(base.Converter):
             commit,
             artifact,
             path,
+            deps=[],
             visibility=[],
             **kwargs
     ):
         rules = []
-        rules.append(self.get_prebuilt_jar_rule(name, visibility))
+        rules.append(self.get_prebuilt_jar_rule(name, deps, visibility))
         rules.append(self.get_download_rule(name, project, commit, artifact, path))
         return rules
