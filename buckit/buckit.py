@@ -8,6 +8,8 @@
 # of patent rights can be found in the PATENTS file in the same directory.
 
 import argparse
+import copy
+import logging
 import os
 import sys
 
@@ -18,6 +20,14 @@ import configure_buck
 import fetch
 import formatting
 import use_system
+
+log_levels = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
 
 
 class EnvDefault(argparse.Action):
@@ -35,7 +45,7 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def add_compiler_args(subparser):
+def add_compiler_args(parent_args, subparser):
     description = (
         "Detect tools like the compiler and pyton binaries, and "
         "set them up properly inside of the root project's "
@@ -46,6 +56,10 @@ def add_compiler_args(subparser):
         help="Sets up compiler + tools and configures buck to use them",
         description=description,
     )
+
+    for args in parent_args:
+        parser.add_argument(args.pop("name"), **args)
+
     parser.add_argument(
         "--node-modules",
         default="node_modules",
@@ -53,7 +67,7 @@ def add_compiler_args(subparser):
     )
 
 
-def add_fetch_args(subparser):
+def add_fetch_args(parent_args, subparser):
     description = (
         "Fetch source for a package, and configure .buckconfig, "
         ".buckconfig.local, and BUCK files for third-party package "
@@ -64,6 +78,10 @@ def add_fetch_args(subparser):
         help="Fetches source and configures buck for a vendored library",
         description=description,
     )
+
+    for args in parent_args:
+        parser.add_argument(args.pop("name"), **args)
+
     parser.add_argument(
         "--node-modules",
         default="node_modules",
@@ -142,7 +160,7 @@ def add_fetch_args(subparser):
     )
 
 
-def add_buckconfig_args(subparser):
+def add_buckconfig_args(parent_args, subparser):
     description = (
         "Configures .buckconfig and .buckconfig.local to have knowledge of "
         "all cells specified in package.json. Should not be run inside "
@@ -153,6 +171,10 @@ def add_buckconfig_args(subparser):
         help="Reconfigure .buckconfig and .buckconfig.local",
         description=description
     )
+
+    for args in parent_args:
+        parser.add_argument(args.pop("name"), **args)
+
     parser.add_argument(
         "--node-modules",
         default="node_modules",
@@ -160,7 +182,7 @@ def add_buckconfig_args(subparser):
     )
 
 
-def add_system_args(subparser):
+def add_system_args(parent_args, subparser):
     description = (
         "Installs system packages required for all or some packages. Also "
         "configures buck to use system packages"
@@ -170,6 +192,10 @@ def add_system_args(subparser):
         help="Install system packages, and configure buck to use them",
         description=description,
     )
+
+    for args in parent_args:
+        parser.add_argument(args.pop("name"), **args)
+
     parser.add_argument(
         "--no-install-packages",
         help=(
@@ -204,11 +230,17 @@ def parse_args(argv):
     easier C++ development"""
     )
     parser = argparse.ArgumentParser(description=description)
+
+    parent_options = [{
+        "name": "--log-level",
+        "default": "info",
+        "choices": sorted(log_levels.keys()),
+    }]
     subparser = parser.add_subparsers(dest="selected_action")
-    add_buckconfig_args(subparser)
-    add_compiler_args(subparser)
-    add_fetch_args(subparser)
-    add_system_args(subparser)
+    add_buckconfig_args(copy.deepcopy(parent_options), subparser)
+    add_compiler_args(copy.deepcopy(parent_options), subparser)
+    add_fetch_args(copy.deepcopy(parent_options), subparser)
+    add_system_args(copy.deepcopy(parent_options), subparser)
 
     return parser, parser.parse_args(argv)
 
@@ -228,8 +260,9 @@ def get_root_path():
 
 
 def main(argv):
-    formatting.configure_logger()
     parser, args = parse_args(argv)
+
+    formatting.configure_logger(level=log_levels[args.log_level])
     ret = 0
     should_configure_buck = False
     project_root = get_root_path()

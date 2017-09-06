@@ -12,7 +12,7 @@ import sys
 import logging
 
 
-def configure_logger(use_color=True):
+def configure_logger(use_color=True, level=logging.INFO):
     class ColoredFormatter(logging.Formatter):
         """Adds coloring to a log message if using a TTY"""
 
@@ -27,7 +27,7 @@ def configure_logger(use_color=True):
             )
 
     format = "[%(levelname)-5s] %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=format)
+    logging.basicConfig(level=level, format=format)
 
     formatter = ColoredFormatter(use_color=use_color, fmt=format)
     for handler in logging.getLogger().handlers:
