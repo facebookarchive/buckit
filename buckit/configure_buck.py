@@ -285,7 +285,10 @@ def __update_root_buckconfig_local(project_root, package_info):
 
     logging.debug("Updating root buckconfig.local at %s", buckconfig_local)
 
-    to_set = {'repository_aliases': {package_info.cell_alias: relative_path}}
+    to_set = {
+        'repository_aliases': {package_info.cell_alias: relative_path},
+        'log': {'buckconfig_local_warning_enabled': 'false'},
+    }
     __update_config(buckconfig_local, to_set)
 
 
