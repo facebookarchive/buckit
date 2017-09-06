@@ -557,8 +557,13 @@ class HaskellConverter(base.Converter):
         attributes = collections.OrderedDict()
         attributes['name'] = name
 
-        if main is not None:
-            attributes['main'] = main
+        if self.is_binary():
+            if main is not None:
+                attributes['main'] = main
+            elif not ("Main.hs" in srcs):
+                raise ValueError(
+                    'Must define `main` attribute on {0}:{1}'.format(
+                        base_path, name))
 
         if link_whole is not None:
             attributes['link_whole'] = link_whole
