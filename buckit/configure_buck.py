@@ -18,6 +18,7 @@ import threading
 from collections import defaultdict, namedtuple
 
 from constants import PACKAGE_JSON, BUCKCONFIG, BUCKCONFIG_LOCAL
+from helpers import BuckitException
 
 PackageInfo = namedtuple(
     'PackageInfo',
@@ -172,15 +173,12 @@ def parse_package_info(package_path):
                     includes.get('whitelist_functions', [])
                 )
                 if not isinstance(includes_info.path, str):
-                    raise Exception(
-                        "buckit.includes in {} should be a string".
-                        format(json_path)
-                    )
+                    raise BuckitException(
+                        "buckit.includes in {} should be a string", json_path)
                 if not isinstance(includes_info.whitelist_functions, list):
-                    raise Exception(
-                        "buckit.whitelist_functions in {} should be a list".
-                        format(json_path)
-                    )
+                    raise BuckitException(
+                        "buckit.whitelist_functions in {} should be a list",
+                        json_path)
             else:
                 includes_info = None
 
@@ -190,10 +188,9 @@ def parse_package_info(package_path):
                 'yarn|{}'.format(js["name"]), package_path, includes_info
             )
     except Exception as e:
-        raise Exception(
+        raise BuckitException(
             "Could not read property 'buckit.name' or 'name' from "
-            "json file at {}: {}".format(json_path, e)
-        )
+            "json file at {}: {}", json_path, e)
 
 
 def find_project_root(start_path):
@@ -234,12 +231,9 @@ def find_project_root(start_path):
         else:
             continue
     else:
-        raise Exception(
-            (
-                "Could not find a .buckconfig or package.json above "
-                " {}. Stopped at {}"
-            ).format(start_path, path)
-        )
+        raise BuckitException(
+            "Could not find a .buckconfig or package.json above {}. Stopped "
+            "at {}", start_path, path)
 
     logging.debug("{bold}Found project root at %s{clear}", package_path)
     return package_path
@@ -397,10 +391,9 @@ def find_package_paths(
 
     for dep in js.get('dependencies', {}):
         if dep in already_found:
-            raise Exception(
-                'Found a cycle when finding dependencies: {}'.
-                format(' -> '.join(already_found))
-            )
+            raise BuckitException(
+                'Found a cycle when finding dependencies: {}',
+                ' -> '.join(already_found))
         already_found.append(dep)
         dep_paths, ignore, dep_jsons = find_package_paths(
             project_root, node_modules, dep, already_found

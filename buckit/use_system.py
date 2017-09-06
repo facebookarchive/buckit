@@ -45,14 +45,14 @@ def get_for_current_system(options, default=None):
         try:
             import distro
             linux_distribution = distro.linux_distribution
-        except ImportError as e:
+        except ImportError:
             if not hasattr(platform, 'linux_distribution'):
                 logging.error(
                     "{red}The distro python module is not installed, and "
                     "platform.linux_distribution() does not exist. Please "
                     "install distro with `pip install distro`{clear}"
                 )
-                raise e
+                raise
             linux_distribution = platform.linux_distribution
         system, version_str, id = linux_distribution(
             full_distribution_name=False
@@ -116,8 +116,7 @@ def get_system_packages(project_root, node_modules, only_required):
         if not only_required:
             all_pkgs.update(js.get('buckit', {}).get('system_packages', {}))
             pkgs += get_for_current_system(all_pkgs, [])
-        for pkg in pkgs:
-            system_packages |= set(pkgs)
+        system_packages |= set(pkgs)
     return system_packages
 
 

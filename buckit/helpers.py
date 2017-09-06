@@ -1,5 +1,17 @@
 from contextlib import contextmanager
+import errno
 import fcntl
+import time
+
+
+class BuckitException(Exception):
+    """
+    Superclass for buckit exceptions that also formats messages by default
+    """
+
+    def __init__(self, message, *formatargs, **formatkwargs):
+        super(BuckitException, self).__init__(
+            message.format(*formatargs, **formatkwargs))
 
 
 @contextmanager
@@ -18,5 +30,5 @@ def open_with_lock(filename, mode):
                     time.sleep(0.1)
     try:
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-    except:
+    except Exception:
         pass

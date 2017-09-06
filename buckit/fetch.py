@@ -5,8 +5,9 @@ import shlex
 
 from collections import namedtuple
 
-from fetchers import PipFetcher, HttpTarballFetcher, GitFetcher
 from constants import PACKAGE_JSON
+from helpers import BuckitException
+from fetchers import PipFetcher, HttpTarballFetcher, GitFetcher
 
 PythonSettings = namedtuple(
     'PythonSettings', [
@@ -42,9 +43,8 @@ def get_fetcher_from_repository(package_name, package_root, python_settings):
     short_name = js.get('name').split('/')[-1]
 
     if 'repository' not in js:
-        raise Exception(
-            "The repository section is missing in {}".format(package_json)
-        )
+        raise BuckitException(
+            "The repository section is missing in {}", package_json)
 
     repository = js.get('repository')
     repo_type = repository.get("type", "")
@@ -88,10 +88,9 @@ def get_fetcher_from_repository(package_name, package_root, python_settings):
             ), dest_dir
         )
     else:
-        raise Exception(
-            "repository.type in {} must be either 'git', 'tarball', or "
-            "'pip'".format(package_json)
-        )
+        raise BuckitException(
+            "repository.type in {} must be either 'git', 'tarball', or 'pip'",
+            package_json)
 
 
 def fetch_package(

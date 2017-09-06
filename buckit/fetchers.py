@@ -22,6 +22,7 @@ from collections import namedtuple
 from configure_buck import find_project_root, update_config
 from constants import BUCKFILE, BUCKCONFIG
 from formatting import readable_check_call
+from helpers import BuckitException
 from textwrap import indent, dedent
 
 PipPythonSettings = namedtuple(
@@ -42,7 +43,7 @@ class CachedFetcher:
         return not os.path.exists(src_dest) or force
 
     def populate_cache(self, destination, use_proxy):
-        raise Exception('Not implemented')
+        raise BuckitException('Not implemented')
 
     def fetch(self, project_root, destination, use_proxy):
         destination = os.path.join(destination, 'src')
@@ -95,10 +96,9 @@ class GitFetcher(CachedFetcher):
 
     def __init__(self, package_name, json_file, url, commit, tag):
         if bool(commit) == bool(tag):
-            raise Exception(
-                "{}: Either the commit, or the tag must be specified".
-                format(json_file)
-            )
+            raise BuckitException(
+                "{}: Either the commit, or the tag must be specified",
+                json_file)
 
         self.package_name = package_name
         self.url = url
@@ -204,10 +204,9 @@ class HttpTarballFetcher(CachedFetcher):
                 file_hash.update(data)
 
         if file_hash.hexdigest() != self.sha256:
-            raise Exception(
-                'SHA256 of downloaded file didn\'t match! Expected '
-                '{}, got {}'.format(self.sha256, file_hash.hexdigest())
-            )
+            raise BuckitException(
+                'SHA256 of downloaded file didn\'t match! Expected {}, got {}',
+                self.sha256, file_hash.hexdigest())
 
 
 class PipFetcher:
@@ -241,9 +240,8 @@ class PipFetcher:
         self.python3_files = {"srcs": {}, "bins": {}}
 
         if not main_rule:
-            raise Exception(
-                'A main_rule attribute must be set in {}'.format(json_file)
-            )
+            raise BuckitException(
+                'A main_rule attribute must be set in {}', json_file)
 
     def should_fetch(self, destination, force):
         buckfile = os.path.join(destination, BUCKFILE)
@@ -486,10 +484,9 @@ class PipFetcher:
                 "stdout: %sstderr: %s\nReturn code %s\n", stdout, stderr,
                 proc.returncode
             )
-            raise Exception(
-                "Could not install virtualenv at {}".
-                format(python_settings.virtualenv_root)
-            )
+            raise BuckitException(
+                "Could not install virtualenv at {}",
+                python_settings.virtualenv_root)
 
         stdout = stdout.decode('utf-8')
 
