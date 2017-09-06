@@ -17,6 +17,7 @@ import os
 import threading
 from collections import defaultdict, namedtuple
 
+import compiler
 from constants import PACKAGE_JSON, BUCKCONFIG, BUCKCONFIG_LOCAL
 from helpers import BuckitException
 
@@ -298,6 +299,17 @@ def __update_packages_buckconfig_local(project_root):
     the root's repository_aliases section. This copies the root
     .buckconfig.local, and makes all of the paths relative to the cell
     """
+    buckconfig_root = os.path.join(project_root, BUCKCONFIG)
+    root_config = configparser.ConfigParser()
+    if os.path.exists(buckconfig_root):
+        root_config.read(buckconfig_root)
+    root_repositories = {}
+    if root_config.has_section('repositories'):
+        root_repositories = {
+            alias.replace('$(config repository_aliases.', '').replace(')', ''): cell
+            for cell, alias in root_config.items('repositories')
+        }
+
     buckconfig_local = os.path.join(project_root, BUCKCONFIG_LOCAL)
     section = 'repository_aliases'
 
@@ -315,7 +327,7 @@ def __update_packages_buckconfig_local(project_root):
     config_string = io.StringIO()
     config.write(config_string)
 
-    for _, package_path in config.items(section):
+    for alias, package_path in config.items(section):
         # For all cells, make sure they have a copy of the .buckconfig.local.
         # Update its paths to have proper relative paths, rather than the ones
         # copied from the root
@@ -339,9 +351,48 @@ def __update_packages_buckconfig_local(project_root):
                 os.path.abspath(package_path)
             )
             package_config.set(section, cell_alias, relative_path)
+
+        # If a section ends in #buckit-<platform> or #buckit-<cell>-<platform>
+        # copy that section into <section>#platform instead. This lets us
+        # override specific sections for third party or single cells, but
+        # does not make us change all of the other platform sections, which
+        # would be the case if we set the default_platform (e.g. setting a
+        # cxx platform would mean we would have to set python sections up
+        # as well)
+        cell = root_repositories.get(alias)
+        if cell:
+            platform = compiler.get_current_platform_flavor()
+            general_override = '#buckit-' + platform
+            package_override = '#buckit-{}-{}'.format(cell, platform)
+            for src_section in list(package_config.sections()):
+                if src_section.endswith(package_override):
+                    base = src_section[:-len(package_override)]
+                elif src_section.endswith(general_override):
+                    base = src_section[:-len(general_override)]
+                    package_section = '{}#{}'.format(base, package_override)
+                    if package_config.has_section(package_section):
+                        continue
+                else:
+                    continue
+
+                dest_section = '{}#{}'.format(base, platform)
+
+                logging.debug(
+                    'Overwriting section %s in %s with %s from %s',
+                    dest_section, package_buckconfig_local, src_section,
+                    buckconfig_local)
+
+                package_config.remove_section(dest_section)
+                package_config.add_section(dest_section)
+
+                for k, v in package_config.items(src_section):
+                    package_config.set(dest_section, k, v)
+                package_config.remove_section(src_section)
+
         with open(package_buckconfig_local, 'w') as fout:
             fout.write(BUCKCONFIG_HEADER)
             package_config.write(fout)
+            fout.flush()
 
         logging.debug(
             "{bold}Updated .buckconfig.local at %s{clear}",
