@@ -18,6 +18,7 @@ with allow_unsafe_import():  # noqa
 LINK_STYLE_ANY = 'any'
 LINK_STYLE_SHARED = 'shared'
 LINK_STYLE_STATIC = 'static'
+ALL_LINK_STYLES = {LINK_STYLE_ANY, LINK_STYLE_SHARED, LINK_STYLE_SHARED}
 
 PLATFORM_ALL = 'all'
 PLATFORM_ALL_REGEX = '.*'
@@ -32,12 +33,20 @@ PLATFORM_UNKNOWN = 'unknown'
 CURRENT_SYSTEM_PLATFORM = platform.system()
 if CURRENT_SYSTEM_PLATFORM == 'Linux':
     CURRENT_SYSTEM_PLATFORM = PLATFORM_LINUX
+    CURRENT_SHARED_LIB_EXTENSION = '.so'
+    DEFAULT_LINK_STYLE = LINK_STYLE_SHARED
 elif CURRENT_SYSTEM_PLATFORM == 'Darwin':
     CURRENT_SYSTEM_PLATFORM = PLATFORM_MAC
+    CURRENT_SHARED_LIB_EXTENSION = '.dylib'
+    DEFAULT_LINK_STYLE = LINK_STYLE_SHARED
 elif CURRENT_SYSTEM_PLATFORM == 'Windows':
     CURRENT_SYSTEM_PLATFORM = PLATFORM_WINDOWS
+    CURRENT_SHARED_LIB_EXTENSION = '.dll'
+    DEFAULT_LINK_STYLE = LINK_STYLE_SHARED
 else:
     CURRENT_SYSTEM_PLATFORM = PLATFORM_UNKNOWN
+    CURRENT_SHARED_LIB_EXTENSION = '.so'
+    DEFAULT_LINK_STYLE = LINK_STYLE_SHARED
 
 PLATFORM_REGEX_MAP = {
     PLATFORM_ALL: PLATFORM_ALL_REGEX,
@@ -52,7 +61,34 @@ _LibraryRule = namedtuple(
 )
 
 
-def LibraryRule(lib_name, deps=None, rule_name=None, link_style=LINK_STYLE_ANY):
+def get_system_link_style(lib):
+    """
+    Get the link style for a system lib. On OSX we generally just want to do
+    dynamic libraries by default, since many libs are not shipped as static
+    libs. Those that are shipped that way can be overridden
+    """
+    if lib.link_style is not None:
+        return lib.link_style
+
+    config_link_style = read_config(
+        'buckit',
+        'system_link_style.{}'.format(lib.lib_name),
+        read_config('buckit', 'system_link_style', DEFAULT_LINK_STYLE))
+    if config_link_style in ALL_LINK_STYLES:
+        return config_link_style
+    else:
+        print(
+            'Invalid link style {} provided, using {}'.format(
+                config_link_style,
+                DEFAULT_LINK_STYLE))
+        return DEFAULT_LINK_STYLE
+
+
+def get_vendored_link_style(lib):
+    return lib.link_style or LINK_STYLE_ANY
+
+
+def LibraryRule(lib_name, deps=None, rule_name=None, link_style=None):
     return _LibraryRule(
         lib_name, tuple(deps or []), rule_name or lib_name, link_style
     )
@@ -371,16 +407,41 @@ def buckit_cpp_custom_library(
             add_patchelf=main_rule != 'patchelf'
         )
     )
+    cxx_genrule(
+        name='__build_include',
+        cmd='cp -prvf $(location :__build)/include $OUT',
+        out='include',
+    )
 
     for lib in libs:
+        static_lib = None
+        shared_lib = None
+        link_style = get_vendored_link_style(lib)
+        if link_style == LINK_STYLE_ANY or link_style == LINK_STYLE_STATIC:
+            cxx_genrule(
+                name='__build_static_' + lib.rule_name,
+                cmd='cp $(location :__build)/lib/lib{}.a $OUT'.format(
+                    lib.lib_name),
+                out='lib{}.a'.format(lib.lib_name),
+            )
+            static_lib = ':__build_static_' + lib.rule_name
+        if link_style == LINK_STYLE_ANY or link_style == LINK_STYLE_SHARED:
+            cxx_genrule(
+                name='__build_shared_' + lib.rule_name,
+                cmd='cp -pvf $(location :__build)/lib/lib{}{} $OUT'.format(
+                    lib.lib_name,
+                    CURRENT_SHARED_LIB_EXTENSION),
+                out='lib{}{}'.format(lib.lib_name, CURRENT_SHARED_LIB_EXTENSION),
+            )
+            shared_lib = ':__build_shared_' + lib.rule_name
         prebuilt_cxx_library(  # noqa
             name=lib.rule_name,
-            lib_dir='$(location :__build)/lib',
-            lib_name=lib.lib_name,
-            include_dirs=['$(location :__build)/include'],
+            static_lib=static_lib,
+            shared_lib=shared_lib,
+            header_dirs=[':__build_include'],
             exported_deps=lib.deps,
             visibility=['PUBLIC'],
-            preferred_linkage=lib.link_style,
+            preferred_linkage=link_style,
         )
         built_rules.add(lib.rule_name)
 
@@ -389,7 +450,7 @@ def buckit_cpp_custom_library(
             prebuilt_cxx_library(  # noqa
                 name=rule,
                 header_only=True,
-                include_dirs=['$(location :__build)/include'],
+                header_dirs=[':__build_include'],
                 visibility=['PUBLIC'],
             )
             built_rules.add(rule)
@@ -523,19 +584,45 @@ def buckit_system_library(
         cmd=cmd,
         out="root",
     )
+    cxx_genrule(
+        name='__build_include',
+        cmd='ln -s $(location :__build)/include $OUT',
+        out='include',
+    )
+
     for lib in libs:
-        linker_flags = list(ldflags)
-        lname = '-l' + lib.lib_name
-        if lname in libflags:
-            linker_flags += [lname]
+        static_lib = None
+        shared_lib = None
+        link_style = get_system_link_style(lib)
+        # TODO: This probably needs to be a copy, and patchelf needs to be
+        #       run in order to fix soname/versioning info. We dont want to
+        #       have to copy over every versioned file, but OSX handles this
+        #       fine for the moment
+        if link_style == LINK_STYLE_ANY or link_style == LINK_STYLE_STATIC:
+            cxx_genrule(
+                name='__build_static_' + lib.rule_name,
+                cmd='ln -s $(location :__build)/lib/lib{}.a $OUT'.format(
+                    lib.lib_name),
+                out='lib{}.a'.format(lib.lib_name),
+            )
+            static_lib = ':__build_static_' + lib.rule_name
+        if link_style == LINK_STYLE_ANY or link_style == LINK_STYLE_SHARED:
+            cxx_genrule(
+                name='__build_shared_' + lib.rule_name,
+                cmd='ln -s $(location :__build)/lib/lib{}{} $OUT'.format(
+                    lib.lib_name, CURRENT_SHARED_LIB_EXTENSION),
+                out='lib{}{}'.format(lib.lib_name, CURRENT_SHARED_LIB_EXTENSION),
+            )
+            shared_lib = ':__build_shared_' + lib.rule_name
+
         prebuilt_cxx_library(  # noqa
             name=lib.rule_name,
             deps=lib.deps,
-            lib_dir="$(location :__build)/lib",
-            include_dirs=["$(location :__build)/include"],
-            lib_name=lib.lib_name,
+            static_lib=static_lib,
+            shared_lib=shared_lib,
+            header_dirs=[':__build_include'],
             exported_deps=lib.deps,
-            preferred_linkage=lib.link_style,
+            preferred_linkage=link_style,
             visibility=['PUBLIC'],
         )
         built_rules.add(lib.rule_name)
