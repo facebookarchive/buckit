@@ -21,7 +21,11 @@ from . import base
 from .base import RootRuleTarget, ThirdPartyRuleTarget
 from . import cpp
 from . import haskell
-from . import java
+try:
+    from . import java
+    use_internal_java_converters = True
+except ImportError:
+    use_internal_java_converters = False
 from . import js
 from . import cython
 from . import ocaml
@@ -1776,9 +1780,7 @@ class ThriftLibraryConverter(base.Converter):
             GoThriftConverter(*args, **kwargs),
             HaskellThriftConverter(*args, is_hs2=False, **kwargs),
             HaskellThriftConverter(*args, is_hs2=True, **kwargs),
-            JavaThriftConverter(*args, **kwargs),
             JsThriftConverter(*args, **kwargs),
-            JavaSwiftConverter(*args, **kwargs),
             OCamlThriftConverter(*args, **kwargs),
             ThriftdocPythonThriftConverter(*args, **kwargs),
             Python3ThriftConverter(*args, **kwargs),
@@ -1799,6 +1801,11 @@ class ThriftLibraryConverter(base.Converter):
                 flavor=LegacyPythonThriftConverter.PYI,
                 **kwargs),
         ]
+        if use_internal_java_converters:
+            converters += [
+                JavaThriftConverter(*args, **kwargs),
+                JavaSwiftConverter(*args, **kwargs),
+            ]
         self._converters = {}
         self._name_to_lang = {}
         for converter in converters:
