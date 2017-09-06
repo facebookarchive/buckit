@@ -467,7 +467,8 @@ class PythonConverter(base.Converter):
         return self.read_choice(
             'python',
             'package_style',
-            ['inplace', 'standalone'])
+            ['inplace', 'standalone'],
+            'standalone')
 
     def create_library(
         self,
