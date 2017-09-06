@@ -632,11 +632,12 @@ class PythonConverter(base.Converter):
         python=None,
         allocator=None,
         check_types=False,
+        preload_deps=(),
     ):
         rules = []
         dependencies = []
         platform_deps = []
-        preload_deps = []
+        out_preload_deps = []
         platform = self.get_platform(base_path)
         python_version = self.get_python_version(py_version)
         python_platform = self.get_python_platform(platform, python_version)
@@ -704,7 +705,11 @@ class PythonConverter(base.Converter):
             attributes['build_args'] = build_args
 
         # Add any special preload deps.
-        preload_deps.extend(self.get_preload_deps(allocator))
+        out_preload_deps.extend(self.get_preload_deps(allocator))
+
+        # Add user-provided preloaded deps.
+        for dep in preload_deps:
+            out_preload_deps.append(self.convert_build_target(base_path, dep))
 
         # Add the C/C++ build info lib to preload deps.
         cxx_build_info, cxx_build_info_rules = (
@@ -714,7 +719,7 @@ class PythonConverter(base.Converter):
                 self.get_fbconfig_rule_type(),
                 platform,
                 static=False))
-        preload_deps.append(self.get_dep_target(cxx_build_info))
+        out_preload_deps.append(self.get_dep_target(cxx_build_info))
         rules.extend(cxx_build_info_rules)
 
         # Provide a standard set of backport deps to all binaries
@@ -764,8 +769,8 @@ class PythonConverter(base.Converter):
         if emails:
             attributes['contacts'] = emails
 
-        if preload_deps:
-            attributes['preload_deps'] = preload_deps
+        if out_preload_deps:
+            attributes['preload_deps'] = out_preload_deps
 
         if needed_coverage:
             attributes['needed_coverage'] = [
@@ -791,7 +796,7 @@ class PythonConverter(base.Converter):
                     python_platform,
                     interp_deps,
                     platform_deps,
-                    preload_deps))
+                    out_preload_deps))
             rules.extend(interp_rules)
             dependencies.extend(
                 ':' + r.attributes['name'] for r in interp_rules)
@@ -809,7 +814,7 @@ class PythonConverter(base.Converter):
                     library,
                     dependencies,
                     platform_deps,
-                    preload_deps,
+                    out_preload_deps,
                 ),
             )
 
@@ -854,6 +859,7 @@ class PythonConverter(base.Converter):
         python=None,
         allocator=None,
         check_types=False,
+        preload_deps=(),
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
@@ -916,6 +922,7 @@ class PythonConverter(base.Converter):
                 python=python,
                 allocator=allocator,
                 check_types=check_types,
+                preload_deps=preload_deps,
             )
             rules.extend(one_set_rules)
             rule_names.append(':' + py_name)
