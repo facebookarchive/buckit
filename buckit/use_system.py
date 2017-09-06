@@ -10,6 +10,7 @@
 import logging
 import os
 import platform
+import subprocess
 
 from constants import BUCKCONFIG_LOCAL
 from configure_buck import update_config, find_package_paths
@@ -92,19 +93,32 @@ def install_system_packages(packages):
     commands = {
         # TODO: Seems that brew can sometimes return 1 when all packages are
         #       installed
-        'darwin': ['brew', 'install'],
-        'centos': ['sudo', 'yum', 'install', '-y'],
-        'ubuntu': ['sudo', 'apt', 'install', '-y'],
+        'darwin': [['brew', 'install'], ['brew', 'upgrade']],
+        'centos': [['sudo', 'yum', 'install', '-y']],
+        'ubuntu': [['sudo', 'apt', 'install', '-y']],
     }
-    cmd = get_for_current_system(commands, None)
-    if not cmd:
+    cmds = get_for_current_system(commands, None)
+    if not cmds:
         logging.warning(
-            "{yellow}Could not get an installer command for this system, not "
-            "installing %s{clear}", packages
+            '{yellow}Could not get an installer command for this system, not '
+            'installing %s{clear}', packages
         )
         return
-    cmd += list(packages)
-    readable_check_call(cmd, action='installing system packages')
+    errors = []
+    for cmd in cmds:
+        cmd = cmd + list(packages)
+        try:
+            readable_check_call(cmd, action='installing system packages')
+            break
+        except subprocess.CalledProcessError as e:
+            error = '{} failed with code {}'.format(
+                '\n'.join(cmd), e.returncode)
+            errors += error
+            logging.debug(error)
+    else:
+        logging.warning(
+            '{yellow}No install commands succeeded. Errors were:%s{clear}',
+            '\n'.join([' - ' + error for error in errors]))
 
 
 def get_system_packages(project_root, node_modules, only_required):
