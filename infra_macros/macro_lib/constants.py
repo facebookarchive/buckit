@@ -71,6 +71,7 @@ FBCODE_RULES = [
     'cpp_unittest',
     'custom_rule',
     'custom_unittest',
+    'cxx_genrule',
     'cython_library',
     'd_binary',
     'd_library',

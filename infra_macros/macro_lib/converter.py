@@ -219,7 +219,7 @@ def convert(context, base_path, rules):
             context,
             'buck_command_alias',
             'command_alias',
-            convert_targets_on=['exe'])
+            convert_targets_on=['exe']),
     ]
     if use_internal_java_converters:
         converters += [
@@ -268,6 +268,12 @@ def convert(context, base_path, rules):
             # DO NOT ADD TO THIS WHITELIST! (#15633732).
             whitelist=context.config.whitelisted_raw_buck_rules.get('cxx_test', []),
             whitelist_error_msg=FBCODE_UI_MESSAGE))
+    converters.append(
+        passthrough.PassthroughConverter(
+            context,
+            'cxx_genrule',
+            'cxx_genrule',
+        ))
     for buck_rule in (
             'export_file',
             'genrule',
