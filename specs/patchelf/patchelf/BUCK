@@ -6,7 +6,7 @@ if not buckit_use_system('patchelf'):
     buckit_cpp_autoconf_library(
         main_rule='patchelf',
         libs=libs,
-        build_rule_visibility=['PUBLIC'],
+        binaries=[('patchelf', 'patchelf')],
     )
 else:
     buckit_system_library(

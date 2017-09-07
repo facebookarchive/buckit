@@ -7,6 +7,6 @@ libs = [
 buckit_system_library(
     main_rule='flex',
     libs=libs,
-    binaries=[('flex', 'bin/flex')],
+    binaries=[('flex', 'flex')],
     use_pkg_config=False,
 )

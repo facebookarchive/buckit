@@ -4,7 +4,7 @@
   "flat": true,
   "license": "GPL v3",
   "name": "@buckpkg/patchelf",
-  "version": "0.9.0",
+  "version": "0.9.0.1",
   "repository": {
     "type": "tarball",
     "url": "https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.bz2",

@@ -116,7 +116,7 @@ make clean
 patchelf_text = r"""
 # Strip out versioning information so that buck does not get confused
 # and link things incorrectly
-PATCHELF="$(location patchelf//patchelf:__build)/bin/patchelf"
+PATCHELF="$(location patchelf//patchelf:patchelf)"
 
 function short_sofile() {
     basename "$@" | sed -E 's/(.*\.so).*/\1/'
@@ -184,6 +184,19 @@ function ldflags() {
     echo "$ret" | tr '\n' ' ' | sed -E -e 's;-Wl,-rpath -Xlinker @executable_path[^[:space:]]*;;g'
 }
 '''
+
+
+def __get_system_bin_cmd():
+    all_bin_paths = read_config(
+        "buckit",
+        "system_bin_paths",
+        "/opt,/usr/local/bin,/usr/bin"
+    ).split(',')
+    t = 'if [ -x "{path}/{{bin}}" ]; then cp "{path}/{{bin}}" $OUT; exit 0; fi'
+    cmd = '\n'.join([t.format(path=path) for path in all_bin_paths])
+    cmd += '\necho "Could not find {{bin}} in any of {dirs}"\nexit 1\n'.format(
+        dirs=all_bin_paths)
+    return cmd
 
 
 def __build_rule_text(
@@ -271,7 +284,8 @@ def buckit_cpp_autoconf_library(
     srcs=None,
     additional_configure_args=None,
     escape_install_prefix=True,
-    build_rule_visibility=None
+    build_rule_visibility=None,
+    binaries=None,
 ):
     srcs = srcs if srcs is not None else ["configure.ac"]
     additional_configure_args = additional_configure_args or []
@@ -289,6 +303,7 @@ def buckit_cpp_autoconf_library(
         autoconf_cmd.format(args=additional_configure_args),
         escape_install_prefix=escape_install_prefix,
         build_rule_visibility=build_rule_visibility,
+        binaries=binaries,
     )
 
 
@@ -300,6 +315,7 @@ def buckit_cpp_cmake_library(
     escape_install_prefix=False,
     build_rule_visibility=None,
     build_extra_with_use_shared_libs=False,
+    binaries=None,
 ):
     srcs = srcs if srcs is not None else ['CMakeLists.txt']
     additional_args = additional_cmake_args or {}
@@ -335,6 +351,7 @@ def buckit_cpp_cmake_library(
         cmd,
         escape_install_prefix=escape_install_prefix,
         build_rule_visibility=build_rule_visibility,
+        binaries=binaries,
     )
 
 
@@ -346,6 +363,7 @@ def buckit_cpp_custom_library(
     escape_install_prefix=False,
     build_rule_visibility=None,
     src_dir='src',
+    binaries=None,
 ):
     """
     Builds all of the rules necessary to use this library
@@ -380,7 +398,7 @@ def buckit_cpp_custom_library(
         src_dir: Directory containing source. buckit fetch will make this src
                  by default
     """
-
+    binaries = binaries or []
     libs = __get_libs_for_current_platform(libs)
     platform_deps = set(
         (rule for l in libs for rule in l.deps if not rule.startswith(':'))
@@ -411,6 +429,7 @@ def buckit_cpp_custom_library(
         name='__build_include',
         cmd='cp -prvf $(location :__build)/include $OUT',
         out='include',
+        visibility=build_rule_visibility,
     )
 
     for lib in libs:
@@ -423,6 +442,7 @@ def buckit_cpp_custom_library(
                 cmd='cp $(location :__build)/lib/lib{}.a $OUT'.format(
                     lib.lib_name),
                 out='lib{}.a'.format(lib.lib_name),
+                visibility=build_rule_visibility,
             )
             static_lib = ':__build_static_' + lib.rule_name
         if link_style == LINK_STYLE_ANY or link_style == LINK_STYLE_SHARED:
@@ -432,6 +452,7 @@ def buckit_cpp_custom_library(
                     lib.lib_name,
                     CURRENT_SHARED_LIB_EXTENSION),
                 out='lib{}{}'.format(lib.lib_name, CURRENT_SHARED_LIB_EXTENSION),
+                visibility=build_rule_visibility,
             )
             shared_lib = ':__build_shared_' + lib.rule_name
         prebuilt_cxx_library(  # noqa
@@ -444,6 +465,18 @@ def buckit_cpp_custom_library(
             preferred_linkage=link_style,
         )
         built_rules.add(lib.rule_name)
+
+    for rule, bin in binaries:
+        quoted_bin = pipes.quote(bin)
+        genrule(
+            name=rule,
+            cmd='cp "$(location :__build#{platform})/bin/{bin}" "$OUT"'.format(
+                bin=quoted_bin,
+                platform=read_config('cxx', 'default_platform')),
+            executable=True,
+            visibility=['PUBLIC'],
+            out=quoted_bin)
+        built_rules.add(rule)
 
     for rule in ('headers', main_rule):
         if rule not in built_rules:
@@ -628,7 +661,7 @@ def buckit_system_library(
         built_rules.add(lib.rule_name)
 
     for rule, bin in binaries:
-        sh_binary(name=rule, main=bin, visibility=['PUBLIC'])  # noqa
+        buckit_system_binary(rule, bin)
         built_rules.add(rule)
 
     for rule in ('headers', main_rule):
@@ -651,11 +684,24 @@ def buckit_use_system(library_name):
     all_libraries = read_config(
         'buckit',
         'use_system_for_all',  # noqa
-        'false'
-    ).lower() == 'true'
-    return this_library or all_libraries
-
+        ''
+    ).lower()
+    if all_libraries:
+        return all_libraries == 'true'
+    else:
+        return this_library
 
 def buckit_cpp_genrule(dep_rule, cmd, *args, **kwargs):
     kwargs['cmd'] = __general_cxx_cmd(dep_rule, cmd)
     cxx_genrule(*args, **kwargs)
+
+
+def buckit_system_binary(name, binary):
+    quoted_bin = pipes.quote(binary)
+    genrule(
+        name=name,
+        cmd=__get_system_bin_cmd().format(bin=quoted_bin),
+        executable=True,
+        visibility=['PUBLIC'],
+        out=quoted_bin,
+    )
