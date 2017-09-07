@@ -20,6 +20,7 @@ import configure_buck
 import fetch
 import formatting
 import use_system
+from helpers import BuckitException
 
 log_levels = {
     "debug": logging.DEBUG,
@@ -60,12 +61,6 @@ def add_compiler_args(parent_args, subparser):
     for args in parent_args:
         parser.add_argument(args.pop("name"), **args)
 
-    parser.add_argument(
-        "--node-modules",
-        default="node_modules",
-        help="Where yarn installs modules to",
-    )
-
 
 def add_fetch_args(parent_args, subparser):
     description = (
@@ -82,11 +77,6 @@ def add_fetch_args(parent_args, subparser):
     for args in parent_args:
         parser.add_argument(args.pop("name"), **args)
 
-    parser.add_argument(
-        "--node-modules",
-        default="node_modules",
-        help="Where yarn installs modules to",
-    )
     parser.add_argument(
         "--use-python2",
         action="store_true",
@@ -175,12 +165,6 @@ def add_buckconfig_args(parent_args, subparser):
     for args in parent_args:
         parser.add_argument(args.pop("name"), **args)
 
-    parser.add_argument(
-        "--node-modules",
-        default="node_modules",
-        help="Where yarn installs modules to",
-    )
-
 
 def add_system_args(parent_args, subparser):
     description = (
@@ -216,11 +200,6 @@ def add_system_args(parent_args, subparser):
         action="store_true",
         default=False,
     )
-    parser.add_argument(
-        "--node-modules",
-        default="node_modules",
-        help="Where yarn installs modules to",
-    )
 
 
 def parse_args(argv):
@@ -231,11 +210,21 @@ def parse_args(argv):
     )
     parser = argparse.ArgumentParser(description=description)
 
-    parent_options = [{
-        "name": "--log-level",
-        "default": "info",
-        "choices": sorted(log_levels.keys()),
-    }]
+    parent_options = [
+        {
+            "name": "--log-level",
+            "default": "info",
+            "choices": sorted(log_levels.keys()),
+            "action": EnvDefault,
+            "required": True,
+            "envvar": "BUCKIT_LOG_LEVEL",
+        },
+        {
+            "name": "--node-modules",
+            "default": "node_modules",
+            "help": "Where yarn installs modules to",
+        }
+    ]
     subparser = parser.add_subparsers(dest="selected_action")
     add_buckconfig_args(copy.deepcopy(parent_options), subparser)
     add_compiler_args(copy.deepcopy(parent_options), subparser)
@@ -245,7 +234,7 @@ def parse_args(argv):
     return parser, parser.parse_args(argv)
 
 
-def get_root_path():
+def get_root_path(node_modules):
     # If we're in a post install event, then we
     # are inside of the package's root, not the main
     # project
@@ -254,8 +243,9 @@ def get_root_path():
             start_path = os.path.split(os.getcwd())[0]
         else:
             start_path = os.getcwd()
-        return configure_buck.find_project_root(start_path)
-    except Exception:
+        return configure_buck.find_project_root(start_path, node_modules)
+    except BuckitException as e:
+        logging.info(str(e))
         return os.getcwd()
 
 
@@ -265,7 +255,7 @@ def main(argv):
     formatting.configure_logger(level=log_levels[args.log_level])
     ret = 0
     should_configure_buck = False
-    project_root = get_root_path()
+    project_root = get_root_path(args.node_modules)
 
     if args.selected_action == 'buckconfig':
         should_configure_buck = True

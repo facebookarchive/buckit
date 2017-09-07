@@ -48,7 +48,7 @@ def __lockfile(project_root):
     """
     _lockfile = None
     try:
-        lock_path = os.path.join(project_root, '.buckconfig.lock')
+        lock_path = os.path.join(project_root, '._buckconfig.lock')
         logging.debug("Locking file at %s", lock_path)
         _lockfile = open(lock_path, 'w')
         count = 0
@@ -194,13 +194,16 @@ def parse_package_info(package_path):
             "json file at {}: {}", json_path, e)
 
 
-def find_project_root(start_path):
+def find_project_root(start_path, node_modules=None):
     """
     Starting at start_path, going up, try to find the first directory with
     a package.json or .buckconfig, and call that the root of the project
 
     Args:
         start_path: The directory to start looking in
+        node_modules: If provided, the name of the directory that yarn installs
+                      packages to. This can be used if .buckconfig or
+                      package.json do not exist yet
     Returns:
         The absolute path to the project root
     Raises:
@@ -213,6 +216,9 @@ def find_project_root(start_path):
 
         package_json = os.path.join(path, PACKAGE_JSON)
         package_buckconfig = os.path.join(path, BUCKCONFIG)
+        package_node_modules = None
+        if node_modules:
+            package_node_modules = os.path.join(path, node_modules)
         package_path = path
         path = os.path.split(path)[0]
 
@@ -229,6 +235,10 @@ def find_project_root(start_path):
                 # If we couldn't parse it, it wasn't meant to be
                 logging.debug("Could not parse json in %s", package_json)
                 continue
+        elif package_node_modules and os.path.exists(package_node_modules):
+            logging.debug(
+                "Found node modules directory at %s", package_node_modules)
+            break
         else:
             continue
     else:
@@ -433,17 +443,35 @@ def find_package_paths(
     else:
         package_json = os.path.join(project_root, PACKAGE_JSON)
 
-    # No json exists, stop looking
-    if not os.path.exists(package_json):
+    if os.path.exists(package_json):
+        with open(package_json, 'r') as fin:
+            js = json.loads(fin.read())
+    elif package_name:
+        logging.debug(
+            "Could not find a json file at %s for package %s", package_json,
+            package_name)
         return {}, set(), jsons
-
-    with open(package_json, 'r') as fin:
-        js = json.loads(fin.read())
+    else:
+        js = {}
 
     paths = {}
     root_deps = set()
 
-    for dep in js.get('dependencies', {}):
+    # When a package is first added with yarn add, it will not be present
+    # in package.json in the project root. It will, however, be mentioned in
+    # environment variables. So, grab from there and make sure that we find
+    # the package.json in node_modules if we haven't written to the file yet
+    # If we are just running `buckit buckconfig`, though, make sure we still
+    # look at all of the root dependencies. Also note that yarn run buckit X
+    # will populate npm_package_name ,but with a blank string, so we do a
+    # truthy check
+    env_deps = {
+        os.environ['npm_package_name']: os.environ.get('npm_package_version', '*')
+    } if not package_name and os.environ.get('npm_package_name') else {}
+    js_deps = js.get('dependencies', {}).copy()
+    js_deps.update(env_deps)
+
+    for dep in js_deps:
         if dep in already_found:
             raise BuckitException(
                 'Found a cycle when finding dependencies: {}',
