@@ -61,6 +61,28 @@ FBCODE_UI_MESSAGE = (
     'instead.')
 
 
+# DO NOT MODIFY THIS LIST.  This grandfathers in some places where non-
+# experimental rules depend on experimental rules and should not grow.  Please
+# reach out to fbcode foundation with any questions.
+EXPERIMENTAL_WHITELIST = (
+    ('experimental/deeplearning', 'all_lua'),
+    ('experimental/deeplearning/mobile-vision/segmentation/tools/create_coco_format_dataset/tests', 'analyze_json_lib'),
+    ('experimental/deeplearning/ntt/detection_caffe2/lib', 'lib'),
+    ('experimental/deeplearning/vajdap/xray', 'xray_lib'),
+    ('experimental/deeplearning/vision/cluster_utils', 'io'),
+    ('experimental/deeplearning/vision/cluster_utils', 'io'),
+    ('experimental/deeplearning/vision/detection_caffe2/lib/fb', 'omnibus-blacklist-hack'),
+    ('experimental/deeplearning/wym/classification_attribute/datasets', 'attr_data'),
+    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'classerrormeter'),
+    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'mapmeter'),
+    ('experimental/everstore/orphaned_needles/WorkitemList', 'workitemlist_client_lib'),
+    ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift-py'),
+    ('experimental/guruqu/transformers', 'segmax_predict'),
+    ('experimental/pau/dummyservicewdeps', 'dummy_service_w_deps-py'),
+    ('experimental/pshinghal/dummy_service', 'thrift-py'),
+)
+
+
 class ConversionError(Exception):
     pass
 
@@ -131,11 +153,17 @@ def is_supported_platform(context, converter, pattern):
     return re.search(pattern, full_platform_string)
 
 
-def set_default_visibility(converted_rules):
+def set_default_visibility(base_path, converted_rules):
     for rule in converted_rules:
+
+        # Experimental code can only be depended on by other experimental code.
+        if (base_path.split(os.sep)[0] == 'experimental' and
+                (base_path, rule.attributes['name']) not in EXPERIMENTAL_WHITELIST):
+            rule.attributes['visibility'] = ['//experimental/...']
+
         # Make sure we don't override previous visibility
-        if 'visibility' not in rule.attributes:
-            rule.attributes['visibility'] = ['PUBLIC']
+        rule.attributes.setdefault('visibility', ['PUBLIC'])
+
         yield rule
 
 
@@ -205,8 +233,7 @@ def convert(context, base_path, rules):
             context,
             'export_file',
             'export_file',
-            {'mode': 'reference',
-             'visibility': ['PUBLIC']}),
+            {'mode': 'reference'}),
         passthrough.PassthroughConverter(
             context,
             'versioned_alias',
@@ -319,10 +346,11 @@ def convert(context, base_path, rules):
         try:
             results.extend(   # Supports generators
                 set_default_visibility(
+                    base_path,
                     converter_map[rule.type].convert(
                         base_path,
                         **rule.attributes
-                    )
+                    ),
                 )
             )
         except base.RuleError as e:
