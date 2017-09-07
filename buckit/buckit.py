@@ -190,7 +190,8 @@ def add_system_args(parent_args, subparser):
         dest="install_packages",
         default=True,
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--use-system-for-all",
         help=(
             "If set, configure buckit to always use system specs if "
@@ -198,8 +199,27 @@ def add_system_args(parent_args, subparser):
             "in .buckconfig.local, and propagating it"
         ),
         action="store_true",
-        default=False,
+        dest="use_system_for_all",
     )
+    group.add_argument(
+        "--use-vendored-for-all",
+        help=(
+            "If set, configure buckit to always use vendored packages if "
+            "available. This is done by setting buckit.use_system_for_all "
+            "to false in .buckconfig.local"
+        ),
+        action="store_false",
+        dest="use_system_for_all",
+    )
+    group.add_argument(
+        "--use-system-for-cells",
+        help=(
+            "If set, configure buckit to only use system libraries for "
+            "provided cells (comma delimited)"
+        ),
+        default="",
+    )
+    parser.set_defaults(use_system_for_all=None)
 
 
 def parse_args(argv):
@@ -284,7 +304,8 @@ def main(argv):
             project_root=project_root,
             node_modules=args.node_modules,
             install_packages=args.install_packages,
-            use_system_for_all=args.use_system_for_all
+            use_system_for_all=args.use_system_for_all,
+            system_cells=filter(None, args.use_system_for_cells.split(',')),
         )
         if ret == 0:
             should_configure_buck = True

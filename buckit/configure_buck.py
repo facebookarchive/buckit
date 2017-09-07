@@ -75,7 +75,13 @@ def __lockfile(project_root):
                 _lockfile.close()
 
 
-def update_config(project_root, buckconfig, new_properties, override=False, merge=None):
+def update_config(
+        project_root,
+        buckconfig,
+        new_properties,
+        override=False,
+        merge=None,
+        removed_properties=None):
     """
     Take a dictionary of {section : {key: [values] (or a string value)}}
     and set it in a .buckconfig style file
@@ -89,12 +95,25 @@ def update_config(project_root, buckconfig, new_properties, override=False, merg
         merge - If provided, a dictionary of section.key strings to delimiter
                 where we should split the string by the delimiter, merge the
                 values, and write them back out with the given delimiter
+        removed_properties - If provided, a dictionary of {section:[properties]}
+                             to remove from the config. This is applied after
+                             updates provided in `new_properties`
     """
     with __lockfile(project_root):
-        __update_config(buckconfig, new_properties, override, merge)
+        __update_config(
+            buckconfig,
+            new_properties,
+            override,
+            merge,
+            removed_properties)
 
 
-def __update_config(buckconfig, new_properties, override=False, merge=None):
+def __update_config(
+        buckconfig,
+        new_properties,
+        override=False,
+        merge=None,
+        removed_properties=None):
     """
     Take a dictionary of {section : {key: [values] (or a string value)}}
     and set it in a .buckconfig style file. No locking is done in this method
@@ -107,6 +126,9 @@ def __update_config(buckconfig, new_properties, override=False, merge=None):
         merge - If provided, a dictionary of section.key strings to delimiter
                 where we should split the string by the delimiter, merge the
                 values, and write them back out with the given delimiter
+        removed_properties - If provided, a dictionary of {section:[properties]}
+                             to remove from the config. This is applied after
+                             updates provided in `new_properties`
     """
     merge = merge or {}
     config = configparser.ConfigParser()
@@ -143,6 +165,12 @@ def __update_config(buckconfig, new_properties, override=False, merge=None):
                 logging.debug(
                     "%s.%s is already set, not overriding values", section, key
                 )
+    if removed_properties:
+        for section, keys in removed_properties.items():
+            if config.has_section(section):
+                for key in keys:
+                    config.remove_option(section, key)
+
     with open(buckconfig, 'w') as fout:
         fout.write(BUCKCONFIG_HEADER)
         config.write(fout)

@@ -136,7 +136,7 @@ def get_system_packages(project_root, node_modules, only_required):
 
 def use_system_packages(
     project_root, node_modules, install_packages,
-    use_system_for_all
+    use_system_for_all, system_cells
 ):
     if install_packages:
         # Get packages
@@ -148,12 +148,23 @@ def use_system_packages(
         # Install them
         install_system_packages(system_packages)
     # Make sure that they're used
-    if use_system_for_all:
+    to_set = {}
+    to_delete = {}
+    if use_system_for_all is not None:
+        to_set = {'buckit': {
+            'use_system_for_all': 'true' if use_system_for_all else 'false'
+        }}
+    elif system_cells:
         to_set = {'buckit': {}}
-        if use_system_for_all:
-            to_set['buckit']['use_system_for_all'] = 'true'
-        else:
-            to_set['buckit']['use_system_for_all'] = 'false'
-        buckconfig_local = os.path.join(project_root, BUCKCONFIG_LOCAL)
-        update_config(project_root, buckconfig_local, to_set, override=True)
+        for cell in system_cells:
+            to_set['buckit']['use_system.' + cell] = 'true'
+        to_delete = {'buckit': ['use_system_for_all']}
+
+    buckconfig_local = os.path.join(project_root, BUCKCONFIG_LOCAL)
+    update_config(
+        project_root,
+        buckconfig_local,
+        to_set,
+        override=True,
+        removed_properties=to_delete)
     return 0
