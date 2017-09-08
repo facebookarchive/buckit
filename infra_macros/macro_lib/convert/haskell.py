@@ -806,6 +806,17 @@ class HaskellConverter(base.Converter):
         else:
             return self.convert_dll(base_path, name, dll, **kwargs)
 
+    def convert_haddock(self, base_path, name, **kwargs):
+        rules = []
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = name
+        attrs['out'] = 'empty'
+        attrs['cmd'] = 'touch "$OUT"'
+        rules.append(Rule('genrule', attrs))
+
+        return rules
+
     def convert(self, *args, **kwargs):
         """
         Generate rules for a haskell rule.
@@ -820,5 +831,7 @@ class HaskellConverter(base.Converter):
             return self.convert_unittest(*args, **kwargs)
         elif rtype == 'haskell_ghci':
             return self.convert_rule(*args, **kwargs)
+        elif rtype == 'haskell_haddock':
+            return self.convert_haddock(*args, **kwargs)
         else:
             raise Exception('unexpected type: ' + rtype)

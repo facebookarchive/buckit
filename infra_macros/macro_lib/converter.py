@@ -176,8 +176,6 @@ def convert(context, base_path, rules):
     converters = [
         discard.DiscardingConverter(context, 'cpp_binary_external'),
         discard.DiscardingConverter(context, 'haskell_genscript'),
-        discard.DiscardingConverter(context, 'haskell_ghci'),
-        discard.DiscardingConverter(context, 'haskell_haddock'),
         cpp_library_external.CppLibraryExternalConverter(
             context,
             'cpp_library_external'),
@@ -207,6 +205,7 @@ def convert(context, base_path, rules):
         haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_ghci'),
+        haskell.HaskellConverter(context, 'haskell_haddock'),
         haskell_external_library.HaskellExternalLibraryConverter(context),
         lua.LuaConverter(context, 'lua_library'),
         lua.LuaConverter(context, 'lua_binary'),
