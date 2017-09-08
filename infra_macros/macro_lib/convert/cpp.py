@@ -59,6 +59,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=nullability-assign',
         '-fsanitize=nullability-return',
         '-fsanitize=return',
+        '-fsanitize=returns-nonnull-attribute',
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
         '-DUNDEFINED_SANITIZER=1',
