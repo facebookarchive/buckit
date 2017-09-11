@@ -348,7 +348,7 @@ class LuaConverter(base.Converter):
         Buckify a binary rule.
         """
 
-        platform = self.get_default_platform()
+        platform = self.get_platform(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -417,6 +417,9 @@ class LuaConverter(base.Converter):
 
         # We currently always use py2.
         attributes['python_platform'] = self.get_py2_platform(platform)
+
+        # Set platform.
+        attributes['platform'] = platform
 
         # Tests depend on FB lua test lib.
         if self.is_test():
