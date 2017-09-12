@@ -253,6 +253,12 @@ def convert(context, base_path, rules):
             java.JavaBinaryConverter(context),
             java_plugins.JarShadeConverter(context),
             java.JavaTestConverter(context),
+            javafoundations.PrebuiltJarConverter(
+                context,
+                passthrough.PassthroughConverter(
+                    context,
+                    'prebuilt_jar',
+                    'prebuilt_jar')),
         ]
 
     converters += get_fbonly_converters(context)
