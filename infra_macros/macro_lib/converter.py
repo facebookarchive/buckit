@@ -269,12 +269,6 @@ def convert(context, base_path, rules):
             java.JavaBinaryConverter(context, 'buck_java_binary'),
             java.JavaLibraryConverter(context, 'buck_java_library'),
             java.JavaTestConverter(context, 'buck_java_test'),
-            javafoundations.PrebuiltJarConverter(
-                context,
-                passthrough.PassthroughConverter(
-                    context,
-                    'buck_prebuilt_jar',
-                    'prebuilt_jar'))
         ]
     converters.append(
         passthrough.PassthroughConverter(
