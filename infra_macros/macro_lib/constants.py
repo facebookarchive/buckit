@@ -116,4 +116,5 @@ FBCODE_RULES = [
     'swig_library',
     'thrift_library',
     'versioned_alias',
+    'prebuilt_jar'
 ]
