@@ -820,7 +820,8 @@ class HaskellThriftConverter(ThriftLangConverter):
             dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(dependencies))
-        attrs['enable_profiling'] = self.read_hs_profile()
+        if self.read_hs_profile():
+            attrs['enable_profiling'] = True
 
         return [Rule('haskell_library', attrs)]
 

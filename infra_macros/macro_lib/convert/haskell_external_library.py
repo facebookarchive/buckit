@@ -122,7 +122,8 @@ class HaskellExternalLibraryConverter(base.Converter):
         attributes['cxx_header_dirs'] = include_dirs
 
         # Whether to build the library profiled
-        attributes['enable_profiling'] = prof
+        if prof:
+            attributes['enable_profiling'] = True
 
         # If this is a tp2 project, verify that we just have a single inlined
         # build.  When this stops being true, we'll need to add versioned
