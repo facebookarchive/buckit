@@ -1,6 +1,6 @@
 {
   "name": "@buckpkg/buckit",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Configuration scripts to build c++ packages with buck",
   "repository": {
     "url": "https://github.com/facebookexperimental/buckit",

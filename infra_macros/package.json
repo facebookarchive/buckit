@@ -1,6 +1,6 @@
 {
   "name": "@buckpkg/fb_buck_infra_macros",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "license": "BSD 3-Clause",
   "dependencies": {
     "@buckpkg/buckit": "*"
