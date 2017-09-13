@@ -58,6 +58,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=nullability-arg',
         '-fsanitize=nullability-assign',
         '-fsanitize=nullability-return',
+        '-fsanitize=pointer-overflow',
         '-fsanitize=return',
         '-fsanitize=returns-nonnull-attribute',
         '-fsanitize=unreachable',
