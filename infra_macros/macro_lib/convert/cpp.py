@@ -63,6 +63,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=returns-nonnull-attribute',
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
+        '-fsanitize=shift-exponent',
         '-DUNDEFINED_SANITIZER=1',
     ],
     'address-only': [
