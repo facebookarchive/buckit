@@ -206,7 +206,8 @@ class CppLibraryExternalConverter(base.Converter):
             mode=None,
             shared_only=None,
             imports=None,
-            implicit_project_deps=True):
+            implicit_project_deps=True,
+            supports_omnibus=None):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
@@ -325,5 +326,8 @@ class CppLibraryExternalConverter(base.Converter):
 
         if dependencies:
             attributes['exported_deps'] = dependencies
+
+        if supports_omnibus is not None:
+            attributes['supports_merged_linking'] = supports_omnibus
 
         return [Rule(self.get_buck_rule_type(), attributes)]
