@@ -62,9 +62,9 @@ SANITIZER_FLAGS = {
         '-fsanitize=pointer-overflow',
         '-fsanitize=return',
         '-fsanitize=returns-nonnull-attribute',
+        '-fsanitize=shift-exponent',
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
-        '-fsanitize=shift-exponent',
         '-DUNDEFINED_SANITIZER=1',
     ],
     'address-only': [
