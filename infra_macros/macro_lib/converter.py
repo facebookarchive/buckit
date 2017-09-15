@@ -71,7 +71,6 @@ EXPERIMENTAL_WHITELIST = (
     ('experimental/deeplearning/vajdap/xray', 'xray_lib'),
     ('experimental/deeplearning/vision/cluster_utils', 'io'),
     ('experimental/deeplearning/vision/cluster_utils', 'io'),
-    ('experimental/deeplearning/vision/detection_caffe2/lib/fb', 'omnibus-blacklist-hack'),
     ('experimental/deeplearning/wym/classification_attribute/datasets', 'attr_data'),
     ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'classerrormeter'),
     ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'mapmeter'),
