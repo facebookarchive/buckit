@@ -591,6 +591,16 @@ class HaskellConverter(base.Converter):
         if self.read_hs_debug():
             out_linker_flags.append('-debug')
 
+        if self.get_fbconfig_rule_type() == 'haskell_library':
+            out_haddock_flags = []
+            if haddock_flags:
+                out_haddock_flags.extend(haddock_flags)
+            out_haddock_flags.extend(
+                ['--source-entity',
+                 'https://phabricator.intern.facebook.com/diffusion/FBS/browse/' +
+                 'master/fbcode/%{FILE}$%{LINE}'])
+            attributes['haddock_flags'] = out_haddock_flags
+
         validated_compiler_flags = []
         validated_compiler_flags.extend(
             self.get_compiler_flags(compiler_flags, fb_haskell))
@@ -810,14 +820,26 @@ class HaskellConverter(base.Converter):
         else:
             return self.convert_dll(base_path, name, dll, **kwargs)
 
-    def convert_haddock(self, base_path, name, **kwargs):
+    def convert_haddock(
+            self,
+            base_path,
+            name,
+            deps=(),
+            haddock_flags=()):
         rules = []
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        attrs['out'] = 'empty'
-        attrs['cmd'] = 'touch "$OUT"'
-        rules.append(Rule('genrule', attrs))
+        if haddock_flags:
+            attrs['haddock_flags'] = haddock_flags
+        attrs['platform'] = self.get_platform(base_path)
+
+        out_deps = []
+        for target in deps:
+            out_deps.append(self.convert_build_target(base_path, target))
+        attrs['deps'] = out_deps
+
+        rules.append(Rule('haskell_haddock', attrs))
 
         return rules
 
