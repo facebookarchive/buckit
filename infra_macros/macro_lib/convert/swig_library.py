@@ -338,6 +338,7 @@ class SwigLibraryConverter(base.Converter):
 
         rules = []
 
+        platform = self.get_platform(base_path)
         converter = self._converters[lang]
         base, _ = os.path.splitext(self.get_source_name(interface))
         hdr = base + '.h'
@@ -371,7 +372,8 @@ class SwigLibraryConverter(base.Converter):
         attrs['cmd'] = (
             ' && '.join(cmds).format(
                 swig=self.get_tool_target(
-                    ThirdPartyRuleTarget('swig', 'bin/swig')),
+                    ThirdPartyRuleTarget('swig', 'bin/swig'),
+                    platform),
                 flags=' '.join(map(pipes.quote, flags)),
                 lang=pipes.quote(converter.get_lang_opt()),
                 includes=self.get_exported_include_tree(':' + name),

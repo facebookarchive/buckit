@@ -549,7 +549,7 @@ class CppConverter(base.Converter):
 
         return flags
 
-    def convert_lex(self, name, lex_flags, lex_src):
+    def convert_lex(self, name, lex_flags, lex_src, platform):
         """
         Create rules to generate a C/C++ header and source from the given lex
         file.
@@ -572,7 +572,7 @@ class CppConverter(base.Converter):
             '$(exe {lex}) {args} -o$OUT/{src} --header-file=$OUT/{hdr}'
             ' $SRCS'
             .format(
-                lex=self.get_tool_target(LEX),
+                lex=self.get_tool_target(LEX, platform),
                 args=' '.join([pipes.quote(f) for f in lex_flags]),
                 src=pipes.quote(source),
                 hdr=pipes.quote(header)),
@@ -599,7 +599,7 @@ class CppConverter(base.Converter):
 
         return (':' + header_name, ':' + source_name, rules)
 
-    def convert_yacc(self, base_path, name, yacc_flags, yacc_src):
+    def convert_yacc(self, base_path, name, yacc_flags, yacc_src, platform):
         """
         Create rules to generate a C/C++ header and source from the given yacc
         file.
@@ -641,7 +641,7 @@ class CppConverter(base.Converter):
             'rm -f "$OUT/{base}"*.bak',
             'mv "$OUT/{base}.c" "$OUT/{base}.cc"',
         ]).format(
-            yacc=self.get_tool_target(YACC),
+            yacc=self.get_tool_target(YACC, platform),
             args=' '.join(
                 [pipes.quote(f) for f in YACC_FLAGS + list(yacc_flags)]),
             src=pipes.quote(os.path.join(base_path, yacc_src)),
@@ -1135,7 +1135,8 @@ class CppConverter(base.Converter):
         lex_srcs, srcs = self.split_matching_extensions_and_other(
             srcs, self.LEX_EXTS)
         for lex_src in lex_srcs:
-            header, source, rules = self.convert_lex(name, lex_args, lex_src)
+            header, source, rules = (
+                self.convert_lex(name, lex_args, lex_src, platform))
             out_headers.append(header)
             out_srcs.append((source, ['-w']))
             extra_rules.extend(rules)
@@ -1145,7 +1146,12 @@ class CppConverter(base.Converter):
             srcs, self.YACC_EXTS)
         for yacc_src in yacc_srcs:
             header, source, rules = (
-                self.convert_yacc(base_path, name, yacc_args, yacc_src))
+                self.convert_yacc(
+                    base_path,
+                    name,
+                    yacc_args,
+                    yacc_src,
+                    platform))
             out_headers.append(header)
             out_srcs.append(source)
             extra_rules.extend(rules)

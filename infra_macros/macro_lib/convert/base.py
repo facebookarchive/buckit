@@ -377,13 +377,10 @@ class Converter(object):
         else:
             return os.path.join(self.get_third_party_root(platform), project)
 
-    def get_tool_target(self, target, platform=None):
+    def get_tool_target(self, target, platform):
         """
         Return the target for the tool described by the given RuleTarget.
         """
-
-        if platform is None:
-            platform = self.get_default_platform()
 
         return self.get_target(
             target.repo,

@@ -198,7 +198,8 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             return fmt.format(
                 fbcode=os.path.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
                 bindgen=self.get_tool_target(
-                    ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen')),
+                    ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
+                    self.get_default_platform()),
                 bindgen_flags=' '.join(map(pipes.quote, bindgen_flags)),
                 base_clang_flags=' '.join(map(pipes.quote, base_clang_flags)),
                 clang_flags=' '.join(map(pipes.quote, clang_flags)),

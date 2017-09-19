@@ -399,7 +399,7 @@ class HaskellConverter(base.Converter):
         else:
             return options
 
-    def convert_happy(self, name, happy_src):
+    def convert_happy(self, name, platform, happy_src):
         """
         Create rules to generate a Haskell source from the given happy file.
         """
@@ -413,13 +413,13 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                happy=self.get_tool_target(HAPPY)),
+                happy=self.get_tool_target(HAPPY, platform)),
         ])
         rules.append(Rule('genrule', attrs))
 
         return (':' + attrs['name'], rules)
 
-    def convert_alex(self, name, alex_src):
+    def convert_alex(self, name, platform, alex_src):
         """
         Create rules to generate a Haskell source from the given alex file.
         """
@@ -433,7 +433,7 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                alex=self.get_tool_target(ALEX)),
+                alex=self.get_tool_target(ALEX, platform)),
         ])
         rules.append(Rule('genrule', attrs))
 
@@ -658,13 +658,13 @@ class HaskellConverter(base.Converter):
         for src in srcs:
             _, ext = os.path.splitext(src)
             if ext == '.y':
-                src, extra_rules = self.convert_happy(name, src)
+                src, extra_rules = self.convert_happy(name, platform, src)
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES))
             elif ext == '.x':
-                src, extra_rules = self.convert_alex(name, src)
+                src, extra_rules = self.convert_alex(name, platform, src)
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
