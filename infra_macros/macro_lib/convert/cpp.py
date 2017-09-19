@@ -1522,6 +1522,7 @@ class CppConverter(base.Converter):
         # rules to wrap the extension in a prebuilt C/C++ library consumable
         # by Java dependents.
         if not self._context.mode.startswith('dev'):
+            platform = self.get_platform(base_path)
 
             # This is a bit weird, but `prebuilt_cxx_library` rules can only
             # accepted generated libraries that reside in a directory.  So use
@@ -1531,7 +1532,7 @@ class CppConverter(base.Converter):
             attrs['out'] = 'lib'
             attrs['cmd'] = ' && '.join([
                 'mkdir -p $OUT',
-                'cp $(location :{}) $OUT/lib{}.so'.format(name, real_name),
+                'cp $(location :{}#{}) $OUT/lib{}.so'.format(name, platform, real_name),
             ])
             rules.append(Rule('genrule', attrs))
 
