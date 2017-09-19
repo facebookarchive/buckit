@@ -66,6 +66,8 @@ SANITIZER_FLAGS = {
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
         '-DUNDEFINED_SANITIZER=1',
+
+        '-fno-common',
     ],
     'address-only': [
         '-fsanitize=address',
