@@ -456,7 +456,7 @@ class HaskellConverter(base.Converter):
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
         return Rule('cxx_library', attrs)
 
-    def convert_c2hs(self, name, source, deps):
+    def convert_c2hs(self, name, platform, source, deps):
         """
         Construct the rules to generate a haskell source from the given `c2hs`
         source.
@@ -479,7 +479,7 @@ class HaskellConverter(base.Converter):
                     os.path.join(
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
-                stackage=self.get_tp2_tool_path('stackage-lts'),
+                stackage=self.get_tp2_tool_path('stackage-lts', platform),
                 deps=' :' + deps_name))
         attrs['srcs'] = [source]
         attrs['out'] = os.path.splitext(source)[0] + '.hs'
@@ -487,7 +487,7 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def convert_hsc2hs(self, name, source, deps):
+    def convert_hsc2hs(self, name, platform, source, deps):
         """
         Construct the rules to generate a haskell source from the given
         `hsc2hs` source.
@@ -512,7 +512,7 @@ class HaskellConverter(base.Converter):
                     os.path.join(
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
-                ghc_tool=self.get_tp2_tool_path('ghc'),
+                ghc_tool=self.get_tp2_tool_path('ghc', platform),
                 ghc=self.get_tp2_dep_path('ghc'),
                 link_style=self._context.link_style,
                 deps=' :' + deps_name,
@@ -551,8 +551,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags = []
         out_linker_flags = []
         out_link_style = self.get_link_style()
-        platform = (
-            self.get_platform(base_path) if self.is_deployable() else None)
+        platform = self.get_platform(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -671,11 +670,13 @@ class HaskellConverter(base.Converter):
                 implicit_src_deps.update(
                     self.get_deps_for_packages(ALEX_PACKAGES))
             elif ext == '.hsc':
-                src, extra_rules = self.convert_hsc2hs(name, src, user_deps)
+                src, extra_rules = (
+                    self.convert_hsc2hs(name, platform, src, user_deps))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             elif ext == '.chs':
-                src, extra_rules = self.convert_c2hs(name, src, user_deps)
+                src, extra_rules = (
+                    self.convert_c2hs(name, platform, src, user_deps))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             else:

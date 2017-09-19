@@ -362,15 +362,12 @@ class Converter(object):
 
         return '{}//{}:{}'.format(cell or '', path, name)
 
-    def get_tp2_tool_path(self, project, platform=None):
+    def get_tp2_tool_path(self, project, platform):
         """
         Return the path within third-party for the given project. This will be
         the directory, not a specific target or binary. Based on configuration,
         and the path may be modified to fit fbcode's layout
         """
-
-        if platform is None:
-            platform = self.get_default_platform()
 
         if self._context.config.third_party_use_tools_subdir:
             return os.path.join(

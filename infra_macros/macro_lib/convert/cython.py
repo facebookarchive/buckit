@@ -139,6 +139,7 @@ class Converter(base.Converter):
 
     def convert_src(
         self,
+        base_path,
         parent,
         module_path,
         src,    # original, for passing to genrule
@@ -150,6 +151,8 @@ class Converter(base.Converter):
         This creates a genrule to run the cython transpiler. It returns
         the target name and the rule
         """
+
+        platform = self.get_platform(base_path)
         # Setup the command to run cython.
         # TODO: move cython to a `sh_binary` and use a `$(exe ...)` macro.
         fbcode_dir = (
@@ -159,12 +162,12 @@ class Converter(base.Converter):
         python = (
             os.path.join(
                 fbcode_dir,
-                self.get_tp2_tool_path('python'),
+                self.get_tp2_tool_path('python', platform),
                 'bin/python'))
         cython = (
             os.path.join(
                 fbcode_dir,
-                self.get_tp2_tool_path('Cython'),
+                self.get_tp2_tool_path('Cython', platform),
                 'lib/python/cython.py'))
         attrs = collections.OrderedDict()
         attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
@@ -457,7 +460,8 @@ class Converter(base.Converter):
                 out_src = module_name + out_ext
                 # generate rule to convert source file.
                 cython_name, cython_rule = self.convert_src(
-                    name, module_path, pyx_src, flags, pyx_dst, out_src
+                    base_path, name, module_path, pyx_src, flags, pyx_dst,
+                    out_src
                 )
                 yield cython_rule
                 # Generate the copy_rule
