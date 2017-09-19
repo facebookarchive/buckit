@@ -592,13 +592,15 @@ class HaskellConverter(base.Converter):
             out_linker_flags.append('-debug')
 
         if self.get_fbconfig_rule_type() == 'haskell_library':
-            out_haddock_flags = []
+            out_haddock_flags = [
+                 '--source-entity',
+                 'https://phabricator.intern.facebook.com/diffusion/FBS/browse/' +
+                 'master/fbcode/%{FILE}$%{LINE}',
+            ]
+            # keep TARGETS specific flags last, so that they can override the
+            # flags before
             if haddock_flags:
                 out_haddock_flags.extend(haddock_flags)
-            out_haddock_flags.extend(
-                ['--source-entity',
-                 'https://phabricator.intern.facebook.com/diffusion/FBS/browse/' +
-                 'master/fbcode/%{FILE}$%{LINE}'])
             attributes['haddock_flags'] = out_haddock_flags
 
         validated_compiler_flags = []
