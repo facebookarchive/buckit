@@ -468,12 +468,6 @@ class CppConverter(base.Converter):
 
         flags = SANITIZER_COMMON_FLAGS + SANITIZER_FLAGS[sanitizer]
 
-        if self._context.mode.startswith('dev'):
-            # Always build with debug symbols and frame pointers to get useful
-            # stack traces.  Since `dev` modes are the only modes which build
-            # without debug symbols, we only need to set `-g` in that case.
-            flags.append('-g1')
-
         return flags
 
     def allowed_by_coverage_only(self, base_path):
