@@ -1068,12 +1068,6 @@ class JavaSwiftConverter(ThriftLangConverter):
         out_deps.append('//third-party-java/com.google.guava:guava')
         out_deps.append(
             '//third-party-java/com.facebook.swift:swift-annotations')
-        out_deps.append(
-            '//third-party-java/com.facebook.swift:swift-codec')
-        out_deps.append(
-            '//third-party-java/com.facebook.swift:swift-service')
-        out_deps.append(
-            '//third-party-java/com.facebook.swift.fbcode:swift-client')
 
         rules.extend(self._java_library_converter.convert(
             base_path,
