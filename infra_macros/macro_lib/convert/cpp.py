@@ -69,9 +69,6 @@ SANITIZER_FLAGS = {
 
         '-fno-common',
     ],
-    'address-only': [
-        '-fsanitize=address',
-    ],
     'address-undefined': UBSAN_FLAGS + [
         '-fsanitize=address',
     ],

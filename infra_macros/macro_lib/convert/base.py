@@ -29,7 +29,6 @@ from .. import target
 
 SANITIZERS = {
     'address': 'asan',
-    'address-only': 'asan-only',
     'address-undefined': 'asan-ubsan',
     'thread': 'tsan',
     'undefined': 'ubsan',
@@ -42,7 +41,6 @@ def SanitizerTarget(lib):
 
 SANITIZER_DEPS = {
     'address': SanitizerTarget('asan'),
-    'address-only': SanitizerTarget('asan-only'),
     'address-undefined': SanitizerTarget('asan-ubsan'),
     'thread': SanitizerTarget('tsan'),
     'undefined': SanitizerTarget('ubsan'),
