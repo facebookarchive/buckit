@@ -2032,12 +2032,18 @@ class ThriftLibraryConverter(base.Converter):
                 sorted(includes),
                 map(self.get_exported_include_tree, deps)))
 
+        # py3 thrift requires cpp2
+        if 'py3' in languages and 'cpp2' not in languages:
+            languages.add('cpp2')
+
         # cpp2 depends on cpp for compatibility mode
-        if 'cpp2' in languages and 'cpp' not in languages:
+        # also save cpp2_options for later use by 'py3'
+        if 'cpp2' in languages:
             cpp2_options = (
                 self.parse_thrift_options(
                     kwargs.get('thrift_cpp2_options', ())))
-            if 'compatibility' in cpp2_options:
+
+            if 'cpp' not in languages and 'compatibility' in cpp2_options:
                 languages.add('cpp')
 
         # Types are generated for all legacy Python Thrift
@@ -2052,6 +2058,8 @@ class ThriftLibraryConverter(base.Converter):
                 self.parse_thrift_options(
                     kwargs.get('thrift_{}_options'.format(
                         lang.replace('-', '_')), ())))
+            if lang == 'py3':
+                options.update(cpp2_options)
             all_gen_srcs = collections.OrderedDict()
             for thrift_src, services in thrift_srcs.iteritems():
                 thrift_name = self.get_source_name(thrift_src)
