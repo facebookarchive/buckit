@@ -728,7 +728,7 @@ class HaskellConverter(base.Converter):
                 attributes['link_style'] = out_link_style
 
         # Add in binary-specific link deps.
-        if self.is_binary():
+        if self.is_deployable():
             dependencies.extend(self.get_binary_link_deps(allocator=allocator))
         if self.is_test():
             dependencies.append(self.get_dep_for_package('HUnit'))
