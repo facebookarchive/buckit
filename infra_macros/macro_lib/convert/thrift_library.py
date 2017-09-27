@@ -1066,6 +1066,7 @@ class JavaSwiftConverter(ThriftLangConverter):
         out_deps = []
         out_deps.extend(deps)
         out_deps.append('//third-party-java/com.google.guava:guava')
+        out_deps.append('//third-party-java/org.apache.thrift:libthrift')
         out_deps.append(
             '//third-party-java/com.facebook.swift:swift-annotations')
 
