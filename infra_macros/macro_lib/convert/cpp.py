@@ -1522,25 +1522,13 @@ class CppConverter(base.Converter):
         if not self._context.mode.startswith('dev'):
             platform = self.get_platform(base_path)
 
-            # This is a bit weird, but `prebuilt_cxx_library` rules can only
-            # accepted generated libraries that reside in a directory.  So use
-            # a genrule to copy the library into a lib dir using it's soname.
-            attrs = collections.OrderedDict()
-            attrs['name'] = real_name + '-lib-dir'
-            attrs['out'] = 'lib'
-            attrs['cmd'] = ' && '.join([
-                'mkdir -p $OUT',
-                'cp $(location :{}#{}) $OUT/lib{}.so'.format(name, platform, real_name),
-            ])
-            rules.append(Rule('genrule', attrs))
-
-            # Finally, wrap the extension in a `prebuilt_cxx_library` rule
-            # using the user-facing name.  This is what Java library dependents
-            # will depend on.
+            # Wrap the extension in a `prebuilt_cxx_library` rule
+            # using the user-facing name.  This is what Java library
+            # dependents will depend on.
             attrs = collections.OrderedDict()
             attrs['name'] = real_name
             attrs['soname'] = soname
-            attrs['lib_dir'] = '$(location :{}-lib-dir)'.format(real_name)
+            attrs['shared_lib'] = ':{}#{}'.format(name, platform)
             rules.append(Rule('prebuilt_cxx_library', attrs))
 
         return rules
