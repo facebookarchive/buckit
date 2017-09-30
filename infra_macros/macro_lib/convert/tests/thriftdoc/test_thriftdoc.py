@@ -4,7 +4,10 @@ import unittest
 from leaf1.ttypes import Leaf1
 from leaf2.ttypes import Leaf2
 from parent.ttypes import Parent
-from tupperware.thriftdoc.validator.validate_thriftdoc import ValidateThriftdoc
+from tupperware.thriftdoc.validator.validate_thriftdoc import (
+    ValidateThriftdoc,
+    ConstraintViolationException
+)
 
 
 class ThrifdocPythonTest(unittest.TestCase):
@@ -15,7 +18,7 @@ class ThrifdocPythonTest(unittest.TestCase):
         )
 
     def test_error_parent(self):
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(ConstraintViolationException) as context:
             ValidateThriftdoc().validate(
                 Parent(first=Leaf1(leaf=0), second=Leaf2(leaf=17))
             )
@@ -25,7 +28,15 @@ class ThrifdocPythonTest(unittest.TestCase):
             str(context.exception)
         )
 
-    def NOT_IMPLEMENTED_test_warning_parent(self):
-        ValidateThriftdoc().validate(
-            Parent(first=Leaf1(leaf=99), second=Leaf2(leaf=1))
+    def test_warning_parent(self):
+        with self.assertRaises(ConstraintViolationException) as context:
+            ValidateThriftdoc().validate(
+                Parent(first=Leaf1(leaf=99), second=Leaf2(leaf=1))
+            )
+        self.assertIn(
+            "validation failed at rule {'level': 'warn', 'rule': "
+            "'first.leaf <= second.leaf'}"
+            "\nUser input is {'first': Leaf1(\n    leaf=99), "
+            "'second': Leaf2(\n    leaf=1)}",
+            str(context.exception)
         )

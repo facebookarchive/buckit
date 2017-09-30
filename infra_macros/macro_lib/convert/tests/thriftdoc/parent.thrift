@@ -3,7 +3,7 @@ include "tools/build/buck/infra_macros/macro_lib/convert/tests/thriftdoc/leaf2.t
 
 namespace py parent
 
-/* NOT IMPLEMENTED * @should first.leaf <= second.leaf */
+/** @should first.leaf <= second.leaf */
 struct Parent {
   1: leaf1.Leaf1 first
   2: leaf2.Leaf2 second
