@@ -1253,11 +1253,22 @@ class CppConverter(base.Converter):
             attributes['use_default_test_main'] = use_default_test_main
             if 'serialize' in tags:
                 attributes['run_test_separately'] = True
-            if type != 'gtest':
-                attributes['framework'] = type
+
+            # C/C++ gtest tests implicitly depend on gtest/gmock libs, and by
+            # default on our custom main
+            if type == 'gtest':
+                gtest_deps = [
+                    d.strip()
+                    for d in re.split(
+                        ",", self._context.config.gtest_lib_dependencies)
+                ]
+                if use_default_test_main:
+                    gtest_deps.append(
+                        self._context.config.gtest_main_dependency)
+                dependencies.extend(
+                    [self.normalize_dep(dep) for dep in gtest_deps])
             else:
-                dependencies.append(
-                    self.normalize_dep(self._context.config.gtest_dependency))
+                attributes['framework'] = type
 
         allocator = self.get_allocator(allocator)
 

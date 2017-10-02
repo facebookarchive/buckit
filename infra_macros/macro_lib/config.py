@@ -238,8 +238,12 @@ class FbcodeOptions(object):
         'fbcode', 'sanitizer', None,
         'The type of sanitizer to try to use. If not set, do not use it')
 
-    gtest_dependency = Option(
-        'fbcode', 'gtest_dependency', None,
+    gtest_lib_dependencies = Option(
+        'fbcode', 'gtest_lib_dependencies', None,
+        'The targets that will provide gtest C++ tests\' gtest and gmock deps')
+
+    gtest_main_dependency = Option(
+        'fbcode', 'gtest_main_dependency', None,
         'The target that will provide gtest C++ tests\' main function')
 
     def __init__(self, read_config_func, allow_unsafe_import_func):
