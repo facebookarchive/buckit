@@ -1896,7 +1896,9 @@ class ThriftLibraryConverter(base.Converter):
 
         remotes = []
 
-        platform = self.get_platform(base_path)
+        # Revert this change from D5857910 -- see t22150098
+        # platform = self.get_platform(base_path)
+        platform = self.get_default_platform()
 
         # Find and normalize the base module.
         if base_module is None:
