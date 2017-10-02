@@ -326,6 +326,8 @@ class CppThriftConverter(ThriftLangConverter):
             if self._is_cpp2:
                 genfiles.append('%s_client.cpp' % (service,))
                 genfiles.append('%s_custom_protocol.h' % (service,))
+                if self._uses_mstch(options):
+                    genfiles.append('%sAsyncClient.h' % (service,))
             if self._is_cpp2 and 'separate_processmap' in options:
                 genfiles.append('%s_processmap_binary.cpp' % (service,))
                 genfiles.append('%s_processmap_compact.cpp' % (service,))
@@ -339,6 +341,18 @@ class CppThriftConverter(ThriftLangConverter):
         return collections.OrderedDict(
             [(p, p) for p in
                 [os.path.join('gen-' + lang, path) for path in genfiles]])
+
+    def _uses_mstch(self, options):
+        non_mstch_flags = [
+            'future',
+            'py_generator',
+            'compatibility',
+            'implicit_templates',
+            'separate_processmap',
+            'terse_writes',
+            'modulemap',
+        ]
+        return set(options.keys()).isdisjoint(non_mstch_flags)
 
     def is_header(self, src):
         _, ext = os.path.splitext(src)
