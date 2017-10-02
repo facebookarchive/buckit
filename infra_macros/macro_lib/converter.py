@@ -266,7 +266,6 @@ def convert(context, base_path, rules):
     if use_internal_java_converters:
         converters += [
             java.JavaBinaryConverter(context, 'buck_java_binary'),
-            java.JavaLibraryConverter(context, 'buck_java_library'),
             java.JavaTestConverter(context, 'buck_java_test'),
         ]
     converters.append(
