@@ -1883,7 +1883,6 @@ class RustThriftConverter(ThriftLangConverter):
         ]
         out_external_deps = [
             ('rust-crates-io', None, 'bytes'),
-            ('rust-crates-io', None, 'byteorder'),
             ('rust-crates-io', None, 'error-chain'),
             ('rust-crates-io', None, 'futures'),
             ('rust-crates-io', None, 'tokio-io'),
