@@ -1885,6 +1885,7 @@ class RustThriftConverter(ThriftLangConverter):
             ('rust-crates-io', None, 'bytes'),
             ('rust-crates-io', None, 'error-chain'),
             ('rust-crates-io', None, 'futures'),
+            ('rust-crates-io', None, 'lazy_static'),
             ('rust-crates-io', None, 'tokio-io'),
             ('rust-crates-io', None, 'tokio-service'),
             ('rust-crates-io', None, 'tokio-proto'),
