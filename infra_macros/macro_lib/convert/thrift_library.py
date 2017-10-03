@@ -1880,7 +1880,6 @@ class RustThriftConverter(ThriftLangConverter):
 
         out_deps = [
             '@/common/rust/thrift/runtime:rust_thrift',
-            '@/common/rust/thrift/ast:thrift-ast',
         ]
         out_external_deps = [
             ('rust-crates-io', None, 'bytes'),
