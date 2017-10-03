@@ -29,6 +29,7 @@ except ImportError:
 from . import js
 from . import cython
 from . import ocaml
+from . import rust
 from ..rule import Rule
 
 
@@ -1777,6 +1778,158 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
         return rules
 
 
+class RustThriftConverter(ThriftLangConverter):
+    """
+    Specializer to support generating Rust libraries from thrift sources.
+    This is a two-stage process; we use the Haskell hs2 compiler to generate
+    a JSON representation of the AST, and then a Rust code generator to
+    generate code from that.
+
+    Here, the "compiler" is the .thrift -> .ast (json) conversion, and the
+    language rule is ast -> {types, client, server, etc crates} -> unified crate
+    where the unified crate simply re-exports the other crates (the other
+    crates are useful for downstream dependencies which don't need everything)
+    """
+
+    def __init__(self, context, *args, **kwargs):
+        super(RustThriftConverter, self).__init__(context, *args, **kwargs)
+        self._rust_converter = (
+            rust.RustConverter(context, 'rust_library'))
+
+    def get_lang(self):
+        return "rust"
+
+    def get_compiler(self):
+        return self._context.config.thrift_hs2_compiler
+
+    def get_compiler_args(
+            self,
+            flags,
+            options,
+            hs_required_symbols=None,
+            **kwargs):
+        args = ["--emit-json", "--rust"]
+
+        # Format the options and pass them into the hs2 compiler.
+        for option, val in options.iteritems():
+            flag = '--' + option
+            if val is not None:
+                flag += '=' + val
+            args.append(flag)
+
+        # Include rule-specific flags.
+        args.extend(filter(lambda a: a not in ['--strict'], flags))
+
+        return args
+
+    def get_generated_sources(
+            self,
+            base_path,
+            name,
+            thrift_src,
+            services,
+            options,
+            rs_namespace=None,
+            **kwargs):
+        thrift_base = (
+            os.path.splitext(
+                os.path.basename(self.get_source_name(thrift_src)))[0])
+        namespace = rs_namespace or ''
+
+        genfiles = ["%s.ast" % thrift_base]
+
+        return collections.OrderedDict(
+            [(path, path) for path in
+                [os.path.join(namespace, genfile) for genfile in genfiles]])
+
+    def get_ast_to_rust(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            **kwargs):
+        sources = self.merge_sources_map(sources_map).values()
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = '%s-gen-rs' % name
+        attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
+        attrs['srcs'] = sources
+        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:rust_codegen) {} -o `dirname $OUT`/../..' \
+            .format(' '.join(['$(location %s)' % s for s in sources]))
+
+        # generated file: <name>/lib.rs
+
+        return [Rule('genrule', attrs)]
+
+    def get_rust_to_rlib(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            **kwargs):
+
+        thrift_base = (
+            os.path.splitext(
+                os.path.basename(self.get_source_name(thrift_srcs.keys()[0])))[0])
+
+        out_deps = [
+            '@/common/rust/thrift/runtime:rust_thrift',
+            '@/common/rust/thrift/ast:thrift-ast',
+        ]
+        out_external_deps = [
+            ('rust-crates-io', None, 'bytes'),
+            ('rust-crates-io', None, 'byteorder'),
+            ('rust-crates-io', None, 'error-chain'),
+            ('rust-crates-io', None, 'futures'),
+            ('rust-crates-io', None, 'tokio-io'),
+            ('rust-crates-io', None, 'tokio-service'),
+            ('rust-crates-io', None, 'tokio-proto'),
+        ]
+
+        out_deps.extend(self.get_fbcode_target(d) for d in deps)
+
+        return self._rust_converter.convert(
+            base_path,
+            name,
+            srcs=[':%s-gen-rs' % name],
+            deps=out_deps,
+            external_deps=out_external_deps,
+            crate=thrift_base,
+            unittests=False,    # nothing meaningful
+            **kwargs
+        )
+
+    def get_language_rule(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            **kwargs):
+        # Construct some rules:
+        # json -> rust
+        # rust -> rlib
+
+        rules = []
+
+        rules.extend(
+            self.get_ast_to_rust(
+                base_path, name, thrift_srcs, options, sources_map, deps, **kwargs))
+        rules.extend(
+            self.get_rust_to_rlib(
+                base_path, name, thrift_srcs, options, sources_map, deps, **kwargs))
+
+        return rules
+
+
 class ThriftLibraryConverter(base.Converter):
 
     def __init__(self, *args, **kwargs):
@@ -1792,6 +1945,7 @@ class ThriftLibraryConverter(base.Converter):
             HaskellThriftConverter(*args, is_hs2=True, **kwargs),
             JsThriftConverter(*args, **kwargs),
             OCamlThriftConverter(*args, **kwargs),
+            RustThriftConverter(*args, **kwargs),
             ThriftdocPythonThriftConverter(*args, **kwargs),
             Python3ThriftConverter(*args, **kwargs),
             LegacyPythonThriftConverter(
