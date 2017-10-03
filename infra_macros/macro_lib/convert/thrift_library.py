@@ -1857,7 +1857,7 @@ class RustThriftConverter(ThriftLangConverter):
         attrs['name'] = '%s-gen-rs' % name
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
-        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} -o `dirname $OUT`/../..' \
+        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} -o $OUT' \
             .format(' '.join(['$(location %s)' % s for s in sources]))
 
         # generated file: <name>/lib.rs
