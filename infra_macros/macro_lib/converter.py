@@ -265,7 +265,6 @@ def convert(context, base_path, rules):
     # Passthrough support for fbconfig rules prefixed with "buck_".
     if use_internal_java_converters:
         converters += [
-            java.JavaBinaryConverter(context, 'buck_java_binary'),
             java.JavaTestConverter(context, 'buck_java_test'),
         ]
     converters.append(
