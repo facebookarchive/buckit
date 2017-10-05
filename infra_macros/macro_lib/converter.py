@@ -33,7 +33,6 @@ from .convert import haskell_external_library
 try:
     from .convert import java
     from .convert import java_plugins
-    from .convert import javafoundations
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
@@ -252,12 +251,7 @@ def convert(context, base_path, rules):
             java.JavaBinaryConverter(context),
             java_plugins.JarShadeConverter(context),
             java.JavaTestConverter(context),
-            javafoundations.PrebuiltJarConverter(
-                context,
-                passthrough.PassthroughConverter(
-                    context,
-                    'prebuilt_jar',
-                    'prebuilt_jar')),
+            java.PrebuiltJarConverter(context),
         ]
 
     converters += get_fbonly_converters(context)
