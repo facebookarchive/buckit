@@ -990,7 +990,6 @@ class JavaSwiftConverter(ThriftLangConverter):
                   'EXTEND_RUNTIME_EXCEPTION',
                   'ADD_CLOSEABLE_INTERFACE'])
     compiler_opts = set(['default_package',
-                         'generate_beans',
                          'use_java_namespace'])
 
     def __init__(self, context, *args, **kwargs):
@@ -1013,7 +1012,9 @@ class JavaSwiftConverter(ThriftLangConverter):
         """
         args = []
         for option in options:
-            if option in JavaSwiftConverter.tweaks:
+            if option == 'T22418930_DO_NOT_USE_generate_beans':
+                args.append('-generate_beans')
+            elif option in JavaSwiftConverter.tweaks:
                 args.append('-tweak')
                 args.append(option)
             elif option in JavaSwiftConverter.compiler_opts:
