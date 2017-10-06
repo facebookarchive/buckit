@@ -987,10 +987,7 @@ class JavaSwiftConverter(ThriftLangConverter):
     Specializer to support generating Java Swift libraries from thrift sources.
     """
     tweaks = set(['ADD_THRIFT_EXCEPTION',
-                  'EXTEND_RUNTIME_EXCEPTION',
-                  'ADD_CLOSEABLE_INTERFACE'])
-    compiler_opts = set(['default_package',
-                         'use_java_namespace'])
+                  'EXTEND_RUNTIME_EXCEPTION'])
 
     def __init__(self, context, *args, **kwargs):
         super(JavaSwiftConverter, self).__init__(context, *args, **kwargs)
@@ -1010,15 +1007,15 @@ class JavaSwiftConverter(ThriftLangConverter):
         """
         Return args to pass into the compiler when generating sources.
         """
-        args = []
+        args = [
+            '-tweak', 'ADD_CLOSEABLE_INTERFACE',
+        ]
         for option in options:
             if option == 'T22418930_DO_NOT_USE_generate_beans':
                 args.append('-generate_beans')
             elif option in JavaSwiftConverter.tweaks:
                 args.append('-tweak')
                 args.append(option)
-            elif option in JavaSwiftConverter.compiler_opts:
-                args.append('-{0}'.format(option))
             else:
                 raise ValueError(
                     'the "{0}" java-swift option is invalid'.format(option))
