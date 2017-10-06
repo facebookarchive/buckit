@@ -257,10 +257,6 @@ def convert(context, base_path, rules):
     converters += get_fbonly_converters(context)
 
     # Passthrough support for fbconfig rules prefixed with "buck_".
-    if use_internal_java_converters:
-        converters += [
-            java.JavaTestConverter(context, 'buck_java_test'),
-        ]
     converters.append(
         passthrough.PassthroughConverter(
             context,
