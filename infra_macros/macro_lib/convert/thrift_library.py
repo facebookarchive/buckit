@@ -29,6 +29,7 @@ except ImportError:
 from . import js
 from . import cython
 from . import ocaml
+from . import python
 from . import rust
 from ..rule import Rule
 
@@ -1929,43 +1930,39 @@ class RustThriftConverter(ThriftLangConverter):
 
 class ThriftLibraryConverter(base.Converter):
 
-    def __init__(self, *args, **kwargs):
-        super(ThriftLibraryConverter, self).__init__(*args, **kwargs)
+    def __init__(self, context):
+        super(ThriftLibraryConverter, self).__init__(context)
 
         # Setup the macro converters.
         converters = [
-            CppThriftConverter(*args, is_cpp2=False, **kwargs),
-            CppThriftConverter(*args, is_cpp2=True, **kwargs),
-            DThriftConverter(*args, **kwargs),
-            GoThriftConverter(*args, **kwargs),
-            HaskellThriftConverter(*args, is_hs2=False, **kwargs),
-            HaskellThriftConverter(*args, is_hs2=True, **kwargs),
-            JsThriftConverter(*args, **kwargs),
-            OCamlThriftConverter(*args, **kwargs),
-            RustThriftConverter(*args, **kwargs),
-            ThriftdocPythonThriftConverter(*args, **kwargs),
-            Python3ThriftConverter(*args, **kwargs),
+            CppThriftConverter(context, is_cpp2=False),
+            CppThriftConverter(context, is_cpp2=True),
+            DThriftConverter(context),
+            GoThriftConverter(context),
+            HaskellThriftConverter(context, is_hs2=False),
+            HaskellThriftConverter(context, is_hs2=True),
+            JsThriftConverter(context),
+            OCamlThriftConverter(context),
+            RustThriftConverter(context),
+            ThriftdocPythonThriftConverter(context),
+            Python3ThriftConverter(context),
             LegacyPythonThriftConverter(
-                *args,
-                flavor=LegacyPythonThriftConverter.NORMAL,
-                **kwargs),
+                context,
+                flavor=LegacyPythonThriftConverter.NORMAL),
             LegacyPythonThriftConverter(
-                *args,
-                flavor=LegacyPythonThriftConverter.ASYNCIO,
-                **kwargs),
+                context,
+                flavor=LegacyPythonThriftConverter.ASYNCIO),
             LegacyPythonThriftConverter(
-                *args,
-                flavor=LegacyPythonThriftConverter.TWISTED,
-                **kwargs),
+                context,
+                flavor=LegacyPythonThriftConverter.TWISTED),
             LegacyPythonThriftConverter(
-                *args,
-                flavor=LegacyPythonThriftConverter.PYI,
-                **kwargs),
+                context,
+                flavor=LegacyPythonThriftConverter.PYI),
         ]
         if use_internal_java_converters:
             converters += [
-                JavaThriftConverter(*args, **kwargs),
-                JavaSwiftConverter(*args, **kwargs),
+                JavaThriftConverter(context),
+                JavaSwiftConverter(context),
             ]
         self._converters = {}
         self._name_to_lang = {}
@@ -1973,6 +1970,8 @@ class ThriftLibraryConverter(base.Converter):
             self._converters[converter.get_lang()] = converter
             for name in converter.get_names():
                 self._name_to_lang[name] = converter.get_lang()
+
+        self._py_converter = python.PythonConverter(context, 'python_binary')
 
     def get_fbconfig_rule_type(self):
         return 'thrift_library'
@@ -2061,10 +2060,6 @@ class ThriftLibraryConverter(base.Converter):
 
         remotes = []
 
-        # Revert this change from D5857910 -- see t22150098
-        # platform = self.get_platform(base_path)
-        platform = self.get_default_platform()
-
         # Find and normalize the base module.
         if base_module is None:
             base_module = base_path
@@ -2077,7 +2072,7 @@ class ThriftLibraryConverter(base.Converter):
             for service in services:
                 attrs = collections.OrderedDict()
                 attrs['name'] = '{}-{}-pyremote'.format(name, service)
-                attrs['platform'] = self.get_py2_platform(platform)
+                attrs['py_version'] = '<3'
                 attrs['base_module'] = ''
                 attrs['main_module'] = '.'.join(filter(bool, [
                     base_module,
@@ -2088,14 +2083,18 @@ class ThriftLibraryConverter(base.Converter):
                     sr_rule = 'thrift/facebook/remote/sr'
                 else:
                     sr_rule = 'thrift/lib/py/util'
-                deps = [
-                    RootRuleTarget(base_path, name + '-py'),
-                    RootRuleTarget(sr_rule, 'remote'),
-                    ThirdPartyRuleTarget('six', 'six-py'),
-                    ThirdPartyRuleTarget('python-future', 'python-future-py'),
+                attrs['deps'] = [
+                    ':{}-py'.format(name),
+                    '@/{}:remote'.format(sr_rule),
                 ]
-                attrs['deps'] = [self.get_dep_target(d) for d in deps]
-                remotes.append(Rule('python_binary', attrs))
+                attrs['external_deps'] = [
+                    'python-future',
+                    'six',
+                ]
+                remotes.extend(
+                    self._py_converter.convert(
+                        base_path,
+                        **attrs))
 
         return remotes
 
