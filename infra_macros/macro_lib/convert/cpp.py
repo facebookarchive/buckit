@@ -1353,13 +1353,12 @@ class CppConverter(base.Converter):
             attributes[parameter] = (
                 self.format_deps(d for d in dependencies if d.repo is None))
 
-        # Set the build platform.  For deployable rules, use the
-        # `default_platform` parameter.  For library rules, use the default
-        # flavors support.
-        if self.is_deployable():
+        # Set the build platform, via both the `default_platform` parameter and
+        # the default flavors support.
+        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
             attributes['default_platform'] = platform
-        elif self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            attributes['defaults'] = {'platform': platform}
+            if not self.is_deployable():
+                attributes['defaults'] = {'platform': platform}
 
         out_platform_deps = collections.OrderedDict()
 
