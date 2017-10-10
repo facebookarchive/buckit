@@ -881,7 +881,7 @@ class JavaThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
-            java_thrift_mavenify_coords=None,
+            java_thrift_maven_coords=None,
             **kwargs):
 
         rules = []
@@ -910,7 +910,7 @@ class JavaThriftConverter(ThriftLangConverter):
             name=name,
             srcs=out_srcs,
             exported_deps=out_deps,
-            mavenify_coords=java_thrift_mavenify_coords))
+            maven_coords=java_thrift_maven_coords))
 
         return rules
 
@@ -1063,7 +1063,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
-            java_swift_mavenify_coords=None,
+            java_swift_maven_coords=None,
             **kwargs):
         rules = []
         out_srcs = []
@@ -1093,7 +1093,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             name=name,
             srcs=out_srcs,
             exported_deps=out_deps,
-            mavenify_coords=java_swift_mavenify_coords))
+            maven_coords=java_swift_maven_coords))
 
         return rules
 
@@ -2310,8 +2310,8 @@ class ThriftLibraryConverter(base.Converter):
             'hs_required_symbols',
             'hs2_deps',
             'java_deps',
-            'java_thrift_mavenify_coords',
-            'java_swift_mavenify_coords',
+            'java_thrift_maven_coords',
+            'java_swift_maven_coords',
             'languages',
             'name',
             'py_asyncio_base_module',
