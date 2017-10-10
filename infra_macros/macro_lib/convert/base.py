@@ -822,6 +822,12 @@ class Converter(object):
     def read_hs_profile(self):
         return self.read_bool('fbcode', 'hs_profile', False)
 
+    def read_extra_ghc_compiler_flags(self):
+        return self.read_list('haskell', 'extra_compiler_flags', [])
+
+    def read_extra_ghc_linker_flags(self):
+        return self.read_list('haskell', 'extra_linker_flags', [])
+
     def is_core_tool(self, base_path, name):
         """
         Returns whether the target represented by the given base path and name

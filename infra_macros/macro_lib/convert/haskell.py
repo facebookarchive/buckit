@@ -630,6 +630,7 @@ class HaskellConverter(base.Converter):
         build_mode = self.get_build_mode()
         if build_mode is not None:
             out_compiler_flags.extend(build_mode.settings.GHCFLAGS)
+        out_compiler_flags.extend(self.read_extra_ghc_compiler_flags())
         if out_compiler_flags:
             attributes['compiler_flags'] = out_compiler_flags
 
@@ -717,6 +718,7 @@ class HaskellConverter(base.Converter):
             attributes['deps_query'] = ' union '.join(out_dep_queries)
             attributes['link_deps_query_whole'] = True
 
+        out_linker_flags.extend(self.read_extra_ghc_linker_flags())
         if out_linker_flags:
             attributes['linker_flags'] = out_linker_flags
 
