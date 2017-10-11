@@ -264,16 +264,16 @@ class LuaConverter(base.Converter):
         # If a user-specified `cpp_main` is given, use that.  Otherwise,
         # fallback to the default.
         if cpp_main is not None:
-            out_deps.append(self.convert_build_target(base_path, cpp_main))
+            out_deps.append(self.normalize_dep(cpp_main, base_path=base_path))
         else:
-            out_deps.append(self.get_dep_target(DEFAULT_CPP_MAIN))
+            out_deps.append(DEFAULT_CPP_MAIN)
 
         # Add in binary-specific link deps.
-        out_deps.extend(
-            self.format_deps(self.get_binary_link_deps(allocator=allocator)))
+        out_deps.extend(self.get_binary_link_deps(allocator=allocator))
 
         # Set the deps attr.
-        cpp_main_attrs['deps'] = out_deps
+        cpp_main_attrs['deps'], cpp_main_attrs['platform_deps'] = (
+            self.format_all_deps(out_deps))
 
         rules.append(Rule('cxx_library', cpp_main_attrs))
 
