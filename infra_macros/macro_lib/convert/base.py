@@ -117,6 +117,7 @@ const char* const BuildInfo_kBuildTool = "{build_tool}";
 const char* const BuildInfo_kHost = "{host}";
 const char* const BuildInfo_kPackageName = "{package_name}";
 const char* const BuildInfo_kPackageVersion = "{package_version}";
+const char* const BuildInfo_kPackageRelease = "{package_release}";
 const char* const BuildInfo_kPath = "{path}";
 const char* const BuildInfo_kPlatform = "{platform}";
 const char* const BuildInfo_kRevision = "{revision}";
@@ -1352,6 +1353,8 @@ class Converter(object):
             read_config('build_info', 'package_name', ''))
         build_info['package_version'] = (
             read_config('build_info', 'package_version', ''))
+        build_info['package_release'] = (
+            read_config('build_info', 'package_release', ''))
         build_info['path'] = read_config('build_info', 'path', '')
         build_info['platform'] = platform
         build_info['revision'] = read_config('build_info', 'revision', '')
