@@ -33,6 +33,13 @@ LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')
 YACC = ThirdPartyRuleTarget('bison', 'bison')
 YACC_FLAGS = ['-y', '-d']
 
+
+ASAN_FLAGS = [
+    '-fsanitize=address',
+    '-fsanitize-address-use-after-scope',
+    '-fno-common',
+]
+
 UBSAN_FLAGS = [
     '-fsanitize=undefined',
     '-fno-sanitize=alignment',
@@ -50,9 +57,7 @@ UBSAN_FLAGS = [
 ]
 
 SANITIZER_FLAGS = {
-    'address': [
-        '-fsanitize=address',
-        '-fsanitize-address-use-after-scope',
+    'address': ASAN_FLAGS + [
         '-fsanitize=bool',
         '-fsanitize=builtin',
         '-fsanitize=float-divide-by-zero',
@@ -67,12 +72,8 @@ SANITIZER_FLAGS = {
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
         '-DUNDEFINED_SANITIZER=1',
-
-        '-fno-common',
     ],
-    'address-undefined': UBSAN_FLAGS + [
-        '-fsanitize=address',
-    ],
+    'address-undefined': ASAN_FLAGS + UBSAN_FLAGS,
     'undefined': UBSAN_FLAGS,
     'thread': [
         '-fsanitize=thread',
