@@ -560,8 +560,12 @@ class Converter(object):
     def convert_source_map(self, base_path, srcs):
         converted = {}
         for k, v in srcs.iteritems():
-            converted[self.get_source_name(k)] = (
-                self.convert_source(base_path, v))
+            name = self.get_source_name(k)
+            if name in converted:
+                raise ValueError(
+                    'duplicate name "{0}" for "{1}" and "{2}" in source map'
+                    .format(name, v, converted[name]))
+            converted[name] = self.convert_source(base_path, v)
         return converted
 
     def convert_blob_with_macros(
