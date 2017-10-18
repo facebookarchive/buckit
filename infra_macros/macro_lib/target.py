@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 # Copyright 2016-present, Facebook, Inc.
 # All rights reserved.
@@ -13,6 +13,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import sys
+
+from typing import Optional, Tuple, Union  # noqa F401
 
 
 RuleTarget = (
@@ -26,7 +29,9 @@ RuleTarget = (
     ))
 
 
-def parse_target(target, default_repo=None, default_base_path=None):
+def parse_target(
+    target, default_repo=None, default_base_path=None
+):  # type: (str, Optional[str], Optional[str]) -> RuleTarget
     """
     Convert the given build target into a RuleTarget
     """
@@ -51,12 +56,8 @@ def parse_target(target, default_repo=None, default_base_path=None):
             .format(target))
     elif len(parts) == 2:
         repo = default_repo
-        if parts[0]:
-            # Remove forward slashes.
-            base = parts[0].rstrip('/')
-        else:
-            base = default_base_path
-
+        # Remove forward slashes.
+        base = parts[0].rstrip('/') if parts[0] else default_base_path
         name = parts[1]
 
     elif len(parts) == 3:
@@ -73,7 +74,9 @@ def parse_target(target, default_repo=None, default_base_path=None):
     return RuleTarget(repo, base, name)
 
 
-def parse_external_dep(raw_target, lang_suffix='', default_repo=None):
+def parse_external_dep(
+    raw_target, lang_suffix='', default_repo=None
+):  # type: (Union[str, Tuple[str], Tuple[str, str], Tuple[str, str, str], Tuple[str, str, str, str]], str, Optional[str]) -> Tuple[RuleTarget, str]
     """
     Normalize the various ways users can specify an external dep into a
     (RuleTarget, version) tuple.
@@ -81,8 +84,11 @@ def parse_external_dep(raw_target, lang_suffix='', default_repo=None):
 
     if isinstance(raw_target, tuple):
         target = raw_target
-    elif isinstance(raw_target, basestring):
-        target = (raw_target,)
+    elif isinstance(
+        raw_target,
+        str if sys.version_info[0] >= 3 else basestring  # noqa F821
+    ):
+        target = (raw_target, )
     else:
         raise TypeError(
             'external dependency should be tuple or string, not int')
