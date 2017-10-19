@@ -1102,7 +1102,8 @@ class JavaSwiftConverter(ThriftLangConverter):
             name=name,
             srcs=out_srcs,
             exported_deps=out_deps,
-            maven_coords=java_swift_maven_coords))
+            maven_coords=java_swift_maven_coords,
+            maven_publisher_enabled=maven_publisher_enabled))
 
         return rules
 
