@@ -988,6 +988,7 @@ class JavaSwiftConverter(ThriftLangConverter):
     Specializer to support generating Java Swift libraries from thrift sources.
     """
     tweaks = set(['EXTEND_RUNTIME_EXCEPTION'])
+    expected_options_for_maven_publisher = set(['EXTEND_RUNTIME_EXCEPTION'])
 
     def __init__(self, context, *args, **kwargs):
         super(JavaSwiftConverter, self).__init__(context, *args, **kwargs)
@@ -1087,6 +1088,14 @@ class JavaSwiftConverter(ThriftLangConverter):
         out_deps.append('//third-party-java/org.apache.thrift:libthrift')
         out_deps.append(
             '//third-party-java/com.facebook.swift:swift-annotations')
+
+        maven_publisher_enabled = java_swift_maven_coords is not None
+        if maven_publisher_enabled and \
+                set(options) != self.expected_options_for_maven_publisher:
+            raise ValueError(
+                "When java_swift_maven_coords is specified, you must set"
+                " thrift_java_swift_options = %s"
+                % self.expected_options_for_maven_publisher)
 
         rules.extend(self._java_library_converter.convert(
             base_path,
