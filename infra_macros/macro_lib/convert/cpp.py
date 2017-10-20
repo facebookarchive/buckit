@@ -952,6 +952,8 @@ class CppConverter(base.Converter):
                 raise ValueError("cxx.profile only supported by clang compiler")
             profile_args = [
                 '-fprofile-sample-use=$(location {})'.format(clang_profile),
+                '-fdebug-info-for-profiling',
+                # '-fprofile-sample-accurate'
             ]
             out_lang_compiler_flags['c_cpp_output'].extend(profile_args)
             out_lang_compiler_flags['cxx_cpp_output'].extend(profile_args)
