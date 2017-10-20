@@ -481,6 +481,7 @@ class PythonConverter(base.Converter):
         deps=[],
         tests=[],
         external_deps=[],
+        visibility=None,
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -600,6 +601,9 @@ class PythonConverter(base.Converter):
             attributes['deps'] = dependencies
 
         attributes['tests'] = tests
+
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         if external_deps:
             attributes['platform_deps'] = (
@@ -861,6 +865,7 @@ class PythonConverter(base.Converter):
         allocator=None,
         check_types=False,
         preload_deps=(),
+        visibility=None,
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
@@ -874,6 +879,7 @@ class PythonConverter(base.Converter):
                 deps=deps,
                 tests=tests,
                 external_deps=external_deps,
+                visibility=visibility,
             )
             return [library]
 
