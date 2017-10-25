@@ -889,8 +889,10 @@ class CppConverter(base.Converter):
             auto_headers=None,
             preferred_linkage=None,
             os_deps=None,
-            os_linker_flags=None):
+            os_linker_flags=None,
+            autodeps_keep=False):
 
+        # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
         extra_rules = []
         out_srcs = []
         out_headers = []
@@ -1616,6 +1618,7 @@ class CppConverter(base.Converter):
             'visibility',
             'yacc_args',
             'additional_coverage_targets',
+            'autodeps_keep',
         }
 
         # Set rule-type-specific args.
