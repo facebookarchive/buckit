@@ -38,6 +38,10 @@ class HaskellExternalLibraryConverter(base.Converter):
             for ent in os.listdir(package_conf_dir):
                 if ent.startswith('{}-{}-'.format(name, version)):
                     return os.path.splitext(ent)[0]
+        else:
+            raise Exception(
+                '//{}:{}: cannot lookup package identifier: {} doesn\'t exist'
+                .format(base_path, name, package_conf_dir))
 
         raise Exception(
             '//{}:{}: cannot lookup package identifier'
