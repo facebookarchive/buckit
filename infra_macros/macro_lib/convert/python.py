@@ -20,7 +20,7 @@ import pipes
 import platform
 
 from . import base
-from .base import ThirdPartyRuleTarget
+from .base import ThirdPartyRuleTarget, RuleTarget
 from ..rule import Rule
 
 
@@ -91,38 +91,36 @@ class PythonConverter(base.Converter):
             'python_unittest',
         )
 
-    def convert_srcs_to_dict(self, srcs):
-        if isinstance(srcs, dict):
-            return {v: k for k, v in srcs.iteritems()}
-        return {s: s for s in srcs}
-
-    def convert_gen_srcs_to_dict(self, srcs):
+    def parse_srcs(self, base_path, param, srcs):  # type: (str, str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
         """
-        Convert the `gen_srcs` parameter, given as either a list or dict
-        mapping sources to destinations, into a Buck-compatible dict mapping
-        destinations to sources.
+        Parse the given Python input sources.
         """
 
-        out_srcs = {}
-
-        # If `gen_srcs` is already in dict form, then we just need to invert
-        # the map, since Buck uses a `dst->src` mapping, while fbconfig uses
-        # a `src->dst` mapping.
+        # Parse sources in dict form.
         if isinstance(srcs, dict):
-            for src, dst in srcs.iteritems():
-                out_srcs[dst] = src
+            out_srcs = (
+                self.parse_source_map(
+                    base_path,
+                    {v: k for k, v in srcs.items()}))
 
-        # Otherwise, `gen_srcs` is a list, and we need to convert it into a
-        # `dict`, which means we need to infer a proper name for it below to
-        # use as the destination.
+        # Parse sources in list form.
         else:
-            for src in srcs:
+
+            out_srcs = {}
+
+            # Format sources into a dict of logical name of value.
+            for src in self.parse_source_list(base_path, srcs):
+
+                # Path names are the same as path values.
+                if not isinstance(src, RuleTarget):
+                    out_srcs[src] = src
+                    continue
 
                 # If the source comes from a `custom_rule`/`genrule`, and the
                 # user used the `=` notation which encodes the sources "name",
                 # we can extract and use that.
-                if '=' in src:
-                    name = src.rsplit('=', 1)[1]
+                if '=' in src.name:
+                    name = src.name.rsplit('=', 1)[1]
                     out_srcs[name] = src
                     continue
 
@@ -131,17 +129,26 @@ class PythonConverter(base.Converter):
                 # error prompting the user to use the `=` notation above, or
                 # switch to an explicit `dict`.
                 raise ValueError(
-                    'parameter `gen_srcs`: cannot infer a "name" to use for '
+                    'parameter `{}`: cannot infer a "name" to use for '
                     '`{}`. If this is an output from a `custom_rule`, '
                     'consider using the `<rule-name>=<out>` notation instead. '
                     'Otherwise, please specify this parameter as `dict` '
                     'mapping sources to explicit "names" (see {} for details).'
-                    .format(src, GEN_SRCS_LINK))
+                    .format(param, self.get_dep_target(src), GEN_SRCS_LINK))
+
+        return out_srcs
+
+    def parse_gen_srcs(self, base_path, srcs):  # type: (str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
+        """
+        Parse the given sources as input to the `gen_srcs` parameter.
+        """
+
+        out_srcs = self.parse_srcs(base_path, 'gen_srcs', srcs)
 
         # Do a final pass to verify that all sources in `gen_srcs` are rule
         # references.
         for src in out_srcs.itervalues():
-            if src[0] not in '@:' and src.count(':') != 2:
+            if not isinstance(src, RuleTarget):
                 raise ValueError(
                     'parameter `gen_srcs`: `{}` must be a reference to rule '
                     'that generates a source (e.g. `@/foo:bar`, `:bar`) '
@@ -378,6 +385,16 @@ class PythonConverter(base.Converter):
 
         return build_args
 
+    def format_sources(self, src_map):
+        """
+        The `platform_srcs` parameter for Python rules matches against the
+        python platform, which has the format `py<py-vers>-<platform>`.  So
+        drop the `^` anchor from the platform regex so we match these properly.
+        """
+
+        srcs, plat_srcs = self.format_source_map(src_map)
+        return srcs, [(p[1:], s) for p, s in plat_srcs]
+
     def should_generate_interp_rules(self):
         """
         Return whether we should generate the interp helpers.
@@ -487,10 +504,9 @@ class PythonConverter(base.Converter):
         attributes['name'] = name
 
         # Normalize all the sources from the various parameters.
-        new_srcs = {}
-        new_srcs.update(self.convert_srcs_to_dict(srcs))
-        new_srcs.update(self.convert_gen_srcs_to_dict(gen_srcs))
-        srcs = new_srcs
+        parsed_srcs = {}  # type: Dict[str, Union[str, RuleTarget]]
+        parsed_srcs.update(self.parse_srcs(base_path, 'srcs', srcs))
+        parsed_srcs.update(self.parse_gen_srcs(base_path, gen_srcs))
 
         # Contains a mapping of platform name to sources to use for that
         # platform.
@@ -506,21 +522,23 @@ class PythonConverter(base.Converter):
             # correct one based on version resolution.
             project_builds = self.get_tp2_project_builds(base_path)
             for build in project_builds.values():
-                build_srcs = [srcs]
+                build_srcs = [parsed_srcs]
                 if versioned_srcs:
                     py_vers = build.versions['python']
                     build_srcs.extend(
-                        [self.convert_srcs_to_dict(vs)
+                        [self.parse_srcs(base_path, 'versioned_srcs', vs)
                          for pv, vs in versioned_srcs if pv[:3] == py_vers])
-                vsrc = collections.OrderedDict()
+                vsrc = {}
                 for build_src in build_srcs:
-                    vsrc.update(
-                        {d: os.path.join(build.subdir, s)
-                         for d, s in build_src.items()})
+                    for name, src in build_src.items():
+                        if isinstance(src, RuleTarget):
+                            vsrc[name] = src
+                        else:
+                            vsrc[name] = os.path.join(build.subdir, src)
                 all_versioned_srcs.append((build.project_deps, vsrc))
 
             # Reset `srcs`, since we're using `versioned_srcs`.
-            srcs = {}
+            parsed_srcs = {}
 
         # If we're an fbcode project, then keep the regular sources parameter
         # and only use the `versioned_srcs` parameter for the input parameter
@@ -529,7 +547,7 @@ class PythonConverter(base.Converter):
             py2_srcs = {}
             py3_srcs = {}
             for constraint, vsrcs in versioned_srcs:
-                vsrcs = self.convert_srcs_to_dict(vsrcs)
+                vsrcs = self.parse_srcs(base_path, 'versioned_srcs', vsrcs)
                 if self.matches_py2(constraint):
                     py2_srcs.update(vsrcs)
                 if self.matches_py3(constraint):
@@ -554,19 +572,23 @@ class PythonConverter(base.Converter):
         if base_module is not None:
             attributes['base_module'] = base_module
 
-        if srcs:
+        if parsed_srcs:
             # Need to split the srcs into srcs & resources as Buck
             # expects all test srcs to be python modules.
             if self.is_test(self.get_buck_rule_type()):
-                attributes['srcs'] = self.convert_source_map(
-                    base_path,
-                    {k: v for k, v in srcs.iteritems() if k.endswith('.py')})
-                attributes['resources'] = self.convert_source_map(
-                    base_path,
-                    {k: v for k, v in srcs.iteritems()
-                        if not k.endswith('.py')})
+                attributes['srcs'], attributes['platform_srcs'] = (
+                    self.format_sources(
+                        {k: v
+                         for k, v in parsed_srcs.iteritems()
+                         if k.endswith('.py')}))
+                attributes['resources'], attributes['platform_resources'] = (
+                    self.format_sources(
+                        {k: v
+                         for k, v in parsed_srcs.iteritems()
+                         if not k.endswith('.py')}))
             else:
-                attributes['srcs'] = self.convert_source_map(base_path, srcs)
+                attributes['srcs'], attributes['platform_srcs'] = (
+                    self.format_sources(parsed_srcs))
 
         # Emit platform-specific sources.  We split them between the
         # `platform_srcs` and `platform_resources` parameter based on their
@@ -579,7 +601,8 @@ class PythonConverter(base.Converter):
                 out_srcs = collections.OrderedDict()
                 out_resources = collections.OrderedDict()
                 for dst, src in (
-                        self.convert_source_map(base_path, ver_srcs).items()):
+                        self.without_platforms(
+                            self.format_sources(ver_srcs))).items():
                     if dst.endswith('.py') or dst.endswith('.so'):
                         out_srcs[dst] = src
                     else:
@@ -608,7 +631,7 @@ class PythonConverter(base.Converter):
         if external_deps:
             attributes['platform_deps'] = (
                 self.format_platform_deps(
-                    self.to_platform_deps(
+                    self.to_platform_param(
                         [self.normalize_external_dep(d, lang_suffix='-py')
                          for d in external_deps])))
 
@@ -676,7 +699,7 @@ class PythonConverter(base.Converter):
             # Add the "coverage" library as a dependency for all python tests.
             platform_deps.extend(
                 self.format_platform_deps(
-                    self.to_platform_deps(
+                    self.to_platform_param(
                         [ThirdPartyRuleTarget('coverage', 'coverage-py')])))
 
         # Otherwise, this is a binary, so just the library portion as a dep.
@@ -730,7 +753,7 @@ class PythonConverter(base.Converter):
         # Provide a standard set of backport deps to all binaries
         platform_deps.extend(
             self.format_platform_deps(
-                self.to_platform_deps(
+                self.to_platform_param(
                     [ThirdPartyRuleTarget('typing', 'typing-py'),
                      ThirdPartyRuleTarget('python-future', 'python-future-py')])))
 

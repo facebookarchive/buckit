@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import copy
 from distutils.version import LooseVersion
 import functools
 import json
@@ -101,6 +102,15 @@ Tp2ProjectBuild = collections.namedtuple(
 )
 
 
+# Container for values which have regular and platform-specific parameters.
+PlatformParam = (
+    collections.namedtuple('PlatformParam', ['value', 'platform_value']))
+
+
+SourceWithFlags = (
+    collections.namedtuple('SourceWithFlags', ['src', 'flags']))
+
+
 def RootRuleTarget(base_path, name):
     return RuleTarget(None, base_path, name)
 
@@ -144,6 +154,14 @@ def is_collection(obj):
             return True
 
     return False
+
+
+def is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
+    """
+    Return whether the given source path refers to a tp2 target.
+    """
+
+    return isinstance(src, RuleTarget) and src.repo is not None
 
 
 class RuleError(Exception):
@@ -536,6 +554,137 @@ class Converter(object):
         parsed = self.normalize_dep(target, base_path=base_path)
         return self.get_dep_target(parsed, source=target, platform=platform)
 
+    def parse_source(self, base_path, src):  # type: (str, str) -> Union[str, RuleTarget]
+        """
+        Parse a source into either a relative path or a build target reference.
+        """
+
+        if src[0] in ':@' or src.startswith('//'):
+            return self.normalize_dep(src, base_path=base_path)
+
+        return src
+
+    def format_source(self, src, platform=None):  # type: (Union[str, RuleTarget], str) -> str
+        """
+        Format the given source path.
+        """
+
+        if isinstance(src, RuleTarget):
+            assert src.repo is None or platform is not None, str(src)
+            return self.get_dep_target(src, platform=platform)
+
+        return src
+
+    def format_source_with_flags(self, src_with_flags, platform=None):  # type: (SourceWithFlags[Union[str, RuleTarget], List[str]], str) -> Union[str, (str, List[str])]
+        """
+        Parse a source with flags.
+        """
+
+        src = self.format_source(src_with_flags.src, platform=platform)
+        return (src, src_with_flags.flags) if src_with_flags.flags else src
+
+    def parse_source_list(self, base_path, raw_srcs):  # type: (str, List[str]) -> List[Union[str, RuleTarget]]
+        """
+        Parse the list of raw sources.
+        """
+
+        return [self.parse_source(base_path, s) for s in raw_srcs]
+
+    def format_source_list(self, srcs):  # type: List[Union[str, RuleTarget]] -> PlatformParam[List[str], List[Union[str, List[str]]]]
+        """
+        Format the given parsed source list.
+        """
+
+        # All path sources and fbcode source references are installed via the
+        # `srcs` parameter.
+        out_srcs = []
+        for src in srcs:
+            if not is_tp2_src_dep(src):
+                out_srcs.append(self.format_source(src))
+
+        # All third-party sources references are installed via `platform_srcs`
+        # so that they're platform aware.
+        out_platform_srcs = (
+            self.format_platform_deps(
+                self.to_platform_param(
+                    [src for src in srcs if is_tp2_src_dep(src)]),
+                lambda plat, srcs:
+                    [self.format_source(src, platform=plat)
+                     for src in srcs]))
+
+        return PlatformParam(out_srcs, out_platform_srcs)
+
+    def format_source_with_flags_list(self, srcs_with_flags):  # type: List[SourceWithFlags[Union[str, RuleTarget], List[str]]] -> List[Union[str, (str, List[str])]]
+        """
+        Format the given parsed sources with flags list.
+        """
+
+        # All path sources and fbcode source references are installed via the
+        # `srcs` parameter.
+        out_srcs = []
+        for src in srcs_with_flags:
+            if not is_tp2_src_dep(src.src):
+                out_srcs.append(self.format_source_with_flags(src))
+
+        # All third-party sources references are installed via `platform_srcs`
+        # so that they're platform aware.
+        out_platform_srcs = (
+            self.format_platform_param(
+                self.to_platform_param(
+                    [src
+                     for src in srcs_with_flags if is_tp2_src_dep(src.src)]),
+                lambda plat, srcs:
+                    [self.format_source_with_flags(src, platform=plat)
+                     for src in srcs]))
+
+        return PlatformParam(out_srcs, out_platform_srcs)
+
+    def parse_source_map(self, base_path, raw_srcs):  # type: (str, Dict[str, str]) -> Dict[str, Union[str, RuleTarget]]
+        """
+        Parse the given map of source names to paths.
+        """
+
+        return {name: self.parse_source(base_path, src)
+                for name, src in raw_srcs.items()}
+
+    def format_source_map(self, srcs):  # type: Dict[str, Union[str, RuleTarget]] -> PlatformParam[Dict[str, str], List[Tuple[str, Dict[str, str]]]]
+        """
+        Format the given source map.
+        """
+
+        # All path sources and fbcode source references are installed via the
+        # `srcs` parameter.
+        out_srcs = {}
+        for name, src in srcs.items():
+            if not is_tp2_src_dep(src):
+                out_srcs[name] = self.format_source(src)
+
+        # All third-party sources references are installed via `platform_srcs`
+        # so that they're platform aware.
+        out_platform_srcs = (
+            self.format_platform_param(
+                self.to_platform_param(
+                    {name: src
+                     for name, src in srcs.items() if is_tp2_src_dep(src)}),
+                lambda plat, srcs:
+                    {name: self.format_source(src, platform=plat)
+                     for name, src in srcs.items()}))
+
+        return PlatformParam(out_srcs, out_platform_srcs)
+
+    def without_platforms(self, formatted):  # type: PlatformParam[Any, List[Tuple[str, Any]]] -> Any
+        """
+        Drop platform-specific component of the fiven `PlatformParam`, erroring
+        out if it contained anything.
+        """
+
+        param, platform_param = formatted
+        if platform_param:
+            raise ValueError(
+                'unexpected platform sources: {!r}'.format(platform_param))
+
+        return param
+
     def convert_source(self, base_path, src):
         """
         Convert a source, which may refer to an in-repo source or a rule that
@@ -547,7 +696,9 @@ class Converter(object):
         # typical Buck absolute target prefix, so generate a proper error
         # message.
         if src[0] in ':@' or src.startswith('//'):
-            src = self.convert_build_target(base_path, src)
+            target = self.normalize_dep(src, base_path=base_path)
+            assert target.repo is None, src
+            src = self.get_dep_target(target, source=src)
 
         return src
 
@@ -630,39 +781,49 @@ class Converter(object):
             dst.setdefault(platform, [])
             dst[platform].extend(deps)
 
+    def format_platform_param(self, param, formatter=None):
+        """
+        Takes a map of fbcode platform names to lists of deps and converts to
+        an output list appropriate for Buck's `platform_deps` parameter.
+        """
+
+        out = []
+
+        for platform, value in sorted(param.iteritems()):
+            out.append(
+                # Buck expects the platform name as a regex, so anchor and
+                # escape it for literal matching.
+                ('^{}$'.format(re.escape(platform)),
+                 value if formatter is None else formatter(platform, value)))
+
+        return out
+
     def format_platform_deps(self, deps):
         """
         Takes a map of fbcode platform names to lists of deps and converts to
         an output list appropriate for Buck's `platform_deps` parameter.
         """
 
-        out_deps = []
+        return self.format_platform_param(
+            deps,
+            lambda platform, deps: self.format_deps(deps, platform=platform))
 
-        for platform, pdeps in sorted(deps.iteritems()):
-            out_deps.append(
-                # Buck expects the platform name as a regex, so anchor and
-                # escape it for literal matching.
-                ('^{}$'.format(re.escape(platform)),
-                 self.format_deps(pdeps, platform=platform)))
-
-        return out_deps
-
-    def to_platform_deps(self, external_deps, platforms=None):
+    def to_platform_param(self, param, platforms=None):
         """
         Convert a list of parsed targets to a mapping of platforms to deps.
         """
 
-        platform_deps = collections.OrderedDict()
+        platform_param = collections.OrderedDict()
 
         if platforms is None:
             platforms = self.get_platforms()
 
         # Add the platform-specific dep for each platform.
-        for dep in external_deps:
-            for platform in platforms:
-                platform_deps.setdefault(platform, []).append(dep)
+        for platform in platforms:
+            if param:
+                platform_param[platform] = copy.copy(param)
 
-        return platform_deps
+        return platform_param
 
     def format_all_deps(self, deps, platform=None):
         """
@@ -683,7 +844,7 @@ class Converter(object):
         if platform is None:
             out_platform_deps.extend(
                 self.format_platform_deps(
-                    self.to_platform_deps(
+                    self.to_platform_param(
                         [d for d in deps if d.repo is not None])))
 
         return out_deps, out_platform_deps
@@ -704,6 +865,33 @@ class Converter(object):
     def get_build_mode(self):
         return self._context.build_mode
 
+    def extract_name(self, gen_src):
+        """
+        Extract the logical name from the given generated source.
+        """
+
+        try:
+            _, name = gen_src.split('=')
+        except ValueError:
+            raise ValueError(
+                'generated source target {!r} is missing `=<name>` suffix'
+                .format(gen_src))
+        return name
+
+    def get_parsed_src_name(self, src):
+        """
+        Get the logical name of the given source.
+        """
+
+        # If this is a build target, extract the name from the `=<name>`
+        # suffix.
+        if isinstance(src, RuleTarget):
+            return self.extract_name(src.name)
+
+        # Otherwise, the name is the source itself.
+        else:
+            return src
+
     def get_source_name(self, src):
         """
         Get the logical name of the given source.
@@ -712,13 +900,7 @@ class Converter(object):
         # If this is a build target, extract the name from the `=<name>`
         # suffix.
         if src[0] in '/@:':
-            try:
-                _, name = src.split('=')
-            except ValueError:
-                raise ValueError(
-                    'generated source target {!r} is missing `=<name>` suffix'
-                    .format(src))
-            return name
+            return self.extract_name(src)
 
         # Otherwise, the name is the source itself.
         else:

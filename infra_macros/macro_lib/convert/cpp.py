@@ -22,7 +22,7 @@ import re
 import shlex
 
 from . import base
-from .base import RootRuleTarget, ThirdPartyRuleTarget
+from .base import RootRuleTarget, ThirdPartyRuleTarget, SourceWithFlags
 from ..rule import Rule
 from ..global_defns import AutoHeaders
 from ..cxx_sources import HEADER_SUFFIXES
@@ -894,7 +894,7 @@ class CppConverter(base.Converter):
 
         # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
         extra_rules = []
-        out_srcs = []
+        out_srcs = []  # type: List[SourceWithFlags]
         out_headers = []
         out_exported_ldflags = []
         out_ldflags = []
@@ -1135,7 +1135,7 @@ class CppConverter(base.Converter):
             header, source, rules = (
                 self.convert_lex(name, lex_args, lex_src, platform))
             out_headers.append(header)
-            out_srcs.append((source, ['-w']))
+            out_srcs.append(SourceWithFlags(RootRuleTarget(base_path, source[1:]), ['-w']))
             extra_rules.extend(rules)
 
         # Generate rules to handle yacc sources.
@@ -1150,7 +1150,7 @@ class CppConverter(base.Converter):
                     yacc_src,
                     platform))
             out_headers.append(header)
-            out_srcs.append(source)
+            out_srcs.append(SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
             extra_rules.extend(rules)
 
         # Convert and add in any explicitly mentioned headers into our output
@@ -1202,15 +1202,19 @@ class CppConverter(base.Converter):
         # Convert the `srcs` parameter.  If `known_warnings` is set, add in
         # flags to mute errors.
         for src in srcs:
-            src = self.convert_source(base_path, src)
+            src = self.parse_source(base_path, src)
+            flags = None
             if (known_warnings is True or
                     (known_warnings and
-                     self.get_source_name(src) in known_warnings)):
-                out_srcs.append((src, ['-Wno-error']))
-            else:
-                out_srcs.append(src)
+                     self.get_parsed_src_name(src) in known_warnings)):
+                flags = ['-Wno-error']
+            out_srcs.append(SourceWithFlags(src, flags))
 
-        attributes['srcs'] = out_srcs
+        formatted_srcs = self.format_source_with_flags_list(out_srcs)
+        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
+            attributes['srcs'], attributes['platform_srcs'] = formatted_srcs
+        else:
+            attributes['srcs'] = self.without_platforms(formatted_srcs)
 
         for lib in (shared_system_deps or []):
             out_exported_ldflags.append('-l' + lib)
@@ -1371,13 +1375,13 @@ class CppConverter(base.Converter):
         for platform, deps in self.get_implicit_platform_deps().items():
             self.merge_platform_deps(
                 out_platform_deps,
-                self.to_platform_deps(deps, platforms=[platform]))
+                self.to_platform_param(deps, platforms=[platform]))
 
         # Add third-party deps as per-platform deps.
         self.merge_platform_deps(
             out_platform_deps,
-            self.to_platform_deps(
-                d for d in dependencies if d.repo is not None))
+            self.to_platform_param(
+                [d for d in dependencies if d.repo is not None]))
 
         # Write out platform-specific deps.
         if out_platform_deps:
