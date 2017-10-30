@@ -738,7 +738,7 @@ class HaskellThriftConverter(ThriftLangConverter):
                 flags,
                 options)
 
-        args = ["--lang=hs"]
+        args = ["--hs"]
 
         # Format the options and pass them into the hs2 compiler.
         for option, val in options.iteritems():
