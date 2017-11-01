@@ -348,8 +348,6 @@ class CppThriftConverter(ThriftLangConverter):
         non_mstch_flags = [
             'py_generator',
             'compatibility',
-            'implicit_templates',
-            'separate_processmap',
             'terse_writes',
             'modulemap',
         ]
