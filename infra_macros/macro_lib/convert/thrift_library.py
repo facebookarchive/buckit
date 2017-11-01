@@ -862,6 +862,10 @@ class JavaThriftConverter(ThriftLangConverter):
     def get_lang(self):
         return 'java'
 
+    def get_names(self):
+        # Temporary - TODO(T23156388) @ryandm
+        return frozenset(['java', 'javadeprecated'])
+
     def get_generated_sources(
             self,
             base_path,
@@ -908,10 +912,16 @@ class JavaThriftConverter(ThriftLangConverter):
         out_deps.append('//thrift/lib/java:thrift')
         rules.extend(self._java_library_converter.convert(
             base_path,
-            name=name,
+            name='%sdeprecated' % name,
             srcs=out_srcs,
             exported_deps=out_deps,
             maven_coords=java_thrift_maven_coords))
+
+        # Temporary - TODO(T23156388) @ryandm
+        rules.extend(self._java_library_converter.convert(
+            base_path,
+            name=name,
+            exported_deps=[':%sdeprecated' % name]))
 
         return rules
 
