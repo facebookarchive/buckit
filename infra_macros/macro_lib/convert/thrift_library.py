@@ -843,13 +843,14 @@ class HaskellThriftConverter(ThriftLangConverter):
         return [Rule('haskell_library', attrs)]
 
 
-class JavaThriftConverter(ThriftLangConverter):
+class JavaDeprecatedThriftConverter(ThriftLangConverter):
     """
     Specializer to support generating Java libraries from thrift sources.
     """
 
     def __init__(self, context, *args, **kwargs):
-        super(JavaThriftConverter, self).__init__(context, *args, **kwargs)
+        super(JavaDeprecatedThriftConverter, self).__init__(
+            context, *args, **kwargs)
         self._java_library_converter = java.JavaLibraryConverter(context)
 
     # DO NOT USE
@@ -857,14 +858,15 @@ class JavaThriftConverter(ThriftLangConverter):
     # fbcode infrastructure. For now, it is present to help with developers
     # using this legacy workflow, but it is unsupported.
     def get_compiler(self):
-        return self.read_string('thrift', 'compiler', super(JavaThriftConverter, self).get_compiler())
+        return self.read_string(
+            'thrift', 'compiler',
+            super(JavaDeprecatedThriftConverter, self).get_compiler())
 
     def get_lang(self):
-        return 'java'
+        return 'javadeprecated'
 
-    def get_names(self):
-        # Temporary - TODO(T23156388) @ryandm
-        return frozenset(['java', 'javadeprecated'])
+    def get_compiler_lang(self):
+        return 'java'
 
     def get_generated_sources(
             self,
@@ -912,16 +914,10 @@ class JavaThriftConverter(ThriftLangConverter):
         out_deps.append('//thrift/lib/java:thrift')
         rules.extend(self._java_library_converter.convert(
             base_path,
-            name='%sdeprecated' % name,
+            name=name,
             srcs=out_srcs,
             exported_deps=out_deps,
             maven_coords=java_thrift_maven_coords))
-
-        # Temporary - TODO(T23156388) @ryandm
-        rules.extend(self._java_library_converter.convert(
-            base_path,
-            name=name,
-            exported_deps=[':%sdeprecated' % name]))
 
         return rules
 
@@ -1991,7 +1987,7 @@ class ThriftLibraryConverter(base.Converter):
         ]
         if use_internal_java_converters:
             converters += [
-                JavaThriftConverter(context),
+                JavaDeprecatedThriftConverter(context),
                 JavaSwiftConverter(context),
             ]
         self._converters = {}
