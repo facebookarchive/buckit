@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..macro_lib.convert.cpp import CppConverter
-
 from . import utils
 
 import mock
@@ -23,14 +21,21 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
 
     def setUp(self):
         super(CppLibraryConverterTest, self).setUp()
-        self.setup_with_config({}, {})
+        try:
+            self.setup_with_config({}, {})
+        except:
+            super(CppLibraryConverterTest, self).tearDown()
+            raise
 
     def setup_with_config(self, additional_configs, removed_configs):
         self._state = self._create_converter_state(
             additional_configs,
             removed_configs)
+        self._cpp = (
+            self._state.parser.load_include(
+                'tools/build/buck/infra_macros/macro_lib/convert/cpp.py'))
         self._converter = (
-            CppConverter(
+            self._cpp.CppConverter(
                 self._state.context,
                 'cpp_library'))
 

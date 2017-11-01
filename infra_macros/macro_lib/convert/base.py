@@ -12,20 +12,36 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# TODO(T20914511): Until the macro lib has been completely ported to
+# `include_defs()`, we need to support being loaded via both `import` and
+# `include_defs()`.  These ugly preamble is thus here to consistently provide
+# `allow_unsafe_import()` regardless of how we're loaded.
+import contextlib
+try:
+    allow_unsafe_import
+except NameError:
+    @contextlib.contextmanager
+    def allow_unsafe_import(*args, **kwargs):
+        yield
+
 import collections
 import copy
-from distutils.version import LooseVersion
 import functools
 import json
 import os
 import pipes
-import platform as platmod
 import re
-import shlex
 
-from ..rule import Rule
-from ..target import RuleTarget
-from .. import target
+with allow_unsafe_import():
+    from distutils.version import LooseVersion
+    import platform as platmod
+    import shlex
+
+# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
+with allow_unsafe_import():
+    from macro_lib.rule import Rule
+    from macro_lib.target import RuleTarget
+    from macro_lib import target
 
 
 SANITIZERS = {

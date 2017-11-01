@@ -4,6 +4,7 @@ python_library(
         "utils.py",
     ],
     deps = [
+        "@/tools/build/buck:parser",
         "@/tools/build/buck/infra_macros/macro_lib:macro_lib",
     ],
 )

@@ -12,9 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..macro_lib.convert.base import Converter, Tp2ProjectBuild, RuleTarget
-from ..macro_lib.convert.base import ThirdPartyRuleTarget
-
 from . import utils
 
 
@@ -22,13 +19,20 @@ class BaseConverterTest(utils.ConverterTestCase):
 
     def setUp(self):
         super(BaseConverterTest, self).setUp()
-        self.setup_with_config({}, set())
+        try:
+            self.setup_with_config({}, set())
+        except:
+            super(BaseConverterTest, self).tearDown()
+            raise
 
     def setup_with_config(self, additional_configs, removed_configs):
         self._state = self._create_converter_state(
             additional_configs,
             removed_configs)
-        self._converter = Converter(self._state.context)
+        self._base = (
+            self._state.parser.load_include(
+                'tools/build/buck/infra_macros/macro_lib/convert/base.py'))
+        self._converter = self._base.Converter(self._state.context)
 
     def test_is_tp2(self):
         self.assertFalse(self._converter.is_tp2('hello/world'))
@@ -104,13 +108,13 @@ class BaseConverterTest(utils.ConverterTestCase):
     def test_normalize_dep(self):
         self.assertEquals(
             self._converter.normalize_dep('@/full:target'),
-            RuleTarget(None, 'full', 'target'))
+            self._base.RuleTarget(None, 'full', 'target'))
         self.assertEquals(
             self._converter.normalize_dep(':target'),
-            RuleTarget(None, None, 'target'))
+            self._base.RuleTarget(None, None, 'target'))
         self.assertEquals(
             self._converter.normalize_dep('@/repo:full:target'),
-            RuleTarget('repo', 'full', 'target'))
+            self._base.RuleTarget('repo', 'full', 'target'))
         with self.assertRaises(ValueError):
             self._converter.normalize_dep('@invalid:target')
         with self.assertRaises(ValueError):
@@ -127,13 +131,13 @@ class BaseConverterTest(utils.ConverterTestCase):
 
         self.assertEquals(
             self._converter.normalize_dep(':target'),
-            RuleTarget(None, None, 'target'))
+            self._base.RuleTarget(None, None, 'target'))
         self.assertEquals(
             self._converter.normalize_dep('//full:target'),
-            RuleTarget(None, 'full', 'target'))
+            self._base.RuleTarget(None, 'full', 'target'))
         self.assertEquals(
             self._converter.normalize_dep('cell//full:target'),
-            RuleTarget('cell', 'full', 'target'))
+            self._base.RuleTarget('cell', 'full', 'target'))
 
         with self.assertRaises(ValueError):
             self._converter.normalize_dep('@/full:target')
@@ -142,15 +146,15 @@ class BaseConverterTest(utils.ConverterTestCase):
             ('fbcode', 'fbcode_style_deps_are_third_party')})
         self.assertEquals(
             self._converter.normalize_dep('@/folly:json'),
-            RuleTarget('folly', 'folly', 'json'))
+            self._base.RuleTarget('folly', 'folly', 'json'))
         self.assertEquals(
             self._converter.normalize_dep('@/cell/full:target'),
-            RuleTarget('cell', 'cell/full', 'target'))
+            self._base.RuleTarget('cell', 'cell/full', 'target'))
 
     def test_get_tool_target(self):
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'gcc-4.9-glibc-2.20-fb'),
             '//third-party-buck/gcc-4.9-glibc-2.20-fb/tools/python:python3')
 
@@ -162,7 +166,7 @@ class BaseConverterTest(utils.ConverterTestCase):
             ('fbcode', 'third_party_use_tools_subdir')})
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'invalid'),
             'python//python:python3')
 
@@ -171,7 +175,7 @@ class BaseConverterTest(utils.ConverterTestCase):
             ('fbcode', 'third_party_use_platform_subdir')})
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'invalid'),
             '//third-party-buck/tools/python:python3')
 
@@ -179,7 +183,7 @@ class BaseConverterTest(utils.ConverterTestCase):
             ('fbcode', 'third_party_use_tools_subdir')})
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'gcc-4.9-glibc-2.20-fb'),
             '//third-party-buck/gcc-4.9-glibc-2.20-fb/python:python3')
 
@@ -188,7 +192,7 @@ class BaseConverterTest(utils.ConverterTestCase):
             ('fbcode', 'third_party_use_tools_subdir')})
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'invalid'),
             '//third-party-buck/python:python3')
 
@@ -196,26 +200,26 @@ class BaseConverterTest(utils.ConverterTestCase):
         self.setup_with_config({('repositories', 'python'): '.'}, set())
         self.assertEquals(
             self._converter.get_tool_target(
-                ThirdPartyRuleTarget('python', 'python3'),
+                self._base.ThirdPartyRuleTarget('python', 'python3'),
                 'gcc-4.9-glibc-2.20-fb'),
             'python//third-party-buck/gcc-4.9-glibc-2.20-fb/tools/python:python3')
 
     def test_normalize_external_dep(self):
         self.assertEquals(
             self._converter.normalize_external_dep('single'),
-            RuleTarget('single', 'single', 'single'))
+            self._base.RuleTarget('single', 'single', 'single'))
         self.assertEquals(
             self._converter.normalize_external_dep(
                 'single',
                 lang_suffix='-py'),
-            RuleTarget('single', 'single', 'single-py'))
+            self._base.RuleTarget('single', 'single', 'single-py'))
         self.assertEquals(
             self._converter.normalize_external_dep(('project', None)),
-            RuleTarget('project', 'project', 'project'))
+            self._base.RuleTarget('project', 'project', 'project'))
         self.assertEquals(
             self._converter.normalize_external_dep(
                 ('third-party', 'project', None, 'name')),
-            RuleTarget('third-party', 'project', 'name'))
+            self._base.RuleTarget('third-party', 'project', 'name'))
         with self.assertRaises(TypeError):
             self._converter.normalize_external_dep(13)
         with self.assertRaises(ValueError):

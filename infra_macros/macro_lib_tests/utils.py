@@ -18,23 +18,28 @@ import json
 import os
 import platform
 import shutil
+import sys
 import tempfile
 import unittest
 
-from ..macro_lib.convert.base import BuckOperations, Context
-from ..macro_lib.config import FbcodeOptions
+from tools.build.buck.parser import Parser
+
 from ..macro_lib import BuildMode
 
 
 ConverterState = (
     collections.namedtuple(
         'ConverterState',
-        ['context', 'build_file_deps', 'include_defs']))
+        ['context', 'parser', 'build_file_deps', 'include_defs']))
 
 
 class ConverterTestCase(unittest.TestCase):
 
     def setUp(self):
+        # TODO(T20914511): Some macro lib components still use `import`.  Remove once
+        # this is fixed.
+        sys.path.insert(0, os.path.join(os.getcwd(), 'tools/build/buck/infra_macros'))
+
         self._root = tempfile.mkdtemp()
         self._old_cwd = os.getcwd()
         os.chdir(self._root)
@@ -42,6 +47,7 @@ class ConverterTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self._root, True)
         os.chdir(self._old_cwd)
+        del sys.path[0]
 
     def mkdir(self, dirpath):
         if not os.path.exists(dirpath):
@@ -84,6 +90,12 @@ class ConverterTestCase(unittest.TestCase):
             for config in removed_configs:
                 del configs[config]
 
+        # Setup the parser.
+        tiered_config = collections.defaultdict(dict)
+        for (section, field), value in configs.items():
+            tiered_config[section][field] = value
+        parser = Parser.create_from_config(tiered_config, root=self._old_cwd)
+
         def read_config_func(s, f, d=None):
             return configs.get((s, f), d)
 
@@ -91,18 +103,21 @@ class ConverterTestCase(unittest.TestCase):
         def import_func():
             yield
 
-        parsed_config = FbcodeOptions(read_config_func, import_func).values
+        config = parser.load_include('tools/build/buck/infra_macros/macro_lib/config.py')
+        base = parser.load_include('tools/build/buck/infra_macros/macro_lib/convert/base.py')
+
+        parsed_config = config.FbcodeOptions(read_config_func, import_func).values
 
         build_file_deps = []
         include_defs = []
         buck_ops = (
-            BuckOperations(
+            base.BuckOperations(
                 add_build_file_dep=lambda dep: build_file_deps.append(dep),
                 glob=lambda *a, **kw: [],
                 include_defs=lambda dep: include_defs.append(dep),
                 read_config=read_config_func))
         context = (
-            Context(
+            base.Context(
                 buck_ops=buck_ops,
                 build_mode=BuildMode.DEV,
                 compiler='gcc',
@@ -120,5 +135,6 @@ class ConverterTestCase(unittest.TestCase):
                 config=parsed_config))
         return ConverterState(
             context=context,
+            parser=parser,
             build_file_deps=build_file_deps,
             include_defs=include_defs)

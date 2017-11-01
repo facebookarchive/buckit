@@ -12,20 +12,37 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# TODO(T20914511): Until the macro lib has been completely ported to
+# `include_defs()`, we need to support being loaded via both `import` and
+# `include_defs()`.  These ugly preamble is thus here to consistently provide
+# `allow_unsafe_import()` regardless of how we're loaded.
+import contextlib
+try:
+    allow_unsafe_import
+except NameError:
+    @contextlib.contextmanager
+    def allow_unsafe_import(*args, **kwargs):
+        yield
+
 import collections
-from distutils.version import LooseVersion
 import itertools
 import os
 import pipes
-import platform as plat
 import re
-import shlex
 
-from . import base
-from .base import RootRuleTarget, ThirdPartyRuleTarget, SourceWithFlags
-from ..rule import Rule
-from ..global_defns import AutoHeaders
-from ..cxx_sources import HEADER_SUFFIXES
+with allow_unsafe_import():
+    from distutils.version import LooseVersion
+    import platform as plat
+    import shlex
+
+# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
+with allow_unsafe_import():
+    from macro_lib.convert import base
+    from macro_lib.convert.base import RootRuleTarget, ThirdPartyRuleTarget
+    from macro_lib.convert.base import SourceWithFlags
+    from macro_lib.rule import Rule
+    from macro_lib.global_defns import AutoHeaders
+    from macro_lib.cxx_sources import HEADER_SUFFIXES
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')

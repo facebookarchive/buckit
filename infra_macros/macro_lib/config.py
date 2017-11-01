@@ -345,3 +345,13 @@ class FbcodeOptions(object):
         FbcodeValues = namedtuple('FbcodeOptionsValues', attrs.keys())
         self.values = FbcodeValues(**attrs)
         return self.values
+
+
+# As buck configuration is effectively global, export the parsed values as
+# globals, allowing macro modules to `include_def` this file much as they'd
+# use `read_config`.
+values = FbcodeOptions(read_config, allow_unsafe_import).values
+__all__ = []
+for field in values._fields:
+    globals()[field] = getattr(values, field)
+    __all__.append(field)

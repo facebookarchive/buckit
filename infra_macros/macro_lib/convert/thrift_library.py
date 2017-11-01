@@ -17,21 +17,21 @@ import itertools
 import os
 import hashlib
 
-from . import base
-from .base import RootRuleTarget, ThirdPartyRuleTarget
-from . import cpp
-from . import haskell
+from macro_lib.convert import base
+from macro_lib.convert.base import RootRuleTarget, ThirdPartyRuleTarget
+from macro_lib.convert import cpp
+from macro_lib.convert import haskell
 try:
-    from . import java
+    from macro_lib.convert import java
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
-from . import js
-from . import cython
-from . import ocaml
-from . import python
-from . import rust
-from ..rule import Rule
+from macro_lib.convert import js
+from macro_lib.convert import cython
+from macro_lib.convert import ocaml
+from macro_lib.convert import python
+from macro_lib.convert import rust
+from macro_lib.rule import Rule
 
 
 THRIFT_FLAGS = [

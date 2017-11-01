@@ -16,9 +16,9 @@ import os
 import subprocess
 import collections
 
-from . import base
-from .base import ThirdPartyRuleTarget
-from ..rule import Rule
+from macro_lib.convert import base
+from macro_lib.convert.base import ThirdPartyRuleTarget
+from macro_lib.rule import Rule
 
 
 PYTHON = ThirdPartyRuleTarget('python', 'python')

@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..macro_lib.convert.cpp_library_external import CppLibraryExternalConverter
-
 from . import utils
 
 
@@ -21,11 +19,18 @@ class CppLibraryExternalConverterTest(utils.ConverterTestCase):
 
     def setUp(self):
         super(CppLibraryExternalConverterTest, self).setUp()
-        self._state = self._create_converter_state()
-        self._converter = (
-            CppLibraryExternalConverter(
-                self._state.context,
-                'cpp_library_external'))
+        try:
+            self._state = self._create_converter_state()
+            self._cpp = (
+                self._state.parser.load_include(
+                    'tools/build/buck/infra_macros/macro_lib/convert/cpp_library_external.py'))
+            self._converter = (
+                self._cpp.CppLibraryExternalConverter(
+                    self._state.context,
+                    'cpp_library_external'))
+        except:
+            super(CppLibraryExternalConverterTest, self).tearDown()
+            raise
 
     def test_get_lib_path(self):
         self.assertEquals(

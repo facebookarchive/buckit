@@ -77,10 +77,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 #  includes = macros//macros.py
 # /macros/.buckconfig
 # /macros/macros.py
-config_py_path = os.path.join(MACRO_LIB_DIR, 'config.py')
-add_build_file_dep('//{}'.format(config_py_path))
-include_defs('//{}'.format(config_py_path))
-config = FbcodeOptions(read_config, allow_unsafe_import).values
+include_defs('//{}/config.py'.format(MACRO_LIB_DIR), 'config')
 
 
 class Loader(object):
@@ -119,12 +116,14 @@ sys.path_hooks.append(Finder)
 sys.path.insert(0, os.path.dirname(MACRO_LIB_DIR))
 
 # Import parts of the macro lib package we'll be using.
-with allow_unsafe_import():
-    from macro_lib import converter, constants, BuildMode
-    from macro_lib import global_defns, cxx_sources
-    from macro_lib.rule import Rule
-    from macro_lib.convert.base import Context, BuckOperations
-    from macro_lib.convert.cpp import CppConverter
+include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
+include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
+include_defs('//{}/BuildMode.py'.format(MACRO_LIB_DIR), 'BuildMode')
+include_defs('//{}/global_defns.py'.format(MACRO_LIB_DIR), 'global_defns')
+include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
+include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
+include_defs('//{}/convert/base.py'.format(MACRO_LIB_DIR), 'base')
+include_defs('//{}/convert/cpp.py'.format(MACRO_LIB_DIR), 'cpp')
 
 # Now that the imports are done, remove the macro lib dir from the path and the
 # finder from the path hooks.
@@ -322,14 +321,14 @@ def rule_handler(context, globals, rule_type, **kwargs):
         del kwargs['buck_only']
 
     # Wrap the TARGETS rule into a `Rule` object.
-    rule = Rule(type=rule_type, attributes=kwargs)
+    rule = rule_mod.Rule(type=rule_type, attributes=kwargs)
 
     # For full auto-headers support, add in the recursive header glob rule
     # as a dep. This is only used in fbcode for targets that don't fully
     # specify their dependencies, and it will be going away in the future
     if (config.add_auto_headers_glob and
             rule.type in CXX_RULES and
-            AutoHeaders.RECURSIVE_GLOB == CppConverter.get_auto_headers(
+            AutoHeaders.RECURSIVE_GLOB == cpp.CppConverter.get_auto_headers(
                 rule.attributes.get('headers'),
                 rule.attributes.get('auto_headers'),
                 read_config)):
@@ -340,7 +339,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
     # Convert the fbconfig/fbmake rule into one or more Buck rules.
     base_path = get_base_path()
     context['buck_ops'] = (
-        BuckOperations(
+        base.BuckOperations(
             add_build_file_dep,
             glob,
             include_defs,
@@ -360,7 +359,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
                 }
                 kwargs[k] = simple_map[v]
 
-    results = converter.convert(Context(**context), base_path, [rule])
+    results = converter.convert(base.Context(**context), base_path, [rule])
     # Instantiate the Buck rules that got converted successfully.
     for converted in results.rules:
         eval(converted.type, globals)(**converted.attributes)

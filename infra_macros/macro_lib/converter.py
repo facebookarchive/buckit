@@ -15,43 +15,47 @@ from __future__ import unicode_literals
 import collections
 import os
 import re
-import sys
 
-from .convert import base
-from .convert import cpp
-from .convert import cpp_library_external
-from .convert import cpp_library_external_custom
-from .convert import custom_rule
-from .convert import custom_unittest
-from .convert import cython
-from .convert import d
-from .convert import dewey_artifact
-from .convert import discard
-from .convert import go
-from .convert import haskell
-from .convert import haskell_external_library
-try:
-    from .convert import java
-    from .convert import java_plugins
-    use_internal_java_converters = True
-except ImportError:
-    use_internal_java_converters = False
-from .convert import js
-from .convert import lua
-from .convert import ocaml
-from .convert import ocaml_library_external
-from .convert import passthrough
-from .convert import python
-from .convert import rust
-from .convert import rust_bindgen_library
-from .convert import rust_library_external
-from .convert import swig_library
-from .convert import thrift_library
-try:
-    from .convert.facebook import get_fbonly_converters
-except ImportError:
-    def get_fbonly_converters(context):
-        return []
+with allow_unsafe_import():
+    import sys
+
+# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
+with allow_unsafe_import():
+    from macro_lib.convert import base
+    from macro_lib.convert import cpp
+    from macro_lib.convert import cpp_library_external
+    from macro_lib.convert import cpp_library_external_custom
+    from macro_lib.convert import custom_rule
+    from macro_lib.convert import custom_unittest
+    from macro_lib.convert import cython
+    from macro_lib.convert import d
+    from macro_lib.convert import dewey_artifact
+    from macro_lib.convert import discard
+    from macro_lib.convert import go
+    from macro_lib.convert import haskell
+    from macro_lib.convert import haskell_external_library
+    try:
+        from macro_lib.convert import java
+        from macro_lib.convert import java_plugins
+        use_internal_java_converters = True
+    except ImportError:
+        use_internal_java_converters = False
+    from macro_lib.convert import js
+    from macro_lib.convert import lua
+    from macro_lib.convert import ocaml
+    from macro_lib.convert import ocaml_library_external
+    from macro_lib.convert import passthrough
+    from macro_lib.convert import python
+    from macro_lib.convert import rust
+    from macro_lib.convert import rust_bindgen_library
+    from macro_lib.convert import rust_library_external
+    from macro_lib.convert import swig_library
+    from macro_lib.convert import thrift_library
+    try:
+        from macro_lib.convert.facebook import get_fbonly_converters
+    except ImportError:
+        def get_fbonly_converters(context):
+            return []
 
 
 FBCODE_UI_MESSAGE = (

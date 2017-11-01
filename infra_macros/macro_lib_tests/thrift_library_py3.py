@@ -12,23 +12,29 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..macro_lib.convert.thrift_library import ThriftLibraryConverter
-
 from . import utils
 
 
 class Py3ThriftConverterTest(utils.ConverterTestCase):
+
     def setUp(self):
         super(Py3ThriftConverterTest, self).setUp()
-        self.setup_with_config({}, {})
+        try:
+            self.setup_with_config({}, {})
+        except:
+            super(Py3ThriftConverterTest, self).tearDown()
+            raise
 
     def setup_with_config(self, additional_configs, removed_configs):
         self._state = self._create_converter_state(
             additional_configs,
             removed_configs
         )
+        self._thrift = (
+            self._state.parser.load_include(
+                'tools/build/buck/infra_macros/macro_lib/convert/thrift_library.py'))
         self._converter = (
-            ThriftLibraryConverter(
+            self._thrift.ThriftLibraryConverter(
                 self._state.context,
             )
         )
