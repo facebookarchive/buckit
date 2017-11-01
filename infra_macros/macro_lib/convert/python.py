@@ -13,15 +13,20 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-from distutils.version import LooseVersion
-import os
 import operator
 import pipes
-import platform
 
-from . import base
-from .base import ThirdPartyRuleTarget, RuleTarget
-from ..rule import Rule
+with allow_unsafe_import():
+    from distutils.version import LooseVersion
+    import os
+    import platform
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/target.py".format(macro_root), "target")
+RuleTarget = target.RuleTarget
 
 
 INTERPS = [

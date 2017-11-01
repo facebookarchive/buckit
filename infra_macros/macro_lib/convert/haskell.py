@@ -16,10 +16,13 @@ import collections
 import os
 import re
 
-from . import base
-from .base import RootRuleTarget, ThirdPartyRuleTarget
-from ..rule import Rule
-from .cpp import convert_dlls
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+RootRuleTarget = base.RootRuleTarget
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
+include_defs("{}/rule.py".format(macro_root))
+
 
 # Flags controlling warnings issued by compiler
 DEFAULT_WARNING_FLAGS = ('-Wall', '-Werror')
@@ -695,8 +698,8 @@ class HaskellConverter(base.Converter):
         out_dep_queries = []
         if dlls:
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                convert_dlls(base_path, name, platform,
-                             dlls, self.get_fbcode_dir_from_gen_dir()))
+                cpp.convert_dlls(base_path, name, platform,
+                                 dlls, self.get_fbcode_dir_from_gen_dir()))
             rules.extend(dll_rules)
             dependencies.extend(dll_deps)
             optlflags = []

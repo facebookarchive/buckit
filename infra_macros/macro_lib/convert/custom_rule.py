@@ -12,14 +12,17 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import shlex
 import pipes
-import platform
 import collections
 
-from . import base
-from ..rule import Rule
+with allow_unsafe_import():
+    import os
+    import platform
+    import shlex
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/rule.py".format(macro_root))
 
 
 # An "alias" for a bash command to get a relative path.  This is pretty

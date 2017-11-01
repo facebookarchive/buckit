@@ -14,11 +14,16 @@ from __future__ import unicode_literals
 
 import collections
 import pipes
-import os.path
 
-from . import rust
-from .base import ThirdPartyRuleTarget
-from ..rule import Rule
+with allow_unsafe_import():
+    import os.path
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/convert/rust.py".format(macro_root), "rust")
+include_defs("{}/rule.py".format(macro_root))
+
 
 FLAGFILTER = '''\
 # Extract just -D, -I and -isystem options

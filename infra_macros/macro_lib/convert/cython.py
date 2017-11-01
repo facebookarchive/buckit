@@ -25,12 +25,16 @@ from __future__ import unicode_literals
 
 import collections
 import itertools
-import os
 
-from . import base
-from . import cpp, python
-from ..rule import Rule
-from ..global_defns import AutoHeaders
+with allow_unsafe_import():
+    import os
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
+include_defs("{}/convert/python.py".format(macro_root), "python")
+include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/global_defns.py".format(macro_root), "global_defns")
 
 
 def split_matching_extensions(srcs, exts):
@@ -378,7 +382,7 @@ class Converter(base.Converter):
             srcs=list(srcs),  # cpp_library doesn't accept dict sources
             deps=cpp_deps,
             compiler_flags=cpp_compiler_flags,
-            auto_headers=AutoHeaders.NONE,
+            auto_headers=global_defns.AutoHeaders.NONE,
             headers=headers,
             external_deps=cpp_external_deps,
         )

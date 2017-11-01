@@ -17,8 +17,9 @@ import os
 import pipes
 import re
 
-from . import base
-from ..rule import Rule
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/rule.py".format(macro_root))
 
 
 class CustomUnittestConverter(base.Converter):

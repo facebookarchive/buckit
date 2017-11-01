@@ -12,13 +12,16 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import subprocess
 import collections
 
-from macro_lib.convert import base
-from macro_lib.convert.base import ThirdPartyRuleTarget
-from macro_lib.rule import Rule
+with allow_unsafe_import():
+    import os
+    import subprocess
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
 
 
 PYTHON = ThirdPartyRuleTarget('python', 'python')

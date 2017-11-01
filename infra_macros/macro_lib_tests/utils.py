@@ -66,6 +66,7 @@ class ConverterTestCase(unittest.TestCase):
     def _create_converter_state(self, extra_configs=None, removed_configs=None):
         configs = {
             ('fbcode', 'platform'): 'gcc-4.9-glibc-2.20-fb',
+            ('fbcode', 'macro_lib'): '//tools/build/buck/infra_macros/macro_lib',
             ('fbcode', 'third_party_buck_directory'): 'third-party-buck',
             ('fbcode', 'third_party_config_path'): 'third-party-buck/config.py',
             ('fbcode', 'add_auto_headers_glob'): 'true',

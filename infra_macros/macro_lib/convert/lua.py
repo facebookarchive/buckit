@@ -16,9 +16,10 @@ import collections
 import os
 import pipes
 
-from . import base
-from .base import RootRuleTarget
-from ..rule import Rule
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+RootRuleTarget = base.RootRuleTarget
+include_defs("{}/rule.py".format(macro_root))
 
 
 DEFAULT_CPP_MAIN = RootRuleTarget('tools/make_lar', 'lua_main')

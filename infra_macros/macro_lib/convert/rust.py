@@ -16,9 +16,10 @@ import collections
 import pipes
 import os.path
 
-from . import base
-from ..rule import Rule
-from .base import ThirdPartyRuleTarget
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
 
 
 class RustConverter(base.Converter):

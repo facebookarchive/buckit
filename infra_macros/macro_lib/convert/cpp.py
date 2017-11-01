@@ -26,23 +26,23 @@ except NameError:
 
 import collections
 import itertools
-import os
 import pipes
 import re
 
 with allow_unsafe_import():
     from distutils.version import LooseVersion
+    import os
     import platform as plat
     import shlex
 
-# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
-with allow_unsafe_import():
-    from macro_lib.convert import base
-    from macro_lib.convert.base import RootRuleTarget, ThirdPartyRuleTarget
-    from macro_lib.convert.base import SourceWithFlags
-    from macro_lib.rule import Rule
-    from macro_lib.global_defns import AutoHeaders
-    from macro_lib.cxx_sources import HEADER_SUFFIXES
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+RootRuleTarget = base.RootRuleTarget
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/global_defns.py".format(macro_root), "global_defns")
+include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
+
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')
@@ -435,7 +435,7 @@ class CppConverter(base.Converter):
         headers = glob([
             base + hext
             for base, ext in split_srcs if ext in source_exts
-            for hext in HEADER_SUFFIXES])
+            for hext in cxx_sources.HEADER_SUFFIXES])
 
         return headers
 
@@ -765,7 +765,7 @@ class CppConverter(base.Converter):
         return read_config(
             'cxx',
             'auto_headers',
-            AutoHeaders.SOURCES)
+            global_defns.AutoHeaders.SOURCES)
 
     def get_implicit_platform_deps(self):
         """
@@ -1152,7 +1152,7 @@ class CppConverter(base.Converter):
             header, source, rules = (
                 self.convert_lex(name, lex_args, lex_src, platform))
             out_headers.append(header)
-            out_srcs.append(SourceWithFlags(RootRuleTarget(base_path, source[1:]), ['-w']))
+            out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), ['-w']))
             extra_rules.extend(rules)
 
         # Generate rules to handle yacc sources.
@@ -1167,7 +1167,7 @@ class CppConverter(base.Converter):
                     yacc_src,
                     platform))
             out_headers.append(header)
-            out_srcs.append(SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
+            out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
             extra_rules.extend(rules)
 
         # Convert and add in any explicitly mentioned headers into our output
@@ -1191,7 +1191,7 @@ class CppConverter(base.Converter):
                 headers,
                 auto_headers,
                 self._context.buck_ops.read_config))
-        if auto_headers == AutoHeaders.SOURCES:
+        if auto_headers == global_defns.AutoHeaders.SOURCES:
             src_headers = set(self.get_headers_from_sources(base_path, srcs))
             src_headers -= set(out_headers)
             if isinstance(out_headers, list):
@@ -1225,7 +1225,7 @@ class CppConverter(base.Converter):
                     (known_warnings and
                      self.get_parsed_src_name(src) in known_warnings)):
                 flags = ['-Wno-error']
-            out_srcs.append(SourceWithFlags(src, flags))
+            out_srcs.append(base.SourceWithFlags(src, flags))
 
         formatted_srcs = self.format_source_with_flags_list(out_srcs)
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':

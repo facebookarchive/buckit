@@ -15,12 +15,15 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import os
 import pipes
 
-from . import base
-from .base import ThirdPartyRuleTarget
-from ..rule import Rule
+with allow_unsafe_import():
+    import os
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
 
 
 FLAGS = [

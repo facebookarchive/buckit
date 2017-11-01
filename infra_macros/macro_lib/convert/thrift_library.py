@@ -14,24 +14,28 @@ from __future__ import unicode_literals
 
 import collections
 import itertools
-import os
 import hashlib
 
-from macro_lib.convert import base
-from macro_lib.convert.base import RootRuleTarget, ThirdPartyRuleTarget
-from macro_lib.convert import cpp
-from macro_lib.convert import haskell
+with allow_unsafe_import():
+    import os
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+RootRuleTarget = base.RootRuleTarget
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
+include_defs("{}/convert/haskell.py".format(macro_root), "haskell")
 try:
-    from macro_lib.convert import java
+    include_defs("{}/convert/java.py".format(macro_root), "java")
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
-from macro_lib.convert import js
-from macro_lib.convert import cython
-from macro_lib.convert import ocaml
-from macro_lib.convert import python
-from macro_lib.convert import rust
-from macro_lib.rule import Rule
+include_defs("{}/convert/js.py".format(macro_root), "js")
+include_defs("{}/convert/cython.py".format(macro_root), "cython")
+include_defs("{}/convert/ocaml.py".format(macro_root), "ocaml")
+include_defs("{}/convert/python.py".format(macro_root), "python")
+include_defs("{}/convert/rust.py".format(macro_root), "rust")
+include_defs("{}/rule.py".format(macro_root))
 
 
 THRIFT_FLAGS = [

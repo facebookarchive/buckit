@@ -15,4 +15,6 @@ from __future__ import unicode_literals
 import collections
 
 
+__all__ = ['Rule']
+
 Rule = collections.namedtuple('Rule', ['type', 'attributes'])

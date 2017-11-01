@@ -19,43 +19,43 @@ import re
 with allow_unsafe_import():
     import sys
 
-# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
-with allow_unsafe_import():
-    from macro_lib.convert import base
-    from macro_lib.convert import cpp
-    from macro_lib.convert import cpp_library_external
-    from macro_lib.convert import cpp_library_external_custom
-    from macro_lib.convert import custom_rule
-    from macro_lib.convert import custom_unittest
-    from macro_lib.convert import cython
-    from macro_lib.convert import d
-    from macro_lib.convert import dewey_artifact
-    from macro_lib.convert import discard
-    from macro_lib.convert import go
-    from macro_lib.convert import haskell
-    from macro_lib.convert import haskell_external_library
-    try:
-        from macro_lib.convert import java
-        from macro_lib.convert import java_plugins
-        use_internal_java_converters = True
-    except ImportError:
-        use_internal_java_converters = False
-    from macro_lib.convert import js
-    from macro_lib.convert import lua
-    from macro_lib.convert import ocaml
-    from macro_lib.convert import ocaml_library_external
-    from macro_lib.convert import passthrough
-    from macro_lib.convert import python
-    from macro_lib.convert import rust
-    from macro_lib.convert import rust_bindgen_library
-    from macro_lib.convert import rust_library_external
-    from macro_lib.convert import swig_library
-    from macro_lib.convert import thrift_library
-    try:
-        from macro_lib.convert.facebook import get_fbonly_converters
-    except ImportError:
-        def get_fbonly_converters(context):
-            return []
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
+include_defs("{}/convert/cpp_library_external.py".format(macro_root), "cpp_library_external")
+include_defs("{}/convert/cpp_library_external_custom.py".format(macro_root), "cpp_library_external_custom")
+include_defs("{}/convert/custom_rule.py".format(macro_root), "custom_rule")
+include_defs("{}/convert/custom_unittest.py".format(macro_root), "custom_unittest")
+include_defs("{}/convert/cython.py".format(macro_root), "cython")
+include_defs("{}/convert/d.py".format(macro_root), "d")
+include_defs("{}/convert/dewey_artifact.py".format(macro_root), "dewey_artifact")
+include_defs("{}/convert/discard.py".format(macro_root), "discard")
+include_defs("{}/convert/go.py".format(macro_root), "go")
+include_defs("{}/convert/haskell.py".format(macro_root), "haskell")
+include_defs("{}/convert/haskell_external_library.py".format(macro_root), "haskell_external_library")
+try:
+    include_defs("{}/convert/java.py".format(macro_root), "java")
+    include_defs("{}/convert/java_plugins.py".format(macro_root), "java_plugins")
+    use_internal_java_converters = True
+except ImportError:
+    use_internal_java_converters = False
+include_defs("{}/convert/js.py".format(macro_root), "js")
+include_defs("{}/convert/lua.py".format(macro_root), "lua")
+include_defs("{}/convert/ocaml.py".format(macro_root), "ocaml")
+include_defs("{}/convert/ocaml_library_external.py".format(macro_root), "ocaml_library_external")
+include_defs("{}/convert/passthrough.py".format(macro_root), "passthrough")
+include_defs("{}/convert/python.py".format(macro_root), "python")
+include_defs("{}/convert/rust.py".format(macro_root), "rust")
+include_defs("{}/convert/rust_bindgen_library.py".format(macro_root), "rust_bindgen_library")
+include_defs("{}/convert/rust_library_external.py".format(macro_root), "rust_library_external")
+include_defs("{}/convert/swig_library.py".format(macro_root), "swig_library")
+include_defs("{}/convert/thrift_library.py".format(macro_root), "thrift_library")
+try:
+    include_defs("{}/convert/facebook/__init__.py".format(macro_root), "facebook")
+    get_fbonly_converters = facebook.get_fbonly_converters
+except ImportError:
+    def get_fbonly_converters(context):
+        return []
 
 
 FBCODE_UI_MESSAGE = (

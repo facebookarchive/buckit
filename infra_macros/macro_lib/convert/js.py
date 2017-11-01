@@ -13,10 +13,13 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import os
 
-from . import base
-from ..rule import Rule
+with allow_unsafe_import():
+    import os
+
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/rule.py".format(macro_root))
 
 
 class JsConverter(base.Converter):

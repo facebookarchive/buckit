@@ -16,8 +16,9 @@ import re
 import os
 import collections
 
-from . import base
-from ..rule import Rule
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/rule.py".format(macro_root))
 
 
 def first(*args):

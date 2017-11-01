@@ -28,20 +28,19 @@ import collections
 import copy
 import functools
 import json
-import os
 import pipes
 import re
 
 with allow_unsafe_import():
     from distutils.version import LooseVersion
+    import os
     import platform as platmod
     import shlex
 
-# TODO(T20914511): Port to `include_defs()` and remove `allow_unsafe_import()`.
-with allow_unsafe_import():
-    from macro_lib.rule import Rule
-    from macro_lib.target import RuleTarget
-    from macro_lib import target
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/target.py".format(macro_root), "target")
+RuleTarget = target.RuleTarget
 
 
 SANITIZERS = {

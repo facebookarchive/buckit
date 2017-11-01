@@ -33,21 +33,6 @@ with allow_unsafe_import():
     import textwrap
 
 
-# ATTENTION: The buckification macro library is now loaded directly from source
-# so there is no deployment process and no need for the version below.
-# TODO(#11019082): remove this comment.
-# BUCKIFY_PAR_VERSION = 176
-
-# For the time being, error out when the user attempts to use the old mechanism
-# for testing the macro library.
-if read_config('buildfiles', 'local') is not None:
-    msg = """\
-the buckification macro library is now used directly from source, so there is
-no need to build the PAR or use `-c buildfiles.local=1` for testing."""
-    msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
-    raise Exception(msg)
-
-
 def find_cell_root(start_path):
     # Keep going up until we find a .buckconfig file
     path = os.path.split(start_path)[0]
@@ -78,44 +63,6 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 # /macros/.buckconfig
 # /macros/macros.py
 include_defs('//{}/config.py'.format(MACRO_LIB_DIR), 'config')
-
-
-class Loader(object):
-    """
-    Custom loader to record used sources from the macro library.
-    """
-
-    def __init__(self, loader):
-        self._loader = loader
-
-    def load_module(self, fullname):
-        """
-        Intercept imports of macro library modules, and record they're
-        inclusion via `include_defs`.
-        """
-
-        mod = self._loader.load_module(fullname)
-        if mod.__file__.startswith(MACRO_LIB_DIR + os.sep):
-            # This is an absolute path
-            base_name = os.path.splitext(mod.__file__)[0]
-            add_build_file_dep('//' + base_name + '.py')
-        return mod
-
-
-class Finder(pkgutil.ImpImporter):
-
-    def find_module(self, fullname, path=None):
-        loader = pkgutil.ImpImporter.find_module(self, fullname, path=path)
-        if loader is not None:
-            return Loader(loader)
-
-
-# Add the macro root to the include path and the above import hook to intercept
-# and record imports of the macro library.
-sys.path_hooks.append(Finder)
-sys.path.insert(0, os.path.dirname(MACRO_LIB_DIR))
-
-# Import parts of the macro lib package we'll be using.
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/BuildMode.py'.format(MACRO_LIB_DIR), 'BuildMode')
@@ -124,11 +71,6 @@ include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 include_defs('//{}/convert/base.py'.format(MACRO_LIB_DIR), 'base')
 include_defs('//{}/convert/cpp.py'.format(MACRO_LIB_DIR), 'cpp')
-
-# Now that the imports are done, remove the macro lib dir from the path and the
-# finder from the path hooks.
-del sys.path[0]
-sys.path_hooks.pop()
 
 __all__ = []
 

@@ -12,10 +12,23 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-import sys
+# TODO(T20914511): Until the macro lib has been completely ported to
+# `include_defs()`, we need to support being loaded via both `import` and
+# `include_defs()`.  These ugly preamble is thus here to consistently provide
+# `allow_unsafe_import()` regardless of how we're loaded.
+import contextlib
+try:
+    allow_unsafe_import
+except NameError:
+    @contextlib.contextmanager
+    def allow_unsafe_import(*args, **kwargs):
+        yield
 
+import collections
 from typing import Optional, Tuple, Union  # noqa F401
+
+with allow_unsafe_import():
+    import sys
 
 
 RuleTarget = (

@@ -14,9 +14,10 @@ from __future__ import unicode_literals
 
 import collections
 
-from . import base
-from .base import ThirdPartyRuleTarget
-from ..rule import Rule
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
+ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
+include_defs("{}/rule.py".format(macro_root))
 
 
 class DConverter(base.Converter):

@@ -9,7 +9,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from . import base
+macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
+include_defs("{}/convert/base.py".format(macro_root), "base")
 
 
 class DiscardingConverter(base.Converter):
