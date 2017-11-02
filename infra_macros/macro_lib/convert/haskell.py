@@ -520,7 +520,7 @@ class HaskellConverter(base.Converter):
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
                 ghc_tool=self.get_tp2_tool_path('ghc', platform),
-                ghc=self.get_tp2_dep_path('ghc'),
+                ghc=self.get_tp2_dep_path('ghc', platform),
                 link_style=self._context.link_style,
                 deps=' :' + deps_name,
                 out_obj=out_obj))

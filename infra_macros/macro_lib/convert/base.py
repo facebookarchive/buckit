@@ -415,15 +415,12 @@ class Converter(object):
             self.get_tp2_tool_path(target.base_path, platform),
             target.name)
 
-    def get_tp2_dep_path(self, project, platform=None):
+    def get_tp2_dep_path(self, project, platform):
         """
         Return the path within third-party for the given project. This will be
         the directory, not a specific target or binary. Based on configuration,
         and the path may be modified to fit fbcode's layout
         """
-
-        if platform is None:
-            platform = self.get_default_platform()
 
         if self._context.config.third_party_use_build_subdir:
             return os.path.join(self.get_third_party_root(platform), 'build', project)

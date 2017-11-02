@@ -224,16 +224,6 @@ class PythonConverter(base.Converter):
         return super(PythonConverter, self).get_version_universe(
             [('python', python_version)])
 
-    def convert_external_build_target(self, target):
-        """
-        Convert the given build target reference from an externel dep TARGETS
-        file reference from the context of a python library/binary.
-        """
-
-        return super(PythonConverter, self).convert_external_build_target(
-            target,
-            lang_suffix='-py')
-
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
             raise ValueError(

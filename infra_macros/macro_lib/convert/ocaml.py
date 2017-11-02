@@ -61,7 +61,10 @@ class OCamlConverter(base.Converter):
         attributes['compiler_flags'] = ['-warn-error', '+a']
         if compiler_flags:
             attributes['compiler_flags'].extend(
-                self.convert_args_with_macros(base_path, compiler_flags))
+                self.convert_args_with_macros(
+                    base_path,
+                    compiler_flags,
+                    platform=self.get_default_platform()))
 
         if not native:
             attributes['bytecode_only'] = True
