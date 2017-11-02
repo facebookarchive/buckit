@@ -40,7 +40,11 @@ with allow_unsafe_import():
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/target.py".format(macro_root), "target")
-RuleTarget = target.RuleTarget
+include_defs("{}/fbcode_target.py".format(macro_root), "fbcode_target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 SANITIZERS = {
@@ -124,14 +128,6 @@ PlatformParam = (
 
 SourceWithFlags = (
     collections.namedtuple('SourceWithFlags', ['src', 'flags']))
-
-
-def RootRuleTarget(base_path, name):
-    return RuleTarget(None, base_path, name)
-
-
-def ThirdPartyRuleTarget(project, rule_name):
-    return RuleTarget(project, project, rule_name)
 
 
 CXX_BUILD_INFO_TEMPLATE = """\
@@ -494,63 +490,6 @@ class Converter(object):
         parsed = self.normalize_external_dep(target, lang_suffix=lang_suffix)
         return self.get_dep_target(parsed, source=target)
 
-    def normalize_dep(self, raw_target, base_path=None):
-        """
-        Convert the given build target into a RuleTarget
-        """
-
-        # A 'repo' is used as the cell name when generating a target except
-        # when:
-        #  - repo is None. This means that the rule is in the root cell
-        #  - fbcode.unknown_cells_are_third_party is True. This will resolve
-        #    unknown repositories as third-party libraries
-
-        # This is the normal path for buck style dependencies. We do a little
-        # parsing, but nothing too crazy. This allows OSS users to use the
-        # FB macro library, but not have to use fbcode naming conventions
-        if not self._context.config.fbcode_style_deps:
-            if raw_target.startswith('@/'):
-                raise ValueError(
-                    'rule name must not start with "@/" in repositories with '
-                    'fbcode style deps disabled')
-            cell_and_target = raw_target.split('//', 2)
-            path, rule = cell_and_target[-1].split(':')
-            repo = None
-            if len(cell_and_target) == 2 and cell_and_target[0]:
-                repo = cell_and_target[0]
-            path = path or base_path
-            return RuleTarget(repo, path, rule)
-
-        parsed = (
-            target.parse_target(
-                raw_target,
-                default_base_path=base_path))
-
-        # Normally in the monorepo, you can reference other directories
-        # directly. When not in the monorepo, we need to map to a correct cell
-        # for third-party use. A canonical example is folly. It is first-party
-        # to Facebook, but third-party to OSS users, so we need to toggle what
-        # '@/' means a little.
-        # ***
-        # We'll assume for now that all cells' names match their directory in
-        # the monorepo.
-        # ***
-        # We can probably add more configuration later if necessary.
-        if parsed.repo is None:
-            if self._context.config.fbcode_style_deps_are_third_party:
-                repo = parsed.base_path.split(os.sep)[0]
-            else:
-                repo = self._context.config.current_repo_name
-            parsed = parsed._replace(repo=repo)
-
-        # Some third party dependencies fall under rules like
-        # '@/fbcode:project:rule'. Let's normalize fbcode to None so that we
-        # know it's under the root cell
-        if parsed.repo == self._context.config.current_repo_name:
-            parsed = parsed._replace(repo=None)
-
-        return parsed
-
     def get_fbcode_target(self, target):
         """
         Convert a Buck style rule name back into an fbcode one.
@@ -566,7 +505,7 @@ class Converter(object):
         Convert the given build target into a buck build target.
         """
 
-        parsed = self.normalize_dep(target, base_path=base_path)
+        parsed = fbcode_target.parse_target(target, base_path=base_path)
         return self.get_dep_target(parsed, source=target, platform=platform)
 
     def parse_source(self, base_path, src):  # type: (str, str) -> Union[str, RuleTarget]
@@ -575,7 +514,7 @@ class Converter(object):
         """
 
         if src[0] in ':@' or src.startswith('//'):
-            return self.normalize_dep(src, base_path=base_path)
+            return fbcode_target.parse_target(src, base_path=base_path)
 
         return src
 
@@ -711,7 +650,7 @@ class Converter(object):
         # typical Buck absolute target prefix, so generate a proper error
         # message.
         if src[0] in ':@' or src.startswith('//'):
-            target = self.normalize_dep(src, base_path=base_path)
+            target = fbcode_target.parse_target(src, base_path=base_path)
             assert target.repo is None, src
             src = self.get_dep_target(target, source=src)
 
@@ -1456,7 +1395,7 @@ class Converter(object):
         deps = []
 
         for rdep in self._context.config.allocators[allocator]:
-            deps.append(self.normalize_dep('@/' + rdep[2:]))
+            deps.append(fbcode_target.parse_target('@/' + rdep[2:]))
 
         return deps
 

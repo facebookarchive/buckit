@@ -18,10 +18,13 @@ import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-RootRuleTarget = base.RootRuleTarget
-ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 # Flags controlling warnings issued by compiler
@@ -647,10 +650,10 @@ class HaskellConverter(base.Converter):
 
         # Collect all deps specified by the user.
         user_deps = []
-        for target in deps:
-            user_deps.append(self.normalize_dep(target, base_path=base_path))
-        for target in external_deps:
-            user_deps.append(self.normalize_external_dep(target))
+        for dep in deps:
+            user_deps.append(target.parse_target(dep, base_path=base_path))
+        for dep in external_deps:
+            user_deps.append(self.normalize_external_dep(dep))
         user_deps.extend(self.get_deps_for_packages(packages))
         if fb_haskell:
             user_deps.extend(self.get_deps_for_packages(

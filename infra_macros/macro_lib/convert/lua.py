@@ -18,8 +18,12 @@ import pipes
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-RootRuleTarget = base.RootRuleTarget
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 DEFAULT_CPP_MAIN = RootRuleTarget('tools/make_lar', 'lua_main')
@@ -265,7 +269,7 @@ class LuaConverter(base.Converter):
         # If a user-specified `cpp_main` is given, use that.  Otherwise,
         # fallback to the default.
         if cpp_main is not None:
-            out_deps.append(self.normalize_dep(cpp_main, base_path=base_path))
+            out_deps.append(target.parse_target(cpp_main, base_path=base_path))
         else:
             out_deps.append(DEFAULT_CPP_MAIN)
 
@@ -318,10 +322,10 @@ class LuaConverter(base.Converter):
             dependencies.append(
                 self.get_tp2_project_target(
                     self.get_tp2_project_name(base_path)))
-        for target in deps:
-            dependencies.append(self.normalize_dep(target, base_path))
-        for target in external_deps:
-            dependencies.append(self.normalize_external_dep(target))
+        for dep in deps:
+            dependencies.append(target.parse_target(dep, base_path))
+        for dep in external_deps:
+            dependencies.append(self.normalize_external_dep(dep))
         if dependencies:
             platform = (
                 self.get_tp2_platform(base_path)
@@ -377,7 +381,7 @@ class LuaConverter(base.Converter):
         if cpp_main is None:
             cpp_main_dep = DEFAULT_CPP_MAIN
         else:
-            cpp_main_dep = self.normalize_dep(cpp_main, base_path)
+            cpp_main_dep = target.parse_target(cpp_main, base_path)
 
         # Default main_module = name
         if (main_module is None and
@@ -427,10 +431,10 @@ class LuaConverter(base.Converter):
             dependencies.append(RootRuleTarget('fblualib/luaunit', 'luaunit'))
 
         # Add in `dep` and `external_deps` parameters to the dependency list.
-        for target in deps:
-            dependencies.append(self.normalize_dep(target, base_path))
-        for target in external_deps:
-            dependencies.append(self.normalize_external_dep(target))
+        for dep in deps:
+            dependencies.append(target.parse_target(dep, base_path))
+        for dep in external_deps:
+            dependencies.append(self.normalize_external_dep(dep))
 
         if dependencies:
             attributes['deps'], attributes['platform_deps'] = (

@@ -105,52 +105,6 @@ class BaseConverterTest(utils.ConverterTestCase):
         }
         self.assertEqual(actual_builds, expected_builds)
 
-    def test_normalize_dep(self):
-        self.assertEquals(
-            self._converter.normalize_dep('@/full:target'),
-            self._base.RuleTarget(None, 'full', 'target'))
-        self.assertEquals(
-            self._converter.normalize_dep(':target'),
-            self._base.RuleTarget(None, None, 'target'))
-        self.assertEquals(
-            self._converter.normalize_dep('@/repo:full:target'),
-            self._base.RuleTarget('repo', 'full', 'target'))
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('@invalid:target')
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('//invalid:target')
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('invalid:target')
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('@/invalid')
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('repo:invalid:target')
-
-    def test_normalize_dep_in_oss(self):
-        self.setup_with_config({}, {('fbcode', 'fbcode_style_deps')})
-
-        self.assertEquals(
-            self._converter.normalize_dep(':target'),
-            self._base.RuleTarget(None, None, 'target'))
-        self.assertEquals(
-            self._converter.normalize_dep('//full:target'),
-            self._base.RuleTarget(None, 'full', 'target'))
-        self.assertEquals(
-            self._converter.normalize_dep('cell//full:target'),
-            self._base.RuleTarget('cell', 'full', 'target'))
-
-        with self.assertRaises(ValueError):
-            self._converter.normalize_dep('@/full:target')
-
-        self.setup_with_config({}, {
-            ('fbcode', 'fbcode_style_deps_are_third_party')})
-        self.assertEquals(
-            self._converter.normalize_dep('@/folly:json'),
-            self._base.RuleTarget('folly', 'folly', 'json'))
-        self.assertEquals(
-            self._converter.normalize_dep('@/cell/full:target'),
-            self._base.RuleTarget('cell', 'cell/full', 'target'))
-
     def test_get_tool_target(self):
         self.assertEquals(
             self._converter.get_tool_target(

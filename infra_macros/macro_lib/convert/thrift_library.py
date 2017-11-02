@@ -21,8 +21,6 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-RootRuleTarget = base.RootRuleTarget
-ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/convert/haskell.py".format(macro_root), "haskell")
 try:
@@ -36,6 +34,11 @@ include_defs("{}/convert/ocaml.py".format(macro_root), "ocaml")
 include_defs("{}/convert/python.py".format(macro_root), "python")
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 THRIFT_FLAGS = [
@@ -832,9 +835,9 @@ class HaskellThriftConverter(ThriftLangConverter):
             for pkg in hs_packages or []:
                 dependencies.append(self._hs_converter.get_dep_for_package(pkg))
             for dep in hs2_deps:
-                dependencies.append(self.normalize_dep(dep, base_path))
+                dependencies.append(target.parse_target(dep, base_path))
         for dep in deps:
-            dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
+            dependencies.append(target.parse_target('@' + dep[1:], base_path))
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(dependencies))
         if self.read_hs_profile():
@@ -1443,7 +1446,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         dependencies.extend(self.THRIFT_OCAML_DEPS)
         dependencies.extend(self.THRIFT_OCAML_LIBS)
         for dep in deps:
-            dependencies.append(self.normalize_dep('@' + dep[1:], base_path))
+            dependencies.append(target.parse_target('@' + dep[1:], base_path))
         attrs['deps'] = (self.format_all_deps(dependencies))[0]
 
         return [Rule('ocaml_library', attrs)]

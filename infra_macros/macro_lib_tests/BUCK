@@ -15,6 +15,7 @@ python_unittest(
         "base_tests.py",
         "cpp_library_external_tests.py",
         "cpp_library_tests.py",
+        "fbcode_target_tests.py",
         "thrift_library_py3.py",
     ],
     py_version = "<3",

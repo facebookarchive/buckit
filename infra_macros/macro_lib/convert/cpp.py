@@ -37,11 +37,14 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-RootRuleTarget = base.RootRuleTarget
-ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/global_defns.py".format(macro_root), "global_defns")
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
@@ -1292,7 +1295,7 @@ class CppConverter(base.Converter):
                     gtest_deps.append(
                         self._context.config.gtest_main_dependency)
                 dependencies.extend(
-                    [self.normalize_dep(dep) for dep in gtest_deps])
+                    [target.parse_target(dep) for dep in gtest_deps])
             else:
                 attributes['framework'] = type
 
@@ -1322,15 +1325,15 @@ class CppConverter(base.Converter):
         #    list of dependencies. We bypass buck's platform support because it
         #    requires us to parse a bunch of extra files we know we won't use,
         #    and because it's just a little fragile
-        for target in itertools.chain(
+        for dep in itertools.chain(
                 deps,
                 py3_sensitive_deps,
                 *[
-                    target
-                    for os, target in os_deps
+                    dep
+                    for os, dep in os_deps
                     if os == self._context.config.current_os
                 ]):
-            dependencies.append(self.normalize_dep(target, base_path))
+            dependencies.append(target.parse_target(dep, base_path))
 
         # If we include any lex sources, implicitly add a dep on the lex lib.
         if lex_srcs:

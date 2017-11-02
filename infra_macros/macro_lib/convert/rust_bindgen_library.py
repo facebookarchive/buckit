@@ -20,9 +20,13 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 FLAGFILTER = '''\

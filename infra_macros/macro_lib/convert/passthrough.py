@@ -17,6 +17,7 @@ import collections
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
 
 
 class PassthroughConverter(base.Converter):
@@ -63,12 +64,12 @@ class PassthroughConverter(base.Converter):
             for key in self._convert_targets_on:
                 val = kwargs.get(key)
                 if isinstance(val, basestring):
-                    val = self.get_dep_target(self.normalize_dep(val, base_path))
+                    val = self.get_dep_target(target.parse_target(val, base_path))
                     kwargs[key] = val
                 elif isinstance(val, list):
                     val = [
-                        self.get_dep_target(self.normalize_dep(target, base_path))
-                        for target in val
+                        self.get_dep_target(target.parse_target(tgt, base_path))
+                        for tgt in val
                     ]
                     kwargs[key] = val
 

@@ -22,8 +22,12 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-ThirdPartyRuleTarget = base.ThirdPartyRuleTarget
 include_defs("{}/rule.py".format(macro_root))
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("{}:fbcode_target.py".format(macro_root),
+     "RootRuleTarget",
+     "RuleTarget",
+     "ThirdPartyRuleTarget")
 
 
 FLAGS = [
@@ -450,9 +454,9 @@ class SwigLibraryConverter(base.Converter):
 
         # Parse incoming options.
         languages = self.get_languages(languages)
-        cpp_deps = [self.normalize_dep(d, base_path) for d in cpp_deps]
+        cpp_deps = [target.parse_target(d, base_path) for d in cpp_deps]
         ext_deps = (
-            [self.normalize_dep(d, base_path) for d in ext_deps] +
+            [target.parse_target(d, base_path) for d in ext_deps] +
             [self.normalize_external_dep(d) for d in ext_external_deps])
 
         if module is None:
