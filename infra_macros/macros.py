@@ -9,8 +9,6 @@
 
 # Since this is used as a Buck build def file, we can't normal linting
 # as we'll get complaints about magic definitions like `get_base_path()`.
-# @lint-avoid-pyflakes2
-# @lint-avoid-pyflakes3
 
 from __future__ import absolute_import
 from __future__ import division
