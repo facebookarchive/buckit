@@ -438,24 +438,68 @@ class PythonConverter(base.Converter):
 
         return rules
 
-    def get_preload_deps(self, allocator):
+    # TODO(T23173403): move this to `base.py` and make available for other
+    # languages.
+    def get_jemalloc_malloc_conf_dep(self, base_path, name, malloc_conf, deps):
+        """
+        Build a rule which wraps the JEMalloc allocator and links default
+        configuration via the `jemalloc_conf` variable.
+        """
+
+        rules = []
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = '__{}_jemalloc_conf_src__'.format(name)
+        attrs['out'] = 'jemalloc_conf.c'
+        attrs['cmd'] = (
+            'echo \'const char* malloc_conf = "{}";\' > "$OUT"'
+            .format(','.join(['{}:{}'.format(k, v)
+                              for k, v in sorted(malloc_conf.items())])))
+        src_rule = Rule('genrule', attrs)
+        rules.append(src_rule)
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = '__{}_jemalloc_conf_lib__'.format(name)
+        attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
+        attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        lib_rule = Rule('cxx_library', attrs)
+        rules.append(lib_rule)
+
+        return RootRuleTarget(base_path, lib_rule.attributes['name']), rules
+
+    def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None):
         """
         Add C/C++ deps which need to preloaded by Python binaries.
         """
 
         deps = []
+        rules = []
 
         # If we're using sanitizers, add the dep on the sanitizer-specific
         # support library.
         if self._context.sanitizer is not None:
             sanitizer = base.SANITIZERS[self._context.sanitizer]
-            deps.append('//tools/build/sanitizers:{}-py'.format(sanitizer))
+            deps.append(
+                RootRuleTarget(
+                    'tools/build/sanitizers',
+                    '{}-py'.format(sanitizer)))
 
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.
         if allocator is not None and self._context.sanitizer is None:
-            deps.extend(self.get_allocators()[allocator])
-        return deps
+            allocator_deps = self.get_allocator_deps(allocator)
+            if allocator.startswith('jemalloc') and jemalloc_conf is not None:
+                conf_dep, conf_rules = (
+                    self.get_jemalloc_malloc_conf_dep(
+                        base_path,
+                        name,
+                        jemalloc_conf,
+                        allocator_deps))
+                allocator_deps = [conf_dep]
+                rules.extend(conf_rules)
+            deps.extend(allocator_deps)
+
+        return deps, rules
 
     def get_ldflags(self, base_path, name, strip_libpar=True):
         """
@@ -658,6 +702,7 @@ class PythonConverter(base.Converter):
         allocator=None,
         check_types=False,
         preload_deps=(),
+        jemalloc_conf=None,
     ):
         rules = []
         dependencies = []
@@ -730,7 +775,10 @@ class PythonConverter(base.Converter):
             attributes['build_args'] = build_args
 
         # Add any special preload deps.
-        out_preload_deps.extend(self.get_preload_deps(allocator))
+        default_preload_deps, default_preload_rules = (
+            self.get_preload_deps(base_path, name, allocator, jemalloc_conf))
+        out_preload_deps.extend(self.format_deps(default_preload_deps))
+        rules.extend(default_preload_rules)
 
         # Add user-provided preloaded deps.
         for dep in preload_deps:
@@ -886,6 +934,7 @@ class PythonConverter(base.Converter):
         check_types=False,
         preload_deps=(),
         visibility=None,
+        jemalloc_conf=None,
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
@@ -950,6 +999,7 @@ class PythonConverter(base.Converter):
                 allocator=allocator,
                 check_types=check_types,
                 preload_deps=preload_deps,
+                jemalloc_conf=jemalloc_conf,
             )
             rules.extend(one_set_rules)
             rule_names.append(':' + py_name)
