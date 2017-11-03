@@ -11,7 +11,6 @@
 # as we'll get complaints about magic definitions like `get_base_path()`.
 # @lint-avoid-pyflakes2
 # @lint-avoid-pyflakes3
-# @lint-avoid-python-3-compatibility-imports
 
 from __future__ import absolute_import
 from __future__ import division
