@@ -1910,13 +1910,10 @@ class RustThriftConverter(ThriftLangConverter):
             '@/common/rust/thrift/runtime:rust_thrift',
         ]
         out_external_deps = [
-            ('rust-crates-io', None, 'bytes'),
             ('rust-crates-io', None, 'error-chain'),
             ('rust-crates-io', None, 'futures'),
             ('rust-crates-io', None, 'lazy_static'),
-            ('rust-crates-io', None, 'tokio-io'),
             ('rust-crates-io', None, 'tokio-service'),
-            ('rust-crates-io', None, 'tokio-proto'),
         ]
 
         out_deps.extend(self.get_fbcode_target(d) for d in deps)
