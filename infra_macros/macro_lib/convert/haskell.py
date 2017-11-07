@@ -745,14 +745,6 @@ class HaskellConverter(base.Converter):
         attributes['deps'], attributes['platform_deps'] = (
             self.format_all_deps(dependencies))
 
-        # we could restrict this to auto-generated deps but I think it's
-        # a better tradeoff to let iteration on deps construction to be
-        # done more lazily for the time being until things settle down.
-        attributes['deps'] = sorted(set(attributes['deps']))
-        attributes['platform_deps'] = [
-            (x, sorted(set(y))) for (x, y) in attributes['platform_deps']
-        ]
-
         rules.append(Rule(self.get_buck_rule_type(), attributes))
 
         return rules
