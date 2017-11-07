@@ -579,6 +579,11 @@ class HaskellConverter(base.Converter):
 
         if self.get_fbconfig_rule_type() == 'haskell_ghci':
             out_compiler_flags.append('-fexternal-interpreter')
+            # Mark binary_link_deps to be preloaded
+            attributes['preload_deps'], attributes['platform_preload_deps'] = \
+                self.format_all_deps(
+                    self.get_binary_link_deps(allocator=allocator))
+
 
         if ghci_bin_dep is not None:
             bin_dep_target = self.convert_build_target(base_path, ghci_bin_dep)
