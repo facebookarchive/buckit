@@ -187,8 +187,10 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # will interpret as relative to the source that's including it, which
         # is in the cxx_genrule build dir.
         for s in (src_includes or []):
-            base_bindgen_flags.append('--raw-line=include!("%s");' %
-                os.path.abspath(os.path.join(base_path, s)))
+            base_bindgen_flags.append(
+                '--raw-line=include!(concat!(env!("RUSTC_BUILD_CONTAINER"), "{}"));'
+                .format(os.path.join(base_path, s))
+            )
 
         if cxx_namespaces:
             base_bindgen_flags.append('--enable-cxx-namespaces')
