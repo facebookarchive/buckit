@@ -16,42 +16,56 @@ import collections
 import os
 import re
 
-with allow_unsafe_import():
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
+
+
+with allow_unsafe_import():  # noqa: F821
     import sys
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
-include_defs("{}/convert/cpp_library_external.py".format(macro_root), "cpp_library_external")
-include_defs("{}/convert/cpp_library_external_custom.py".format(macro_root), "cpp_library_external_custom")
-include_defs("{}/convert/custom_rule.py".format(macro_root), "custom_rule")
-include_defs("{}/convert/custom_unittest.py".format(macro_root), "custom_unittest")
-include_defs("{}/convert/cython.py".format(macro_root), "cython")
-include_defs("{}/convert/d.py".format(macro_root), "d")
-include_defs("{}/convert/dewey_artifact.py".format(macro_root), "dewey_artifact")
-include_defs("{}/convert/discard.py".format(macro_root), "discard")
-include_defs("{}/convert/go.py".format(macro_root), "go")
-include_defs("{}/convert/haskell.py".format(macro_root), "haskell")
-include_defs("{}/convert/haskell_external_library.py".format(macro_root), "haskell_external_library")
+
+base = import_macro_lib('convert/base')
+cpp = import_macro_lib('convert/cpp')
+cpp_library_external = import_macro_lib('convert/cpp_library_external')
+cpp_library_external_custom = import_macro_lib(
+    'convert/cpp_library_external_custom'
+)
+custom_rule = import_macro_lib('convert/custom_rule')
+custom_unittest = import_macro_lib('convert/custom_unittest')
+cython = import_macro_lib('convert/cython')
+d = import_macro_lib('convert/d')
+dewey_artifact = import_macro_lib('convert/dewey_artifact')
+discard = import_macro_lib('convert/discard')
+go = import_macro_lib('convert/go')
+haskell = import_macro_lib('convert/haskell')
+haskell_external_library = import_macro_lib('convert/haskell_external_library')
 try:
-    include_defs("{}/convert/java.py".format(macro_root), "java")
-    include_defs("{}/convert/java_plugins.py".format(macro_root), "java_plugins")
+    java = import_macro_lib('convert/java')
+    java_plugins = import_macro_lib('convert/java_plugins')
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
-include_defs("{}/convert/js.py".format(macro_root), "js")
-include_defs("{}/convert/lua.py".format(macro_root), "lua")
-include_defs("{}/convert/ocaml.py".format(macro_root), "ocaml")
-include_defs("{}/convert/ocaml_library_external.py".format(macro_root), "ocaml_library_external")
-include_defs("{}/convert/passthrough.py".format(macro_root), "passthrough")
-include_defs("{}/convert/python.py".format(macro_root), "python")
-include_defs("{}/convert/rust.py".format(macro_root), "rust")
-include_defs("{}/convert/rust_bindgen_library.py".format(macro_root), "rust_bindgen_library")
-include_defs("{}/convert/rust_library_external.py".format(macro_root), "rust_library_external")
-include_defs("{}/convert/swig_library.py".format(macro_root), "swig_library")
-include_defs("{}/convert/thrift_library.py".format(macro_root), "thrift_library")
+js = import_macro_lib('convert/js')
+lua = import_macro_lib('convert/lua')
+ocaml = import_macro_lib('convert/ocaml')
+ocaml_library_external = import_macro_lib('convert/ocaml_library_external')
+passthrough = import_macro_lib('convert/passthrough')
+python = import_macro_lib('convert/python')
+rust = import_macro_lib('convert/rust')
+rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
+rust_library_external = import_macro_lib('convert/rust_library_external')
+swig_library = import_macro_lib('convert/swig_library')
+thrift_library = import_macro_lib('convert/thrift_library')
 try:
-    include_defs("{}/convert/facebook/__init__.py".format(macro_root), "facebook")
+    facebook = import_macro_lib('convert/facebook/__init__')
     get_fbonly_converters = facebook.get_fbonly_converters
 except ImportError:
     def get_fbonly_converters(context):
