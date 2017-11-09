@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import copy
 import itertools
 import hashlib
 
@@ -242,6 +243,46 @@ class CppThriftConverter(ThriftLangConverter):
     Specializer to support generating C/C++ libraries from thrift sources.
     """
 
+    STATIC_REFLECTION_SUFFIXES = [
+        '', '_enum', '_union', '_struct', '_constant', '_service', '_types',
+        '_all',
+    ]
+
+    TYPES_HEADER = 0
+    TYPES_SOURCE = 1
+    CLIENTS_HEADER = 2
+    CLIENTS_SOURCE = 3
+    SERVICES_HEADER = 4
+    SERVICES_SOURCE = 5
+
+    SUFFIXES = collections.OrderedDict([
+        ('_constants.h', TYPES_HEADER),
+        ('_constants.cpp', TYPES_SOURCE),
+        ('_types.h', TYPES_HEADER),
+        ('_types.tcc', TYPES_HEADER),
+        ('_types.cpp', TYPES_SOURCE),
+        ('_data.h', TYPES_HEADER),
+        ('_data.cpp', TYPES_SOURCE),
+        ('_layouts.h', TYPES_HEADER),
+        ('_layouts.cpp', TYPES_SOURCE),
+        ('_types_custom_protocol.h', TYPES_HEADER),
+    ] + [
+        ('_fatal%s.h' % suffix, TYPES_HEADER)
+        for suffix in STATIC_REFLECTION_SUFFIXES
+    ] + [
+        ('_reflection.h', TYPES_HEADER),
+        ('_reflection.cpp', TYPES_SOURCE),
+        ('AsyncClient.h', CLIENTS_HEADER),
+        ('_client.cpp', CLIENTS_SOURCE),
+        ('_custom_protocol.h', SERVICES_HEADER),
+        ('_processmap_binary.cpp', SERVICES_SOURCE),
+        ('_processmap_compact.cpp', SERVICES_SOURCE),
+        ('_gperf.tcc', SERVICES_HEADER),
+        ('.tcc', SERVICES_HEADER),
+        ('.h', SERVICES_HEADER),
+        ('.cpp', SERVICES_SOURCE),
+    ])
+
     def __init__(self, context, *args, **kwargs):
         is_cpp2 = kwargs.pop('is_cpp2', False)
         super(CppThriftConverter, self).__init__(context, *args, **kwargs)
@@ -312,15 +353,8 @@ class CppThriftConverter(ThriftLangConverter):
             genfiles.append('%s_layouts.cpp' % (thrift_base,))
 
         if self.get_static_reflection(options):
-            static_reflection_suffixes = [
-                '', '_enum', '_union', '_struct',
-                '_constant', '_service',
-                '_types', '_all',
-            ]
-            for suffix in static_reflection_suffixes:
-                for extension in ['h']:
-                    genfiles.append('%s_fatal%s.%s' % (
-                        thrift_base, suffix, extension))
+            for suffix in self.STATIC_REFLECTION_SUFFIXES:
+                genfiles.append('%s_fatal%s.h' % (thrift_base, suffix))
 
         if gen_templates:
             genfiles.append('%s_types.tcc' % (thrift_base,))
@@ -363,6 +397,12 @@ class CppThriftConverter(ThriftLangConverter):
         _, ext = os.path.splitext(src)
         return ext in ('.h', '.tcc')
 
+    def get_src_type(self, src):
+        return next((
+            type
+            for suffix, type in self.SUFFIXES.items()
+            if src.endswith(suffix)))
+
     def get_language_rule(
             self,
             base_path,
@@ -382,44 +422,104 @@ class CppThriftConverter(ThriftLangConverter):
             cpp_compiler_flags=(),
             cpp2_compiler_flags=(),
             **kwargs):
+        """
+        Generates a handful of rules:
+            <name>-<lang>-types: A library that just has the 'types' h, tcc and
+                          cpp files
+            <name>-<lang>-clients: A library that just has the client and async
+                                   client h and cpp files
+            <name>-<lang>-services: A library that has h, tcc and cpp files
+                                    needed to run a specific service
+            <name>-<lang>: An uber rule for compatibility that just depends on
+                           the three above rules
+        This is done in order to trim down dependencies and compilation units
+        when clients/services are not actually needed.
+        """
 
         sources = self.merge_sources_map(sources_map)
 
-        # Assemble sources.
-        out_sources = []
-        out_sources.extend(
-            [s for n, s in sources.iteritems() if not self.is_header(n)])
-        out_sources.extend(
-            self.convert_source_list(
-                base_path,
-                cpp2_srcs if self._is_cpp2 else cpp_srcs))
+        types_suffix = '-types'
+        types_sources = self.convert_source_list(
+            base_path, cpp2_srcs if self._is_cpp2 else cpp_srcs)
+        types_headers = self.convert_source_list(
+            base_path, cpp2_headers if self._is_cpp2 else cpp_headers)
+        types_deps = []
+        clients_and_services_suffix = '-clients_and_services'
+        clients_suffix = '-clients'
+        clients_sources = []
+        clients_headers = []
+        services_suffix = '-services'
+        services_sources = []
+        services_headers = []
 
-        # Assemble headers.
-        out_headers = []
-        out_headers.extend(
-            [s for n, s in sources.iteritems() if self.is_header(n)])
-        out_headers.extend(cpp2_headers if self._is_cpp2 else cpp_headers)
+        # If we're using mstch, we get a client that's separate entirely from
+        # the service (XAsyncClient.h and X_client.cpp). If we /don't/ have
+        # mstch, then we end up with a client that depends on the service
+        # (X_client.cpp depends on X.h)
+        # We also keep the client as a dependency of the service. The reason is
+        # this:
+        # Service.h includes ServiceAsyncClient.h. /this/ is because if you have
+        # in non-mustache world, we put the client and service into one file.
+        # We then include DependentService.h. If that dependency is generated
+        # with mustache, we have no idea that the AsyncClient is in its own
+        # file, rather than inside of the service's .h file, as it would be
+        # if everything were generated with non-mustache. Once we're migrated,
+        # the dependency of the service on the client rule can go away
+        has_separate_client = self._uses_mstch(options)
+        if has_separate_client:
+            clients_deps = [
+                ':%s%s' % (name, types_suffix),
+            ]
+            services_deps = [
+                # TODO: Once everything is on mustache, remove this 'clients'
+                # dependency
+                ':%s%s' % (name, clients_suffix),
+                ':%s%s' % (name, types_suffix),
+            ]
+        else:
+            clients_deps = [':%s%s' % (name, types_suffix)]
+            services_deps = clients_deps
+            services_sources = clients_sources
+            services_headers = clients_headers
 
-        # Add in regular deps and any special ones from thrift options.
-        out_deps = []
-        out_external_deps = []
+        # Get sources/headers for the -types, -clients and -services rules
+        for filename, file_target in sources.iteritems():
+            source_type = self.get_src_type(filename)
+            if source_type == self.TYPES_SOURCE:
+                types_sources.append(file_target)
+            elif source_type == self.TYPES_HEADER:
+                types_headers.append(file_target)
+            elif source_type == self.CLIENTS_SOURCE:
+                clients_sources.append(file_target)
+            elif source_type == self.CLIENTS_HEADER:
+                clients_headers.append(file_target)
+            elif source_type == self.SERVICES_SOURCE:
+                services_sources.append(file_target)
+            elif source_type == self.SERVICES_HEADER:
+                services_headers.append(file_target)
 
-        # Add in the thrift lang-specific deps.
-        out_deps.extend(self.get_fbcode_target(d) for d in deps)
+        types_deps.extend(
+            (self.get_fbcode_target(d + types_suffix) for d in deps))
+        clients_deps.extend(
+            (self.get_fbcode_target(d + clients_suffix) for d in deps))
+        services_deps.extend(
+            (self.get_fbcode_target(d + services_suffix) for d in deps))
 
         # Add in cpp-specific deps and external_deps
-        out_deps.extend(cpp2_deps if self._is_cpp2 else cpp_deps)
-        out_external_deps.extend(
+        common_deps = []
+        common_deps.extend(cpp2_deps if self._is_cpp2 else cpp_deps)
+        common_external_deps = []
+        common_external_deps.extend(
             cpp2_external_deps if self._is_cpp2 else cpp_external_deps)
 
         # The 'json' thrift option will generate code that includes
         # headers from deprecated/json.  So add a dependency on it here
         # so all external header paths will also be added.
         if 'json' in options:
-            out_deps.append(self.get_thrift_dep_target(
-                'thrift/lib/cpp', 'json_deps'))
+            common_deps.append(
+                self.get_thrift_dep_target('thrift/lib/cpp', 'json_deps'))
         if 'frozen2' in options:
-            out_deps.append(self.get_thrift_dep_target(
+            common_deps.append(self.get_thrift_dep_target(
                 'thrift/lib/cpp2/frozen', 'frozen'))
 
         # any c++ rule that generates thrift files must depend on the
@@ -427,40 +527,106 @@ class CppThriftConverter(ThriftLangConverter):
         # already
         if self._is_cpp2:
             if 'bootstrap' not in options:
-                out_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift'))
+                types_deps.append(
+                    self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
+                clients_deps.append(
+                    self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+                services_deps.append(
+                    self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
             # Make cpp2 depend on cpp for compatibility mode
             if 'compatibility' in options:
-                out_deps.append(
+                common_deps.append(
                     self.get_thrift_dep_target(base_path, name[:-1]))
             if self.get_static_reflection(options):
-                out_deps.append(
+                common_deps.append(
                     self.get_thrift_dep_target(
                         'thrift/lib/cpp2/fatal', 'reflection'))
         else:
             if 'bootstrap' not in options:
-                out_deps.append(
+                common_deps.append(
                     self.get_thrift_dep_target('thrift/lib/cpp', 'thrift'))
             if 'cob_style' in options:
-                out_deps.append(
+                common_deps.append(
                     self.get_thrift_dep_target('thrift/lib/cpp/async', 'async'))
+
+        types_deps.extend(common_deps)
+        services_deps.extend(common_deps)
+        clients_deps.extend(common_deps)
 
         # Disable variable tracking for thrift generated C/C++ sources, as
         # it's pretty expensive and not necessarily useful (D2174972).
-        out_compiler_flags = ['-fno-var-tracking']
-        out_compiler_flags.extend(
+        common_compiler_flags = ['-fno-var-tracking']
+        common_compiler_flags.extend(
             cpp2_compiler_flags if self._is_cpp2 else cpp_compiler_flags)
 
+        clients_and_services_rules = []
+        if not has_separate_client:
+            # Munge everything into a backing rule so that we don't get
+            # duplicate symbol errors if you statically link both -clients and
+            # -servers
+            rule_name = name + clients_and_services_suffix
+            clients_and_services_rules = self._cpp_converter.convert(
+                base_path,
+                name=rule_name,
+                srcs=clients_sources,
+                headers=clients_headers,
+                deps=clients_deps,
+                external_deps=common_external_deps,
+                compiler_flags=common_compiler_flags,
+            )
+            clients_sources = []
+            clients_headers = []
+            clients_deps = [':' + rule_name]
+            services_sources = []
+            services_headers = []
+            services_deps = [':' + rule_name]
+
+        # Create the types, services and clients rules
         # Delegate to the C/C++ library converting to add in things like
         # sanitizer and BUILD_MODE flags.
-        return self._cpp_converter.convert(
+        types_rules = self._cpp_converter.convert(
+            base_path,
+            name=name + types_suffix,
+            srcs=types_sources,
+            headers=types_headers,
+            deps=types_deps,
+            external_deps=common_external_deps,
+            compiler_flags=common_compiler_flags,
+        )
+        clients_rules = self._cpp_converter.convert(
+            base_path,
+            name=name + clients_suffix,
+            srcs=clients_sources,
+            headers=clients_headers,
+            deps=clients_deps,
+            external_deps=common_external_deps,
+            compiler_flags=common_compiler_flags,
+        )
+        services_rules = self._cpp_converter.convert(
+            base_path,
+            name + services_suffix,
+            srcs=services_sources,
+            headers=services_headers,
+            deps=services_deps,
+            external_deps=common_external_deps,
+            compiler_flags=common_compiler_flags,
+        )
+        # Create a master rule that depends on -types, -services and -clients
+        # for compatibility
+        master_rules = self._cpp_converter.convert(
             base_path,
             name,
-            srcs=out_sources,
-            headers=out_headers,
-            deps=out_deps,
-            external_deps=out_external_deps,
-            compiler_flags=out_compiler_flags)
+            srcs=[],
+            headers=[],
+            deps=[
+                ':' + name + types_suffix,
+                ':' + name + clients_suffix,
+                ':' + name + services_suffix,
+            ]
+        )
+        return (
+            types_rules + clients_rules + services_rules +
+            clients_and_services_rules + master_rules)
 
 
 class DThriftConverter(ThriftLangConverter):
