@@ -335,8 +335,7 @@ class CppThriftConverter(ThriftLangConverter):
             if self._is_cpp2:
                 genfiles.append('%s_client.cpp' % (service,))
                 genfiles.append('%s_custom_protocol.h' % (service,))
-                if self._uses_mstch(options):
-                    genfiles.append('%sAsyncClient.h' % (service,))
+                genfiles.append('%sAsyncClient.h' % (service,))
             if self._is_cpp2 and 'separate_processmap' in options:
                 genfiles.append('%s_processmap_binary.cpp' % (service,))
                 genfiles.append('%s_processmap_compact.cpp' % (service,))
