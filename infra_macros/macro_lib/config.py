@@ -246,6 +246,10 @@ class FbcodeOptions(object):
         'fbcode', 'gtest_main_dependency', None,
         'The target that will provide gtest C++ tests\' main function')
 
+    cython_compiler = Option(
+        'cython', 'cython_compiler', None,
+        'The target that will provide cython compiler')
+
     def __init__(self, read_config_func, allow_unsafe_import_func):
         self.read_config = read_config_func
         self.allow_unsafe_import = allow_unsafe_import_func

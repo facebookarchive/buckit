@@ -156,23 +156,7 @@ class Converter(base.Converter):
         the target name and the rule
         """
 
-        platform = self.get_platform(base_path)
-        # Setup the command to run cython.
-        # TODO: move cython to a `sh_binary` and use a `$(exe ...)` macro.
-        fbcode_dir = (
-            os.path.join(
-                '$GEN_DIR',
-                self.get_fbcode_dir_from_gen_dir()))
-        python = (
-            os.path.join(
-                fbcode_dir,
-                self.get_tp2_tool_path('python', platform),
-                'bin/python'))
-        cython = (
-            os.path.join(
-                fbcode_dir,
-                self.get_tp2_tool_path('Cython', platform),
-                'lib/python/cython.py'))
+        cython_compiler = self._context.config.cython_compiler
         attrs = collections.OrderedDict()
         attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
         attrs['out'] = os.curdir
@@ -201,15 +185,21 @@ class Converter(base.Converter):
 
         # Generate c/c++ source
         cmds.append(
-            '{python} {cython} {flags} -o $OUT/{result} {pyx_file}'
+            '$(exe {cython_compiler}) {flags} -o $OUT/{result} {pyx_file}'
             .format(
+                cython_compiler=cython_compiler,
                 result=out_src,
-                python=python,
-                cython=cython,
                 flags=' '.join(flags),
                 pyx_file=dst_src,
             )
         )
+
+        # Insure an _api.h file is always generated
+        cmds.append(
+            'touch $OUT/{module}_api.h'
+            .format(module=os.path.splitext(out_src)[0])
+        )
+
         attrs['cmd'] = ' && '.join(cmds)
 
         # Return the name and genrule
