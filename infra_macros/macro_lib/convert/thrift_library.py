@@ -1971,6 +1971,21 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
         return rules
 
 
+RUST_KEYWORDS = {
+    "abstract", "alignof", "as", "become", "box",
+    "break", "const", "continue", "crate", "do",
+    "else", "enum", "extern", "false", "final",
+    "fn", "for", "if", "impl", "in",
+    "let", "loop", "macro", "match", "mod",
+    "move", "mut", "offsetof", "override", "priv",
+    "proc", "pub", "pure", "ref", "return",
+    "Self", "self", "sizeof", "static", "struct",
+    "super", "trait", "true", "type", "typeof",
+    "unsafe", "unsized", "use", "virtual", "where",
+    "while", "yield",
+}
+
+
 class RustThriftConverter(ThriftLangConverter):
     """
     Specializer to support generating Rust libraries from thrift sources.
@@ -1986,8 +2001,7 @@ class RustThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(RustThriftConverter, self).__init__(context, *args, **kwargs)
-        self._rust_converter = (
-            rust.RustConverter(context, 'rust_library'))
+        self._rust_converter = rust.RustConverter(context, 'rust_library')
 
     def get_lang(self):
         return "rust"
@@ -2083,14 +2097,19 @@ class RustThriftConverter(ThriftLangConverter):
 
         out_deps.extend(self.get_fbcode_target(d) for d in deps)
 
+        # Avoid some common names which are also Rust keywords
+        crate_name = thrift_base
+        if crate_name in RUST_KEYWORDS:
+            crate_name += "_"
+
         return self._rust_converter.convert(
             base_path,
             name,
             srcs=[':%s-gen-rs' % name],
             deps=out_deps,
             external_deps=out_external_deps,
-            crate=thrift_base,
             unittests=False,    # nothing meaningful
+            crate=crate_name,
             **kwargs
         )
 
