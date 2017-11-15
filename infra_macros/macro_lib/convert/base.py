@@ -1348,10 +1348,7 @@ class Converter(object):
         assert self._context.compiler == 'clang'
         assert sanitizer in SANITIZER_DEPS
 
-        deps = [
-            SANITIZER_DEPS[sanitizer],
-            ThirdPartyRuleTarget('glibc', 'c'),
-        ]
+        deps = [SANITIZER_DEPS[sanitizer]]
 
         return deps
 
