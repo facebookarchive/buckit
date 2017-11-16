@@ -55,10 +55,19 @@ def parse_target(
         normalized = target[2:]
     elif target.startswith(':'):
         normalized = target
+    elif '//' in target and ':' in target:
+        # We have a full buck rule. Ignore the default repo and default
+        # base path. The default repo and base path are only used in the case of
+        # `:foo` targets, and they won't hit this branch
+        repo, base = target.split('//', 1)
+        repo = repo or default_repo
+        base, name = base.split(':', 1)
+        return RuleTarget(repo, base, name)
     else:
         raise ValueError(
-            'rule name must start with "@/" (when absolute) or ":" '
-            '(when relative): "{}"'
+            'rule name must start with "@/" (when absolute) ":" '
+            '(when relative), or contain "//" and ":" (when using '
+            'native buck style rules): "{}"'
             .format(target))
 
     # Split the target into its various parts.

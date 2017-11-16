@@ -42,14 +42,20 @@ class FbcodeTargetConverterTest(utils.ConverterTestCase):
         self.assertEquals(
             self._fbcode_target.parse_target('@/repo:full:target'),
             self._fbcode_target.RuleTarget('repo', 'full', 'target'))
+        self.assertEquals(
+            self._fbcode_target.parse_target('repo//full:target'),
+            self._fbcode_target.RuleTarget('repo', 'full', 'target'))
+        self.assertEquals(
+            self._fbcode_target.parse_target('//full:target'),
+            self._fbcode_target.RuleTarget(None, 'full', 'target'))
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('@invalid:target')
-        with self.assertRaises(ValueError):
-            self._fbcode_target.parse_target('//invalid:target')
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('invalid:target')
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('@/invalid')
+        with self.assertRaises(ValueError):
+            self._fbcode_target.parse_target('//invalid')
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('repo:invalid:target')
 
