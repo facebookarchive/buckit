@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import unittest
 
-from ..enriched_namedtuple import (
+from enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField
 )
 

@@ -1,10 +1,27 @@
-# NB: There is no binary here because the compiler does not get built by
-# Buck, it is executed in-place using the system Python.
+# NB: There is no binary here because the image compiler does not get built
+# by Buck, it is executed in-place using the system Python.
+
+python_library(
+    name = "enriched_namedtuple",
+    srcs = ["enriched_namedtuple.py"],
+    base_module = "",
+)
 
 python_unittest(
     name = "test-enriched-namedtuple",
+    srcs = ["tests/test_enriched_namedtuple.py"],
+    base_module = "",
+    deps = [":enriched_namedtuple"],
+)
+
+python_unittest(
+    name = "test-requires-provides",
     srcs = [
-        "enriched_namedtuple.py",
-        "tests/test_enriched_namedtuple.py",
+        "path_object.py",
+        "provides.py",
+        "requires.py",
+        "tests/test_requires_provides.py",
     ],
+    base_module = "",
+    deps = [":enriched_namedtuple"],
 )
