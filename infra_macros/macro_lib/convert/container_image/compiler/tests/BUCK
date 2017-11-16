@@ -1,0 +1,64 @@
+##
+## image_feature: The goal of this section is to get good coverage for all
+## the syntax variants supported by the `image_feature` converter.  The unit
+## test will then check that they become the right image compiler Items.
+##
+
+buck_genrule(
+    name = "hello_world.tar",
+    out = "hello_world.tar",
+    bash = """d=`mktemp -d`; trap 'rm -rf "$d"' EXIT; """ +
+           "touch \"$d\"/hello_world; " +
+           "tar --owner=root --group=root -C \"$d\" -cf \"$OUT\" .",
+)
+
+# Exercises:
+#  - all forms of constructing a make_dirs request
+#  - specifying `stat` options, like user/group/mode
+image_feature(
+    name = "feature_dirs",
+    make_dirs = [
+        "/foo/bar",
+        ("/foo/bar", "baz"),
+        {
+            "path_to_make": "borf/beep",
+            "into_dir": "/foo",
+            "user": "uuu",
+            "group": "ggg",
+            "mode": "mmm",
+        },
+    ],
+)
+
+# Exercises:
+#  - all forms of specifying a tarball to extract
+image_feature(
+    name = "feature_tar",
+    tarballs = [
+        (":hello_world.tar", "foo/borf"),
+        {
+            "tarball": ":hello_world.tar",
+            "into_dir": "foo",
+        },
+    ],
+)
+
+# Exercises:
+#  - all forms of specifying files to copy, including the rsync trailing-slash
+#  - dependent features
+#  - `copy_deps` also supports stat options
+image_feature(
+    name = "feature_copy_dirs_tar",
+    copy_deps = [
+        (":hello_world.tar", "/foo/bar/"),
+        {
+            "source": ":hello_world.tar",
+            "dest": "/foo/bar/hello_world_again.tar",
+            "group": "nobody",
+        },
+    ],
+    features = [
+        ":feature_dirs",
+        ":feature_tar",
+    ],
+)

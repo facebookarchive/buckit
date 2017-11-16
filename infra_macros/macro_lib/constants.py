@@ -90,6 +90,7 @@ FBCODE_RULES = [
     'haskell_haddock',
     'haskell_library',
     'haskell_unittest',
+    'image_feature',
     'java_binary',
     'java_library',
     'java_test',

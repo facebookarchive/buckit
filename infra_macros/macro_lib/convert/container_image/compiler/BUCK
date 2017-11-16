@@ -75,3 +75,65 @@ python_unittest(
     )],
     deps = [":dep_graph"],
 )
+
+python_library(
+    name = "items_for_features",
+    srcs = ["items_for_features.py"],
+    base_module = "",
+    deps = [":items"],
+)
+
+def READ_MY_DOC_image_feature_target(name):
+    '''
+    DANGER: If you depend on a feature target for testing, you MUST manually
+    add any `image_feature` targets that it depends on to your `deps = []`. 
+    If you fail to do this, Buck will not know to rebuild the the test if
+    one of its indirect `image_feature` dependencies changes.  See
+    `image_feature.py` for an explanation.
+    '''
+    return name + (
+        '_IF_YOU_REFER_TO_THIS_RULE_YOUR_DEPENDENCIES_WILL_BE_BROKEN_'
+        'SO_DO_NOT_DO_THIS_EVER_PLEASE_KTHXBAI'
+    )
+
+# Transitive deps of `tests:feature_dirs_and_copy_tar` --
+
+TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
+    READ_MY_DOC_image_feature_target("feature_dirs"),
+    READ_MY_DOC_image_feature_target("feature_tar"),
+    READ_MY_DOC_image_feature_target("feature_copy_dirs_tar"),
+    "hello_world.tar",
+]
+
+TEST_TARGET_PREFIX = (
+    "@/tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
+    "compiler/tests:"
+)
+
+python_unittest(
+    name = "test-image-feature",
+    srcs = ["tests/test_image_feature.py"],
+    base_module = "",
+    env = {
+        "test_image_feature_path_to_" + t: "$(location {})".format(
+            TEST_TARGET_PREFIX + t,
+        )
+        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
+    },
+    # I cannot get coverage for `image_feature.py` here, because that is
+    # executed by the Buck Python runtime.  I could conceivably shim all
+    # that out, but it seems entirely not worth the trouble.
+    needed_coverage = [(
+        0.84,  # Cannot get coverage of any of the errors.
+        ":items_for_features",
+    )],
+    # The test reads `feature.json`, so we need actual files on disk.
+    par_style = "zip",
+    deps = [
+        ":dep_graph",
+        ":items_for_features",
+    ] + [
+        TEST_TARGET_PREFIX + t
+        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
+    ],
+)
