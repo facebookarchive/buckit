@@ -1,0 +1,10 @@
+# NB: There is no binary here because the compiler does not get built by
+# Buck, it is executed in-place using the system Python.
+
+python_unittest(
+    name = "test-enriched-namedtuple",
+    srcs = [
+        "enriched_namedtuple.py",
+        "tests/test_enriched_namedtuple.py",
+    ],
+)
