@@ -57,3 +57,21 @@ python_unittest(
     )],
     deps = [":items"],
 )
+
+python_library(
+    name = "dep_graph",
+    srcs = ["dep_graph.py"],
+    base_module = "",
+    deps = [":items"],
+)
+
+python_unittest(
+    name = "test-dep-graph",
+    srcs = ["tests/test_dep_graph.py"],
+    base_module = "",
+    needed_coverage = [(
+        0.95,
+        ":dep_graph",
+    )],
+    deps = [":dep_graph"],
+)
