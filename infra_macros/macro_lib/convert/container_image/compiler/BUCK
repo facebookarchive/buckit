@@ -11,17 +11,49 @@ python_unittest(
     name = "test-enriched-namedtuple",
     srcs = ["tests/test_enriched_namedtuple.py"],
     base_module = "",
+    needed_coverage = [(
+        0.95,
+        ":enriched_namedtuple",
+    )],
+    deps = [":enriched_namedtuple"],
+)
+
+python_library(
+    name = "requires_provides",
+    srcs = [
+        "path_object.py",
+        "provides.py",
+        "requires.py",
+    ],
+    base_module = "",
     deps = [":enriched_namedtuple"],
 )
 
 python_unittest(
     name = "test-requires-provides",
-    srcs = [
-        "path_object.py",
-        "provides.py",
-        "requires.py",
-        "tests/test_requires_provides.py",
-    ],
+    srcs = ["tests/test_requires_provides.py"],
     base_module = "",
-    deps = [":enriched_namedtuple"],
+    needed_coverage = [(
+        0.95,
+        ":requires_provides",
+    )],
+    deps = [":requires_provides"],
+)
+
+python_library(
+    name = "items",
+    srcs = ["items.py"],
+    base_module = "",
+    deps = [":requires_provides"],
+)
+
+python_unittest(
+    name = "test-items",
+    srcs = ["tests/test_items.py"],
+    base_module = "",
+    needed_coverage = [(
+        0.95,
+        ":items",
+    )],
+    deps = [":items"],
 )
