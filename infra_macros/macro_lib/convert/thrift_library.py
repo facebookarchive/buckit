@@ -1080,6 +1080,7 @@ class JavaDeprecatedThriftConverter(ThriftLangConverter):
         out_deps = []
         out_deps.extend(deps)
         out_deps.append('//thrift/lib/java:thrift')
+        out_deps.append('//third-party-java/org.slf4j:slf4j-api')
         rules.extend(self._java_library_converter.convert(
             base_path,
             name=name,
