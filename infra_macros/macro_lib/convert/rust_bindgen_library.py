@@ -84,6 +84,8 @@ BINDGEN_TMPL = \
     PPFLAGS + \
     '''\
 (
+TMPFILE=$TMP/bindgen.$$.stderr
+trap "rm -f $TMPFILE" EXIT
 cd {fbcode} && \
 FBPLATFORM={platform} \
 $(exe {bindgen}) \
@@ -98,6 +100,7 @@ $(exe {bindgen}) \
     $SRCS \
     -- \
 ''' + CLANG_ARGS + '''\
+2> $TMPFILE || (e=$?; cat $TMPFILE 1>&2; exit $e)
 )
 '''
 
