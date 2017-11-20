@@ -197,7 +197,9 @@ args+=("--define=__HSC2HS__")
 # the flag.
 CC_WRAP="$OUT".cc_wrap.sh
 echo >  "$CC_WRAP" '#!/bin/sh'
-echo >> "$CC_WRAP" '$(cxx) -x c++ "$@"'
+
+# TODO: T23700463 Turn distcc back on
+echo >> "$CC_WRAP" 'BUCK_DISTCC=0 $(cxx) -x c++ "$@"'
 chmod +x "$CC_WRAP"
 # Set 'CXX' locally to the real compiler being invoked, so that hsc2hs plugins
 # needing to invoke the compiler can do so correctly.
