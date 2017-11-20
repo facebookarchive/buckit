@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 
 import collections
 import os
-import pipes
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
@@ -99,15 +98,7 @@ class GoConverter(base.Converter):
         for target in deps:
             dependencies.append(self.convert_build_target(base_path, target))
 
-        # Add the Go buildinfo lib to deps.
         if self.is_binary():
-            go_build_info, go_build_info_rules = (
-                self.create_go_build_info_rule(
-                    base_path,
-                    name,
-                    self.get_fbconfig_rule_type()))
-            dependencies.append(go_build_info)
-            extra_rules.extend(go_build_info_rules)
             attributes['linker_flags'] = linker_flags
 
         for ext_dep in go_external_deps:
@@ -127,53 +118,3 @@ class GoConverter(base.Converter):
             attributes['exported_deps'] = exported_deps
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
-
-    def create_go_build_info_rule(
-            self,
-            base_path,
-            name,
-            rule_type):
-        """
-        Create rules to generate a Go library with build info.
-        """
-        rules = []
-
-        info = (
-            self.get_build_info(
-                base_path,
-                name,
-                rule_type,
-                self.get_default_platform()))
-        info['go_root'] = self._context.buck_ops.read_config('go', 'root')
-
-        template = "package buildinfo\n\nconst (\n"
-
-        # Construct a template
-        for k, v in info.items():
-            k = to_pascal_case(k)
-
-            if not isinstance(v, int):
-                v = '"{}"'.format(v)
-
-            template += "\t{} = {}\n".format(k, v)
-        template += ")\n"
-
-        # Setup a rule to generate the build info Rust file.
-        source_name = name + "_gobuildinfo_gen"
-        source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_name
-        source_attrs['out'] = 'buildinfo.go'
-        source_attrs['cmd'] = (
-            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
-            .format(pipes.quote(template)))
-        rules.append(Rule('genrule', source_attrs))
-
-        # Setup a rule to compile the build info C file into a library.
-        lib_name = name + '_gobuildinfo'
-        lib_attrs = collections.OrderedDict()
-        lib_attrs['name'] = lib_name
-        lib_attrs['package_name'] = "buildinfo"
-        lib_attrs['srcs'] = [':' + source_name]
-        rules.append(Rule('go_library', lib_attrs))
-
-        return ':' + lib_name, rules
