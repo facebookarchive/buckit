@@ -1628,18 +1628,21 @@ class OCamlThriftConverter(ThriftLangConverter):
 
 
 class Python3ThriftConverter(ThriftLangConverter):
-    CYTHON_GENFILES = (
+    CYTHON_TYPES_GENFILES = (
+        'types.pxd',
+        'types.pyx',
+    )
+
+    CYTHON_RPC_GENFILES = (
         'services.pxd',
         'services.pyx',
         'services_wrapper.pxd',
-        'types.pxd',
-        'types.pyx',
         'clients.pyx',
         'clients.pxd',
-        'clients_wrapper.pxd',
+        'clients_wrapper.pxd'
     )
 
-    CPP_GENFILES = (
+    CXX_RPC_GENFILES = (
         'services_wrapper.cpp',
         'services_wrapper.h',
         'clients_wrapper.cpp',
@@ -1686,14 +1689,23 @@ class Python3ThriftConverter(ThriftLangConverter):
         thrift_name = self.thrift_name(thrift_src)
         package = os.path.join(py3_namespace, thrift_name).replace('.', '/')
 
+        # If there are services defined then there will be services/clients files
+        # and cpp files.
+        if services:
+            cython_genfiles = self.CYTHON_TYPES_GENFILES + self.CYTHON_RPC_GENFILES
+            cpp_genfiles = self.CXX_RPC_GENFILES
+        else:
+            cython_genfiles = self.CYTHON_TYPES_GENFILES
+            cpp_genfiles = ()
+
         cython_paths = (
             os.path.join(package, genfile)
-            for genfile in self.CYTHON_GENFILES
+            for genfile in cython_genfiles
         )
 
         cpp_paths = (
             os.path.join(thrift_name, genfile)
-            for genfile in self.CPP_GENFILES
+            for genfile in cpp_genfiles
         )
 
         return collections.OrderedDict((
@@ -1728,7 +1740,7 @@ class Python3ThriftConverter(ThriftLangConverter):
         def generated(src, thrift_src):
             thrift_name = self.thrift_name(thrift_src)
             thrift_package = os.path.join(thrift_name, src)
-            if src in self.CPP_GENFILES:
+            if src in self.CXX_RPC_GENFILES:
                 full_src = thrift_package
                 dst = os.path.join('gen-py3', full_src)
             else:
