@@ -13,33 +13,42 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import copy
 import itertools
 import hashlib
 
-with allow_unsafe_import():
+with allow_unsafe_import():  # noqa: magic
     import os
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
-include_defs("{}/convert/haskell.py".format(macro_root), "haskell")
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
+
+
+base = import_macro_lib('convert/base')
+cpp = import_macro_lib('convert/cpp')
+haskell = import_macro_lib('convert/haskell')
 try:
-    include_defs("{}/convert/java.py".format(macro_root), "java")
+    java = import_macro_lib('convert/java')
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
-include_defs("{}/convert/js.py".format(macro_root), "js")
-include_defs("{}/convert/cython.py".format(macro_root), "cython")
-include_defs("{}/convert/ocaml.py".format(macro_root), "ocaml")
-include_defs("{}/convert/python.py".format(macro_root), "python")
-include_defs("{}/convert/rust.py".format(macro_root), "rust")
-include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
+js = import_macro_lib('convert/js')
+cython = import_macro_lib('convert/cython')
+ocaml = import_macro_lib('convert/ocaml')
+python = import_macro_lib('convert/python')
+rust = import_macro_lib('convert/rust')
+Rule = import_macro_lib('rule').Rule
+target = import_macro_lib('fbcode_target')
+RootRuleTarget = target.RootRuleTarget
+RuleTarget = target.RuleTarget
+ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 
 
 THRIFT_FLAGS = [
@@ -1616,6 +1625,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         attrs['deps'] = (self.format_all_deps(dependencies))[0]
 
         return [Rule('ocaml_library', attrs)]
+
 
 class Python3ThriftConverter(ThriftLangConverter):
     CYTHON_GENFILES = (
