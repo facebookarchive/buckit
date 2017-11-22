@@ -95,7 +95,6 @@ EXPERIMENTAL_WHITELIST = (
     ('experimental/everstore/orphaned_needles/WorkitemList', 'workitemlist_client_lib'),
     ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift-py'),
     ('experimental/guruqu/transformers', 'segmax_predict'),
-    ('experimental/pau/dummyservicewdeps', 'dummy_service_w_deps-py'),
     ('experimental/pshinghal/dummy_service', 'thrift-py'),
 )
 
