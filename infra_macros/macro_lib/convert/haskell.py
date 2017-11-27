@@ -586,7 +586,6 @@ class HaskellConverter(base.Converter):
                 self.format_all_deps(
                     self.get_binary_link_deps(allocator=allocator))
 
-
         if ghci_bin_dep is not None:
             bin_dep_target = self.convert_build_target(base_path, ghci_bin_dep)
             attributes['ghci_bin_dep'] = bin_dep_target
@@ -748,6 +747,13 @@ class HaskellConverter(base.Converter):
         if self.is_test():
             dependencies.append(self.get_dep_for_package('HUnit'))
             dependencies.append(RootRuleTarget('tools/test/stubs', 'fbhsunit'))
+
+
+        if self.get_fbconfig_rule_type() in ['haskell_library', 'haskell_binary']:
+            # Mark binary_link_deps to be preloaded
+            attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
+                self.format_all_deps(
+                    self.get_binary_link_deps(allocator=allocator))
 
         attributes['deps'], attributes['platform_deps'] = (
             self.format_all_deps(dependencies))
