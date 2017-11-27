@@ -872,7 +872,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         ThirdPartyRuleTarget('ghc', 'deepseq'),
         ThirdPartyRuleTarget('ghc', 'transformers'),
         ThirdPartyRuleTarget('stackage-lts', 'aeson'),
-        ThirdPartyRuleTarget('stackage-lts', 'attoparsec'),
+        ThirdPartyRuleTarget('stackage-lts', 'binary-parsers'),
         ThirdPartyRuleTarget('stackage-lts', 'data-default'),
         ThirdPartyRuleTarget('stackage-lts', 'hashable'),
         ThirdPartyRuleTarget('stackage-lts', 'STMonadTrans'),
