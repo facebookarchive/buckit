@@ -208,11 +208,16 @@ class PythonConverter(base.Converter):
         matches = self.parse_constraint(constraint)
         return matches(LooseVersion(self.get_py3_version()))
 
+    def matches_pypy(self, constraint):
+        return str(constraint).startswith('pypy')
+
     def get_python_version(self, constraint):
         if self.matches_py3(constraint):
             return self.get_py3_version()
         if self.matches_py2(constraint):
             return self.get_py2_version()
+        if self.matches_pypy(constraint):
+            return self.get_pypy_version()
         raise ValueError('invalid python constraint: {!r}'.format(constraint))
 
     def get_interpreter(self, platform, python_version):
@@ -557,6 +562,10 @@ class PythonConverter(base.Converter):
         # parameter.
         if self.is_tp2(base_path):
 
+            def match_py(pv, py_vers):
+                return (pv[:3] == py_vers # matches major-minor version
+                        or  pv == py_vers) # matches full name (e.g., pypy)
+
             # TP2 projects have multiple "pre-built" source dirs, so we install
             # them via the `versioned_srcs` parameter along with the versions
             # of deps that was used to build them, so that Buck can select the
@@ -568,7 +577,8 @@ class PythonConverter(base.Converter):
                     py_vers = build.versions['python']
                     build_srcs.extend(
                         [self.parse_srcs(base_path, 'versioned_srcs', vs)
-                         for pv, vs in versioned_srcs if pv[:3] == py_vers])
+                         for pv, vs in versioned_srcs if match_py(pv, py_vers)])
+
                 vsrc = {}
                 for build_src in build_srcs:
                     for name, src in build_src.items():
@@ -587,16 +597,20 @@ class PythonConverter(base.Converter):
         else:
             py2_srcs = {}
             py3_srcs = {}
+            pypy_srcs = {}
             for constraint, vsrcs in versioned_srcs:
                 vsrcs = self.parse_srcs(base_path, 'versioned_srcs', vsrcs)
                 if self.matches_py2(constraint):
                     py2_srcs.update(vsrcs)
                 if self.matches_py3(constraint):
                     py3_srcs.update(vsrcs)
-            if py2_srcs or py3_srcs:
+                if self.matches_pypy(constraint):
+                    pypy_srcs.update(vsrcs)
+            if py2_srcs or py3_srcs or pypy_srcs:
                 py = self.get_tp2_project_target('python')
                 py2 = self.get_py2_version()
                 py3 = self.get_py3_version()
+                pypy = self.get_pypy_version()
                 platforms = (
                     self.get_platforms()
                     if not self.is_tp2(base_path)
@@ -609,6 +623,13 @@ class PythonConverter(base.Converter):
                     ({self.get_dep_target(py, platform=p): py3
                       for p in platforms},
                      py3_srcs))
+                if pypy is not None:
+                    if not pypy_srcs:
+                        pyp_srcs = py3_srcs
+                    all_versioned_srcs.append(
+                        ({self.get_dep_target(py, platform=p): pypy
+                          for p in platforms},
+                         pypy_srcs))
 
         if base_module is not None:
             attributes['base_module'] = base_module
@@ -874,7 +895,8 @@ class PythonConverter(base.Converter):
             dependencies.extend(
                 ':' + r.attributes['name'] for r in interp_rules)
         if check_types:
-            if not self.matches_py3(python_version):
+            if not (self.matches_py3(python_version)
+                    or self.matches_pypy(python_version)):
                 raise ValueError(
                     'parameter `check_types` is only supported on Python 3.'
                 )

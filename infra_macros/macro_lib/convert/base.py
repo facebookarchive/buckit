@@ -1777,6 +1777,13 @@ class Converter(object):
         conf = self.get_third_party_config(self.get_default_platform())
         return conf['build']['projects']['python'][1][1]
 
+    def get_pypy_version(self):
+        conf = self.get_third_party_config(self.get_default_platform())
+        pythons = conf['build']['projects']['python']
+        if len(pythons) < 3:
+            return None
+        return pythons[2][1]
+
     def get_python_platform(self, platform, python_version):
         return 'py{}-{}'.format(python_version[0], platform)
 
