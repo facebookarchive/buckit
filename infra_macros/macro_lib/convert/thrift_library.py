@@ -521,6 +521,21 @@ class CppThriftConverter(ThriftLangConverter):
         common_external_deps.extend(
             cpp2_external_deps if self._is_cpp2 else cpp_external_deps)
 
+        # Add required dependencies for Stream support
+        if 'stream' in options:
+            common_deps.append(
+                self.get_thrift_dep_target('yarpl', 'yarpl'))
+            clients_deps.append(
+                self.get_thrift_dep_target(
+                    'thrift/lib/cpp2/transport/core', 'thrift_client'))
+            clients_deps.append(
+                self.get_thrift_dep_target(
+                    'thrift/lib/cpp2/transport/rsocket/client',
+                    'stream_thrift_client'))
+            services_deps.append(
+                self.get_thrift_dep_target(
+                    'thrift/lib/cpp2/transport/core',
+                    'thrift_processor'))
         # The 'json' thrift option will generate code that includes
         # headers from deprecated/json.  So add a dependency on it here
         # so all external header paths will also be added.
@@ -565,6 +580,10 @@ class CppThriftConverter(ThriftLangConverter):
         # Disable variable tracking for thrift generated C/C++ sources, as
         # it's pretty expensive and not necessarily useful (D2174972).
         common_compiler_flags = ['-fno-var-tracking']
+        # Add required flags for Stream support
+        if 'stream' in options:
+            common_compiler_flags.extend(['-DYARPL_INCLUDED'])
+
         common_compiler_flags.extend(
             cpp2_compiler_flags if self._is_cpp2 else cpp_compiler_flags)
 
