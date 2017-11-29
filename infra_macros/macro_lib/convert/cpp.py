@@ -273,10 +273,21 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
                 type_filter=type_filter or '.*',
                 name_filter=name_filter or '.*',
                 deps=first_order_deps))
+        # We need to link deep on Haskell libraries because of cross-module
+        # optimizations like inlining.
+        # Eg. we import A, inline something from A that refers to B and now
+        # have a direct symbol reference to B.
         dll_deps.append(
-            'deps({nodes}, 1, {deps}) - {nodes}'
-            .format(nodes=dll_nodes, deps=first_order_deps))
-    dep_queries.append(' union '.join('({})'.format(d) for d in dll_deps))
+            'deps('
+            ' deps({nodes}, 4000, kind("haskell_library", {first_order_deps})),'
+            ' 1,'
+            ' kind("library", {first_order_deps}))'
+            '- {nodes}'
+            .format(nodes=dll_nodes,first_order_deps=first_order_deps))
+    dep_query = ' union '.join('({})'.format(d) for d in dll_deps)
+    dep_queries.append(dep_query)
+    # This code is currently only used for Haskell code in Sigma
+    # Search for Note [Sigma hot-swapping code]
 
     # Create the rule which copies the DLLs into the output location.
     attrs = collections.OrderedDict()
