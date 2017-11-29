@@ -1650,14 +1650,17 @@ class Python3ThriftConverter(ThriftLangConverter):
     CYTHON_TYPES_GENFILES = (
         'types.pxd',
         'types.pyx',
+        'types.pyi',
     )
 
     CYTHON_RPC_GENFILES = (
         'services.pxd',
         'services.pyx',
+        'services.pyi',
         'services_wrapper.pxd',
         'clients.pyx',
         'clients.pxd',
+        'clients.pyi',
         'clients_wrapper.pxd'
     )
 
@@ -1792,6 +1795,8 @@ class Python3ThriftConverter(ThriftLangConverter):
                                           for src in thrift_srcs)),
             headers=collections.OrderedDict((generated('types.pxd', src)
                                              for src in thrift_srcs)),
+            types=collections.OrderedDict((generated('types.pyi', src)
+                                          for src in thrift_srcs)),
             cpp_deps=[':' + self.get_cpp2_dep(name)] + [
                 self.get_cpp2_dep(d) for d in fdeps
             ],
@@ -1824,6 +1829,12 @@ class Python3ThriftConverter(ThriftLangConverter):
                 yield generated('services_wrapper.pxd', src)
                 yield generated('services_wrapper.h', src)
 
+        def services_typing():
+            for src, services in thrift_srcs.items():
+                if not services:
+                    continue
+                yield generated('services.pyi', src)
+
         def cython_api(module, thrift_srcs):
             """Build out a cython_api dict, to place the _api.h files inside
             the gen-py3/ root so the c++ code can find it
@@ -1842,6 +1853,7 @@ class Python3ThriftConverter(ThriftLangConverter):
             package=namespace,
             srcs=collections.OrderedDict(services_srcs()),
             headers=collections.OrderedDict(services_headers()),
+            types=collections.OrderedDict(services_typing()),
             cpp_deps=[
                 ':' + self.get_cpp2_dep(name),
             ],
@@ -1874,12 +1886,19 @@ class Python3ThriftConverter(ThriftLangConverter):
                 yield generated('clients_wrapper.pxd', src)
                 yield generated('clients_wrapper.h', src)
 
+        def clients_typing():
+            for src, services in thrift_srcs.items():
+                if not services:
+                    continue
+                yield generated('clients.pyi', src)
+
         for rule in self.cython_library.convert(
             name=name + self.clients_suffix,
             base_path=base_path,
             package=namespace,
             srcs=collections.OrderedDict(clients_srcs()),
             headers=collections.OrderedDict(clients_headers()),
+            types=collections.OrderedDict(clients_typing()),
             cpp_deps=[
                 ':' + self.get_cpp2_dep(name),
             ],

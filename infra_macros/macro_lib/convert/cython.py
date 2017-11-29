@@ -26,15 +26,26 @@ from __future__ import unicode_literals
 import collections
 import itertools
 
-with allow_unsafe_import():
+with allow_unsafe_import():  # noqa: magic
     import os
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
-include_defs("{}/convert/python.py".format(macro_root), "python")
-include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/global_defns.py".format(macro_root), "global_defns")
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
+
+
+base = import_macro_lib('convert/base')
+cpp = import_macro_lib('convert/cpp')
+python = import_macro_lib('convert/python')
+Rule = import_macro_lib('rule').Rule
+global_defns = import_macro_lib('global_defns')
 
 
 def split_matching_extensions(srcs, exts):
@@ -69,6 +80,7 @@ class Converter(base.Converter):
     INCLUDES_SUFFIX = '__cython-includes'
     CONVERT_SUFFIX = '__cython'
     STUB_SUFFIX = '__stubs'
+    TYPING_SUFFIX = '__typing'
 
     SOURCE_EXTS = (
         '.pyx',
@@ -282,6 +294,21 @@ class Converter(base.Converter):
 
         return ':' + stub_pylib_name, rules
 
+    def gen_typing_target(
+        self,
+        parent,
+        base_path,
+        package,
+        types,
+    ):
+        name = parent + self.TYPING_SUFFIX
+        return ':' + name, self.python_library.convert(
+            name=name,
+            base_path=base_path,
+            base_module=package,
+            srcs=types,
+        )
+
     def gen_extension_rule(
         self,
         parent,
@@ -395,6 +422,7 @@ class Converter(base.Converter):
         python_deps=(),
         python_external_deps=(),
         gen_stub=False,
+        types=(),
     ):
         # Empty srcs results in a cxx_library, not an cxx_python_extension
         # Used for gathering pxd files,
@@ -504,6 +532,15 @@ class Converter(base.Converter):
             # Don't forget to depend on the .so from our cython deps
             first_pyx.attributes['deps'].extend(deps)
             first_pyx.attributes['deps'].extend(external_deps)
+
+            if types:
+                typing_target, typing_rules = self.gen_typing_target(
+                    name, base_path, package, types
+                )
+                for rule in typing_rules:
+                    yield rule
+                first_pyx.attributes['deps'].append(typing_target)
+
             yield first_pyx
         else:
             # gen an empty cpp_library instead, so we don't get an empty .so
@@ -551,6 +588,7 @@ class Converter(base.Converter):
             'python_deps',
             'python_external_deps',
             'srcs',
+            'types',
         }
 
     def convert(self, base_path, name, **kwargs):
