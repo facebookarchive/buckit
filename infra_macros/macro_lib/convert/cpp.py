@@ -921,7 +921,8 @@ class CppConverter(base.Converter):
             preferred_linkage=None,
             os_deps=None,
             os_linker_flags=None,
-            autodeps_keep=False):
+            autodeps_keep=False,
+            undefined_symbols=False):
 
         # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
         extra_rules = []
@@ -1698,10 +1699,11 @@ class CppConverter(base.Converter):
             args.update([
                 'lib_name',
                 'link_whole',
-                'preferred_linkage',
-                'propagated_pp_flags',
                 'os_deps',
                 'os_linker_flags',
+                'preferred_linkage',
+                'propagated_pp_flags',
+                'undefined_symbols',
             ])
 
         if rtype == 'cpp_precompiled_header':
