@@ -82,7 +82,7 @@ class RustConverter(base.Converter):
         if self.is_binary():
             ok |= set(['linker_flags', 'link_style', 'allocator'])
         else:
-            ok |= set(['preferred_linkage'])
+            ok |= set(['preferred_linkage', 'proc_macro'])
 
         return ok
 
@@ -122,6 +122,7 @@ class RustConverter(base.Converter):
                 linker_flags=None,
                 framework=True,
                 unittests=True,
+                proc_macro=False,
                 tests=None,
                 test_features=None,
                 test_rustc_flags=None,
@@ -191,6 +192,9 @@ class RustConverter(base.Converter):
 
             attributes['linker_flags'] = ldflags + (linker_flags or [])
         else:
+            if proc_macro:
+                attributes['proc_macro'] = proc_macro
+
             if preferred_linkage:
                 attributes['preferred_linkage'] = preferred_linkage
 
