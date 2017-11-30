@@ -1,11 +1,11 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('snappy'),
+    LibraryRule("snappy"),
 ]
 
 buckit_system_library(
-    main_rule='snappy',
-    libs=libs,
-    use_pkg_config=False,
+    libs = libs,
+    main_rule = "snappy",
+    use_pkg_config = False,
 )

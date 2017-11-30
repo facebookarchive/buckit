@@ -1,6 +1,6 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 buckit_system_binary(
-    name='gperf',
-    binary='gperf',
+    name = "gperf",
+    binary = "gperf",
 )

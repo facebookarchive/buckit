@@ -1,11 +1,11 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('z'),
+    LibraryRule("z"),
 ]
 
 buckit_system_library(
-    main_rule='z',
-    libs=libs,
-    use_pkg_config=False,
+    libs = libs,
+    main_rule = "z",
+    use_pkg_config = False,
 )

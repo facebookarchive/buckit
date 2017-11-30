@@ -1,15 +1,19 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('double-conversion', [], 'double_conversion'),
+    LibraryRule(
+        "double-conversion",
+        [],
+        "double_conversion",
+    ),
 ]
 
 buckit_cpp_cmake_library(
-    main_rule='double_conversion',
-    libs=libs,
-    additional_cmake_args={
-        'CMAKE_BUILD_TYPE': 'Release',
-        'BUILD_SHARED_LIBS': 'OFF',
+    additional_cmake_args = {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "OFF",
     },
-    build_extra_with_use_shared_libs=True,
+    build_extra_with_use_shared_libs = True,
+    libs = libs,
+    main_rule = "double_conversion",
 )

@@ -1,11 +1,11 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('lzma'),
+    LibraryRule("lzma"),
 ]
 
 buckit_system_library(
-    main_rule='lzma',
-    libs=libs,
-    use_pkg_config=False,
+    libs = libs,
+    main_rule = "lzma",
+    use_pkg_config = False,
 )

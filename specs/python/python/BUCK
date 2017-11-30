@@ -2,26 +2,37 @@
 # python3 deps, and most things don't actually rely on the python libs and
 # includes.
 prebuilt_cxx_library(
-    name="python",
-    header_only=True,
-    exported_preprocessor_flags=["-I" + read_config('python#py3', 'includes')],
-    exported_linker_flags=["-L" + read_config('python#py3', 'libs'), "-Wl,-rpath," + read_config('python#py3', 'libs'), '-lpython'],
-    visibility=['PUBLIC'],
+    name = "python",
+    exported_linker_flags = [
+        "-L" + read_config("python#py3", "libs"),
+        "-Wl,-rpath," + read_config("python#py3", "libs"),
+        "-lpython",
+    ],
+    exported_preprocessor_flags = ["-I" + read_config("python#py3", "includes")],
+    header_only = True,
+    visibility = ["PUBLIC"],
 )
 
 prebuilt_cxx_library(
-    name="python2",
-    header_only=True,
-    exported_preprocessor_flags=["-I" + read_config('python#py2', 'includes')],
-    exported_linker_flags=["-L" + read_config('python#py2', 'libs'), "-Wl,-rpath," + read_config('python#py2', 'libs'), '-lpython'],
-    visibility=['PUBLIC'],
+    name = "python2",
+    exported_linker_flags = [
+        "-L" + read_config("python#py2", "libs"),
+        "-Wl,-rpath," + read_config("python#py2", "libs"),
+        "-lpython",
+    ],
+    exported_preprocessor_flags = ["-I" + read_config("python#py2", "includes")],
+    header_only = True,
+    visibility = ["PUBLIC"],
 )
 
 prebuilt_cxx_library(
-    name="python3",
-    header_only=True,
-    exported_preprocessor_flags=["-I" + read_config('python#py3', 'includes')],
-    exported_linker_flags=["-L" + read_config('python#py3', 'libs'), "-Wl,-rpath," + read_config('python#py3', 'libs'), '-lpython'],
-    visibility=['PUBLIC'],
+    name = "python3",
+    exported_linker_flags = [
+        "-L" + read_config("python#py3", "libs"),
+        "-Wl,-rpath," + read_config("python#py3", "libs"),
+        "-lpython",
+    ],
+    exported_preprocessor_flags = ["-I" + read_config("python#py3", "includes")],
+    header_only = True,
+    visibility = ["PUBLIC"],
 )
-

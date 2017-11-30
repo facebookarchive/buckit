@@ -1,12 +1,23 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    (PLATFORM_LINUX, [LibraryRule(
-        'glog', ['gflags//gflags:gflags', 'libunwind//libunwind:unwind']
-    )]),
-    (PLATFORM_MAC, [LibraryRule(
-        'glog', ['gflags//gflags:gflags']
-    )]),
+    (
+        PLATFORM_LINUX,
+        [LibraryRule(
+            "glog",
+            [
+                "gflags//gflags:gflags",
+                "libunwind//libunwind:unwind",
+            ],
+        )],
+    ),
+    (
+        PLATFORM_MAC,
+        [LibraryRule(
+            "glog",
+            ["gflags//gflags:gflags"],
+        )],
+    ),
 ]
 
 if not buckit_use_system('glog'):

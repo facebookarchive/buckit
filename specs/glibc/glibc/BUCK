@@ -1,24 +1,30 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-  (PLATFORM_MAC, [
-    LibraryRule('c'),
-    LibraryRule('dl'),
-    LibraryRule('pthread'),
-    LibraryRule('resolv'),
-  ]),
-  (PLATFORM_LINUX, [
-    LibraryRule('c'),
-    LibraryRule('dl'),
-    LibraryRule('nsl'),
-    LibraryRule('pthread'),
-    LibraryRule('resolv'),
-    LibraryRule('rt'),
-  ]),
+    (
+        PLATFORM_MAC,
+        [
+            LibraryRule("c"),
+            LibraryRule("dl"),
+            LibraryRule("pthread"),
+            LibraryRule("resolv"),
+        ],
+    ),
+    (
+        PLATFORM_LINUX,
+        [
+            LibraryRule("c"),
+            LibraryRule("dl"),
+            LibraryRule("nsl"),
+            LibraryRule("pthread"),
+            LibraryRule("resolv"),
+            LibraryRule("rt"),
+        ],
+    ),
 ]
 
 buckit_system_library(
-    main_rule='glibc',
-    libs=libs,
-    use_pkg_config=False,
+    libs = libs,
+    main_rule = "glibc",
+    use_pkg_config = False,
 )

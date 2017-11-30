@@ -1,174 +1,264 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 boost_libraries = set(
     [
-        'atomic',
-        'chrono',
-        'container',
-        'context',
-        'coroutine',
-        'coroutine2',
-        'date_time',
-        'exception',
-        'fiber',
-        'filesystem',
-        'graph',
-        'graph_parallel',
-        'iostreams',
-        'locale',
-        'log',
-        'math',
-        'metaparse',
-        'mpi',
-        'program_options',
-        'python',
-        'random',
-        'regex',
-        'serialization',
-        'signals',
-        'system',
-        'test',
-        'thread',
-        'timer',
-        'type_erasure',
-        'wave',
-    ]
+        "atomic",
+        "chrono",
+        "container",
+        "context",
+        "coroutine",
+        "coroutine2",
+        "date_time",
+        "exception",
+        "fiber",
+        "filesystem",
+        "graph",
+        "graph_parallel",
+        "iostreams",
+        "locale",
+        "log",
+        "math",
+        "metaparse",
+        "mpi",
+        "program_options",
+        "python",
+        "random",
+        "regex",
+        "serialization",
+        "signals",
+        "system",
+        "test",
+        "thread",
+        "timer",
+        "type_erasure",
+        "wave",
+    ],
 )
 
 libs = [
-    LibraryRule('boost_atomic', []),
-    LibraryRule('boost_chrono', [':boost_system']),
-    LibraryRule('boost_container', []),
     LibraryRule(
-        'boost_context', [
-            ':boost_chrono',
-            ':boost_thread',
-            ':boost_system',
-        ]
+        "boost_atomic",
+        [],
     ),
     LibraryRule(
-        'boost_coroutine', [
-            ':boost_context',
-            ':boost_thread',
-            ':boost_chrono',
-            ':boost_system',
-        ]
+        "boost_chrono",
+        [":boost_system"],
     ),
     LibraryRule(
-        'boost_coroutine',
+        "boost_container",
+        [],
+    ),
+    LibraryRule(
+        "boost_context",
         [
-            ':boost_context',
-            ':boost_thread',
-            ':boost_chrono',
-            ':boost_system',
+            ":boost_chrono",
+            ":boost_thread",
+            ":boost_system",
         ],
-        'boost_coroutine2',
     ),
-    LibraryRule('boost_date_time', []),
-    LibraryRule('bost_exception', [], link_style='static'),
-    LibraryRule('boost_fiber', []),
-    LibraryRule('boost_filesystem', [
-        ':boost_system',
-    ]),
-    LibraryRule('boost_graph', [
-        ':boost_regex',
-    ]),
     LibraryRule(
-        'boost_graph',
+        "boost_coroutine",
         [
-            ':boost_regex',
+            ":boost_context",
+            ":boost_thread",
+            ":boost_chrono",
+            ":boost_system",
         ],
-        'boost_graph_parallel',
-    ),
-    LibraryRule('boost_iostreams', []),
-    LibraryRule('boost_locale', [
-        ':boost_system',
-    ]),
-    LibraryRule(
-        'boost_log', [
-            ':boost_atomic',
-            ':boost_chrono',
-            ':boost_thread',
-            ':boost_date_time',
-            ':boost_filesystem',
-            ':boost_system',
-            ':boost_regex',
-        ]
     ),
     LibraryRule(
-        'boost_log_setup', [
-            ':boost_log',
-            ':boost_regex',
-            ':boost_filesystem',
-            ':boost_date_time',
-            ':boost_thread',
-            ':boost_chrono',
-            ':boost_system',
-            ':boost_atomic',
-        ]
+        "boost_coroutine",
+        [
+            ":boost_context",
+            ":boost_thread",
+            ":boost_chrono",
+            ":boost_system",
+        ],
+        "boost_coroutine2",
     ),
-    LibraryRule('boost_math_c99', []),
-    LibraryRule('boost_math_c99f', []),
-    LibraryRule('boost_math_c99l', []),
-    LibraryRule('boost_math_tr1', []),
-    LibraryRule('boost_math_tr1f', []),
-    LibraryRule('boost_math_tr1l', []),
-    LibraryRule('boost_program_options', []),
+    LibraryRule(
+        "boost_date_time",
+        [],
+    ),
+    LibraryRule(
+        "bost_exception",
+        [],
+        link_style = "static",
+    ),
+    LibraryRule(
+        "boost_fiber",
+        [],
+    ),
+    LibraryRule(
+        "boost_filesystem",
+        [
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_graph",
+        [
+            ":boost_regex",
+        ],
+    ),
+    LibraryRule(
+        "boost_graph",
+        [
+            ":boost_regex",
+        ],
+        "boost_graph_parallel",
+    ),
+    LibraryRule(
+        "boost_iostreams",
+        [],
+    ),
+    LibraryRule(
+        "boost_locale",
+        [
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_log",
+        [
+            ":boost_atomic",
+            ":boost_chrono",
+            ":boost_thread",
+            ":boost_date_time",
+            ":boost_filesystem",
+            ":boost_system",
+            ":boost_regex",
+        ],
+    ),
+    LibraryRule(
+        "boost_log_setup",
+        [
+            ":boost_log",
+            ":boost_regex",
+            ":boost_filesystem",
+            ":boost_date_time",
+            ":boost_thread",
+            ":boost_chrono",
+            ":boost_system",
+            ":boost_atomic",
+        ],
+    ),
+    LibraryRule(
+        "boost_math_c99",
+        [],
+    ),
+    LibraryRule(
+        "boost_math_c99f",
+        [],
+    ),
+    LibraryRule(
+        "boost_math_c99l",
+        [],
+    ),
+    LibraryRule(
+        "boost_math_tr1",
+        [],
+    ),
+    LibraryRule(
+        "boost_math_tr1f",
+        [],
+    ),
+    LibraryRule(
+        "boost_math_tr1l",
+        [],
+    ),
+    LibraryRule(
+        "boost_program_options",
+        [],
+    ),
     # TODO: This should change based on system/custom built boost
     #       to use python2 or 3
-    LibraryRule('boost_python', ['python//python:python2']),
-    LibraryRule('boost_numpy', [':boost_python']),
-    LibraryRule('boost_random', [':boost_system']),
-    LibraryRule('boost_regex', []),
-    LibraryRule('boost_serialization', []),
-    LibraryRule('boost_wserialization', [
-        ':boost_serialization',
-    ]),
-    LibraryRule('boost_signals', []),
-    LibraryRule('boost_system', []),
-    LibraryRule('boost_thread', [':boost_system']),
     LibraryRule(
-        'boost_timer',
+        "boost_python",
+        ["python//python:python2"],
+    ),
+    LibraryRule(
+        "boost_numpy",
+        [":boost_python"],
+    ),
+    LibraryRule(
+        "boost_random",
+        [":boost_system"],
+    ),
+    LibraryRule(
+        "boost_regex",
+        [],
+    ),
+    LibraryRule(
+        "boost_serialization",
+        [],
+    ),
+    LibraryRule(
+        "boost_wserialization",
         [
-            ':boost_chrono',
-            ':boost_system',
+            ":boost_serialization",
         ],
     ),
     LibraryRule(
-        'boost_type_erasure', [
-            ':boost_thread',
-            ':boost_chrono',
-            ':boost_system',
-        ]
+        "boost_signals",
+        [],
     ),
     LibraryRule(
-        'boost_unit_test_framework', [
-            ':boost_timer',
-            ':boost_system',
-        ]
+        "boost_system",
+        [],
     ),
-    LibraryRule('boost_prg_exec_monitor', [
-        ':boost_timer',
-        ':boost_system',
-    ]),
     LibraryRule(
-        'boost_wave', [
-            ':boost_filesystem',
-            ':boost_thread',
-            ':boost_date_time',
-            ':boost_chrono',
-            ':boost_system',
-        ]
+        "boost_thread",
+        [":boost_system"],
+    ),
+    LibraryRule(
+        "boost_timer",
+        [
+            ":boost_chrono",
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_type_erasure",
+        [
+            ":boost_thread",
+            ":boost_chrono",
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_unit_test_framework",
+        [
+            ":boost_timer",
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_prg_exec_monitor",
+        [
+            ":boost_timer",
+            ":boost_system",
+        ],
+    ),
+    LibraryRule(
+        "boost_wave",
+        [
+            ":boost_filesystem",
+            ":boost_thread",
+            ":boost_date_time",
+            ":boost_chrono",
+            ":boost_system",
+        ],
     ),
 ]
-cmd = r'''
+
+cmd = """
 cat > "${{ORIG_SRC_DIR}}/tools/build/src/user-config.jam" <<EOF
 using gcc : : ${{CXX}} : cflags="${{CFLAGS}}" cxxflags="${{CXXFLAGS}}" linkflags="${{LDFLAGS}}" compileflags="${{CPPFLAGS}}" ;
 EOF
-"${{ORIG_SRC_DIR}}/bootstrap.sh" --without-icu --with-libraries={} && \
-./b2 --build-dir="build" --prefix="$ESCAPED_INSTALL_PREFIX" -j "$BUCKIT_PARALLELISM" headers \
+"${{ORIG_SRC_DIR}}/bootstrap.sh" --without-icu --with-libraries={} && \\
+./b2 --build-dir="build" --prefix="$ESCAPED_INSTALL_PREFIX" -j "$BUCKIT_PARALLELISM" headers \\
 ./b2 --build-dir="build" --prefix="$ESCAPED_INSTALL_PREFIX" -j "$BUCKIT_PARALLELISM" link=static,shared threading=multi --layout=system install
-'''.format(','.join(boost_libraries))
+""".format(",".join(boost_libraries))
 
 if not buckit_use_system('boost'):
     buckit_cpp_custom_library(

@@ -1,12 +1,12 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('fl'),
+    LibraryRule("fl"),
 ]
 
 buckit_system_library(
-    main_rule='flex',
-    libs=libs,
-    binaries=[('flex', 'flex')],
-    use_pkg_config=False,
+    binaries = [("flex", "flex")],
+    libs = libs,
+    main_rule = "flex",
+    use_pkg_config = False,
 )

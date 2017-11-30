@@ -1,7 +1,10 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('unwind', ['xz//xz:lzma']),
+    LibraryRule(
+        "unwind",
+        ["xz//xz:lzma"],
+    ),
 ]
 
 if not buckit_use_system('unwind'):

@@ -1,8 +1,8 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('gflags'),
-    LibraryRule('gflags_nothreads'),
+    LibraryRule("gflags"),
+    LibraryRule("gflags_nothreads"),
 ]
 
 if not buckit_use_system('gflags'):

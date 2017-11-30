@@ -1,11 +1,11 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('krb5'),
-    LibraryRule('gssapi_krb5'),
+    LibraryRule("krb5"),
+    LibraryRule("gssapi_krb5"),
 ]
 
 buckit_system_library(
-    main_rule='krb5',
-    libs=libs,
+    libs = libs,
+    main_rule = "krb5",
 )

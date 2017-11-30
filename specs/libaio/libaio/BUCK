@@ -1,10 +1,10 @@
-include_defs('buckit//DEFS')
+include_defs("buckit//DEFS")
 
 libs = [
-    LibraryRule('aio'),
+    LibraryRule("aio"),
 ]
 
 buckit_system_library(
-    main_rule='aio',
-    libs=libs,
+    libs = libs,
+    main_rule = "aio",
 )
