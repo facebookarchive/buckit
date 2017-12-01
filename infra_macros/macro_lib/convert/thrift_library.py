@@ -620,6 +620,9 @@ class CppThriftConverter(ThriftLangConverter):
             deps=types_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
+            # and build //thrift/lib/cpp2/test:exceptservice-cpp2-types).
+            undefined_symbols=True,
         )
         clients_rules = self._cpp_converter.convert(
             base_path,
@@ -629,6 +632,9 @@ class CppThriftConverter(ThriftLangConverter):
             deps=clients_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
+            # and build //thrift/lib/cpp2/test:Presult-cpp2-clients).
+            undefined_symbols=True,
         )
         services_rules = self._cpp_converter.convert(
             base_path,

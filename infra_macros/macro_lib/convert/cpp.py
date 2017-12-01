@@ -1275,6 +1275,19 @@ class CppConverter(base.Converter):
             if out_link_style == 'shared':
                 out_link_style = 'static_pic'
 
+        # Some libraries need to opt-out of linker errors about undefined
+        # symbols.
+        if (self.is_library() and
+                # TODO(T23121628): The way we build shared libs in ASAN leaves
+                # undefined references to ASAN symbols.
+                self._context.sanitizer is None and
+                # TODO(T23121628): Building python binaries with omnibus causes
+                # undefined references in preloaded libraries, so detect this
+                # via the link-style and ignore for now.
+                self._context.link_style == 'shared' and
+                not undefined_symbols):
+            out_ldflags.append('-Wl,--no-undefined')
+
         # Get any linker flags for the current OS
         for os_short_name, flags in os_linker_flags:
             if os_short_name == self._context.config.current_os:
