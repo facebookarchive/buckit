@@ -17,4 +17,11 @@ import collections
 
 __all__ = ['Rule']
 
-Rule = collections.namedtuple('Rule', ['type', 'attributes'])
+
+class Rule(collections.namedtuple('Rule', ['type', 'attributes'])):
+    __slots__ = ()
+
+    @property
+    def target_name(self):
+        """Get the relative target name for the rule"""
+        return ':{}'.format(self.attributes['name'])

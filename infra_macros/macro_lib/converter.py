@@ -65,6 +65,7 @@ rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
 rust_library_external = import_macro_lib('convert/rust_library_external')
 swig_library = import_macro_lib('convert/swig_library')
 thrift_library = import_macro_lib('convert/thrift_library')
+wheel = import_macro_lib('convert/wheel')
 try:
     facebook = import_macro_lib('convert/facebook/__init__')
     get_fbonly_converters = facebook.get_fbonly_converters
@@ -245,6 +246,8 @@ def convert(context, base_path, rules):
         rust.RustConverter(context, 'rust_unittest'),
         rust_bindgen_library.RustBindgenLibraryConverter(context),
         rust_library_external.RustLibraryExternalConverter(context),
+        wheel.PyWheel(context),
+        wheel.PyWheelDefault(context),
         passthrough.PassthroughConverter(
             context,
             'export_file',
