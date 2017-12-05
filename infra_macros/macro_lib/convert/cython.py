@@ -423,6 +423,8 @@ class Converter(base.Converter):
         python_external_deps=(),
         gen_stub=False,
         types=(),
+        tests=(),
+        visibility=(),
     ):
         # Empty srcs results in a cxx_library, not an cxx_python_extension
         # Used for gathering pxd files,
@@ -436,6 +438,18 @@ class Converter(base.Converter):
 
         if isinstance(headers, unicode) and api:
             raise ValueError('"api" and AutoHeaders can not be used together')
+
+        def set_visibility(rule):
+            if visibility:
+                # Make it harder to break subrules
+                _visibility = ('//' + base_path + ':', ) + visibility
+                rule.attributes.setdefault('visibility', _visibility)
+            return rule
+
+        def set_tests(rule):
+            if tests:
+                rule.attributes.setdefault('tests', tests)
+            return rule
 
         pyx_srcs, srcs = split_matching_extensions(srcs, self.SOURCE_EXTS)
         pxd_headers, headers = split_matching_extensions(
@@ -459,7 +473,7 @@ class Converter(base.Converter):
             pxd_headers,
             itertools.chain(deps, external_deps),
         )
-        yield deps_tree_rule
+        yield set_visibility(deps_tree_rule)
 
         # Set some default flags that everyone should use
         # Also Add instruct cython how to find its deps_tree
@@ -485,12 +499,12 @@ class Converter(base.Converter):
                     base_path, name, module_path, pyx_src, flags, pyx_dst,
                     out_src
                 )
-                yield cython_rule
+                yield set_visibility(cython_rule)
                 # Generate the copy_rule
                 src_target, src_rule = self.prefix_target_copy_rule(
                     name, cython_name, out_src, module_path + out_ext
                 )
-                yield src_rule
+                yield set_visibility(src_rule)
 
                 # generate an extension for the generated src
                 so_target, so_rule = self.gen_extension_rule(
@@ -505,14 +519,14 @@ class Converter(base.Converter):
                     first_pyx = so_rule
                 else:
                     extensions.append(so_target)
-                    yield so_rule
+                    yield set_visibility(so_rule)
 
                 # Generate _api.h header rules.
                 api_target, api_rule = self.gen_api_header(
                     name, cython_name, module_path, module_name, api
                 )
                 if api_rule:
-                    yield api_rule
+                    yield set_visibility(api_rule)
                     api_headers.append(api_target)
 
             stubs = []
@@ -521,7 +535,7 @@ class Converter(base.Converter):
                     name, base_path, package, pyx_srcs
                 )
                 for rule in stub_rules:
-                    yield rule
+                    yield set_visibility(rule)
                 stubs.append(stub_target)
 
             # The first pyx will be the named target and it will depend on all
@@ -538,10 +552,10 @@ class Converter(base.Converter):
                     name, base_path, package, types
                 )
                 for rule in typing_rules:
-                    yield rule
+                    yield set_visibility(rule)
                 first_pyx.attributes['deps'].append(typing_target)
 
-            yield first_pyx
+            yield set_tests(set_visibility(first_pyx))
         else:
             # gen an empty cpp_library instead, so we don't get an empty .so
             # this allows use to use cython_library as a way to gather up
@@ -553,7 +567,7 @@ class Converter(base.Converter):
                 name=name,
                 deps=[':' + name + self.LIB_SUFFIX],
             ):
-                yield rule
+                yield set_tests(set_visibility(rule))
 
         # Generate the cython-lib target for allowing cython_libraries
         # to depend on other cython_libraries and inherit their cpp_deps
@@ -588,7 +602,10 @@ class Converter(base.Converter):
             'python_deps',
             'python_external_deps',
             'srcs',
+            'tests',
             'types',
+            'visibility',
+
         }
 
     def convert(self, base_path, name, **kwargs):

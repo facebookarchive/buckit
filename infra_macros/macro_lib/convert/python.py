@@ -16,19 +16,29 @@ import collections
 import operator
 import pipes
 
-with allow_unsafe_import():
+with allow_unsafe_import():  # noqa: magic
     from distutils.version import LooseVersion
     import os
     import platform
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
+
+
+base = import_macro_lib('convert/base')
+Rule = import_macro_lib('rule').Rule
+target = import_macro_lib('fbcode_target')
+RootRuleTarget = target.RootRuleTarget
+RuleTarget = target.RuleTarget
+ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 
 
 INTERPS = [
@@ -625,7 +635,7 @@ class PythonConverter(base.Converter):
                      py3_srcs))
                 if pypy is not None:
                     if not pypy_srcs:
-                        pyp_srcs = py3_srcs
+                        pypy_srcs = py3_srcs
                     all_versioned_srcs.append(
                         ({self.get_dep_target(py, platform=p): pypy
                           for p in platforms},
@@ -912,6 +922,7 @@ class PythonConverter(base.Converter):
                     out_preload_deps,
                 ),
             )
+            attributes['tests'] = list(attributes['tests']) + [':{}-typecheck'.format(name)]
 
         if self.is_test(rule_type):
             if not dependencies:
