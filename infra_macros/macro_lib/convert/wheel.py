@@ -38,7 +38,7 @@ Rule = import_macro_lib('rule').Rule
 
 def get_url_basename(url):
     """ Urls will have an #md5 etag remove it and return the wheel name"""
-    return os.path.basename(url).split('#md5')[0]
+    return os.path.basename(url).rsplit('#md5=')[0]
 
 
 def gen_remote_wheel(url, out, sha1):
@@ -67,17 +67,17 @@ class PyWheelDefault(base.Converter):
 
     def get_allowed_args(self):
         return {
-            'data'
+            'platform_versions'
         }
 
-    def convert_rule(self, base_path, data):
+    def convert_rule(self, base_path, platform_versions):
         platform = self.get_default_platform()
 
         # If there is no default for either py2 or py3 for the given platform
         # Then we should fail to return a rule, instead of silently building
         # but not actually providing the wheel
         has_defaults = any(
-            (py_platform in data
+            (py_platform in platform_versions
                 for py_platform in (
                     self.get_py3_platform(platform),
                     self.get_py2_platform(platform),
@@ -91,17 +91,17 @@ class PyWheelDefault(base.Converter):
         attrs['name'] = os.path.basename(base_path)
         attrs['platform_deps'] = [
             ('^{}$'.format(re.escape(py_platform)), [':' + version])
-            for py_platform, version in data.items()
+            for py_platform, version in platform_versions.items()
         ]
         yield Rule('python_library', attrs)
 
-    def convert(self, base_path, data):
+    def convert(self, base_path, platform_versions):
         """
         Entry point for converting python_wheel rules
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, data):
+        for rule in self.convert_rule(base_path, platform_versions):
             yield rule
 
 
@@ -113,18 +113,22 @@ class PyWheel(base.Converter):
         self,
         base_path,
         version,
-        data,  # Dict[str, Tuple(str, str)]   # platform -> url, sha1
+        platform_urls,  # Dict[str, str]   # platform -> url
         deps=(),
         external_deps=(),
         tests=(),
     ):
         # We don't need duplicate targets if we have multiple usage of URLs
-        urls = set(data.values())
+        urls = set(platform_urls.values())
         wheel_targets = {}  # Dict[str, str]      # url -> prebuilt_target_name
 
         # Setup all the remote_file and prebuilt_python_library targets
-        for url, sha1 in urls:
-            wheel = get_url_basename(url)
+        # urls have #sha1=<sha1> at the end.
+        for url in urls:
+            orig_url, _, sha1 = url.rpartition('#sha1=')
+            assert sha1, "There is no #sha1= tag on the end of URL: " + url
+            # Opensource usage of this may have #md5 tags from pypi
+            wheel = get_url_basename(orig_url)
             rule = gen_remote_wheel(url, wheel, sha1)
             yield rule
             rule = gen_prebuilt_target(wheel, rule.target_name)
@@ -136,8 +140,8 @@ class PyWheel(base.Converter):
         # Use platform_deps to rely on the correct wheel target for
         # each platform
         attrs['platform_deps'] = [
-            ('^{}$'.format(re.escape(py_platform)), [wheel_targets[url[0]]])
-            for py_platform, url in data.items()
+            ('^{}$'.format(re.escape(py_platform)), [wheel_targets[url]])
+            for py_platform, url in platform_urls.items()
         ]
 
         if deps:
@@ -161,17 +165,17 @@ class PyWheel(base.Converter):
     def get_allowed_args(self):
         return {
             'version',
-            'data',
+            'platform_urls',
             'deps',
             'external_deps',
             'tests',
         }
 
-    def convert(self, base_path, version, data, **kwargs):
+    def convert(self, base_path, version, platform_urls, **kwargs):
         """
         Entry point for converting python_wheel rules
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, version, data, **kwargs):
+        for rule in self.convert_rule(base_path, version, platform_urls, **kwargs):
             yield rule
