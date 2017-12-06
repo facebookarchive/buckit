@@ -235,7 +235,7 @@ class CustomRuleConverter(base.Converter):
         attributes['out'] = out
         cmds = {
             'Linux': ('mkdir -p `dirname $OUT` && '
-                      'ln -T $(location :{output_dir})/{out} $OUT'),
+                      'cp -rlT $(location :{output_dir})/{out} $OUT'),
             'Darwin': ('mkdir -p `dirname $OUT` && '
                        'ln $(location :{output_dir})/{out} $OUT'),
         }
