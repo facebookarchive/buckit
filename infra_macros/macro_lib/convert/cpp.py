@@ -150,6 +150,7 @@ def create_dll_rules(
         dll_root,
         rule_type_filter,
         rule_name_filter,
+        dll_type,
         fbcode_dir):
     """
     Create a rule to link a DLL.
@@ -161,7 +162,13 @@ def create_dll_rules(
     cmd.append('$(ld)')
 
     # Build a shared library.
-    cmd.append('-r')
+    if dll_type == 'static' or dll_type == 'static-pic':
+        cmd.append('-r')
+    elif dll_type == 'shared':
+        cmd.append('-shared')
+    else:
+        raise AttributeError(
+                'dll_type must be one of static, static-pic or shared')
     cmd.append('-nostdlib')
     cmd.extend(['-o', '$OUT'])
 
@@ -181,9 +188,14 @@ def create_dll_rules(
     # Mac OS X (Linux silently accepts relocations - it's just slightly bad
     # for performance)." We also set a "filter" here so we only get haskell
     # rules in the link.
+    if dll_type == 'shared' or dll_type == 'static-pic':
+        dll_type_filter = 'ldflags-static-pic-filter'
+    else: # 'static'
+        dll_type_filter = 'ldflags-static-filter'
     cmd.append(
-        '$(ldflags-static-filter ^{}[(]{}[)]$ {})'
+        '$({} ^{}[(]{}[)]$ {})'
         .format(
+            dll_type_filter,
             rule_type_filter or '.*',
             rule_name_filter or '.*',
             dll_root))
@@ -211,7 +223,7 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
 
     # Generate the rules that link the DLLs.
     dll_targets = {}
-    for dll_lib_name, (dll_root, type_filter, name_filter) in dlls.items():
+    for dll_lib_name, (dll_root, type_filter, name_filter, dll_type) in dlls.items():
         dll_name = name + '.' + dll_lib_name
         dll_targets[dll_lib_name] = ':' + dll_name
         rules.extend(
@@ -221,6 +233,7 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
                 dll_root + '-dll-root',
                 type_filter,
                 name_filter,
+                dll_type,
                 fbcode_dir))
 
     # Create the rule which extracts the symbols from all DLLs.
@@ -258,7 +271,7 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
     # Form a query which resolve to all the first-order deps of all DLLs.
     # These form roots which need to be linked into the top-level binary.
     dll_deps = []
-    for dll_lib_name, (_, type_filter, name_filter) in dlls.items():
+    for dll_lib_name, (_, type_filter, name_filter, _) in dlls.items():
         dll_nodes = (
             # The `deps` function's second argument is the depth of the
             # search and while we don't actually want to override its
