@@ -1265,7 +1265,8 @@ class CppConverter(base.Converter):
             extra_rules.extend(dll_rules)
             dependencies.extend(dll_deps)
             out_ldflags.extend(dll_ldflags)
-            out_dep_queries.extend(dll_dep_queries)
+            if not dont_link_prerequisites:
+                out_dep_queries.extend(dll_dep_queries)
 
             # We don't currently support dynamic linking with DLL support, as
             # we don't have a great way to prevent dependency DSOs needed by
