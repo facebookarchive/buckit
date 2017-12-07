@@ -580,10 +580,6 @@ class CppThriftConverter(ThriftLangConverter):
         # Disable variable tracking for thrift generated C/C++ sources, as
         # it's pretty expensive and not necessarily useful (D2174972).
         common_compiler_flags = ['-fno-var-tracking']
-        # Add required flags for Stream support
-        if 'stream' in options:
-            common_compiler_flags.extend(['-DYARPL_INCLUDED'])
-
         common_compiler_flags.extend(
             cpp2_compiler_flags if self._is_cpp2 else cpp_compiler_flags)
 
