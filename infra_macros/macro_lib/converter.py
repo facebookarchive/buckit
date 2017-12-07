@@ -217,6 +217,7 @@ def convert(context, base_path, rules):
         dewey_artifact.DeweyArtifactConverter(context),
         go.GoConverter(context, 'go_binary'),
         go.GoConverter(context, 'go_library'),
+        go.GoConverter(context, 'cgo_library'),
         go.GoConverter(context, 'go_unittest', 'go_test'),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
