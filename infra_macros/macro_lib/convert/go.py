@@ -48,7 +48,10 @@ class GoConverter(base.Converter):
             ('go_binary', 'go_unittest',)
 
     def is_cgo(self):
-        return self._rule_type == 'cgo_library'
+        return self.get_fbconfig_rule_type() == 'cgo_library'
+
+    def is_test(self):
+        return self.get_fbconfig_rule_type() == 'go_unittest'
 
     def convert(
         self,
@@ -65,6 +68,7 @@ class GoConverter(base.Converter):
         tests=None,
         compiler_flags=None,
         linker_flags=None,
+        coverage_mode=None,
 
         # cgo
         cgo_deps=None,
@@ -174,5 +178,8 @@ class GoConverter(base.Converter):
             attributes['link_style'] = link_style
         if raw_headers:
             attributes['raw_headers'] = raw_headers
+
+        if self.is_test() and coverage_mode:
+            attributes['coverage_mode'] = coverage_mode
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
