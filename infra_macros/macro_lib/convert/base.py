@@ -52,18 +52,7 @@ SANITIZERS = {
     'address-undefined': 'asan-ubsan',
     'thread': 'tsan',
     'undefined': 'ubsan',
-}
-
-
-def SanitizerTarget(lib):
-    return RuleTarget('fbcode', 'tools/build/sanitizers', lib + '-cpp')
-
-
-SANITIZER_DEPS = {
-    'address': SanitizerTarget('asan'),
-    'address-undefined': SanitizerTarget('asan-ubsan'),
-    'thread': SanitizerTarget('tsan'),
-    'undefined': SanitizerTarget('ubsan'),
+    'undefined-dev': 'ubsan',
 }
 
 
@@ -808,7 +797,8 @@ class Converter(object):
         new_labels.append('buck')
         new_labels.append(self._context.mode)
         new_labels.append(self._context.compiler)
-        if self._context.sanitizer is not None:
+        sanitizer = self._context.sanitizer
+        if sanitizer is not None and sanitizer != 'undefined-dev':
             new_labels.append(SANITIZERS[self._context.sanitizer])
         new_labels.extend(labels)
         return new_labels
@@ -1342,13 +1332,17 @@ class Converter(object):
         Add additional dependencies needed to build with the given sanitizer.
         """
 
-        sanitizer = self._context.sanitizer
-        if sanitizer is None:
+        if self._context.sanitizer is None:
             return []
         assert self._context.compiler == 'clang'
-        assert sanitizer in SANITIZER_DEPS
 
-        deps = [SANITIZER_DEPS[sanitizer]]
+        sanitizer = SANITIZERS[self._context.sanitizer]
+        deps = [
+            RootRuleTarget(
+              'tools/build/sanitizers',
+              '{}-cpp'.format(sanitizer),
+            ),
+        ]
 
         return deps
 
