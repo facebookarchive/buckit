@@ -96,9 +96,6 @@ SANITIZER_FLAGS = {
     'address-undefined': ASAN_FLAGS + UBSAN_FLAGS,
     'undefined': UBSAN_FLAGS,
     'undefined-dev': [
-        '-fsanitize=builtin',
-        '-fsanitize=return',
-        '-fsanitize=unreachable',
         '-DUNDEFINED_SANITIZER=1',
     ],
     'thread': [
