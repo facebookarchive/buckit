@@ -1297,7 +1297,7 @@ class CppConverter(base.Converter):
         if (self.is_library() and
                 # TODO(T23121628): The way we build shared libs in ASAN leaves
                 # undefined references to ASAN symbols.
-                self._context.sanitizer is None and
+                self._context.sanitizer in (None, 'undefined-dev') and
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
                 # via the link-style and ignore for now.
