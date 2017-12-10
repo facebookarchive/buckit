@@ -1352,7 +1352,7 @@ class Converter(object):
 
         if self._context.sanitizer is None:
             return [
-                RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile-x86_64'),
+                RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
             ]
         else:
             # all coverage deps are included in the santizer deps
