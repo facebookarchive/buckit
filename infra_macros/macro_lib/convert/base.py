@@ -281,6 +281,14 @@ class Converter(object):
         # Otherwise, use the global default.
         return self.get_default_platform()
 
+    def get_platform_architecture(self, platform):
+        """
+        Return the target architecture for the given platform.
+        """
+
+        platform_configs = self._context.third_party_config['platforms']
+        return platform_configs[platform]['architecture']
+
     def get_platforms(self, native=True):
         """
         Return all fbcode platforms we can build against.
@@ -792,7 +800,7 @@ class Converter(object):
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
-    def convert_labels(self, *labels):
+    def convert_labels(self, platform, *labels):
         new_labels = []
         new_labels.append('buck')
         new_labels.append(self._context.mode)
@@ -800,6 +808,8 @@ class Converter(object):
         sanitizer = self._context.sanitizer
         if sanitizer is not None and sanitizer != 'undefined-dev':
             new_labels.append(SANITIZERS[self._context.sanitizer])
+        new_labels.append(platform)
+        new_labels.append(self.get_platform_architecture(platform))
         new_labels.extend(labels)
         return new_labels
 

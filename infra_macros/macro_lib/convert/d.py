@@ -50,14 +50,15 @@ class DConverter(base.Converter):
                 external_deps=(),
                 **kwargs):
 
+        platform = self.get_default_platform()
+
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
-
         attributes['srcs'] = srcs
 
         if self.is_test(self.get_buck_rule_type()):
-            attributes['labels'] = self.convert_labels('d', *tags)
+            attributes['labels'] = self.convert_labels(platform, 'd', *tags)
 
         # Add in the base ldflags.
         out_ldflags = []
@@ -69,7 +70,7 @@ class DConverter(base.Converter):
                 self.get_fbconfig_rule_type(),
                 binary=self.is_binary(),
                 build_info=self.is_binary(),
-                platform=self.get_default_platform()))
+                platform=platform))
         attributes['linker_flags'] = out_ldflags
 
         dependencies = []

@@ -1318,7 +1318,7 @@ class CppConverter(base.Converter):
             attributes['linker_flags'] = out_exported_ldflags + out_ldflags
 
         if self.is_test(self.get_buck_rule_type()):
-            attributes['labels'] = self.convert_labels('c++', *tags)
+            attributes['labels'] = self.convert_labels(platform, 'c++', *tags)
             if self.is_coverage_enabled(base_path):
                 attributes['labels'].append('coverage')
             attributes['use_default_test_main'] = use_default_test_main

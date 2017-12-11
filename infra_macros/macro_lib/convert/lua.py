@@ -471,8 +471,9 @@ class LuaConverter(base.Converter):
         attributes = collections.OrderedDict()
         attributes['name'] = name
         attributes['test'] = ':' + binary_name
+        platform = self.get_platform(base_path)
         attributes['labels'] = (
-            self.convert_labels('lua', 'custom-type-' + type, *tags))
+            self.convert_labels(platform, 'lua', 'custom-type-' + type, *tags))
         rules.append(Rule('sh_test', attributes))
 
         return rules

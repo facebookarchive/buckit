@@ -136,7 +136,11 @@ class CustomUnittestConverter(base.Converter):
 
         if self.is_test(self.get_buck_rule_type()):
             attributes['labels'] = (
-                self.convert_labels('custom', 'custom-type-' + type, *tags))
+                self.convert_labels(
+                    platform,
+                    'custom',
+                    'custom-type-' + type,
+                    *tags))
 
         dependencies = []
         for target in deps:

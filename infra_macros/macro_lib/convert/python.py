@@ -860,7 +860,8 @@ class PythonConverter(base.Converter):
             self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
 
         if self.is_test(rule_type):
-            attributes['labels'] = self.convert_labels('python', *tags)
+            attributes['labels'] = (
+                self.convert_labels(platform, 'python', *tags))
 
         attributes['tests'] = tests
 

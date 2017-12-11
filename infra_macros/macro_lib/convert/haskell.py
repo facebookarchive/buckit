@@ -646,9 +646,6 @@ class HaskellConverter(base.Converter):
         if out_compiler_flags:
             attributes['compiler_flags'] = out_compiler_flags
 
-        #if self.is_test():
-        #    attributes['labels'] = self.convert_labels('haskell', *tags)
-
         # If this is binary and we're using the shared link style, set this in
         # the output attributes.
         if self.is_deployable() and self._context.link_style == 'shared':
@@ -790,8 +787,9 @@ class HaskellConverter(base.Converter):
         attributes['name'] = name
         attributes['test'] = ':' + binary_name
         attributes['env'] = env
+        platform = self.get_platform(base_path)
         attributes['labels'] = (
-            self.convert_labels('haskell', 'custom-type-hs', *tags))
+            self.convert_labels(platform, 'haskell', 'custom-type-hs', *tags))
         rules.append(Rule('sh_test', attributes))
 
         return rules
