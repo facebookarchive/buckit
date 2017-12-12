@@ -295,8 +295,9 @@ class ImageFeatureConverter(base.Converter):
                 # Future: Talk with the Buck team to see if we can eliminate
                 # this inefficiency.
                 deps=' '.join(
-                    '$(location {})'.format(t) for t in target_tagger.targets
+                    '$(location {})'.format(t)
+                        for t in sorted(target_tagger.targets)
                 ),
-                out=quote(json.dumps(out_dict)),
+                out=quote(json.dumps(out_dict, sort_keys=True)),
             ),
         ))]
