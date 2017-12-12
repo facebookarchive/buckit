@@ -98,7 +98,11 @@ SANITIZER_FLAGS = {
     'undefined-dev': [
         '-DUNDEFINED_SANITIZER=1',
         '-fsanitize=builtin',
+        '-fsanitize=nullability-arg',
+        '-fsanitize=nullability-assign',
+        '-fsanitize=nullability-return',
         '-fsanitize=return',
+        '-fsanitize=returns-nonnull-attribute',
         '-fsanitize=unreachable',
     ],
     'thread': [
