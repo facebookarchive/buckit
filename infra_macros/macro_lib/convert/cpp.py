@@ -98,6 +98,7 @@ SANITIZER_FLAGS = {
     'undefined-dev': [
         '-DUNDEFINED_SANITIZER=1',
         '-fsanitize=builtin',
+        '-fsanitize=integer-divide-by-zero',
         '-fsanitize=nullability-arg',
         '-fsanitize=nullability-assign',
         '-fsanitize=nullability-return',
