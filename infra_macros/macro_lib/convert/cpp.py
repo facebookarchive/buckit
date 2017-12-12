@@ -105,6 +105,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=return',
         '-fsanitize=returns-nonnull-attribute',
         '-fsanitize=unreachable',
+        '-fsanitize=vla-bound',
     ],
     'thread': [
         '-fsanitize=thread',
