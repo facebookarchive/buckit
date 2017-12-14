@@ -97,6 +97,7 @@ SANITIZER_FLAGS = {
     'undefined': UBSAN_FLAGS,
     'undefined-dev': [
         '-DUNDEFINED_SANITIZER=1',
+        '-fsanitize=bool',
         '-fsanitize=builtin',
         '-fsanitize=integer-divide-by-zero',
         '-fsanitize=nullability-arg',
