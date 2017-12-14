@@ -452,7 +452,10 @@ class CppThriftConverter(ThriftLangConverter):
             base_path, cpp2_srcs if self._is_cpp2 else cpp_srcs)
         types_headers = self.convert_source_list(
             base_path, cpp2_headers if self._is_cpp2 else cpp_headers)
-        types_deps = []
+        types_deps = [
+            self.get_thrift_dep_target('folly', 'indestructible'),
+            self.get_thrift_dep_target('folly', 'optional'),
+        ]
         clients_and_services_suffix = '-clients_and_services'
         clients_suffix = '-clients'
         clients_sources = []
@@ -477,6 +480,8 @@ class CppThriftConverter(ThriftLangConverter):
         has_separate_client = self._uses_mstch(options)
         if has_separate_client:
             clients_deps = [
+                self.get_thrift_dep_target('folly/futures', 'core'),
+                self.get_thrift_dep_target('folly/io', 'iobuf'),
                 ':%s%s' % (name, types_suffix),
             ]
             services_deps = [
