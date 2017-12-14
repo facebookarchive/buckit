@@ -52,7 +52,7 @@ SANITIZERS = {
     'address-undefined': 'asan-ubsan',
     'thread': 'tsan',
     'undefined': 'ubsan',
-    'undefined-dev': 'ubsan',
+    'address-undefined-dev': 'asan-ubsan',
 }
 
 
@@ -806,7 +806,7 @@ class Converter(object):
         new_labels.append(self._context.mode)
         new_labels.append(self._context.compiler)
         sanitizer = self._context.sanitizer
-        if sanitizer is not None and sanitizer != 'undefined-dev':
+        if sanitizer is not None and sanitizer != 'address-undefined-dev':
             new_labels.append(SANITIZERS[self._context.sanitizer])
         new_labels.append(platform)
         new_labels.append(self.get_platform_architecture(platform))
