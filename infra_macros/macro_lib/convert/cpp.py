@@ -106,6 +106,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=nullability-return',
         '-fsanitize=return',
         '-fsanitize=returns-nonnull-attribute',
+        '-fsanitize=shift-exponent',
         '-fsanitize=unreachable',
         '-fsanitize=vla-bound',
     ],
