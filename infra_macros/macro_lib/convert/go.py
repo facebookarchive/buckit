@@ -149,7 +149,7 @@ class GoConverter(base.Converter):
                 VENDOR_PATH, ext_dep, os.path.basename(ext_dep)
             ))
         attributes['deps'] = dependencies
-        if compiler_flags is None:
+        if compiler_flags:
             attributes['compiler_flags'] = compiler_flags
 
         if exported_deps:
