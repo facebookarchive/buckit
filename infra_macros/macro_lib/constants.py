@@ -69,6 +69,7 @@ FBCODE_RULES = [
     'cpp_precompiled_header',
     'cpp_python_extension',
     'cpp_java_extension',
+    'cpp_jvm_library',
     'cpp_unittest',
     'custom_rule',
     'custom_unittest',

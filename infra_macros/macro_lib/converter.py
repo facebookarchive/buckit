@@ -50,6 +50,7 @@ haskell_external_library = import_macro_lib('convert/haskell_external_library')
 try:
     java = import_macro_lib('convert/java')
     java_plugins = import_macro_lib('convert/java_plugins')
+    cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
@@ -210,6 +211,7 @@ def convert(context, base_path, rules):
         cpp.CppConverter(context, 'cpp_lua_extension'),
         cpp.CppConverter(context, 'cpp_lua_main_module'),
         cpp.CppConverter(context, 'cpp_node_extension'),
+        cpp_jvm_library.CppJvmLibrary(context),
         cython.Converter(context),
         d.DConverter(context, 'd_binary'),
         d.DConverter(context, 'd_library'),
