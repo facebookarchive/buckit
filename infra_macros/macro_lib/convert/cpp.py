@@ -850,6 +850,7 @@ class CppConverter(base.Converter):
             '--wrap',
             '--dynamic-list',
             '--export-dynamic',
+            '--enable-new-dtags',
         ]
 
         for flag in flags:
