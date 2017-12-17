@@ -1322,6 +1322,9 @@ class Converter(object):
                 # Clang does not support fat LTO objects, so we build everything
                 # as IR only, and must also link everything with -flto
                 ldflags.append('-flto')
+                # HACK(marksan): don't break HFSort/"Hot Text" (t19644410)
+                ldflags.append('-Wl,-plugin-opt,-function-sections')
+                ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
             else:
                 assert(self._context.compiler == 'gcc')
                 # GCC has fat LTO objects, where we build everything as both IR
