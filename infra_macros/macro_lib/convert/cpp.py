@@ -100,6 +100,7 @@ SANITIZER_FLAGS = {
         '-fsanitize=address',
         '-fsanitize=bool',
         '-fsanitize=builtin',
+        '-fsanitize=float-divide-by-zero',
         '-fsanitize=integer-divide-by-zero',
         '-fsanitize=nullability-arg',
         '-fsanitize=nullability-assign',
