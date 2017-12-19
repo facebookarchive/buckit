@@ -1164,12 +1164,16 @@ class Converter(object):
 
         mode = self.get_build_info_mode()
 
-        # Make sure we're not using non-deterministic build info when caching
-        # is enabled.
-        cache_links = self.read_bool('cxx', 'cache_links', True)
-        if mode == 'full' and cache_links:
-            raise ValueError(
-                'cannot use `full` build info when `cxx.cache_links` is set')
+        if mode == 'full':
+            # Make sure we're not using non-deterministic build info when caching
+            # is enabled.
+            if self.read_bool('cxx', 'cache_links', True):
+                raise ValueError(
+                    'cannot use `full` build info when `cxx.cache_links` is set')
+            # Make sure we're not using full build info when building core tools,
+            # otherwise we could introduce nondeterminism in rule keys.
+            if self.is_core_tool(base_path, name):
+                mode = "stable"
 
         # Pass the build info mode to the linker.
         ldflags.append('--build-info=' + mode)
