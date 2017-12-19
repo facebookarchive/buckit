@@ -369,6 +369,6 @@ def install_converted_rules(globals, **context_kwargs):
         'link_style': config.default_link_style,
         'mode': config.build_mode,
         'sanitizer': config.sanitizer if config.sanitizer else None,
-        'supports_lto': config.supports_lto,
+        'lto_type': config.lto_type,
     }
     _install_converted_rules(globals, **context_kwargs)

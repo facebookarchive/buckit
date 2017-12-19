@@ -126,7 +126,7 @@ class ConverterTestCase(unittest.TestCase):
                 link_style='shared',
                 mode='opt',
                 sanitizer=None,
-                supports_lto=False,
+                lto_type=None,
                 third_party_config={
                     'platforms': {
                         'gcc-4.9-glibc-2.20-fb': {'architecture': platform.machine()},

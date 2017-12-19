@@ -82,7 +82,7 @@ Context = collections.namedtuple(
         'link_style',
         'mode',
         'sanitizer',
-        'supports_lto',
+        'lto_type',
         'third_party_config',
         'config',
     ],
@@ -1229,7 +1229,7 @@ class Converter(object):
         Returns the user-specific LTO parallelism level.
         """
 
-        default = 32 if self._context.supports_lto else 0
+        default = 32 if self._context.lto_type else 0
         return self.read_int('cxx', 'lto', default)
 
     def is_lto_enabled(self):
@@ -1247,8 +1247,9 @@ class Converter(object):
         flags = []
 
         # Verify we're running with a build mode that supports LTO.
-        if not self._context.supports_lto:
-            raise ValueError('build mode doesn\'t supoprt LTO')
+        if self._context.lto_type != 'fat':
+            raise ValueError('build mode doesn\'t support {} LTO'.format(
+                self._context.lto_type))
 
         # Read the LTO parallelism level from the config, where `0` disables
         # LTO.
@@ -1325,7 +1326,8 @@ class Converter(object):
             if self._context.compiler == 'clang':
                 # Clang does not support fat LTO objects, so we build everything
                 # as IR only, and must also link everything with -flto
-                ldflags.append('-flto')
+                ldflags.append('-flto=thin' if self._context.lto_type ==
+                               'thin' else '-flto')
                 # HACK(marksan): don't break HFSort/"Hot Text" (t19644410)
                 ldflags.append('-Wl,-plugin-opt,-function-sections')
                 ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
@@ -1464,7 +1466,8 @@ class Converter(object):
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
         if self.is_lto_enabled() and self._context.compiler == 'clang':
-            lib_attrs['linker_flags'].append('-flto')
+            lib_attrs['linker_flags'].append(
+                '-flto=thin' if self._context.lto_type == 'thin' else '-flto')
 
         if static:
             # Use link_whole to make sure the build info symbols are always

@@ -230,9 +230,9 @@ class FbcodeOptions(object):
         'The default link style to use. This can be modified for things for '
         'different languages as necessary')
 
-    supports_lto = BoolOption(
-        'fbcode', 'supports_lto', False,
-        'Whether or not the compiler supports Link Time Optimization')
+    lto_type = Option(
+        'fbcode', 'lto_type', None,
+        'What kind of Link Time Optimization the compiler supports')
 
     sanitizer = Option(
         'fbcode', 'sanitizer', None,
