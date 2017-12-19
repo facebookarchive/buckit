@@ -54,10 +54,23 @@ YACC = ThirdPartyRuleTarget('bison', 'bison')
 YACC_FLAGS = ['-y', '-d']
 
 
-ASAN_FLAGS = [
+ASAN_UBSAN_FLAGS = [
+    '-fno-common',
     '-fsanitize=address',
     '-fsanitize-address-use-after-scope',
-    '-fno-common',
+    '-fsanitize=bool',
+    '-fsanitize=builtin',
+    '-fsanitize=float-divide-by-zero',
+    '-fsanitize=integer-divide-by-zero',
+    '-fsanitize=nullability-arg',
+    '-fsanitize=nullability-assign',
+    '-fsanitize=nullability-return',
+    '-fsanitize=pointer-overflow',
+    '-fsanitize=return',
+    '-fsanitize=returns-nonnull-attribute',
+    '-fsanitize=shift-exponent',
+    '-fsanitize=unreachable',
+    '-fsanitize=vla-bound',
 ]
 
 UBSAN_FLAGS = [
@@ -77,41 +90,10 @@ UBSAN_FLAGS = [
 ]
 
 SANITIZER_FLAGS = {
-    'address': ASAN_FLAGS + [
-        '-fsanitize=bool',
-        '-fsanitize=builtin',
-        '-fsanitize=float-divide-by-zero',
-        '-fsanitize=integer-divide-by-zero',
-        '-fsanitize=nullability-arg',
-        '-fsanitize=nullability-assign',
-        '-fsanitize=nullability-return',
-        '-fsanitize=pointer-overflow',
-        '-fsanitize=return',
-        '-fsanitize=returns-nonnull-attribute',
-        '-fsanitize=shift-exponent',
-        '-fsanitize=unreachable',
-        '-fsanitize=vla-bound',
-        '-DUNDEFINED_SANITIZER=1',
-    ],
-    'address-undefined': ASAN_FLAGS + UBSAN_FLAGS,
+    'address': ASAN_UBSAN_FLAGS,
+    'address-undefined': ASAN_UBSAN_FLAGS + UBSAN_FLAGS,
     'undefined': UBSAN_FLAGS,
-    'address-undefined-dev': [
-        '-DUNDEFINED_SANITIZER=1',
-        '-fsanitize=address',
-        '-fsanitize=bool',
-        '-fsanitize=builtin',
-        '-fsanitize=float-divide-by-zero',
-        '-fsanitize=integer-divide-by-zero',
-        '-fsanitize=nullability-arg',
-        '-fsanitize=nullability-assign',
-        '-fsanitize=nullability-return',
-        '-fsanitize=pointer-overflow',
-        '-fsanitize=return',
-        '-fsanitize=returns-nonnull-attribute',
-        '-fsanitize=shift-exponent',
-        '-fsanitize=unreachable',
-        '-fsanitize=vla-bound',
-    ],
+    'address-undefined-dev': ASAN_UBSAN_FLAGS,
     'thread': [
         '-fsanitize=thread',
     ],
