@@ -1332,6 +1332,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
     TWISTED = 'twisted'
     ASYNCIO = 'asyncio'
     PYI = 'pyi'
+    PYI_ASYNCIO = 'pyi-asyncio'
 
     THRIFT_PY_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'py')
     THRIFT_PY_TWISTED_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'twisted')
@@ -1345,14 +1346,21 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             **kwargs
         )
         self._flavor = flavor
-        self._ext = '.py' if flavor != self.PYI else '.pyi'
+        self._ext = '.py' if flavor not in (self.PYI, self.PYI_ASYNCIO) else '.pyi'
 
-    def get_name(self, prefix, sep):
-        if self._flavor == self.PYI:
-            return self._flavor
+    def get_name(self, prefix, sep, base_module=False):
+        flavor = self._flavor
+        if flavor in (self.PYI, self.PYI_ASYNCIO):
+            if not base_module:
+                return flavor
+            else:
+                if flavor == self.PYI_ASYNCIO:
+                    flavor = self.ASYNCIO
+                else:
+                    flavor = self.NORMAL
 
-        if self._flavor in (self.TWISTED, self.ASYNCIO):
-            prefix += sep + self._flavor
+        if flavor in (self.TWISTED, self.ASYNCIO):
+            prefix += sep + flavor
         return prefix
 
     def get_names(self):
@@ -1364,7 +1372,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return self.get_name('py', '-')
 
     def get_compiler_lang(self):
-        if self._flavor == self.PYI:
+        if self._flavor in (self.PYI, self.PYI_ASYNCIO):
             return 'mstch_pyi'
         return 'py'
 
@@ -1377,7 +1385,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         `thrift_library()`.
         """
 
-        base_module = kwargs.get(self.get_name('py', '_') + '_base_module')
+        base_module = kwargs.get(
+            self.get_name('py', '_', base_module=True) + '_base_module')
 
         # If no asyncio/twisted specific base module parameter is present,
         # fallback to using the general `py_base_module` parameter.
@@ -1459,7 +1468,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         # Add flavor-specific option.
         if self._flavor == self.TWISTED:
             options['twisted'] = None
-        elif self._flavor == self.ASYNCIO:
+        elif self._flavor in (self.ASYNCIO, self.PYI_ASYNCIO):
             options['asyncio'] = None
 
         # Always use "new_style" classes.
@@ -1507,7 +1516,10 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             name = name[:-len('-asyncio')]
         if name.endswith('-py'):
             name = name[:-len('-py')]
-        return name + '-pyi'
+        if self._flavor == self.ASYNCIO:
+            return name + '-pyi-asyncio'
+        else:
+            return name + '-pyi'
 
     def get_language_rule(
             self,
@@ -1543,7 +1555,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             out_deps.append(
                 self.get_dep_target(self.THRIFT_PY_ASYNCIO_LIB_RULE_NAME))
 
-        if self._flavor in (self.NORMAL,):  # FIXME: asyncio support
+        if self._flavor in (self.NORMAL, self.ASYNCIO):
             out_deps.append(':' + self.get_pyi_dependency(name))
 
         attrs['deps'] = out_deps
@@ -2235,6 +2247,9 @@ class ThriftLibraryConverter(base.Converter):
             LegacyPythonThriftConverter(
                 context,
                 flavor=LegacyPythonThriftConverter.PYI),
+            LegacyPythonThriftConverter(
+                context,
+                flavor=LegacyPythonThriftConverter.PYI_ASYNCIO),
         ]
         if use_internal_java_converters:
             converters += [
@@ -2325,12 +2340,14 @@ class ThriftLibraryConverter(base.Converter):
             new_srcs[name] = services
         return new_srcs
 
-    def generate_py_remotes(self,
-            base_path,
-            name,
-            thrift_srcs,
-            base_module,
-            include_sr=False):
+    def generate_py_remotes(
+        self,
+        base_path,
+        name,
+        thrift_srcs,
+        base_module,
+        include_sr=False
+    ):
         """
         Generate all the py-remote rules.
         """
@@ -2491,8 +2508,11 @@ class ThriftLibraryConverter(base.Converter):
                 languages.add('cpp')
 
         # Types are generated for all legacy Python Thrift
-        if 'py' in languages:  # FIXME: asyncio support
+        if 'py' in languages:
             languages.add('pyi')
+
+        if 'py-asyncio' in languages:
+            languages.add('pyi-asyncio')
 
         # Generate rules for all supported languages.
         for lang in languages:
