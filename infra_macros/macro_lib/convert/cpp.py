@@ -456,13 +456,16 @@ class CppConverter(base.Converter):
 
         glob = self._context.buck_ops.glob
         source_exts = self.SOURCE_EXTS  # use a local for faster lookups in a loop
-        split_srcs = (os.path.splitext(src) for src in srcs)
+        # Check for // in case this src is a rule
+        split_srcs = (
+            os.path.splitext(src)
+            for src in srcs
+            if '//' not in src and not src.startswith(':'))
 
         headers = glob([
             base + hext
             for base, ext in split_srcs if ext in source_exts
             for hext in cxx_sources.HEADER_SUFFIXES])
-
         return headers
 
     def get_dlopen_info(self, dlopen_enabled):
