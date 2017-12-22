@@ -1,5 +1,4 @@
 #!/bin/bash -ue
-#
 # Copyright 2016-present, Facebook, Inc.
 # All rights reserved.
 #
@@ -21,23 +20,45 @@ min_bytes="${1:?argument 1 resizes the volume to have this many free bytes}"
 image="${2:?argument 2 must be a path to a btrfs image, which may get erased}"
 volume="${3:?argument 3 must be the path for the btrfs volume mount}"
 
+assert() {
+  (eval "$@") || (
+    echo "Assertion failed:" "$@" 1>&2
+    exit 1
+  )
+}
+
 mount_image() {
   echo "Mounting btrfs $image at $volume"
   # Explicitly set filesystem type to detect shenanigans.
   mount -t btrfs -o loop,discard,nobarrier "$image" "$volume"
 }
 
+resize_image() {
+  # Future: maybe we shouldn't hardcode 4096, but instead query:
+  #   blockdev --getbsz $loop_dev
+  local block_sz=4096
+  local bytes="$1"
+  local rounded_bytes
+  # Avoid T24578982: btrfs soft lockup: `losetup --set-capacity /dev/loopN`
+  # wrongly sets block size to 1024 when backing file size is 4096-odd.
+  rounded_bytes=$(( bytes + ((block_sz - (bytes % block_sz)) % block_sz) ))
+  if [[ "$bytes" != "$rounded_bytes" ]] ; then
+    echo "Rounded image size up to $rounded_bytes to work around kernel bug."
+  fi
+  truncate -s "$rounded_bytes" "$image"
+}
+
 format_image() {
   echo "Formatting empty btrfs of $min_bytes bytes at $image"
-  local min_useful_fs_size=$((175 * 1024 * 1024))
-  if [[ "$min_bytes" -lt "$min_useful_fs_size" ]] ; then
+  local min_usable_fs_size=$((175 * 1024 * 1024))
+  if [[ "$min_bytes" -lt "$min_usable_fs_size" ]] ; then
     # Would get:
     #  < 100MB: ERROR: not enough free space to allocate chunk
     #  < 175MB: ERROR: unable to resize '_foo/volume': Invalid argument
-    echo "btrfs filesystems of < $min_useful_fs_size do not work well"
-    exit 1
+    echo "btrfs filesystems of < $min_usable_fs_size do not work well, growing"
+    min_bytes="$min_usable_fs_size"
   fi
-  truncate -s "$min_bytes" "$image"
+  resize_image "$min_bytes"
   mkfs.btrfs "$image"
 }
 
@@ -71,9 +92,9 @@ ensure_mounted() {
     local new_bytes
     new_bytes=$((old_bytes + growth_bytes))
     # Paranoid assertions in case of integer overflow or similar bugs
-    [[ "$new_bytes" -gt "$old_bytes" ]]
-    [[ $((new_bytes - growth_bytes)) -eq "$old_bytes" ]]
-    truncate -s "$new_bytes" "$image"
+    assert [[ "$new_bytes" -gt "$old_bytes" ]]
+    assert [[ $((new_bytes - growth_bytes)) -eq "$old_bytes" ]]
+    resize_image "$new_bytes"
     losetup --set-capacity "$loop_dev"
     btrfs filesystem resize max "$volume"
   fi

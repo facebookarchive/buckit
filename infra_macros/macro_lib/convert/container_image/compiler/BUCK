@@ -12,7 +12,7 @@ python_unittest(
     srcs = ["tests/test_enriched_namedtuple.py"],
     base_module = "",
     needed_coverage = [(
-        0.95,
+        1.0,
         ":enriched_namedtuple",
     )],
     deps = [":enriched_namedtuple"],
@@ -34,7 +34,7 @@ python_unittest(
     srcs = ["tests/test_requires_provides.py"],
     base_module = "",
     needed_coverage = [(
-        0.95,
+        1.0,
         ":requires_provides",
     )],
     deps = [":requires_provides"],
@@ -52,7 +52,7 @@ python_unittest(
     srcs = ["tests/test_items.py"],
     base_module = "",
     needed_coverage = [(
-        0.95,
+        1.0,
         ":items",
     )],
     deps = [":items"],
@@ -70,7 +70,7 @@ python_unittest(
     srcs = ["tests/test_dep_graph.py"],
     base_module = "",
     needed_coverage = [(
-        0.95,
+        1.0,
         ":dep_graph",
     )],
     deps = [":dep_graph"],
@@ -124,7 +124,7 @@ python_unittest(
     # executed by the Buck Python runtime.  I could conceivably shim all
     # that out, but it seems entirely not worth the trouble.
     needed_coverage = [(
-        0.84,  # Cannot get coverage of any of the errors.
+        1.0,
         ":items_for_features",
     )],
     # The test reads `feature.json`, so we need actual files on disk.

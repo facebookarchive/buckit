@@ -22,7 +22,7 @@ def replace_targets_by_paths(x, target_to_filename):
         return [replace_targets_by_paths(v, target_to_filename) for v in x]
     elif type(x) in [int, float, str]:
         return x
-    assert False, 'Unknown {type(x)} for {x}'
+    assert False, 'Unknown {type(x)} for {x}'  # pragma: no cover
 
 
 def gen_items_for_features(feature_filenames, target_to_filename):
@@ -44,13 +44,15 @@ def gen_items_for_features(feature_filenames, target_to_filename):
                 for dct in items.pop(key, []):
                     try:
                         yield item_class(from_target=target, **dct)
-                    except Exception as ex:
+                    except Exception as ex:  # pragma: no cover
                         raise RuntimeError(
                             f'Failed to process {key}: {dct} from target '
                             f'{target}, please read the exception above.'
                         ) from ex
 
             for _rpm_name, _action in items.pop('rpms', {}).items():
-                raise NotImplementedError('No RPM support yet')
+                raise NotImplementedError(  # pragma: no cover
+                    'No RPM support yet'
+                )
 
             assert not items, f'Unsupported items: {items}'

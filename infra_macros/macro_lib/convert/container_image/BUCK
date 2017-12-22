@@ -1,0 +1,38 @@
+# These TARGETS only exist to enable automatic continuous builds and
+# integration tests for the Buck image-building toolchain.  For production
+# use, the `.py` files outside of the `compiler/` are actually executed
+# within Buck's own special Python environment.  This is also the reason
+# that all of this code uses Python2.
+
+export_file(name = "set_up_volume.sh")
+
+# A separate library because otherwise `pyunitcoveragerunner.py` will demand
+# coverage on the `.sh` file.
+python_library(
+    name = "set_up_volume.sh-proxy",
+    base_module = "",
+    # `get_volume_for_current_repo()` needs this to be our sibling in the PAR.
+    gen_srcs = {":set_up_volume.sh": "set_up_volume.sh"},
+    py_version = "<3",
+)
+
+python_library(
+    name = "volume_for_repo",
+    srcs = ["volume_for_repo.py"],
+    base_module = "",
+    py_version = "<3",
+    deps = [":set_up_volume.sh-proxy"],
+)
+
+python_unittest(
+    name = "test_volume_for_repo",
+    srcs = ["tests/test_volume_for_repo.py"],
+    base_module = "",
+    needed_coverage = [(
+        1.0,
+        ":volume_for_repo",
+    )],
+    par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
+    py_version = "<3",
+    deps = [":volume_for_repo"],
+)
