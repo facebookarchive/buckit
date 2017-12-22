@@ -1238,7 +1238,11 @@ class CppConverter(base.Converter):
                 attributes['headers'] = out_headers
 
         if header_namespace is not None:
-            if (base_path, name) not in self._context.config.header_namespace_whitelist:
+            if (base_path, name) not in self._context.config.header_namespace_whitelist and not any(
+                # Check base path prefix in header_namespace_whitelist
+                len(t) == 1 and base_path.startswith(t[0])
+                for t in self._context.config.header_namespace_whitelist
+            ):
                 raise ValueError(
                     '{}(): the `header_namespace` parameter is *not* '
                     'supported in fbcode -- `#include` paths must match '
