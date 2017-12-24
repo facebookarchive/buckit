@@ -4,8 +4,8 @@ python_library(
         "utils.py",
     ],
     deps = [
-        "@/tools/build/buck:parser",
-        "@/tools/build/buck/infra_macros/macro_lib:macro_lib",
+        "//tools/build/buck:parser",
+        "//tools/build/buck/infra_macros/macro_lib:macro_lib",
     ],
 )
 
@@ -21,7 +21,7 @@ python_unittest(
     py_version = "<3",
     deps = [
         ":utils",
-        "@/tools/build/buck/infra_macros/macro_lib:macro_lib",
+        "//tools/build/buck/infra_macros/macro_lib:macro_lib",
     ],
     external_deps = ["mock"],
 )

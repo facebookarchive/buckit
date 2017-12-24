@@ -32,6 +32,6 @@ python_unittest(
     deps = [
         ":parent-py",
         ":parent-thriftdoc-py",
-        "@/tupperware/thriftdoc/validator:validate_thriftdoc",
+        "//tupperware/thriftdoc/validator:validate_thriftdoc",
     ],
 )

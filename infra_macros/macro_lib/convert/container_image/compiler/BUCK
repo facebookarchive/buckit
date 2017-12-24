@@ -106,7 +106,7 @@ TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
 ]
 
 TEST_TARGET_PREFIX = (
-    "@/tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
+    "//tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
     "compiler/tests:"
 )
 
