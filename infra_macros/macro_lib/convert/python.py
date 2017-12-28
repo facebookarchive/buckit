@@ -923,7 +923,9 @@ class PythonConverter(base.Converter):
                     out_preload_deps,
                 ),
             )
-            attributes['tests'] = list(attributes['tests']) + [':{}-typecheck'.format(name)]
+            attributes['tests'] = (
+                list(attributes['tests']) + [':{}-typecheck'.format(name)]
+            )
 
         if self.is_test(rule_type):
             if not dependencies:
@@ -935,6 +937,15 @@ class PythonConverter(base.Converter):
 
         if platform_deps:
             attributes['platform_deps'] = platform_deps
+
+        if (
+            self.read_bool('fbcode', 'monkeytype', False) and
+            (self.matches_py3(python_version)
+                or self.matches_pypy(python_version))
+        ):
+            rules.extend(
+                self.create_monkeytype_rules(rule_type, attributes, library)
+            )
 
         return [Rule(rule_type, attributes)] + rules
 
@@ -1102,6 +1113,50 @@ class PythonConverter(base.Converter):
             attrs['env'] = {"PYTHON_TYPECHECK_ENTRY_POINT": main_module}
 
         return Rule('python_test', attrs)
+
+    def create_monkeytype_rules(
+        self,
+        rule_type,
+        attributes,
+        library,
+    ):
+        # Create a variant of the target that is running with monkeytype
+        wrapper_attrs = attributes.copy()
+        wrapper_attrs['name'] = wrapper_attrs['name'] + '-monkeytype'
+        if 'deps' in wrapper_attrs:
+            wrapper_deps = list(wrapper_attrs['deps'])
+        else:
+            wrapper_deps = []
+        if ':' + library.attributes['name'] not in wrapper_deps:
+            wrapper_deps.append(':' + library.attributes['name'])
+        stub_gen_deps = list(wrapper_deps)
+
+        if '//python/monkeytype:main_wrapper' not in wrapper_deps:
+            wrapper_deps.append('//python/monkeytype/tools:main_wrapper')
+        wrapper_attrs['deps'] = wrapper_deps
+        wrapper_attrs['base_module'] = ''
+        wrapper_attrs['main_module'] = 'python.monkeytype.tools.main_wrapper'
+
+        if '//python/monkeytype/tools:stubs_lib' not in wrapper_deps:
+            stub_gen_deps.append('//python/monkeytype/tools:stubs_lib')
+
+        # And create a target that can be used for stub creation
+        stub_gen_attrs = collections.OrderedDict((
+            ('name', attributes['name'] + '-monkeytype-gen-stubs'),
+            ('main_module', 'python.monkeytype.tools.get_stub'),
+            ('cxx_platform', attributes['cxx_platform']),
+            ('platform', attributes['platform']),
+            ('deps', stub_gen_deps),
+            ('platform_deps', attributes['platform_deps']),
+            ('preload_deps', attributes['preload_deps']),
+            ('package_style', 'inplace'),
+            ('version_universe', attributes['version_universe']),
+        ))
+
+        return [
+            Rule(rule_type, wrapper_attrs),
+            Rule('python_binary', stub_gen_attrs)
+        ]
 
     def gen_test_modules(self, base_path, library):
         lines = ['TEST_MODULES = [']
