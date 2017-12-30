@@ -484,16 +484,6 @@ class Converter(object):
         parsed = self.normalize_external_dep(target, lang_suffix=lang_suffix)
         return self.get_dep_target(parsed, source=target)
 
-    def get_fbcode_target(self, target):
-        """
-        Convert a Buck style rule name back into an fbcode one.
-        """
-
-        if self._context.config.fbcode_style_deps and target.startswith('//'):
-            target = '@/' + target[2:]
-
-        return target
-
     def convert_build_target(self, base_path, target, platform=None):
         """
         Convert the given build target into a buck build target.
@@ -1399,12 +1389,10 @@ class Converter(object):
         return deps
 
     def get_allocator_deps(self, allocator):
-        deps = []
-
-        for rdep in self._context.config.allocators[allocator]:
-            deps.append(fbcode_target.parse_target('@/' + rdep[2:]))
-
-        return deps
+        return [
+            fbcode_target.parse_target(rdep)
+            for rdep in self._context.config.allocators[allocator]
+        ]
 
     def get_allocators(self):
         return {

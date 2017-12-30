@@ -387,7 +387,7 @@ class Converter(base.Converter):
         # dependency for our LIB TARGET
         for dep in deps:
             # We need to turn it back into fbcode targets for cpp_library
-            cpp_deps.append(self.get_fbcode_target(dep + self.LIB_SUFFIX))
+            cpp_deps.append(dep + self.LIB_SUFFIX)
 
         # We need to depend on libpython for the build
         cpp_external_deps = list(cpp_external_deps)

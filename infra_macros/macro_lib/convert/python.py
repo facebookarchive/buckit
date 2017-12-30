@@ -168,7 +168,7 @@ class PythonConverter(base.Converter):
             if not isinstance(src, RuleTarget):
                 raise ValueError(
                     'parameter `gen_srcs`: `{}` must be a reference to rule '
-                    'that generates a source (e.g. `@/foo:bar`, `:bar`) '
+                    'that generates a source (e.g. `//foo:bar`, `:bar`) '
                     ' (see {} for details).'
                     .format(src, GEN_SRCS_LINK))
 

@@ -41,34 +41,23 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
 
     def test_exclude_from_auto_pch(self):
         self.assertFalse(
-            self._converter.exclude_from_auto_pch('@/test', 'path'))
-        self.assertFalse(
             self._converter.exclude_from_auto_pch('//test', 'path'))
         self.assertFalse(
             self._converter.exclude_from_auto_pch('test//test', 'path'))
-        self.assertFalse(
-            self._converter.exclude_from_auto_pch('@/exclude2', 'path'))
         self.assertFalse(
             self._converter.exclude_from_auto_pch('//exclude2', 'path'))
         self.assertFalse(
             self._converter.exclude_from_auto_pch('exclude2//exclude2', 'path'))
 
         self.assertTrue(
-            self._converter.exclude_from_auto_pch('@/exclude', 'path'))
-        self.assertTrue(
             self._converter.exclude_from_auto_pch('//exclude', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch('exclude//exclude', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch('@/exclude/dir1', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch('//exclude/dir1', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch(
                 'exclude//exclude/dir1', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                '@/exclude/dir1/dir2', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch(
                 '//exclude/dir1/dir2', 'path'))
@@ -77,15 +66,10 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                 'exclude//exclude/dir1/dir2', 'path'))
 
         self.assertTrue(
-            self._converter.exclude_from_auto_pch('@/exclude2/subdir', 'path'))
-        self.assertTrue(
             self._converter.exclude_from_auto_pch('//exclude2/subdir', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch(
                 'exclude2//exclude2/subdir', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                '@/exclude2/subdir/dir2', 'path'))
         self.assertTrue(
             self._converter.exclude_from_auto_pch(
                 '//exclude2/subdir/dir2', 'path'))
@@ -106,7 +90,7 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                     external_deps=[('glog', None, 'glog')],
                     auto_headers=None,
                     os_deps=[
-                        ('invalid_os', ['@/test:target2']),
+                        ('invalid_os', ['//test:target2']),
                     ],
                 )
 
@@ -121,8 +105,8 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
             external_deps=[('glog', None, 'glog')],
             auto_headers=None,
             os_deps=[
-                ('mac', ['@/test:target2']),
-                ('linux', ['@/test:target3']),
+                ('mac', ['//test:target2']),
+                ('linux', ['//test:target3']),
             ],
         )
 

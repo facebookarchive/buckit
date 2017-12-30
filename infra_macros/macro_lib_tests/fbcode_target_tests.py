@@ -34,20 +34,24 @@ class FbcodeTargetConverterTest(utils.ConverterTestCase):
 
     def test_parse_target(self):
         self.assertEquals(
-            self._fbcode_target.parse_target('@/full:target'),
-            self._fbcode_target.RuleTarget(None, 'full', 'target'))
-        self.assertEquals(
             self._fbcode_target.parse_target(':target'),
             self._fbcode_target.RuleTarget(None, None, 'target'))
         self.assertEquals(
-            self._fbcode_target.parse_target('@/repo:full:target'),
-            self._fbcode_target.RuleTarget('repo', 'full', 'target'))
+            self._fbcode_target.parse_target('@/fbcode:full:target'),
+            self._fbcode_target.RuleTarget(None, 'full', 'target'))
+        self.assertEquals(
+            self._fbcode_target.parse_target('@/third-party:full:target'),
+            self._fbcode_target.RuleTarget('third-party', 'full', 'target'))
         self.assertEquals(
             self._fbcode_target.parse_target('repo//full:target'),
             self._fbcode_target.RuleTarget('repo', 'full', 'target'))
         self.assertEquals(
             self._fbcode_target.parse_target('//full:target'),
             self._fbcode_target.RuleTarget(None, 'full', 'target'))
+        with self.assertRaises(ValueError):
+            self._fbcode_target.parse_target('@/full:target')
+        with self.assertRaises(ValueError):
+            self._fbcode_target.parse_target('@/repo:full:target'),
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('@invalid:target')
         with self.assertRaises(ValueError):
@@ -74,12 +78,3 @@ class FbcodeTargetConverterTest(utils.ConverterTestCase):
 
         with self.assertRaises(ValueError):
             self._fbcode_target.parse_target('@/full:target')
-
-        self.setup_with_config({}, {
-            ('fbcode', 'fbcode_style_deps_are_third_party')})
-        self.assertEquals(
-            self._fbcode_target.parse_target('@/folly:json'),
-            self._fbcode_target.RuleTarget('folly', 'folly', 'json'))
-        self.assertEquals(
-            self._fbcode_target.parse_target('@/cell/full:target'),
-            self._fbcode_target.RuleTarget('cell', 'cell/full', 'target'))

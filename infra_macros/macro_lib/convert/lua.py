@@ -207,7 +207,7 @@ class LuaConverter(base.Converter):
         attrs['srcs'] = [':' + source_name]
         attrs['base_module'] = ''
         attrs['deps'] = [
-            self.convert_build_target(base_path, '@/fblualib/trepl:base'),
+            self.convert_build_target(base_path, '//fblualib/trepl:base'),
         ]
         rules.append(Rule('lua_library', attrs))
 

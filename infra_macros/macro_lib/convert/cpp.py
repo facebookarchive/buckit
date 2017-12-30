@@ -740,7 +740,7 @@ class CppConverter(base.Converter):
                 src = src.rsplit('=', 1)[1]
 
             # Assume generated sources without explicit extensions are non-CUDA
-            if src.startswith('@') or src.startswith(':'):
+            if src.startswith(('@', ':', '//')):
                 continue
 
             # If the source extension is `.cu` it's cuda.
@@ -1534,10 +1534,7 @@ class CppConverter(base.Converter):
         """
         if self.is_core_tool(base_path, name):
             return True
-        if base_path.startswith('@/'):
-            path = base_path[2:]
-        else:
-            path = base_path.split('//', 1)[-1]
+        path = base_path.split('//', 1)[-1]
 
         if not path:
             return True

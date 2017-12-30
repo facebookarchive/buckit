@@ -52,6 +52,11 @@ def parse_target(
     # Normalize the target by removing the leading `@/`.
     normalized = None
     if target.startswith('@/'):
+        if not target.startswith(('@/third-party', '@/fbcode')):
+            raise ValueError(
+                'Rules may not start with @/ unless they are using @/fbcode '
+                'or @/third-party style rules. Use // instead for %s' % target
+            )
         normalized = target[2:]
     elif target.startswith(':'):
         normalized = target
@@ -65,9 +70,8 @@ def parse_target(
         return RuleTarget(repo, base, name)
     else:
         raise ValueError(
-            'rule name must start with "@/" (when absolute) ":" '
-            '(when relative), or contain "//" and ":" (when using '
-            'native buck style rules): "{}"'
+            'rule name must contain "//" (when absolute) or ":" '
+            '(when relative)'
             .format(target))
 
     # Split the target into its various parts.

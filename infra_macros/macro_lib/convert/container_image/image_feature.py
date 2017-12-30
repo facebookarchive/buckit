@@ -224,8 +224,8 @@ class ImageFeatureConverter(base.Converter):
         #     `image_feature` item.
         # Order is not signficant, the image compiler will sort the actions
         # automatically.  Supported item formats:
-        #  - tuple: ('@/target/to/copy', 'image_absolute/dir')
-        #  - dict: {'source': '@/target/to/copy', 'dest': 'image_absolute/dir'}
+        #  - tuple: ('//target/to/copy', 'image_absolute/dir')
+        #  - dict: {'source': '//target/to/copy', 'dest': 'image_absolute/dir'}
         copy_deps=None,
         # An iterable of tarballs to extract inside the image --
         #  - `tarball` is a Buck target that outputs a tarball. You may
@@ -234,8 +234,8 @@ class ImageFeatureConverter(base.Converter):
         #    created by another `image_feature` item.
         # Order is not signficant, the image compiler will sort the actions
         # automatically.  Supported item formats:
-        #  - tuple: ('@/target/tarball/to_extract', 'image_absolute/dir')
-        #  - dict: {'tarball': '@/toextract', 'into_dir': 'image_absolute/dir'}
+        #  - tuple: ('//target/tarball/to_extract', 'image_absolute/dir')
+        #  - dict: {'tarball': '//toextract', 'into_dir': 'image_absolute/dir'}
         tarballs=None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.

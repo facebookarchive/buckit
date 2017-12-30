@@ -108,7 +108,7 @@ class ThriftLangConverter(base.Converter):
         else:
             repo = base_path.split('/')[0]
             target = ThirdPartyRuleTarget(repo, base_path, target)
-        return self.get_fbcode_target(self.get_dep_target(target))
+        return self.get_dep_target(target)
 
     def get_compiler(self):
         """
@@ -511,12 +511,9 @@ class CppThriftConverter(ThriftLangConverter):
             elif source_type == self.SERVICES_HEADER:
                 services_headers.append(file_target)
 
-        types_deps.extend(
-            (self.get_fbcode_target(d + types_suffix) for d in deps))
-        clients_deps.extend(
-            (self.get_fbcode_target(d + clients_suffix) for d in deps))
-        services_deps.extend(
-            (self.get_fbcode_target(d + services_suffix) for d in deps))
+        types_deps.extend((d + types_suffix for d in deps))
+        clients_deps.extend((d + clients_suffix for d in deps))
+        services_deps.extend((d + services_suffix for d in deps))
 
         # Add in cpp-specific deps and external_deps
         common_deps = []
@@ -1036,7 +1033,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             for dep in hs2_deps:
                 dependencies.append(target.parse_target(dep, base_path))
         for dep in deps:
-            dependencies.append(target.parse_target('@' + dep[1:], base_path))
+            dependencies.append(target.parse_target(dep, base_path))
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(dependencies))
         if self.read_hs_profile():
@@ -1658,7 +1655,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         dependencies.extend(self.THRIFT_OCAML_DEPS)
         dependencies.extend(self.THRIFT_OCAML_LIBS)
         for dep in deps:
-            dependencies.append(target.parse_target('@' + dep[1:], base_path))
+            dependencies.append(target.parse_target(dep, base_path))
         attrs['deps'] = (self.format_all_deps(dependencies))[0]
 
         return [Rule('ocaml_library', attrs)]
@@ -1790,13 +1787,12 @@ class Python3ThriftConverter(ThriftLangConverter):
                 dst = thrift_package
             return sources[thrift_src][full_src], dst
 
-        fdeps = [self.get_fbcode_target(d) for d in deps]
         for gen_func in (self.gen_rule_thrift_types,
                          self.gen_rule_thrift_services,
                          self.gen_rule_thrift_clients):
             for rule in gen_func(
                 name, base_path, sources, thrift_srcs,
-                py3_namespace, fdeps, generated
+                py3_namespace, deps, generated
             ):
                 yield rule
 
@@ -2165,7 +2161,7 @@ class RustThriftConverter(ThriftLangConverter):
                 os.path.basename(self.get_source_name(thrift_srcs.keys()[0])))[0])
 
         out_deps = [
-            '@/common/rust/thrift/runtime:rust_thrift',
+            '//common/rust/thrift/runtime:rust_thrift',
         ]
         out_external_deps = [
             ('rust-crates-io', None, 'error-chain'),
@@ -2174,7 +2170,7 @@ class RustThriftConverter(ThriftLangConverter):
             ('rust-crates-io', None, 'tokio-service'),
         ]
 
-        out_deps.extend(self.get_fbcode_target(d) for d in deps)
+        out_deps += deps
 
         # Avoid some common names which are also Rust keywords
         crate_name = thrift_base
@@ -2379,7 +2375,7 @@ class ThriftLibraryConverter(base.Converter):
                     sr_rule = 'thrift/lib/py/util'
                 attrs['deps'] = [
                     ':{}-py'.format(name),
-                    '@/{}:remote'.format(sr_rule),
+                    '//{}:remote'.format(sr_rule),
                 ]
                 attrs['external_deps'] = [
                     'python-future',
