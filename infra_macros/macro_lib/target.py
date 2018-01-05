@@ -71,7 +71,7 @@ def parse_target(
     else:
         raise ValueError(
             'rule name must contain "//" (when absolute) or ":" '
-            '(when relative)'
+            '(when relative): "{}"'
             .format(target))
 
     # Split the target into its various parts.
@@ -117,7 +117,8 @@ def parse_external_dep(
         target = (raw_target, )
     else:
         raise TypeError(
-            'external dependency should be tuple or string, not int')
+            'external dependency should be tuple or string, '
+            'not int: {!r}'.format(raw_target))
 
     if len(target) in (1, 2):
         repo = default_repo
