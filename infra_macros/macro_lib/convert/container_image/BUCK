@@ -5,6 +5,8 @@
 # that all of this code uses Python2.
 
 # The implementation of `image_layer` uses these for path resolution.
+export_file(name = "volume_for_repo.py")
+
 export_file(name = "subvolume_version.py")
 
 # Lets us unit-test `volume_for_repo.py`.

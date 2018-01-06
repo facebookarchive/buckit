@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import os
 import unittest
 import shutil
@@ -37,6 +37,6 @@ class VolumeForRepoTestCase(unittest.TestCase):
         finally:
             try:
                 subprocess.call(['sudo', 'umount', volume_dir])
-            except:
+            except Exception:
                 pass  # Might not have been mounted in case of an earlier error
             shutil.rmtree(artifacts_dir)
