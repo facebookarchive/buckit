@@ -4,6 +4,10 @@
 # within Buck's own special Python environment.  This is also the reason
 # that all of this code uses Python2.
 
+# The implementation of `image_layer` uses these for path resolution.
+export_file(name = "subvolume_version.py")
+
+# Lets us unit-test `volume_for_repo.py`.
 export_file(name = "set_up_volume.sh")
 
 # A separate library because otherwise `pyunitcoveragerunner.py` will demand
