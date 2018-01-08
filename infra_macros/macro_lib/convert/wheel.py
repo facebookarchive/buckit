@@ -150,7 +150,7 @@ class PyWheel(base.Converter):
         if external_deps:
             attrs['platform_deps'].extend(
                 self.format_platform_deps(
-                    self.to_platform_deps(
+                    self.to_platform_param(
                         [self.normalize_external_dep(d, lang_suffix='-py')
                          for d in external_deps]
                     )
