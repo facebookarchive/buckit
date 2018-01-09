@@ -864,14 +864,15 @@ class HaskellThriftConverter(ThriftLangConverter):
     ]
 
     THRIFT_HS2_LIBS = [
+        RootRuleTarget('common/hs/thrift/lib', 'codegen-types-only'),
         RootRuleTarget('common/hs/thrift/lib', 'protocol'),
-        RootRuleTarget('common/hs/thrift/lib', 'channel'),
-        RootRuleTarget('common/hs/thrift/lib', 'types'),
-        RootRuleTarget('common/hs/thrift/lib', 'codegen'),
     ]
 
     THRIFT_HS2_SERVICE_LIBS = [
+        RootRuleTarget('common/hs/thrift/lib', 'channel'),
+        RootRuleTarget('common/hs/thrift/lib', 'codegen'),
         RootRuleTarget('common/hs/thrift/lib', 'processor'),
+        RootRuleTarget('common/hs/thrift/lib', 'types'),
         RootRuleTarget('common/hs/thrift/lib/if', 'application-exception-hs2')
     ]
 
