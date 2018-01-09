@@ -51,6 +51,7 @@ class CustomUnittestConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        attributes['type'] = type
 
         if command:
             bin_refs = 0
