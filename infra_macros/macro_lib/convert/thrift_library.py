@@ -1706,6 +1706,49 @@ class Python3ThriftConverter(ThriftLangConverter):
         options.update(parsed_options)
         return options
 
+    def get_postprocess_command(
+            self,
+            base_path,
+            thrift_src,
+            out_dir,
+            py3_namespace='',
+            **kwargs):
+
+        # The location of the generated thrift files depends on the value of
+        # the "namespace py3" directive in the .thrift file, and we
+        # unfortunately don't know what this value is.  After compilation, make
+        # sure the types.pyx file exists in the location we expect.  If not,
+        # there is probably a mismatch between the py3_namespace parameter in the
+        # TARGETS file and the "namespace py3" directive in the .thrift file.
+        thrift_name = self.thrift_name(thrift_src)
+        package = os.path.join(py3_namespace, thrift_name).replace('.', '/')
+        output_dir = os.path.join(out_dir, 'gen-py3', package)
+        types_path = os.path.join(output_dir, 'types.pyx')
+
+        msg = [
+            'Compiling %s did not generate source in %s'
+            % (os.path.join(base_path, thrift_src), types_path)
+        ]
+        msg.append(
+            "Does the 'namespace py3' directive in the thrift file "
+            'match the py3_namespace specified in the TARGETS file?')
+        msg.append('  py3_namespace is {!r}'.format(py3_namespace))
+        if py3_namespace:
+            msg.append(
+                "  thrift file should contain 'namespace py3 {}'".format(py3_namespace)
+            )
+        else:
+            msg.append(
+                "  thrift file should not contain any 'namespace py3' directive"
+            )
+
+        cmd = 'if [ ! -f %s ]; then ' % (types_path,)
+        for line in msg:
+            cmd += ' echo "%s" >&2;' % (line,)
+        cmd += ' false; fi'
+
+        return cmd
+
     def get_generated_sources(
             self,
             base_path,
