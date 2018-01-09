@@ -1,6 +1,27 @@
 # NB: There is no binary here because the image compiler does not get built
 # by Buck, it is executed in-place using the system Python.
 
+# Used both by the compiler and by the subvolume garbage collector.
+
+python_library(
+    name = "subvolume_on_disk",
+    srcs = ["subvolume_on_disk.py"],
+    base_module = "",
+)
+
+python_unittest(
+    name = "test-subvolume-on-disk",
+    srcs = ["tests/test_subvolume_on_disk.py"],
+    base_module = "",
+    needed_coverage = [(
+        1.0,
+        ":subvolume_on_disk",
+    )],
+    deps = [":subvolume_on_disk"],
+)
+
+# The remaining libraries are used only by the compiler.
+
 python_library(
     name = "enriched_namedtuple",
     srcs = ["enriched_namedtuple.py"],
