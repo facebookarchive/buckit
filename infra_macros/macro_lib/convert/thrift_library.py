@@ -990,7 +990,6 @@ class HaskellThriftConverter(ThriftLangConverter):
             thrift_base = camel(thrift_base)
             namespace = os.sep.join(map(camel, namespace.split('.')))
             genfiles.append('%s/Types.hs' % thrift_base)
-            genfiles.append('%s/Consts.hs' % thrift_base)
             for service in services:
                 genfiles.append('%s/%s/Client.hs' % (thrift_base, service))
                 genfiles.append('%s/%s/Service.hs' % (thrift_base, service))
