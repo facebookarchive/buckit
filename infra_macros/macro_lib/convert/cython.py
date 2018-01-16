@@ -99,6 +99,9 @@ class Converter(base.Converter):
         self.python_library = python.PythonConverter(
             context, 'python_library',
         )
+        self.cpp_python_extension = cpp.CppConverter(
+            context, 'cpp_python_extension',
+        )
 
     def get_fbconfig_rule_type(self):
         return 'cython_library'
@@ -311,6 +314,7 @@ class Converter(base.Converter):
 
     def gen_extension_rule(
         self,
+        base_path,
         parent,
         module_path,
         package,
@@ -319,19 +323,21 @@ class Converter(base.Converter):
         python_external_deps=(),
         cpp_compiler_flags=()
     ):
-        attrs = collections.OrderedDict()
-        attrs['name'] = os.path.join(parent, module_path)
-        attrs['module_name'] = os.path.basename(module_path)
-        attrs['base_module'] = package
-        attrs['srcs'] = [(src, ['-w'])]
-        attrs['deps'] = [':' + parent + self.LIB_SUFFIX]
-        if python_deps:
-            attrs['deps'].extend(python_deps)
-        if python_external_deps:
-            attrs['deps'].extend(python_external_deps)
-        if cpp_compiler_flags:
-            attrs['compiler_flags'] = cpp_compiler_flags
-        return ':' + attrs['name'], Rule('cxx_python_extension', attrs)
+        name = os.path.join(parent, module_path)
+        rules = (
+            self.cpp_python_extension.convert(
+                base_path,
+                name=os.path.join(parent, module_path),
+                base_module=package,
+                module_name=os.path.basename(module_path),
+                srcs=[src],
+                deps=(
+                    [':' + parent + self.LIB_SUFFIX] +
+                    list(python_deps) +
+                    list(python_external_deps)),
+                compiler_flags=['-w'] + list(cpp_compiler_flags),
+            ))
+        return ':' + name, rules
 
     def gen_api_header(
         self, name, cython_name, module_path, module_name, api
@@ -507,19 +513,22 @@ class Converter(base.Converter):
                 yield set_visibility(src_rule)
 
                 # generate an extension for the generated src
-                so_target, so_rule = self.gen_extension_rule(
-                    name, module_path, os.path.dirname(pyx_dst), src_target,
-                    python_deps, python_external_deps, cpp_compiler_flags
+                so_target, so_rules = self.gen_extension_rule(
+                    base_path, name, module_path, os.path.dirname(pyx_dst),
+                    src_target, python_deps, python_external_deps,
+                    cpp_compiler_flags
                 )
 
                 # The fist extension will not be a sub extension
                 # So we can have this rule be a cxx_python_extension
                 # and not be an empty .so
                 if not first_pyx:
-                    first_pyx = so_rule
+                    first_pyx = so_rules[0]
                 else:
                     extensions.append(so_target)
-                    yield set_visibility(so_rule)
+                    yield set_visibility(so_rules[0])
+                for remaining_so_rule in so_rules[1:]:
+                    yield remaining_so_rule
 
                 # Generate _api.h header rules.
                 api_target, api_rule = self.gen_api_header(

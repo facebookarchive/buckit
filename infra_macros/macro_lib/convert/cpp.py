@@ -884,6 +884,7 @@ class CppConverter(base.Converter):
             base_path,
             name=None,
             base_module=None,
+            module_name=None,
             srcs=[],
             src=None,
             deps=[],
@@ -969,6 +970,9 @@ class CppConverter(base.Converter):
                 self.get_lua_base_module(base_path, base_module))
         elif rule_type == 'cpp_python_extension' and base_module is not None:
             attributes['base_module'] = base_module
+
+        if module_name is not None:
+            attributes['module_name'] = module_name
 
         if self.is_library():
             if preferred_linkage:
@@ -1744,6 +1748,8 @@ class CppConverter(base.Converter):
         if rtype == 'cpp_python_extension':
             args.update([
                 'base_module',
+                # Intentionally not visible to users!
+                #'module_name',
             ])
 
         if rtype == 'cpp_lua_extension':
