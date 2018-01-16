@@ -91,7 +91,7 @@ class PyWheelDefault(base.Converter):
         attrs['name'] = os.path.basename(base_path)
         attrs['platform_deps'] = [
             ('^{}$'.format(re.escape(py_platform)), [':' + version])
-            for py_platform, version in platform_versions.items()
+            for py_platform, version in sorted(platform_versions.items())
         ]
         yield Rule('python_library', attrs)
 
@@ -141,7 +141,7 @@ class PyWheel(base.Converter):
         # each platform
         attrs['platform_deps'] = [
             ('^{}$'.format(re.escape(py_platform)), [wheel_targets[url]])
-            for py_platform, url in platform_urls.items()
+            for py_platform, url in sorted(platform_urls.items())
         ]
 
         if deps:
