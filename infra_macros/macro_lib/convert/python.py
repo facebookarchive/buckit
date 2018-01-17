@@ -770,7 +770,10 @@ class PythonConverter(base.Converter):
             platform_deps.extend(library.attributes.get('platform_deps', []))
 
             # Add the "coverage" library as a dependency for all python tests.
-            dependencies.extend(['//python/wheel/coverage:coverage'])
+            platform_deps.extend(
+                self.format_platform_deps(
+                    self.to_platform_param(
+                        [ThirdPartyRuleTarget('coverage', 'coverage-py')])))
 
         # Otherwise, this is a binary, so just the library portion as a dep.
         else:
