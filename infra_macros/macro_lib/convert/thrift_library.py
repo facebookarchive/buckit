@@ -1428,9 +1428,16 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             'Compiling %s did not generate source in %s'
             % (os.path.join(base_path, thrift_src), ttypes_path)
         ]
+        if self._flavor == self.ASYNCIO or self._flavor == self.PYI_ASYNCIO:
+            py_flavor = 'py.asyncio'
+        elif self._flavor == self.TWISTED:
+            py_flavor = 'py.twisted'
+        else:
+            py_flavor = 'py'
         msg.append(
-            'Does the "\\"namespace py\\"" directive in the thrift file '
-            'match the base_module specified in the TARGETS file?')
+            'Does the "\\"namespace %s\\"" directive in the thrift file '
+            'match the base_module specified in the TARGETS file?' %
+            (py_flavor,))
         base_module = self.get_base_module(**kwargs)
         if base_module is None:
             base_module = base_path
@@ -1444,8 +1451,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         expected_ns.append(thrift_base)
         expected_ns = '.'.join(expected_ns)
         msg.append(
-            '  thrift file should contain "\\"namespace py %s\\""' %
-            (expected_ns,))
+            '  thrift file should contain "\\"namespace %s %s\\""' %
+            (py_flavor, expected_ns,))
 
         cmd = 'if [ ! -f %s ]; then ' % (ttypes_path,)
         for line in msg:
