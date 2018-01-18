@@ -47,6 +47,7 @@ VALID_COMPILER_FLAGS_RE = re.compile(
     '^(-U\w+)$|'
     '^-rtsopts$|'
     '^-f.*|'
+    '^-ddump.*|'
     '^-opt.*|'
     '^-j\d*$|'
     '^-with-rtsopts=.*$|'
