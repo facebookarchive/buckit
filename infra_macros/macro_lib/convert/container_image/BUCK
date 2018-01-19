@@ -2,6 +2,8 @@
 
 export_file(name = "artifacts_dir.py")
 
+export_file(name = "compiler")
+
 export_file(name = "volume_for_repo.py")
 
 export_file(name = "subvolume_garbage_collector.py")
@@ -47,7 +49,10 @@ python_library(
     base_module = "",
 )
 
-export_file(name = "fake_sudo.sh")
+export_file(
+    name = "fake_sudo.sh",
+    src = "tests/fake_sudo.sh",
+)
 
 python_library(
     # Separate so we can put `sudo` alone in its own directory

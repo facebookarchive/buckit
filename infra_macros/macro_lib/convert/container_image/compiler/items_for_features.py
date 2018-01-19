@@ -5,14 +5,23 @@ import json
 from items import MakeDirsItem, TarballItem, CopyFileItem
 
 
-# XXX for JSON only etc
 def replace_targets_by_paths(x, target_to_filename):
+    '''
+    JSON-serialized image features store single-item dicts of the form
+    {'__BUCK_TARGET': '//target:path'} whenever the compiler requires a path
+    to another target.  This is because actual paths would break Buck
+    caching, and would not survive repo moves.  Then, at runtime, the
+    compiler receives a dictionary of target-to-path mappings as
+    `--child-dependencies`, and performs the substitution in any image
+    feature JSON it consumes.
+    '''
     if type(x) is dict:
         if '__BUCK_TARGET' in x:
             assert len(x) == 1, x
             (_, target), = x.items()
             filename = target_to_filename.get(target)
-            assert filename, f'{target} not in {target_to_filename}'
+            if not filename:
+                raise RuntimeError(f'{target} not in {target_to_filename}')
             return filename
         return {
             k: replace_targets_by_paths(v, target_to_filename)

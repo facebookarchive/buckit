@@ -10,6 +10,9 @@ from items import (
     TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
     FilesystemRootItem, gen_parent_layer_items,
 )
+from tests.mock_subvolume_from_json_file import (
+    FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
+)
 from provides import ProvidesDirectory, ProvidesFile
 from requires import require_directory
 
@@ -140,31 +143,15 @@ class ItemsTestCase(unittest.TestCase):
             ]
         )
 
-    @unittest.mock.patch('subvolume_on_disk.SubvolumeOnDisk.from_json_file')
-    def test_parent_layer_items(self, from_json_file):
-        self.assertEqual(
-            [FilesystemRootItem(from_target='tgt')],
-            list(gen_parent_layer_items('tgt', None, 'UNUSED_subvols_dir')),
-        )
-        from_json_file.assert_not_called()
-
-        with tempfile.TemporaryDirectory() as tmp:
-            parent_layer_file = os.path.join(tmp, 'parent.json')
-            with open(parent_layer_file, 'w') as f:
-                f.write('surprise!')
-
-            def check_call(infile, subvolumes_dir):
-                self.assertEqual(parent_layer_file, infile.name)
-                self.assertEqual(tmp, subvolumes_dir)
-
-                class FakeSubvol:
-                    def subvolume_path(self):
-                        return 'potato'
-
-                return FakeSubvol()
-
-            from_json_file.side_effect = check_call
+    def test_parent_layer_items(self):
+        with mock_subvolume_from_json_file(self, path=None):
             self.assertEqual(
-                [ParentLayerItem(from_target='tgt', path='potato')],
-                list(gen_parent_layer_items('tgt', parent_layer_file, tmp)),
+                [FilesystemRootItem(from_target='tgt')],
+                list(gen_parent_layer_items('tgt', None, FAKE_SUBVOLS_DIR)),
+            )
+
+        with mock_subvolume_from_json_file(self, path='potato') as json_file:
+            self.assertEqual(
+                [ParentLayerItem(from_target='T', path='potato')],
+                list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
             )

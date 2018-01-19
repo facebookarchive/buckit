@@ -58,6 +58,13 @@ python_unittest(
 )
 
 python_library(
+    name = "mock_subvolume_from_json_file",
+    srcs = ["tests/mock_subvolume_from_json_file.py"],
+    base_module = "",
+    deps = [":subvolume_on_disk"],
+)
+
+python_library(
     name = "items",
     srcs = ["items.py"],
     base_module = "",
@@ -75,7 +82,10 @@ python_unittest(
         1.0,
         ":items",
     )],
-    deps = [":items"],
+    deps = [
+        ":items",
+        ":mock_subvolume_from_json_file",
+    ],
 )
 
 python_library(
@@ -99,6 +109,13 @@ python_unittest(
 python_library(
     name = "items_for_features",
     srcs = ["items_for_features.py"],
+    base_module = "",
+    deps = [":items"],
+)
+
+python_library(
+    name = "sample_items",
+    srcs = ["tests/sample_items.py"],
     base_module = "",
     deps = [":items"],
 )
@@ -130,16 +147,25 @@ TEST_TARGET_PREFIX = (
     "compiler/tests:"
 )
 
-python_unittest(
-    name = "test-image-feature",
-    srcs = ["tests/test_image_feature.py"],
-    base_module = "",
-    env = {
+def image_feature_python_unittest(**kwargs):
+    kwargs["base_module"] = ""
+    kwargs["env"] = {
         "test_image_feature_path_to_" + t: "$(location {})".format(
             TEST_TARGET_PREFIX + t,
         )
         for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
-    },
+    }
+    # The test reads `feature.json`, so we need actual files on disk.
+    kwargs["par_style"] = "zip"
+    kwargs['deps'] = kwargs.pop('deps') + [":sample_items"] + [
+        TEST_TARGET_PREFIX + t
+        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
+    ]
+    return python_unittest(**kwargs)
+
+image_feature_python_unittest(
+    name = "test-image-feature",
+    srcs = ["tests/test_image_feature.py"],
     # I cannot get coverage for `image_feature.py` here, because that is
     # executed by the Buck Python runtime.  I could conceivably shim all
     # that out, but it seems entirely not worth the trouble.
@@ -147,13 +173,32 @@ python_unittest(
         1.0,
         ":items_for_features",
     )],
-    # The test reads `feature.json`, so we need actual files on disk.
-    par_style = "zip",
     deps = [
         ":dep_graph",
         ":items_for_features",
-    ] + [
-        TEST_TARGET_PREFIX + t
-        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
+    ],
+)
+
+python_library(
+    name = "compiler",
+    srcs = ["compiler.py"],
+    base_module = "",
+    deps = [
+        ":dep_graph",
+        ":items_for_features",
+        ":subvolume_on_disk",
+    ],
+)
+
+image_feature_python_unittest(
+    name = "test-compiler",
+    srcs = ["tests/test_compiler.py"],
+    needed_coverage = [(
+        1.0,
+        ":compiler",
+    )],
+    deps = [
+        ":compiler",
+        ":mock_subvolume_from_json_file",
     ],
 )
