@@ -126,7 +126,8 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
             )
         # NB: No `._validate_and_return()` here, since it is redundant with
         # the self-test that `to_serializable_dict()` will perform.
-        # Validation would also slow down `subvolume_garbage_collector.py`.
+        # Mandatory validation would also slow down any code that might want
+        # to just enumerate & read the refcounts directory.
         return self
 
     @classmethod

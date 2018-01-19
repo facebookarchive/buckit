@@ -1,18 +1,17 @@
-# These TARGETS only exist to enable automatic continuous builds and
-# integration tests for the Buck image-building toolchain.  For production
-# use, the `.py` files outside of the `compiler/` are actually executed
-# within Buck's own special Python environment.  This is also the reason
-# that all of this code uses Python2.
-
 # The implementation of `image_layer` uses these for path resolution.
+
 export_file(name = "artifacts_dir.py")
 
 export_file(name = "volume_for_repo.py")
 
+export_file(name = "subvolume_garbage_collector.py")
+
 export_file(name = "subvolume_version.py")
 
-# Lets us unit-test `volume_for_repo.py`.
-export_file(name = "set_up_volume.sh")
+# The rest of this file only exist to enable automatic continuous builds and
+# integration tests for the Buck image-building toolchain.
+
+export_file(name = "set_up_volume.sh")  # For `volume_for_repo.py` test
 
 # A separate library because otherwise `pyunitcoveragerunner.py` will demand
 # coverage on the `.sh` file.
@@ -21,19 +20,17 @@ python_library(
     base_module = "",
     # `get_volume_for_current_repo()` needs this to be our sibling in the PAR.
     gen_srcs = {":set_up_volume.sh": "set_up_volume.sh"},
-    py_version = "<3",
 )
 
 python_library(
     name = "volume_for_repo",
     srcs = ["volume_for_repo.py"],
     base_module = "",
-    py_version = "<3",
     deps = [":set_up_volume.sh-proxy"],
 )
 
 python_unittest(
-    name = "test_volume_for_repo",
+    name = "test-volume-for-repo",
     srcs = ["tests/test_volume_for_repo.py"],
     base_module = "",
     needed_coverage = [(
@@ -41,6 +38,34 @@ python_unittest(
         ":volume_for_repo",
     )],
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
-    py_version = "<3",
     deps = [":volume_for_repo"],
+)
+
+python_library(
+    name = "subvolume_garbage_collector",
+    srcs = ["subvolume_garbage_collector.py"],
+    base_module = "",
+)
+
+export_file(name = "fake_sudo.sh")
+
+python_library(
+    # Separate so we can put `sudo` alone in its own directory
+    name = "fake_sudo",
+    base_module = "fake_sudo",
+    gen_srcs = {":fake_sudo.sh": "sudo"},
+)
+
+python_unittest(
+    name = "test-subvolume-garbage-collector",
+    srcs = ["tests/test_subvolume_garbage_collector.py"],
+    base_module = "",
+    needed_coverage = [(
+        1.0,
+        ":subvolume_garbage_collector",
+    )],
+    deps = [
+        ":fake_sudo",
+        ":subvolume_garbage_collector",
+    ],
 )
