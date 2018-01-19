@@ -61,7 +61,10 @@ python_library(
     name = "items",
     srcs = ["items.py"],
     base_module = "",
-    deps = [":requires_provides"],
+    deps = [
+        ":requires_provides",
+        ":subvolume_on_disk",
+    ],
 )
 
 python_unittest(

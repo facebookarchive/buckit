@@ -12,9 +12,9 @@ top of `provides.py`.
 import os
 
 from enriched_namedtuple import metaclass_new_enriched_namedtuple
-from pipes import quote
 from provides import ProvidesDirectory, ProvidesFile
 from requires import require_directory
+from subvolume_on_disk import SubvolumeOnDisk
 
 
 class ImageItem(type):
@@ -51,9 +51,7 @@ class TarballItem(metaclass=ImageItem):
         yield require_directory(self.into_dir)
 
     def build_subcommand(self):
-        return 'tar --directory={} {}'.format(
-            quote(self.into_dir), quote(self.tarball),
-        )
+        return ['tar', f'--directory={self.into_dir}', self.tarball]
 
 
 class HasStatOptions:
@@ -66,9 +64,11 @@ class HasStatOptions:
     fields = [('mode', '0755'), ('user', 'root'), ('group', 'root')]
 
     def build_subcommand_stat_options(self):
-        return '--user={u} --group={g} --mode={m}'.format(
-            u=quote(self.user), g=quote(self.group), m=quote(self.mode),
-        )
+        return [
+            f'--user={self.user}',
+            f'--group={self.group}',
+            f'--mode={self.mode}',
+        ]
 
 
 class CopyFileItem(HasStatOptions, metaclass=ImageItem):
@@ -91,11 +91,12 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
         yield require_directory(self._dest_dir_and_base()[0])
 
     def build_subcommand(self):
-        return 'copy-file {opt} {src} {dst}'.format(
-            opt=self.build_subcommand_stat_options(),
-            src=quote(self.source),
-            dst=quote(self.dest),
-        )
+        return [
+            'copy-file',
+            *self.build_subcommand_stat_options(),
+            self.source,
+            self.dest,
+        ]
 
 
 class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
@@ -114,11 +115,12 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
         yield require_directory(self.into_dir)
 
     def build_subcommand(self):
-        return 'make-dirs {opt} --directory={into} {path}'.format(
-            opt=self.build_subcommand_stat_options(),
-            into=quote(self.into_dir),
-            path=quote(self.path_to_make),
-        )
+        return [
+            'make-dirs',
+            *self.build_subcommand_stat_options(),
+            f'--directory={self.into_dir}',
+            self.path_to_make,
+        ]
 
 
 class ParentLayerItem(metaclass=ImageItem):
@@ -141,7 +143,7 @@ class ParentLayerItem(metaclass=ImageItem):
     def build_subcommand(self):
         # Hack: This isn't a true subcommand, but since we provide / and
         # everything implicitly depends on /, it'll always come first.
-        return '--base-layer-path ' + quote(self.path)
+        return ['--base-layer-path', self.path]
 
 
 class FilesystemRootItem(metaclass=ImageItem):
@@ -155,4 +157,16 @@ class FilesystemRootItem(metaclass=ImageItem):
         return ()
 
     def build_subcommand(self):
-        return ''
+        return []
+
+
+def gen_parent_layer_items(target, parent_layer_filename, subvolumes_dir):
+    if not parent_layer_filename:
+        yield FilesystemRootItem(from_target=target)  # just provides /
+    else:
+        with open(parent_layer_filename) as infile:
+            yield ParentLayerItem(
+                from_target=target,
+                path=SubvolumeOnDisk.from_json_file(infile, subvolumes_dir)
+                    .subvolume_path(),
+            )

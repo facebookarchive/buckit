@@ -3,17 +3,18 @@ import os
 import tarfile
 import tempfile
 import unittest
+import unittest.mock
 
 from contextlib import contextmanager
 from items import (
     TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
-    FilesystemRootItem,
+    FilesystemRootItem, gen_parent_layer_items,
 )
 from provides import ProvidesDirectory, ProvidesFile
 from requires import require_directory
 
 
-DEFAULT_STAT_OPTS = '--user=root --group=root --mode=0755'
+DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
 
 
 class ItemsTestCase(unittest.TestCase):
@@ -28,7 +29,7 @@ class ItemsTestCase(unittest.TestCase):
             FilesystemRootItem(from_target='t'),
             {ProvidesDirectory(path='/')},
             set(),
-            '',
+            [],
         )
 
     def test_copy_file(self):
@@ -36,13 +37,13 @@ class ItemsTestCase(unittest.TestCase):
             CopyFileItem(from_target='t', source='a/b/c', dest='d/'),
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
-            f'copy-file {DEFAULT_STAT_OPTS} a/b/c d/',
+            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd/'],
         )
         self._check_item(
             CopyFileItem(from_target='t', source='a/b/c', dest='d'),
             {ProvidesFile(path='d')},
             {require_directory('/')},
-            f'copy-file {DEFAULT_STAT_OPTS} a/b/c d',
+            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd'],
         )
 
     def test_make_dirs(self):
@@ -50,7 +51,7 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(from_target='t', into_dir='x', path_to_make='y/z'),
             {ProvidesDirectory(path='x/y'), ProvidesDirectory(path='x/y/z')},
             {require_directory('x')},
-            f'make-dirs {DEFAULT_STAT_OPTS} --directory=x y/z',
+            ['make-dirs', *DEFAULT_STAT_OPTS, '--directory=x', 'y/z'],
         )
 
     @contextmanager
@@ -106,7 +107,7 @@ class ItemsTestCase(unittest.TestCase):
                     TarballItem(from_target='t', into_dir='y', tarball=t.name),
                     self._temp_filesystem_provides('y'),
                     {require_directory('y')},
-                    f'tar --directory=y {t.name}',
+                    ['tar', '--directory=y', t.name],
                 )
 
     def test_parent_layer(self):
@@ -117,7 +118,7 @@ class ItemsTestCase(unittest.TestCase):
                     ProvidesDirectory(path='/'),
                 },
                 set(),
-                f'--base-layer-path {parent_path}',
+                ['--base-layer-path', parent_path],
             )
 
     def test_stat_options(self):
@@ -132,5 +133,38 @@ class ItemsTestCase(unittest.TestCase):
             ),
             {ProvidesDirectory(path='x/y'), ProvidesDirectory(path='x/y/z')},
             {require_directory('x')},
-            f'make-dirs --user=cat --group=dog --mode=0733 --directory=x y/z',
+            [
+                'make-dirs',
+                '--user=cat', '--group=dog', '--mode=0733',
+                '--directory=x', 'y/z',
+            ]
         )
+
+    @unittest.mock.patch('subvolume_on_disk.SubvolumeOnDisk.from_json_file')
+    def test_parent_layer_items(self, from_json_file):
+        self.assertEqual(
+            [FilesystemRootItem(from_target='tgt')],
+            list(gen_parent_layer_items('tgt', None, 'UNUSED_subvols_dir')),
+        )
+        from_json_file.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            parent_layer_file = os.path.join(tmp, 'parent.json')
+            with open(parent_layer_file, 'w') as f:
+                f.write('surprise!')
+
+            def check_call(infile, subvolumes_dir):
+                self.assertEqual(parent_layer_file, infile.name)
+                self.assertEqual(tmp, subvolumes_dir)
+
+                class FakeSubvol:
+                    def subvolume_path(self):
+                        return 'potato'
+
+                return FakeSubvol()
+
+            from_json_file.side_effect = check_call
+            self.assertEqual(
+                [ParentLayerItem(from_target='tgt', path='potato')],
+                list(gen_parent_layer_items('tgt', parent_layer_file, tmp)),
+            )
