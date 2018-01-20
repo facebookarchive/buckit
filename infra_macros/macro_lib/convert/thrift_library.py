@@ -543,6 +543,9 @@ class CppThriftConverter(ThriftLangConverter):
         if 'json' in options:
             common_deps.append(
                 self.get_thrift_dep_target('thrift/lib/cpp', 'json_deps'))
+        if 'frozen' in options:
+            common_deps.append(self.get_thrift_dep_target(
+                'thrift/lib/cpp', 'frozen'))
         if 'frozen2' in options:
             common_deps.append(self.get_thrift_dep_target(
                 'thrift/lib/cpp2/frozen', 'frozen'))
