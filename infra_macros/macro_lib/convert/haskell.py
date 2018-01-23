@@ -489,7 +489,7 @@ class HaskellConverter(base.Converter):
                     os.path.join(
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
-                stackage=self.get_tp2_tool_path('stackage-lts', platform),
+                stackage=self.get_tp2_dep_path('stackage-lts', platform),
                 deps=' :' + deps_name))
         attrs['srcs'] = [source]
         attrs['out'] = os.path.splitext(source)[0] + '.hs'
