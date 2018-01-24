@@ -20,6 +20,7 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("{}:fbcode_target.py".format(macro_root),
@@ -179,6 +180,11 @@ class PythonSwigConverter(SwigLangConverter):
     Specializer to support generating Python libraries from swig sources.
     """
 
+    def __init__(self, context, *args, **kwargs):
+        super(PythonSwigConverter, self).__init__(context, *args, **kwargs)
+        self._cpp_python_extension_converter = (
+            cpp.CppConverter(context, 'cpp_python_extension'))
+
     def get_lang(self):
         return 'py'
 
@@ -212,9 +218,6 @@ class PythonSwigConverter(SwigLangConverter):
         rules = []
 
         # Build the C/C++ python extension from the generated C/C++ sources.
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-ext'
-        attrs['srcs'] = [src]
         out_compiler_flags = []
         # Generated code uses a lot of shadowing, so disable GCC warnings
         # related to this.
@@ -222,14 +225,26 @@ class PythonSwigConverter(SwigLangConverter):
             out_compiler_flags.append('-Wno-shadow')
             out_compiler_flags.append('-Wno-shadow-local')
             out_compiler_flags.append('-Wno-shadow-compatible-local')
-        attrs['compiler_flags'] = out_compiler_flags
-        attrs['module_name'] = '_' + module
-        attrs['deps'], attrs['platform_deps'] = (
-            self.format_all_deps(
-                cpp_deps + [ThirdPartyRuleTarget('python', 'python')]))
-        if py_base_module is not None:
-            attrs['base_module'] = py_base_module
-        rules.append(Rule('cxx_python_extension', attrs))
+        rules.extend(
+            self._cpp_python_extension_converter.convert(
+                    base_path,
+                    name=name + '-ext',
+                    srcs=[src],
+                    base_module=py_base_module,
+                    module_name='_' + module,
+                    compiler_flags=out_compiler_flags,
+                    # This is pretty gross.  We format the deps just to get
+                    # re-parsed by the C/C++ converter.  Long-term, it'd be
+                    # be nice to support a better API in the converters to
+                    # handle higher-leverl objects, but for now we're stuck
+                    # doing this to re-use other converters.
+                    deps=
+                        self.format_deps(
+                            [d for d in cpp_deps if d.repo is None]),
+                    external_deps=
+                        [(d.repo, d.base_path, None, d.name)
+                         for d in cpp_deps
+                         if d.repo is not None]))
 
         # Generate the wrapping python library.
         attrs = collections.OrderedDict()
