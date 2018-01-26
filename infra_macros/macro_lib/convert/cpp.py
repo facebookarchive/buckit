@@ -494,7 +494,7 @@ class CppConverter(base.Converter):
 
         flags = []
 
-        if self._context.sanitizer == 'address':
+        if self.get_sanitizer() == 'address':
             flags.append(
                 '-Wl,--dynamic-list='
                 '$(location //tools/build/buck:asan_dynamic_list.txt)')
@@ -506,7 +506,7 @@ class CppConverter(base.Converter):
         Return compiler/preprocessor flags needed to support sanitized
         builds.
         """
-        sanitizer = self._context.sanitizer
+        sanitizer = self.get_sanitizer()
         if sanitizer is None:
             return []
 
@@ -566,7 +566,7 @@ class CppConverter(base.Converter):
         flags = []
 
         if self.is_coverage_enabled(base_path):
-            if self._context.sanitizer is not None:
+            if self.get_sanitizer() is not None:
                 flags.append('-fsanitize-coverage=bb')
             else:
                 # Add flags to enable LLVM's Source-based Code Coverage
@@ -583,7 +583,7 @@ class CppConverter(base.Converter):
         flags = []
 
         coverage = self.is_coverage_enabled(base_path)
-        if coverage and self._context.sanitizer is None:
+        if coverage and self.get_sanitizer() is None:
             # Add flags to enable LLVM's Coverage Mapping.
             flags.append('-fprofile-instr-generate')
             flags.append('-fcoverage-mapping')
@@ -1306,7 +1306,7 @@ class CppConverter(base.Converter):
         if (self.is_library() and
                 # TODO(T23121628): The way we build shared libs in ASAN leaves
                 # undefined references to ASAN symbols.
-                self._context.sanitizer is None and
+                self.get_sanitizer() is None and
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
                 # via the link-style and ignore for now.

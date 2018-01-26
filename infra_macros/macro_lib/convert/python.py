@@ -490,10 +490,12 @@ class PythonConverter(base.Converter):
         deps = []
         rules = []
 
+        sanitizer = self.get_sanitizer()
+
         # If we're using sanitizers, add the dep on the sanitizer-specific
         # support library.
-        if self._context.sanitizer is not None:
-            sanitizer = base.SANITIZERS[self._context.sanitizer]
+        if sanitizer is not None:
+            sanitizer = base.SANITIZERS[sanitizer]
             deps.append(
                 RootRuleTarget(
                     'tools/build/sanitizers',
@@ -501,7 +503,7 @@ class PythonConverter(base.Converter):
 
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.
-        if allocator is not None and self._context.sanitizer is None:
+        if allocator is not None and sanitizer is None:
             allocator_deps = self.get_allocator_deps(allocator)
             if allocator.startswith('jemalloc') and jemalloc_conf is not None:
                 conf_dep, conf_rules = (

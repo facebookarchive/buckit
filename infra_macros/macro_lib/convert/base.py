@@ -795,9 +795,9 @@ class Converter(object):
         new_labels.append('buck')
         new_labels.append(self._context.mode)
         new_labels.append(self._context.compiler)
-        sanitizer = self._context.sanitizer
+        sanitizer = self.get_sanitizer()
         if sanitizer is not None and sanitizer != 'address-undefined-dev':
-            new_labels.append(SANITIZERS[self._context.sanitizer])
+            new_labels.append(SANITIZERS[sanitizer])
         new_labels.append(platform)
         new_labels.append(self.get_platform_architecture(platform))
         new_labels.extend(labels)
@@ -1125,7 +1125,7 @@ class Converter(object):
 
         # If we're using TSAN, we need to build PIEs, which requires PIC deps.
         # So upgrade to `static_pic` if we're building `static`.
-        if self._context.sanitizer == 'thread' and link_style == 'static':
+        if self.get_sanitizer() == 'thread' and link_style == 'static':
             link_style = 'static_pic'
 
         return link_style
@@ -1190,7 +1190,7 @@ class Converter(object):
         ldflags = []
 
         # If we're using TSAN, we need to build PIEs.
-        if self._context.sanitizer == 'thread':
+        if self.get_sanitizer() == 'thread':
             ldflags.append('-pie')
 
         # It's rare, but some libraries use variables defined in object files
@@ -1336,16 +1336,25 @@ class Converter(object):
 
         return ldflags
 
+    def get_sanitizer(self):
+        """
+        Return the sanitizer mode to use.
+        """
+
+        return self._context.sanitizer
+
     def get_sanitizer_binary_deps(self):
         """
         Add additional dependencies needed to build with the given sanitizer.
         """
 
-        if self._context.sanitizer is None:
+        sanitizer = self.get_sanitizer()
+        if sanitizer is None:
             return []
+
         assert self._context.compiler == 'clang'
 
-        sanitizer = SANITIZERS[self._context.sanitizer]
+        sanitizer = SANITIZERS[sanitizer]
         deps = [
             RootRuleTarget(
               'tools/build/sanitizers',
@@ -1359,7 +1368,7 @@ class Converter(object):
         assert self._context.coverage
         assert self._context.compiler == 'clang'
 
-        if self._context.sanitizer is None:
+        if self.get_sanitizer() is None:
             return [
                 RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
             ]
@@ -1376,7 +1385,7 @@ class Converter(object):
         deps = []
 
         # If we're not using a sanitizer add allocator deps.
-        if self._context.sanitizer is None:
+        if self.get_sanitizer() is None:
             deps.extend(self.get_allocator_deps(allocator))
 
         # Add in any dependencies required for sanitizers.
