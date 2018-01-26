@@ -371,7 +371,7 @@ class Converter(base.Converter):
 
     def gen_shared_lib(
         self, name, base_path, api_headers, deps, cpp_compiler_flags, cpp_deps,
-        srcs, headers, cpp_external_deps,
+        srcs, headers, header_namespace, cpp_external_deps,
     ):
         # Ok so cxx_library header map, is dst -> src
         # python_library is src -> dst
@@ -407,6 +407,7 @@ class Converter(base.Converter):
             compiler_flags=cpp_compiler_flags,
             auto_headers=global_defns.AutoHeaders.NONE,
             headers=headers,
+            header_namespace=header_namespace,
             external_deps=cpp_external_deps,
         )
 
@@ -417,6 +418,7 @@ class Converter(base.Converter):
         package=None,
         srcs=(),
         headers=(),
+        header_namespace=None,
         deps=(),
         external_deps=(),
         cpp_deps=(),
@@ -590,6 +592,7 @@ class Converter(base.Converter):
             cpp_deps,
             srcs,
             headers,
+            header_namespace,
             cpp_external_deps,
         ):
             yield rule
@@ -606,6 +609,7 @@ class Converter(base.Converter):
             'gen_stub',
             'generate_cpp',
             'headers',
+            'header_namespace',
             'name',
             'package',
             'python_deps',
