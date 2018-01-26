@@ -44,7 +44,9 @@ class OCamlConverter(base.Converter):
             native=True,
             warnings_flags=None,
             supports_coverage=None,
-            external_deps=()):
+            external_deps=(),
+            visibility=None,
+        ):
 
         extra_rules = []
         dependencies = []
@@ -95,5 +97,9 @@ class OCamlConverter(base.Converter):
         # If any deps were specified, add them to the output attrs.
         if dependencies:
             attributes['deps'] = dependencies
+
+        # Translate visibility
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
