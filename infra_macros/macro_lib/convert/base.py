@@ -1341,6 +1341,13 @@ class Converter(object):
         Return the sanitizer mode to use.
         """
 
+        # TODO(T25416171): ASAN currently isn't well supported on aarch64. so
+        # disable it for now.  We do this by detecting the host platform, but
+        # longer-term, we should implement ASAN purely via Buck's C/C++
+        # platforms to do this correctly.
+        if platmod.machine() == 'aarch64':
+            return None
+
         return self._context.sanitizer
 
     def get_sanitizer_binary_deps(self):
