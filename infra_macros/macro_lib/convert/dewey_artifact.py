@@ -44,12 +44,17 @@ class DeweyArtifactConverter(base.Converter):
         attributes['name'] = name
         attributes['out'] = os.path.basename(path)
         attributes['srcs'] = []
-        bash = 'dewey cat --project %s --commit %s --tag %s --path %s --dest $OUT' % (
-            project,
-            commit,
-            artifact,
-            path,
-        )
+        bash = """
+            # TODO(T25517543): The filesystem interface to dewey is deprecated,
+            # but used here anyway :( as a workaround for a dewey cli issue.
+            deprecated_file=/mnt/dewey/{project}/.commits/{commit}/{tag}/{path}
+            if [[ -f $deprecated_file ]] ; then
+              cat "$deprecated_file" > $OUT
+            else
+              dewey cat --project {project} --commit {commit} --tag {tag} \
+                        --path {path} --dest $OUT
+            fi
+        """.format(project=project, commit=commit, tag=artifact, path=path)
         attributes['bash'] = bash
         return Rule('genrule', attributes)
 
