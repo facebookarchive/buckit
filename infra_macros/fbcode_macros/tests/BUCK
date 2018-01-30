@@ -1,0 +1,29 @@
+BUILD_DEFS = [
+    "fbcode_macros//build_defs:config.bzl",
+]
+
+UTIL_DEFS = {
+    target.replace("//", "/").replace(":", "/"): target
+    for target in BUILD_DEFS
+}
+
+python_library(
+    name = "utils",
+    srcs = [
+        "utils.py",
+    ],
+    resources = UTIL_DEFS,
+)
+
+python_test(
+    name = "utils_test",
+    srcs = ["utils_test.py"],
+    resources = ["testdata/utils_test/sample.txt"],
+    deps = [":utils"],
+)
+
+python_test(
+    name = "config_test",
+    srcs = ["config_test.py"],
+    deps = [":utils"],
+)
