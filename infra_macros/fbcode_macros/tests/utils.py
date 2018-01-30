@@ -181,10 +181,7 @@ class Cell:
         """
         cell_path = self.full_path()
 
-        if os.path.exists(cell_path):
-            # shutil.rmtree(cell_path)
-            pass
-        else:
+        if not os.path.exists(cell_path):
             os.makedirs(cell_path)
 
         for directory in self._directories:
@@ -227,7 +224,10 @@ class Cell:
         # - We want to make sure things cleanup properly, and this is just
         #   easier
         ret = dict(os.environ)
-        ret["NO_BUCKD"] = "1"
+        if not self.project.run_buckd:
+            ret["NO_BUCKD"] = "1"
+        elif "NO_BUCKD" in ret:
+            del ret["NO_BUCKD"]
         return ret
 
     def run(self, cmd, extra_files, environment_overrides):
@@ -296,9 +296,10 @@ class Cell:
                                 isn't normally needed, but if common data
                                 objects are desired for use in multiple
                                 statments, it can be handy
-            environment: If provided, the environment to merge over the top of
-                         the generated environment when executing buck. If not
-                         provided, then a generated environment is used.
+            environment_overrides: If provided, the environment to merge over
+                                   the top of the generated environment when
+                                   executing buck. If not provided, then a
+                                   generated environment is used.
         Returns:
             A UnitTestResult object that contains the returncode, stdout,
             stderr, of buck audit rules, as well as any deserialized objects
@@ -307,6 +308,11 @@ class Cell:
             in the same order as 'statements'
         """
 
+        # We don't start a daemon up because:
+        # - Generally we're only running once, and in a temp dir, so it doesn't
+        #   make a big difference
+        # - We want to make sure things cleanup properly, and this is just
+        #   easier
         buck_file_content = ""
 
         if len(statements) == 0:
@@ -379,7 +385,9 @@ class Project:
     cleaning up the temp directory that we work in
     """
 
-    def __init__(self, remove_files=True, add_fbcode_macros_cell=True):
+    def __init__(
+        self, remove_files=True, add_fbcode_macros_cell=True, run_buckd=False
+    ):
         """
         Create an instance of Project
 
@@ -394,6 +402,7 @@ class Project:
         self.remove_files = remove_files
         self.add_fbcode_macros_cell = add_fbcode_macros_cell
         self.cells = {}
+        self.run_buckd = run_buckd
 
     def __enter__(self):
         self.project_path = tempfile.mkdtemp()
@@ -405,6 +414,7 @@ class Project:
         return self
 
     def __exit__(self, type, value, traceback):
+        self.kill_buckd()
         if self.project_path:
             if self.remove_files:
                 shutil.rmtree(self.project_path)
@@ -413,6 +423,21 @@ class Project:
                     "Not deleting temporary files at {}".
                     format(self.project_path)
                 )
+
+    def kill_buckd(self):
+        for cell in self.cells.values():
+            cell_path = cell.full_path()
+            if os.path.exists(os.path.join(cell_path, ".buckd")):
+                try:
+                    with open(os.devnull, "w") as dev_null:
+                        subprocess.check_call(
+                            ["buck", "kill"],
+                            stdout=dev_null,
+                            stderr=dev_null,
+                            cwd=cell_path,
+                        )
+                except subprocess.CalledProcessError as e:
+                    print("buck kill failed: {}".format(e))
 
     def add_cell(self, name):
         """Add a new cell"""

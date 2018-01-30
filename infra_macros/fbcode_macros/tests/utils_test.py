@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 import os
 import re
 import shutil
+import subprocess
 import textwrap
 
 try:
@@ -145,6 +146,26 @@ class UtilsTest(tests.utils.TestCase):
 
         # Make sure the FS goes away
         self.assertFalse(os.path.isdir(temp_dir))
+
+    def test_runs_buckd_and_cleans_up(self):
+        buckd_dir = None
+        with tests.utils.Project(run_buckd=True) as project:
+            buckd_dir = os.path.join(project.root_cell.full_path(), ".buckd")
+
+            result = project.root_cell.run_unittests([], ["1"])
+            self.assertSuccess(result)
+
+            # Make sure that buck is running
+            buckd_running = False
+            for line in subprocess.check_output(["jps", "-v"]).split("\n"):
+                if "-Dbuck.buckd_dir=" + buckd_dir in line:
+                    buckd_running = True
+            self.assertTrue(buckd_running)
+            self.assertTrue(os.path.exists(buckd_dir))
+        # Make sure that buck isn"t running
+        for line in subprocess.check_output(["jps", "-v"]).split("\n"):
+            self.assertNotIn("-Dbuck.buckd_dir=" + buckd_dir, line)
+        self.assertFalse(os.path.exists(buckd_dir))
 
     def test_does_not_delete_if_not_requested(self):
         with tests.utils.Project(
