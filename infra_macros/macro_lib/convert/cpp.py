@@ -41,6 +41,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/global_defns.py".format(macro_root), "global_defns")
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+include_defs("{}/core_tools.py".format(macro_root), "core_tools")
 load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
@@ -1108,10 +1109,10 @@ class CppConverter(base.Converter):
             out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(self.get_coverage_ldflags(base_path))
             if (self._context.buck_ops.read_config('fbcode', 'gdb-index') and
-                  not self.is_core_tool(base_path, name)):
+                  not core_tools.is_core_tool(base_path, name)):
                 out_ldflags.append('-Wl,--gdb-index')
             ld_threads = self._context.buck_ops.read_config('fbcode', 'ld-threads')
-            if ld_threads and not self.is_core_tool(base_path, name):
+            if ld_threads and not core_tools.is_core_tool(base_path, name):
                 out_ldflags.extend([
                     '-Wl,--threads',
                     '-Wl,--thread-count,' + ld_threads,
@@ -1538,7 +1539,7 @@ class CppConverter(base.Converter):
         part this is for core tools and their dependencies, so we don't
         change their rule keys.
         """
-        if self.is_core_tool(base_path, name):
+        if core_tools.is_core_tool(base_path, name):
             return True
         path = base_path.split('//', 1)[-1]
 

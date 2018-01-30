@@ -41,6 +41,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/target.py".format(macro_root), "target")
 include_defs("{}/fbcode_target.py".format(macro_root), "fbcode_target")
+include_defs("{}/core_tools.py".format(macro_root), "core_tools")
 load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
@@ -956,31 +957,6 @@ class Converter(object):
     def read_extra_ghc_linker_flags(self):
         return self.read_list('haskell', 'extra_linker_flags', [])
 
-    def is_core_tool(self, base_path, name):
-        """
-        Returns whether the target represented by the given base path and name
-        is considered a "core" tool.
-        """
-
-        # Outside of fbcode, the rulekey thrash should not exist, so skip
-        # in all cases
-        if not self._context.config.core_tools_path:
-            return False
-
-        # Load core tools from the path, if it hasn't been already.
-        if self._core_tools is None:
-            self._context.buck_ops.add_build_file_dep(
-                '//' + self._context.config.core_tools_path)
-            tools = set()
-            with open(self._context.config.core_tools_path) as of:
-                for line in of:
-                    if not line.startswith('#'):
-                        tools.add(line.strip())
-            self._core_tools = tools
-
-        target = '//{}:{}'.format(base_path, name)
-        return target in self._core_tools
-
     def get_compiler_langs(self):
         """
         The languages which general compiler flag apply to.
@@ -1056,7 +1032,7 @@ class Converter(object):
             return 'none'
 
         # If this is a core tool, we never strip to keep stable rule keys.
-        if self.is_core_tool(base_path, name):
+        if core_tools.is_core_tool(base_path, name):
             return 'none'
 
         # Otherwise, read the config setting.
@@ -1162,7 +1138,7 @@ class Converter(object):
                     'cannot use `full` build info when `cxx.cache_links` is set')
             # Make sure we're not using full build info when building core tools,
             # otherwise we could introduce nondeterminism in rule keys.
-            if self.is_core_tool(base_path, name):
+            if core_tools.is_core_tool(base_path, name):
                 mode = "stable"
 
         # Pass the build info mode to the linker.
@@ -1485,7 +1461,7 @@ class Converter(object):
         return RootRuleTarget(base_path, lib_name), rules
 
     def get_build_info(self, base_path, name, rule_type, platform):
-        if self.is_core_tool(base_path, name):
+        if core_tools.is_core_tool(base_path, name):
             # Ignore user-provided build-info args for a set of core
             # targets and just return defaults (as if the user hadn't
             # provided built-info in the first place).
