@@ -337,6 +337,7 @@ class PythonConverter(base.Converter):
             self,
             base_path,
             name,
+            rule_type,
             platform,
             argcomplete=None,
             strict_tabs=None,
@@ -372,10 +373,18 @@ class PythonConverter(base.Converter):
                 passthrough_args.append('--par-style=' + par_style)
             if needed_coverage is not None or self._context.coverage:
                 passthrough_args.append('--store-source')
-            passthrough_args.append(
-                '--build-rule-name=fbcode:{}:{}'.format(base_path, name))
             if self._context.mode.startswith('opt'):
                 passthrough_args.append('--optimize')
+
+            # Add arguments to populate build info.
+            passthrough_args.append(
+                '--build-info-build-mode=' + self._context.mode)
+            passthrough_args.append('--build-info-platform=' + platform)
+            passthrough_args.append('--build-info-build-tool=buck')
+            passthrough_args.append(
+                '--build-info-rule-name=fbcode:{}:{}'.format(base_path, name))
+            passthrough_args.append('--build-info-rule-type=' + rule_type)
+
             build_args.extend(['--passthrough=' + a for a in passthrough_args])
 
             # Arguments for stripping libomnibus. dbg builds should never strip.
@@ -386,10 +395,6 @@ class PythonConverter(base.Converter):
                     build_args.append('--omnibus-debug-info=extract')
                 else:
                     build_args.append('--omnibus-debug-info=separate')
-
-            # Add arguments to populate build info.
-            build_args.append('--build-info-mode=' + self._context.mode)
-            build_args.append('--build-info-platform=' + platform)
 
             # Set an explicit python interpreter.
             if python is not None:
@@ -796,6 +801,7 @@ class PythonConverter(base.Converter):
             self.get_par_build_args(
                 base_path,
                 name,
+                rule_type,
                 platform,
                 argcomplete=argcomplete,
                 strict_tabs=strict_tabs,
