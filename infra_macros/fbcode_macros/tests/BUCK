@@ -1,5 +1,6 @@
 BUILD_DEFS = [
     "fbcode_macros//build_defs:config.bzl",
+    "fbcode_macros//build_defs/config:read_configs.bzl",
 ]
 
 UTIL_DEFS = {
