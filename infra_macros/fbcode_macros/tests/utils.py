@@ -23,6 +23,8 @@ import re
 import StringIO
 import unittest
 
+import six
+
 try:
     import ConfigParser as configparser
 except ImportError:
@@ -397,6 +399,7 @@ class Project:
             add_fbcode_macros_cell: Whether to create the fbcode_macros cell
                                     when __enter__ is called
         """
+
         self.root_cell = None
         self.project_path = None
         self.remove_files = remove_files
@@ -448,26 +451,76 @@ class Project:
         return new_cell
 
 
-def with_project(*project_args, **project_kwargs):
+def with_project(
+    use_skylark=True, use_python=True, *project_args, **project_kwargs
+):
     """
     Annotation that makes a project available to a test. This passes the root
     cell to the function being annotated and tears down the temporary
     directory (by default, can be overridden) when the method finishes executing
     """
 
+    if not use_python and not use_skylark:
+        raise ValueError("Either use_python or use_skylark must be set")
+
     def wrapper(f):
+        suffixes = getattr(f, "_function_suffixes", set())
+        if use_skylark:
+            suffixes.add("skylark")
+        if use_python:
+            suffixes.add("python")
+        if suffixes:
+            setattr(f, "_function_suffixes", suffixes)
+
         @functools.wraps(f)
-        def inner_wrapper(*args, **kwargs):
+        def inner_wrapper(suffix, *args, **kwargs):
+            if suffix == "skylark":
+                build_file_syntax = "SKYLARK"
+            elif suffix == "python":
+                build_file_syntax = "PYTHON_DSL"
+            else:
+                raise ValueError("Unknown parser type: %s" % suffix)
 
             with Project(*project_args, **project_kwargs) as project:
-                args = args + (project.root_cell, )
-                f(*args, **kwargs)
+                new_args = args + (project.root_cell, )
+                project.root_cell.update_buckconfig(
+                    "parser", "default_build_file_syntax", build_file_syntax
+                )
+                f(*new_args, **kwargs)
 
         return inner_wrapper
 
     return wrapper
 
 
+class TestMethodRenamer(type):
+    """
+    Simple metaclass class that renames test_foo to test_foo_skylark and
+    test_foo_python
+    """
+
+    def __new__(metacls, name_, bases, classdict):
+        bases = bases or []
+
+        newclassdict = {}
+        for name, attr in classdict.items():
+            suffixes = getattr(attr, "_function_suffixes", None)
+            if callable(attr) and suffixes:
+                for suffix in suffixes:
+                    new_name = name + "_" + suffix
+                    assert new_name not in newclassdict
+
+                    # The extra lambda is so that things get bound properly.
+                    def call_with_suffix(s=suffix, a=attr):
+                        return lambda *args, **kwargs: a(s, *args, **kwargs)
+
+                    newclassdict[new_name] = call_with_suffix()
+            else:
+                newclassdict[name] = attr
+        return type.__new__(metacls, name_, bases, newclassdict)
+
+
+@six.add_metaclass(TestMethodRenamer)
 class TestCase(unittest.TestCase):
     def assertSuccess(self, result):
         """ Make sure that the command ran successfully """

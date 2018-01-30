@@ -13,6 +13,9 @@ python_library(
         "utils.py",
     ],
     resources = UTIL_DEFS,
+    deps = [
+        "fbcode_macros//tests/third-party/six:six",
+    ],
 )
 
 python_test(
