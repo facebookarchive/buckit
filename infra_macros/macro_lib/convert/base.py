@@ -42,6 +42,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/target.py".format(macro_root), "target")
 include_defs("{}/fbcode_target.py".format(macro_root), "fbcode_target")
 include_defs("{}/core_tools.py".format(macro_root), "core_tools")
+include_defs("{}/build_info.py".format(macro_root), "build_info")
 load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
@@ -1106,16 +1107,6 @@ class Converter(object):
 
         return link_style
 
-    def get_build_info_mode(self):
-        """
-        Return the build info style to use.
-        """
-
-        return self.read_choice(
-            'fbcode',
-            'build_info',
-            ['full', 'stable', 'none'])
-
     def get_build_info_linker_flags(
             self,
             base_path,
@@ -1128,27 +1119,38 @@ class Converter(object):
 
         ldflags = []
 
-        mode = self.get_build_info_mode()
+        mode = build_info.get_build_info_mode(base_path, name)
 
-        if mode == 'full':
-            # Make sure we're not using non-deterministic build info when caching
-            # is enabled.
-            if self.read_bool('cxx', 'cache_links', True):
-                raise ValueError(
-                    'cannot use `full` build info when `cxx.cache_links` is set')
-            # Make sure we're not using full build info when building core tools,
-            # otherwise we could introduce nondeterminism in rule keys.
-            if core_tools.is_core_tool(base_path, name):
-                mode = "stable"
+        # Make sure we're not using non-deterministic build info when caching
+        # is enabled.
+        if mode == 'full' and self.read_bool('cxx', 'cache_links', True):
+            raise ValueError(
+                'cannot use `full` build info when `cxx.cache_links` is set')
 
         # Pass the build info mode to the linker.
         ldflags.append('--build-info=' + mode)
 
-        # Add in build information.
-        ldflags.append('--build-info-build-mode=' + self._context.mode)
-        ldflags.append('--build-info-platform=' + platform)
-        ldflags.append('--build-info-rule=fbcode:' + base_path + ':' + name)
-        ldflags.append('--build-info-rule-type=' + rule_type)
+        # Add in explicit build info args.
+        if mode != 'none':
+            explicit = (
+                build_info.get_explicit_build_info(
+                    base_path,
+                    name,
+                    rule_type,
+                    platform))
+            ldflags.append('--build-info-build-mode=' + explicit.build_mode)
+            if explicit.package_name:
+                ldflags.append(
+                    '--build-info-package-name=' + explicit.package_name)
+            if explicit.package_release:
+                ldflags.append(
+                    '--build-info-package-release=' + explicit.package_release)
+            if explicit.package_version:
+                ldflags.append(
+                    '--build-info-package-version=' + explicit.package_version)
+            ldflags.append('--build-info-platform=' + explicit.platform)
+            ldflags.append('--build-info-rule=' + explicit.rule)
+            ldflags.append('--build-info-rule-type=' + explicit.rule_type)
 
         return ldflags
 
