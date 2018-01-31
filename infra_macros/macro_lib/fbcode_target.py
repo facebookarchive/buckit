@@ -10,7 +10,7 @@ from __future__ import unicode_literals
 
 import os
 
-include_defs('//tools/build/buck/infra_macros/macro_lib/config.py', 'config')
+load('@fbcode_macros//build_defs:config.bzl', 'config')
 include_defs('//tools/build/buck/infra_macros/macro_lib/target.py', 'target')
 
 
@@ -48,7 +48,7 @@ def parse_target(raw_target, base_path=None):
     # This is the normal path for buck style dependencies. We do a little
     # parsing, but nothing too crazy. This allows OSS users to use the
     # FB macro library, but not have to use fbcode naming conventions
-    if not config.fbcode_style_deps:
+    if not config.get_fbcode_style_deps():
         if raw_target.startswith('@/'):
             raise ValueError(
                 'rule name must not start with "@/" in repositories with '
@@ -77,15 +77,15 @@ def parse_target(raw_target, base_path=None):
     # ***
     # We can probably add more configuration later if necessary.
     if parsed.repo is None:
-        if config.fbcode_style_deps_are_third_party:
+        if config.get_fbcode_style_deps_are_third_party():
             repo = parsed.base_path.split(os.sep)[0]
         else:
-            repo = config.current_repo_name
+            repo = config.get_current_repo_name()
         parsed = parsed._replace(repo=repo)
 
     # Some third party dependencies fall under rules like
     # know it's under the root cell
-    if parsed.repo == config.current_repo_name:
+    if parsed.repo == config.get_current_repo_name():
         parsed = parsed._replace(repo=None)
 
     return parsed

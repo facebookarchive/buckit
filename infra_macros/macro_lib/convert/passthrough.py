@@ -51,7 +51,7 @@ class PassthroughConverter(base.Converter):
     def convert(self, base_path, **kwargs):
 
         # First check the whitelist.
-        if (self._context.config.forbid_raw_buck_rules and
+        if (self._context.config.get_forbid_raw_buck_rules() and
                 self._whitelist is not None and
                 (base_path, kwargs.get('name')) not in self._whitelist):
             msg = self._whitelist_error_msg

@@ -288,7 +288,7 @@ def convert(context, base_path, rules):
             'buck_cxx_binary',
             'cxx_binary',
             # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.whitelisted_raw_buck_rules.get('cxx_binary', []),
+            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_binary', []),
             whitelist_error_msg=FBCODE_UI_MESSAGE))
     converters.append(
         passthrough.PassthroughConverter(
@@ -296,7 +296,7 @@ def convert(context, base_path, rules):
             'buck_cxx_library',
             'cxx_library',
             # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.whitelisted_raw_buck_rules.get('cxx_library', []),
+            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_library', []),
             whitelist_error_msg=FBCODE_UI_MESSAGE))
     converters.append(
         passthrough.PassthroughConverter(
@@ -304,7 +304,7 @@ def convert(context, base_path, rules):
             'buck_cxx_test',
             'cxx_test',
             # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.whitelisted_raw_buck_rules.get('cxx_test', []),
+            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_test', []),
             whitelist_error_msg=FBCODE_UI_MESSAGE))
     converters.append(
         passthrough.PassthroughConverter(

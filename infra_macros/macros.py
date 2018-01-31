@@ -59,7 +59,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 #  includes = macros//macros.py
 # /macros/.buckconfig
 # /macros/macros.py
-include_defs('//{}/config.py'.format(MACRO_LIB_DIR), 'config')
+load('@fbcode_macros//build_defs:config.bzl', 'config')
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/BuildMode.py'.format(MACRO_LIB_DIR), 'BuildMode')
@@ -132,10 +132,10 @@ def get_oss_third_party_config():
     }
 
 
-if config.third_party_config_path:
+if config.get_third_party_config_path():
     # Load the third-party config.
-    config_path = os.path.join(CELL_ROOT, config.third_party_config_path)
-    add_build_file_dep('//' + config.third_party_config_path)
+    config_path = os.path.join(CELL_ROOT, config.get_third_party_config_path())
+    add_build_file_dep('//' + config.get_third_party_config_path())
     with open(config_path) as f:
         code = compile(f.read(), config_path, 'exec')
     vals = {}
@@ -265,7 +265,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
     # For full auto-headers support, add in the recursive header glob rule
     # as a dep. This is only used in fbcode for targets that don't fully
     # specify their dependencies, and it will be going away in the future
-    if (config.add_auto_headers_glob and
+    if (config.get_add_auto_headers_glob() and
             rule.type in CXX_RULES and
             AutoHeaders.RECURSIVE_GLOB == cpp.CppConverter.get_auto_headers(
                 rule.attributes.get('headers'),
@@ -364,11 +364,11 @@ def _install_converted_rules(globals, **context_kwargs):
 __all__.append('install_converted_rules')
 def install_converted_rules(globals, **context_kwargs):
     context_kwargs = {
-        'compiler': config.compiler_family,
-        'coverage': config.coverage,
-        'link_style': config.default_link_style,
-        'mode': config.build_mode,
-        'sanitizer': config.sanitizer if config.sanitizer else None,
-        'lto_type': config.lto_type,
+        'compiler': config.get_compiler_family(),
+        'coverage': config.get_coverage(),
+        'link_style': config.get_default_link_style(),
+        'mode': config.get_build_mode(),
+        'sanitizer': config.get_sanitizer() if config.get_sanitizer() else None,
+        'lto_type': config.get_lto_type(),
     }
     _install_converted_rules(globals, **context_kwargs)

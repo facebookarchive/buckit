@@ -78,7 +78,7 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                 'exclude2//exclude2/subdir/dir2', 'path'))
 
     def test_does_not_allow_unknown_oses(self):
-        with self.assertRaises(KeyError):
+        with self.assertRaises(Exception) as ec:
             with mock.patch('platform.system', return_value='blargl'):
                 self.setup_with_config({('fbcode', 'os_family'): 'bad_stuff'}, {})
                 self._converter.convert(
@@ -93,6 +93,7 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                         ('invalid_os', ['//test:target2']),
                     ],
                 )
+        self.assertIn('Could not determine a supported os from config', str(ec.exception))
 
     def test_drops_targets_for_other_oses(self):
         self.setup_with_config({('fbcode', 'os_family'): 'mac'}, {})

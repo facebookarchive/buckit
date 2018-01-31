@@ -103,7 +103,7 @@ class ThriftLangConverter(base.Converter):
         will be a RootRuleTarget. Outside of fbcode, we have to make sure that
         the specified third-party repo is used
         """
-        if self._context.config.current_repo_name == 'fbcode':
+        if self._context.config.get_current_repo_name() == 'fbcode':
             target = RootRuleTarget(base_path, target)
         else:
             repo = base_path.split('/')[0]
@@ -115,7 +115,7 @@ class ThriftLangConverter(base.Converter):
         Return which thrift compiler to use.
         """
 
-        return self._context.config.thrift_compiler
+        return self._context.config.get_thrift_compiler()
 
     def get_lang(self):
         """
@@ -197,7 +197,7 @@ class ThriftLangConverter(base.Converter):
         if self.read_bool('thrift', 'use_templates', True):
             cmd.append('--templates')
             cmd.append('$(location {})'.format(
-                self._context.config.thrift_templates))
+                self._context.config.get_thrift_templates()))
         cmd.append('-o')
         cmd.append('"$OUT"')
         additional_compiler = self.get_additional_compiler()
@@ -299,10 +299,10 @@ class CppThriftConverter(ThriftLangConverter):
         self._cpp_converter = cpp.CppConverter(context, 'cpp_library')
 
     def get_additional_compiler(self):
-        return self._context.config.thrift2_compiler if self._is_cpp2 else None
+        return self._context.config.get_thrift2_compiler() if self._is_cpp2 else None
 
     def get_compiler(self):
-        return self._context.config.thrift_compiler
+        return self._context.config.get_thrift_compiler()
 
     def get_lang(self):
         return 'cpp2' if self._is_cpp2 else 'cpp'
@@ -916,9 +916,9 @@ class HaskellThriftConverter(ThriftLangConverter):
 
     def get_compiler(self):
         if self._is_hs2:
-            return self._context.config.thrift_hs2_compiler
+            return self._context.config.get_thrift_hs2_compiler()
         else:
-            return self._context.config.thrift_compiler
+            return self._context.config.get_thrift_compiler()
 
     def get_lang(self):
         return 'hs2' if self._is_hs2 else 'hs'
@@ -1207,7 +1207,7 @@ class JavaSwiftConverter(ThriftLangConverter):
         return 'java-swift'
 
     def get_compiler(self):
-        return self._context.config.thrift_swift_compiler
+        return self._context.config.get_thrift_swift_compiler()
 
     def get_compiler_args(
             self,
@@ -1589,7 +1589,7 @@ class OCamlThriftConverter(ThriftLangConverter):
             ocaml.OCamlConverter(context, 'ocaml_library'))
 
     def get_compiler(self):
-        return self._context.config.thrift_ocaml_compiler
+        return self._context.config.get_thrift_ocaml_compiler()
 
     def get_lang(self):
         return 'ocaml2'
@@ -1610,7 +1610,7 @@ class OCamlThriftConverter(ThriftLangConverter):
 
         # The OCaml compiler relies on the HS2 compiler to parse .thrift sources to JSON
         args.append('-c')
-        args.append('$(exe {})'.format(self._context.config.thrift_hs2_compiler))
+        args.append('$(exe {})'.format(self._context.config.get_thrift_hs2_compiler()))
 
         # Format the options and pass them into the ocaml compiler.
         for option, val in options.iteritems():
@@ -2135,7 +2135,7 @@ class RustThriftConverter(ThriftLangConverter):
         return "rust"
 
     def get_compiler(self):
-        return self._context.config.thrift_hs2_compiler
+        return self._context.config.get_thrift_hs2_compiler()
 
     def get_compiler_args(
             self,

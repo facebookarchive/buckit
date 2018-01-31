@@ -188,7 +188,7 @@ class Converter(object):
         # platforms and specify 'default' as the only platform. This allows
         # us to not branch the codepaths at all in code that wants platform
         # information.
-        if self._context.config.require_platform:
+        if self._context.config.get_require_platform():
             return self._context.buck_ops.read_config('fbcode', 'platform', None)
         else:
             return self._context.buck_ops.read_config('cxx', 'default_platform', 'default')
@@ -308,15 +308,15 @@ class Converter(object):
         return sorted(platforms)
 
     def get_third_party_root(self, platform):
-        if self._context.config.third_party_use_platform_subdir:
+        if self._context.config.get_third_party_use_platform_subdir():
             return os.path.join(
-                self._context.config.third_party_buck_directory,
+                self._context.config.get_third_party_buck_directory(),
                 platform)
         else:
-            return self._context.config.third_party_buck_directory
+            return self._context.config.get_third_party_buck_directory()
 
     def get_third_party_build_root(self, platform):
-        if self._context.config.third_party_use_build_subdir:
+        if self._context.config.get_third_party_use_build_subdir():
             return os.path.join(self.get_third_party_root(platform), 'build')
         else:
             return self.get_third_party_root(platform)
@@ -324,7 +324,7 @@ class Converter(object):
     def get_repo_root(self, repo, platform):
         if repo is None:
             return ''
-        elif (not self._context.config.unknown_cells_are_third_party or
+        elif (not self._context.config.get_unknown_cells_are_third_party() or
               self._context.buck_ops.read_config('repositories', repo)):
             return ''
         else:
@@ -382,7 +382,7 @@ class Converter(object):
         """
         cell = repo
         if(repo and
-                self._context.config.unknown_cells_are_third_party and
+                self._context.config.get_unknown_cells_are_third_party() and
                 self._context.buck_ops.read_config(
                     'repositories', repo) is None):
             cell = None
@@ -396,7 +396,7 @@ class Converter(object):
         and the path may be modified to fit fbcode's layout
         """
 
-        if self._context.config.third_party_use_tools_subdir:
+        if self._context.config.get_third_party_use_tools_subdir():
             return os.path.join(
                 self.get_third_party_root(platform),
                 'tools',
@@ -421,7 +421,7 @@ class Converter(object):
         and the path may be modified to fit fbcode's layout
         """
 
-        if self._context.config.third_party_use_build_subdir:
+        if self._context.config.get_third_party_use_build_subdir():
             return os.path.join(self.get_third_party_root(platform), 'build', project)
         else:
             return project
@@ -1281,7 +1281,7 @@ class Converter(object):
         # 4. Add in the build info linker flags.
         # In OSS, we don't need to actually use the build info (and the
         # linker will not understand these options anyways) so skip in that case
-        if build_info and self._context.config.use_build_info_linker_flags:
+        if build_info and self._context.config.get_use_build_info_linker_flags():
             ldflags.extend(
                 self.get_build_info_linker_flags(
                     base_path,
@@ -1385,12 +1385,12 @@ class Converter(object):
     def get_allocator_deps(self, allocator):
         return [
             fbcode_target.parse_target(rdep)
-            for rdep in self._context.config.allocators[allocator]
+            for rdep in self._context.config.get_allocators()[allocator]
         ]
 
     def get_allocators(self):
         return {
-            allocator: self._context.config.allocators[allocator]
+            allocator: self._context.config.get_allocators()[allocator]
             for allocator in ALLOCATORS
         }
 
@@ -1399,7 +1399,7 @@ class Converter(object):
     # versions.
     def get_allocator(self, allocator=None):
         if allocator is None:
-            allocator = self._context.config.default_allocator
+            allocator = self._context.config.get_default_allocator()
         elif isinstance(allocator, tuple):
             allocator = allocator[0]
         return allocator

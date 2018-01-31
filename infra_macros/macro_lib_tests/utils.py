@@ -104,10 +104,10 @@ class ConverterTestCase(unittest.TestCase):
         def import_func():
             yield
 
-        config = parser.load_include('tools/build/buck/infra_macros/macro_lib/config.py')
+        config = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/config.bzl')
         base = parser.load_include('tools/build/buck/infra_macros/macro_lib/convert/base.py')
 
-        parsed_config = config.FbcodeOptions(read_config_func, import_func).values
+        parsed_config = config.config
 
         build_file_deps = []
         include_defs = []

@@ -1245,10 +1245,10 @@ class CppConverter(base.Converter):
                 attributes['headers'] = out_headers
 
         if header_namespace is not None:
-            if (base_path, name) not in self._context.config.header_namespace_whitelist and not any(
+            if (base_path, name) not in self._context.config.get_header_namespace_whitelist() and not any(
                 # Check base path prefix in header_namespace_whitelist
                 len(t) == 1 and base_path.startswith(t[0])
-                for t in self._context.config.header_namespace_whitelist
+                for t in self._context.config.get_header_namespace_whitelist()
             ):
                 raise ValueError(
                     '{}(): the `header_namespace` parameter is *not* '
@@ -1317,7 +1317,7 @@ class CppConverter(base.Converter):
 
         # Get any linker flags for the current OS
         for os_short_name, flags in os_linker_flags:
-            if os_short_name == self._context.config.current_os:
+            if os_short_name == self._context.config.get_current_os():
                 out_exported_ldflags.extend(flags)
 
         # Set the linker flags parameters.
@@ -1341,11 +1341,11 @@ class CppConverter(base.Converter):
                 gtest_deps = [
                     d.strip()
                     for d in re.split(
-                        ",", self._context.config.gtest_lib_dependencies)
+                        ",", self._context.config.get_gtest_lib_dependencies())
                 ]
                 if use_default_test_main:
                     gtest_deps.append(
-                        self._context.config.gtest_main_dependency)
+                        self._context.config.get_gtest_main_dependency())
                 dependencies.extend(
                     [target.parse_target(dep) for dep in gtest_deps])
             else:
@@ -1383,7 +1383,7 @@ class CppConverter(base.Converter):
                 *[
                     dep
                     for os, dep in os_deps
-                    if os == self._context.config.current_os
+                    if os == self._context.config.get_current_os()
                 ]):
             dependencies.append(target.parse_target(dep, base_path))
 
@@ -1558,7 +1558,7 @@ class CppConverter(base.Converter):
         #   '//dsi/logger/cpp/compiler:logger_cpp_gen' \
         #   ...  | sort -u
         # See tools/build/buck/config.py for CORE_TOOLS list.
-        for pattern in self._context.config.auto_pch_blacklist:
+        for pattern in self._context.config.get_auto_pch_blacklist():
             if path.startswith(pattern):
                 return True
 

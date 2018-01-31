@@ -36,22 +36,22 @@ def _get_allocators():
     """
     return {
         "jemalloc":
-        read_string(
-            "fbcode", "allocators.jemalloc", "jemalloc//jemalloc:jemalloc",
-        ),
+        read_list(
+            "fbcode", "allocators.jemalloc", ["jemalloc//jemalloc:jemalloc"],
+            delimiter=","),
         "jemalloc_debug":
-        read_string(
+        read_list(
             "fbcode", "allocators.jemalloc_debug",
-            "jemalloc//jemalloc:jemalloc_debug",
-        ),
+            ["jemalloc//jemalloc:jemalloc_debug"],
+            delimiter=","),
         "tcmalloc":
-        read_string(
-            "fbcode", "allocators.tcmalloc", "tcmalloc//tcmalloc:tcmalloc",
-        ),
+        read_list(
+            "fbcode", "allocators.tcmalloc", ["tcmalloc//tcmalloc:tcmalloc"],
+            delimiter=","),
         "malloc":
-        read_string(
-            "fbcode", "allocators.malloc", "",
-        ),
+        read_list(
+            "fbcode", "allocators.malloc", [],
+            delimiter=","),
     }
 
 
@@ -120,6 +120,12 @@ def _get_coverage():
 
 def _get_current_host_os():
     """ Get a string version of the host os. This will eventually go away """
+    overridden_os = read_string("fbcode", "os_family", None)
+    if overridden_os != None:
+        if overridden_os in ["linux", "mac", "windows"]:
+            return overridden_os
+        fail("Could not determine a supported os from config. Got %r" % overridden_os)
+        
     info = native.host_info()
     if info.os.is_linux:
         return "linux"
@@ -427,7 +433,6 @@ def _get_whitelisted_raw_buck_rules():
     return whitelisted_raw_buck_rules
 
 
-# TODO: Add current_os and compiler_family
 config = struct(
     get_add_auto_headers_glob=_get_add_auto_headers_glob,
     get_allocators=_get_allocators,

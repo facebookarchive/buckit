@@ -31,10 +31,10 @@ class ConfigTest(tests.utils.TestCase):
         expected = [
             False,  # get_add_auto_headers_glob
             {
-                "jemalloc": "jemalloc//jemalloc:jemalloc",
-                "jemalloc_debug": "jemalloc//jemalloc:jemalloc_debug",
-                "tcmalloc": "tcmalloc//tcmalloc:tcmalloc",
-                "malloc": ""
+                "jemalloc": ["jemalloc//jemalloc:jemalloc"],
+                "jemalloc_debug": ["jemalloc//jemalloc:jemalloc_debug"],
+                "tcmalloc": ["tcmalloc//tcmalloc:tcmalloc"],
+                "malloc": []
             },  # get_allocators
             [],  # get_auto_pch_blacklist
             "dev",  # get_build_mode
@@ -131,7 +131,7 @@ class ConfigTest(tests.utils.TestCase):
                 "add_auto_headers_glob":
                 "true",
                 "allocators.jemalloc":
-                "//foo:jemalloc",
+                "//foo:jemalloc,//foo:jemalloc_other",
                 "allocators.jemalloc_debug":
                 "//foo:jemalloc_debug",
                 "allocators.tcmalloc":
@@ -210,10 +210,10 @@ class ConfigTest(tests.utils.TestCase):
         expected = [
             True,  # get_add_auto_headers_glob
             {
-                "jemalloc": "//foo:jemalloc",
-                "jemalloc_debug": "//foo:jemalloc_debug",
-                "tcmalloc": "//foo:tcmalloc",
-                "malloc": "//foo:malloc",
+                "jemalloc": ["//foo:jemalloc", "//foo:jemalloc_other"],
+                "jemalloc_debug": ["//foo:jemalloc_debug"],
+                "tcmalloc": ["//foo:tcmalloc"],
+                "malloc": ["//foo:malloc"],
             },  # get_allocators
             ["/foo", "/bar"],  # get_auto_pch_blacklist
             "opt",  # get_build_mode

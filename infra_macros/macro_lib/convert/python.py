@@ -352,7 +352,7 @@ class PythonConverter(base.Converter):
 
         build_args = []
 
-        if self._context.config.use_custom_par_args:
+        if self._context.config.get_use_custom_par_args():
             # Arguments that we wanted directly threaded into `make_par`.
             passthrough_args = []
             if argcomplete is True:

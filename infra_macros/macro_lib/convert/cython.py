@@ -171,7 +171,7 @@ class Converter(base.Converter):
         the target name and the rule
         """
 
-        cython_compiler = self._context.config.cython_compiler
+        cython_compiler = self._context.config.get_cython_compiler()
         attrs = collections.OrderedDict()
         attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
         attrs['out'] = os.curdir

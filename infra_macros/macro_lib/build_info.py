@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 import collections
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs('{}/config.py'.format(macro_root), 'config')
+load("@fbcode_macros//build_defs:config.bzl", "config")
 include_defs("{}/core_tools.py".format(macro_root), "core_tools")
 load("@xplat//configurations/buck:buckconfig.bzl", "read_choice")
 
@@ -80,7 +80,7 @@ def get_explicit_build_info(
         package_release = read_config('build_info', 'package_release')
 
     return ExplicitBuildInfo(
-        build_mode=config.build_mode,
+        build_mode=config.get_build_mode(),
         package_name=package_name,
         package_release=package_release,
         package_version=package_version,
