@@ -36,6 +36,7 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
+build_info = import_macro_lib('build_info')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
@@ -377,13 +378,28 @@ class PythonConverter(base.Converter):
                 passthrough_args.append('--optimize')
 
             # Add arguments to populate build info.
+            assert build_info.get_build_info_mode(base_path, name) != 'none'
+            info = (
+                build_info.get_explicit_build_info(
+                    base_path,
+                    name,
+                    rule_type,
+                    platform))
             passthrough_args.append(
-                '--build-info-build-mode=' + self._context.mode)
-            passthrough_args.append('--build-info-platform=' + platform)
+                '--build-info-build-mode=' + info.build_mode)
             passthrough_args.append('--build-info-build-tool=buck')
-            passthrough_args.append(
-                '--build-info-rule-name=fbcode:{}:{}'.format(base_path, name))
-            passthrough_args.append('--build-info-rule-type=' + rule_type)
+            if info.package_name is not None:
+                passthrough_args.append(
+                    '--build-info-package-name=' + info.package_name)
+            if info.package_release is not None:
+                passthrough_args.append(
+                    '--build-info-package-release=' + info.package_release)
+            if info.package_version is not None:
+                passthrough_args.append(
+                    '--build-info-package-version=' + info.package_version)
+            passthrough_args.append('--build-info-platform=' + info.platform)
+            passthrough_args.append('--build-info-rule-name=' + info.rule)
+            passthrough_args.append('--build-info-rule-type=' + info.rule_type)
 
             build_args.extend(['--passthrough=' + a for a in passthrough_args])
 
@@ -797,21 +813,22 @@ class PythonConverter(base.Converter):
             attributes['main_module'] = main_module
 
         # Add in the PAR build args.
-        build_args = (
-            self.get_par_build_args(
-                base_path,
-                name,
-                rule_type,
-                platform,
-                argcomplete=argcomplete,
-                strict_tabs=strict_tabs,
-                compile=compile,
-                par_style=par_style,
-                strip_libpar=strip_libpar,
-                needed_coverage=needed_coverage,
-                python=python))
-        if build_args:
-            attributes['build_args'] = build_args
+        if self.get_package_style() == 'standalone':
+            build_args = (
+                self.get_par_build_args(
+                    base_path,
+                    name,
+                    rule_type,
+                    platform,
+                    argcomplete=argcomplete,
+                    strict_tabs=strict_tabs,
+                    compile=compile,
+                    par_style=par_style,
+                    strip_libpar=strip_libpar,
+                    needed_coverage=needed_coverage,
+                    python=python))
+            if build_args:
+                attributes['build_args'] = build_args
 
         # Add any special preload deps.
         default_preload_deps, default_preload_rules = (
