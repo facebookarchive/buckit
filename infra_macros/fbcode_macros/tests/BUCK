@@ -1,10 +1,16 @@
+load(
+    "@fbcode_macros//tests:skylark_integration_test.bzl",
+    "skylark_integration_test",
+    "target_to_resource_path",
+)
+
 BUILD_DEFS = [
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
 ]
 
 UTIL_DEFS = {
-    target.replace("//", "/").replace(":", "/"): target
+    target_to_resource_path(target): target
     for target in BUILD_DEFS
 }
 
@@ -14,20 +20,21 @@ python_library(
         "utils.py",
     ],
     resources = UTIL_DEFS,
+    visibility = ["PUBLIC"],
     deps = [
         "fbcode_macros//tests/third-party/future:future",
         "fbcode_macros//tests/third-party/six:six",
     ],
 )
 
-python_test(
+skylark_integration_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
     resources = ["testdata/utils_test/sample.txt"],
     deps = [":utils"],
 )
 
-python_test(
+skylark_integration_test(
     name = "config_test",
     srcs = ["config_test.py"],
     deps = [":utils"],
