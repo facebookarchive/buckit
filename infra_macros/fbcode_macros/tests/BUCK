@@ -15,6 +15,7 @@ python_library(
     ],
     resources = UTIL_DEFS,
     deps = [
+        "fbcode_macros//tests/third-party/future:future",
         "fbcode_macros//tests/third-party/six:six",
     ],
 )

@@ -36,7 +36,7 @@ class UtilsTest(tests.utils.TestCase):
             buckd_dir = os.path.join(root_dir, ".buckd")
 
             root = project.root_cell
-            self.assertTrue("fbcode_macros" in project.cells)
+            self.assertIn("fbcode_macros", project.cells)
             root.add_directory("foo/bar/dir")
             root.add_file(
                 "testing/file.bzl",
@@ -196,3 +196,144 @@ class UtilsTest(tests.utils.TestCase):
                 )
             )
         self.assertFalse(os.path.isdir(temp_dir))
+
+    def test_validating_audit_works(self):
+        with self.assertRaises(AssertionError) as e:
+            result = tests.utils.AuditTestResult(1, "", "", {})
+            expected = {}
+            self.validateAudit(expected, result)
+        self.assertIn("Expected zero return code", str(e.exception))
+
+        with self.assertRaises(AssertionError) as e:
+            result = tests.utils.AuditTestResult(
+                0, "", "", {"foo/BUCK": None,
+                            "bar/BUCK": ""}
+            )
+            expected = {"foo/BUCK": "", "bar/BUCK": ""}
+            self.validateAudit(expected, result)
+        self.assertIn(
+            "Got a list of files that had empty contents: ", str(e.exception)
+        )
+        self.assertIn("foo/BUCK", str(e.exception))
+
+        with self.assertRaises(AssertionError) as e:
+            result = tests.utils.AuditTestResult(
+                0, "", "", {"foo/BUCK": "",
+                            "bar/BUCK": ""}
+            )
+            expected = {"foo/BUCK": "", "baz/BUCK": ""}
+            self.validateAudit(expected, result)
+        self.assertTrue(
+            "Parsed list of files != expected list of files" in
+            str(e.exception)
+        )
+        self.assertIn("bar/BUCK", str(e.exception))
+        self.assertIn("baz/BUCK", str(e.exception))
+
+        with self.assertRaises(AssertionError) as e:
+            result = tests.utils.AuditTestResult(
+                0, "", "",
+                {"foo/BUCK": "foo\nbar\nbaz\n",
+                 "bar/BUCK": "baz\nfoo\nbar\n"}
+            )
+            expected = {
+                "foo/BUCK": "foo\nbar\nbaz\n",
+                "bar/BUCK": "foo\nbar\nbaz\n"
+            }
+            self.validateAudit(expected, result)
+        self.assertIn("Content of bar/BUCK differs:", str(e.exception))
+        self.assertIn("bar/BUCK", str(e.exception))
+
+    def test_parses_audit_results_properly(self):
+        with tests.utils.Project(remove_files=False) as project:
+            root = project.root_cell
+            root.add_file(
+                "foo/main.cpp",
+                textwrap.dedent(
+                    """\
+            #include "bar/lib.h"
+            int main() { bar::f(); return 0; } }
+            """
+                ).strip()
+            )
+            root.add_file(
+                "bar/lib.h",
+                textwrap.dedent(
+                    """\
+            #pragma once
+            namespace bar { void f(); }
+            """
+                ).strip()
+            )
+            root.add_file(
+                "bar/lib.cpp",
+                textwrap.dedent(
+                    """\
+            #include "bar/lib.h"
+            namespace bar { void f() { return; } }
+            """
+                ).strip()
+            )
+            root.add_file(
+                "bar/BUCK",
+                textwrap.dedent(
+                    """\
+            cxx_library(
+                name="lib",
+                exported_headers=["lib.h"],
+                srcs=["lib.cpp"],
+                visibility=["PUBLIC"],
+            )
+            """
+                ).strip()
+            )
+            root.add_file(
+                "foo/BUCK",
+                textwrap.dedent(
+                    """\
+            cxx_binary(
+                name="main",
+                srcs=["main.cpp"],
+                deps=["//bar:lib"],
+            )
+            """
+                ).strip()
+            )
+
+            expected = {
+                "foo/BUCK":
+                textwrap.dedent(
+                    """\
+                    cxx_binary(
+                      name = "main",
+                      srcs = [
+                        "main.cpp",
+                      ],
+                      deps = [
+                        "//bar:lib",
+                      ],
+                    )
+                    """
+                ).strip(),
+                "bar/BUCK":
+                textwrap.dedent(
+                    """\
+                    cxx_library(
+                      name = "lib",
+                      exportedHeaders = [
+                        "lib.h",
+                      ],
+                      srcs = [
+                        "lib.cpp",
+                      ],
+                      visibility = [
+                        "PUBLIC",
+                      ],
+                    )
+                    """
+                ).strip()
+            }
+
+            ret = root.run_audit(["foo/BUCK", "bar/BUCK"])
+
+            self.validateAudit(expected, ret)

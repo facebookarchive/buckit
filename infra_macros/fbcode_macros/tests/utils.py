@@ -24,6 +24,7 @@ import StringIO
 import unittest
 
 import six
+from future.utils import raise_with_traceback
 
 try:
     import ConfigParser as configparser
@@ -35,6 +36,9 @@ RunResult = collections.namedtuple(
 )
 UnitTestResult = collections.namedtuple(
     "UnitTestResult", ["returncode", "stdout", "stderr", "debug_lines"]
+)
+AuditTestResult = collections.namedtuple(
+    'AuditTestResult', ['returncode', 'stdout', 'stderr', 'files']
 )
 
 
@@ -260,12 +264,60 @@ class Cell:
         stdout, stderr = proc.communicate()
         return RunResult(proc.returncode, stdout, stderr)
 
-    def run_audit(self):
+    def _parse_audit_output(self, stdout, files):
+        ret = {file: None for file in files}
+        current_file = None
+        file_contents = ""
+        for line in stdout.splitlines():
+            if line.startswith('#'):
+                found_filename = line.strip('# ')
+                if found_filename in ret:
+                    if current_file is not None:
+                        ret[current_file] = file_contents.strip()
+                    current_file = found_filename
+                    file_contents = ""
+                    continue
+            if found_filename is None and line:
+                raise Exception(
+                    (
+                        "Got line, but no filename has been found so far.\n"
+                        "Line: {}\n"
+                        "stdout:\n{}"
+                    ).format(line, stdout)
+                )
+            file_contents += line + "\n"
+        ret[current_file] = file_contents.strip()
+        return ret
+
+    def run_audit(self, buck_files, environment=None):
         """
         A method to compare existing outputs of `buck audit rules` to new ones
         and ensure that the final product works as expected
+
+        Arguments:
+            buck_files: A list of relative paths to buck files that should have
+                        `buck audit rules` run on them.
+        Returns:
+            An AuditTestResult object, with returncode, stdout, stderr filled
+            out, and files set as a dictionary of files names -> trimmed
+            content returned from buck audit rules
         """
-        raise NotImplementedError("Not implemented yet")
+        default_env = {}
+        if not self.project.run_buckd:
+            default_env['NO_BUCKD'] = '1'
+        environment = default_env.update(environment or {})
+
+        cmd = ['buck', 'audit', 'rules'] + buck_files
+
+        ret = self.run(cmd, {}, environment)
+        audit_files = self._parse_audit_output(ret.stdout, buck_files)
+
+        return AuditTestResult(
+            returncode=ret.returncode,
+            stdout=ret.stdout,
+            stderr=ret.stderr,
+            files=audit_files
+        )
 
     def run_unittests(
         self,
@@ -530,6 +582,52 @@ class TestCase(unittest.TestCase):
                 result.stdout, result.stderr
             )
         )
+
+    def validateAudit(self, expected_results, result):
+        """
+        Validate that audit results are as expected
+
+        Validates that all requested files came out in the audit comment. Also
+        validates that the command ran successfully, and that the contents
+        are as expected
+
+        Arguments:
+            expected_results: A dictionary of file name to contents
+            result: An AuditTestResult object
+        """
+        self.assertSuccess(result)
+        empty_results = [
+            file for file, contents in result.files.items() if contents is None
+        ]
+        try:
+            self.assertEqual([], empty_results)
+        except AssertionError as e:
+            raise_with_traceback(
+                AssertionError(
+                    "Got a list of files that had empty contents: {!r}\n{}".
+                    format(empty_results, str(e))
+                )
+            )
+
+        try:
+            self.assertEqual(expected_results.keys(), result.files.keys())
+        except AssertionError as e:
+            raise_with_traceback(
+                AssertionError(
+                    "Parsed list of files != expected list of files:\n{}".
+                    format(str(e))
+                )
+            )
+
+        for file, contents in result.files.items():
+            try:
+                self.assertEqual(expected_results[file], contents)
+            except AssertionError as e:
+                raise_with_traceback(
+                    AssertionError(
+                        "Content of {} differs:\n{}".format(file, str(e))
+                    )
+                )
 
     def struct(self, **kwargs):
         """
