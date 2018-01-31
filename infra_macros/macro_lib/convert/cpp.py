@@ -95,6 +95,9 @@ UBSAN_FLAGS = [
 SANITIZER_FLAGS = {
     'address': ASAN_UBSAN_FLAGS,
     'address-undefined': ASAN_UBSAN_FLAGS + UBSAN_FLAGS,
+    'efficiency-cache': [
+        '-fsanitize=efficiency-cache-frag',
+    ],
     'undefined': UBSAN_FLAGS,
     'address-undefined-dev': ASAN_UBSAN_FLAGS,
     'thread': [

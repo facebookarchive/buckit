@@ -52,6 +52,7 @@ load("{}:fbcode_target.py".format(macro_root),
 SANITIZERS = {
     'address': 'asan',
     'address-undefined': 'asan-ubsan',
+    'efficiency-cache': 'esan-cache',
     'thread': 'tsan',
     'undefined': 'ubsan',
     'address-undefined-dev': 'asan-ubsan',
