@@ -126,7 +126,7 @@ def _get_current_host_os():
         if overridden_os in ["linux", "mac", "windows"]:
             return overridden_os
         fail("Could not determine a supported os from config. Got %r" % overridden_os)
-        
+
     info = native.host_info()
     if info.os.is_linux:
         return "linux"
@@ -253,6 +253,13 @@ def _get_lto_type():
     What kind of Link Time Optimization the compiler supports
     """
     return read_string("fbcode", "lto_type", None)
+
+
+def _get_pyfi_overrides_path():
+    """
+    If set, use PyFI overrides for python external_deps from this file
+    """
+    return read_string("python", "pyfi_overrides_path", None)
 
 
 def _get_require_platform():
@@ -454,6 +461,7 @@ config = struct(
     get_gtest_main_dependency=_get_gtest_main_dependency,
     get_header_namespace_whitelist=_get_header_namespace_whitelist,
     get_lto_type=_get_lto_type,
+    get_pyfi_overrides_path=_get_pyfi_overrides_path,
     get_require_platform=_get_require_platform,
     get_sanitizer=_get_sanitizer,
     get_third_party_buck_directory=_get_third_party_buck_directory,

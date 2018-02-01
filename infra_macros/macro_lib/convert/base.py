@@ -480,7 +480,7 @@ class Converter(object):
 
     def convert_external_build_target(self, target, lang_suffix=''):
         """
-        Convert the given build target reference from an externel dep TARGETS
+        Convert the given build target reference from an external dep TARGETS
         file reference.
         """
 
@@ -743,11 +743,20 @@ class Converter(object):
         """
         Takes a map of fbcode platform names to lists of deps and converts to
         an output list appropriate for Buck's `platform_deps` parameter.
-        """
 
-        return self.format_platform_param(
-            deps,
-            lambda platform, deps: self.format_deps(deps, platform=platform))
+        Also add override support for PyFI migration - T22354138
+        """
+        def overrides_handler(platform, deps):
+            """ Process PyFI overrides """
+            pyfi_overrides_path = self._context.config.get_pyfi_overrides_path()
+            if pyfi_overrides_path:
+                include_defs(pyfi_overrides_path, "overrides")
+                if platform in overrides.PYFI_SUPPORTED_PLATFORMS:
+                    deps = [overrides.PYFI_OVERRIDES.get(d.base_path, d) for d in deps]
+
+            return self.format_deps(deps, platform=platform)
+
+        return self.format_platform_param(deps, overrides_handler)
 
     def to_platform_param(self, param, platforms=None):
         """

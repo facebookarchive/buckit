@@ -596,8 +596,8 @@ class PythonConverter(base.Converter):
         if self.is_tp2(base_path):
 
             def match_py(pv, py_vers):
-                return (pv[:3] == py_vers # matches major-minor version
-                        or  pv == py_vers) # matches full name (e.g., pypy)
+                return (pv[:3] == py_vers  # matches major-minor version
+                        or pv == py_vers)  # matches full name (e.g., pypy)
 
             # TP2 projects have multiple "pre-built" source dirs, so we install
             # them via the `versioned_srcs` parameter along with the versions
