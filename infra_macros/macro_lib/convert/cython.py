@@ -45,6 +45,7 @@ base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
+target = import_macro_lib('target')
 global_defns = import_macro_lib('global_defns')
 
 
@@ -312,6 +313,19 @@ class Converter(base.Converter):
             srcs=types,
         )
 
+    def py_normalize_externals(self, external_deps):
+        """
+        We normalize for py so we can pass them to cpp as externals deps
+        for a cpp_python_extension.  So we parse them then turn them
+        back into tuple form as expected by the convert method of cpp.py
+        """
+        for dep in external_deps:
+            parsed, version = target.parse_external_dep(dep, lang_suffix='-py')
+            if parsed.repo is None:
+                yield (parsed.base_path, version, parsed.name)
+            else:
+                yield (parsed.repo, parsed.base_path, version, parsed.name)
+
     def gen_extension_rule(
         self,
         base_path,
@@ -333,8 +347,11 @@ class Converter(base.Converter):
                 srcs=[src],
                 deps=(
                     [':' + parent + self.LIB_SUFFIX] +
-                    list(python_deps) +
-                    list(python_external_deps)),
+                    list(python_deps)
+                ),
+                external_deps=tuple(
+                    self.py_normalize_externals(python_external_deps)
+                ),
                 compiler_flags=['-w'] + list(cpp_compiler_flags),
             ))
         return ':' + name, rules
@@ -468,8 +485,6 @@ class Converter(base.Converter):
                          for e in external_deps]
 
         python_deps = [self.convert_build_target(base_path, d) for d in python_deps]
-        python_external_deps = [self.convert_external_build_target(e)
-                                for e in python_external_deps]
 
         # This is normally base_path if package is not set
         if package is None:
