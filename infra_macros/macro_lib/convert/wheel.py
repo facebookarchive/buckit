@@ -72,24 +72,28 @@ class PyWheelDefault(base.Converter):
         }
 
     def convert_rule(self, base_path, platform_versions):
-        platform = self.get_default_platform()
+        name = os.path.basename(base_path)
 
         # If there is no default for either py2 or py3 for the given platform
         # Then we should fail to return a rule, instead of silently building
-        # but not actually providing the wheel
-        has_defaults = any(
-            (py_platform in platform_versions
-                for py_platform in (
+        # but not actually providing the wheel.  To do this, emit and add
+        # platform deps onto "error" rules that will fail at build time.
+        platform_versions = collections.OrderedDict(platform_versions)
+        for platform in self.get_platforms():
+            for py_platform in (
                     self.get_py3_platform(platform),
-                    self.get_py2_platform(platform),
-                )
-             )
-        )
-        if not has_defaults:
-            return
+                    self.get_py2_platform(platform)):
+                if py_platform not in platform_versions:
+                    msg = (
+                        '{}: wheel does not exist for python platform "{}"'
+                        .format(name, py_platform))
+                    error_name = '{}-{}-error'.format(name, py_platform)
+                    for rule in self.create_error_rules(error_name, msg):
+                        yield rule
+                    platform_versions[py_platform] = error_name
 
         attrs = collections.OrderedDict()
-        attrs['name'] = os.path.basename(base_path)
+        attrs['name'] = name
         attrs['platform_deps'] = [
             ('^{}$'.format(re.escape(py_platform)), [':' + version])
             for py_platform, version in sorted(platform_versions.items())
