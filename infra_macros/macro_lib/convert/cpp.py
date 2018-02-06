@@ -1400,6 +1400,8 @@ class CppConverter(base.Converter):
 
         if self.get_fbconfig_rule_type() == 'cpp_python_extension':
             dependencies.append(ThirdPartyRuleTarget('python', 'python'))
+            # Generate an empty typing_config
+            extra_rules.append(self.gen_typing_config(name))
 
         # Lua main module rules depend on are custom lua main.
         if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':

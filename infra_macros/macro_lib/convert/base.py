@@ -37,16 +37,35 @@ with allow_unsafe_import():
     import platform as platmod
     import shlex
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/target.py".format(macro_root), "target")
-include_defs("{}/fbcode_target.py".format(macro_root), "fbcode_target")
-include_defs("{}/core_tools.py".format(macro_root), "core_tools")
-include_defs("{}/build_info.py".format(macro_root), "build_info")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
+
+# Hack to make include_defs flake8 safe.
+_include_defs = include_defs  # noqa: F821
+
+
+# Hack to make include_defs sane and less magical forr flake8
+def include_defs(path):
+    global _include_defs__imported
+    _include_defs(path, '_include_defs__imported')  # noqa: F821
+    ret = _include_defs__imported
+    del _include_defs__imported
+    return ret
+
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    return include_defs('{}/{}.py'.format(
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ))
+
+
+Rule = import_macro_lib('rule').Rule
+target = import_macro_lib('target')
+fbcode_target = import_macro_lib('fbcode_target')
+core_tools = import_macro_lib('core_tools')
+build_info = import_macro_lib('build_info')
+RootRuleTarget = fbcode_target.RootRuleTarget
+RuleTarget = fbcode_target.RuleTarget
+ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 
 
 SANITIZERS = {
@@ -750,7 +769,7 @@ class Converter(object):
             """ Process PyFI overrides """
             pyfi_overrides_path = self._context.config.get_pyfi_overrides_path()
             if pyfi_overrides_path:
-                include_defs(pyfi_overrides_path, "overrides")
+                overrides = include_defs(pyfi_overrides_path)
                 if platform in overrides.PYFI_SUPPORTED_PLATFORMS:
                     deps = [overrides.PYFI_OVERRIDES.get(d.base_path, d) for d in deps]
 
@@ -1351,10 +1370,7 @@ class Converter(object):
 
         sanitizer = SANITIZERS[sanitizer]
         deps = [
-            RootRuleTarget(
-              'tools/build/sanitizers',
-              '{}-cpp'.format(sanitizer),
-            ),
+            RootRuleTarget('tools/build/sanitizers', '{}-cpp'.format(sanitizer)),
         ]
 
         return deps
@@ -1804,3 +1820,58 @@ class Converter(object):
 
     def convert(self, base_path, **kwargs):
         raise NotImplementedError()
+
+    @property
+    def typing_config_target(self):
+        return self._context.config.get_python_typing_config_tool()
+
+    def gen_typing_config(
+        self,
+        target_name,
+        base_path='',
+        srcs=(),
+        deps=(),
+        typing=False,
+        typing_options=''
+    ):
+        """
+        Generate typing configs, and gather those for our deps
+        """
+        typing_config = self.typing_config_target
+        name = target_name + '-typing'
+        cmds = []
+        for dep in deps:
+            cmds.append(
+                'rsync -a $(location {}-typing)/ "$OUT"'.format(dep)
+            )
+
+        if typing:
+            src_prefix = base_path.replace('.', '/')
+            file_name = os.path.join(src_prefix, target_name)
+            cmds.append('mkdir -p `dirname $OUT/{}`'.format(file_name))
+            # We should support generated sources at some pointa
+            # If srcs is a dict then we should use the values
+            if isinstance(srcs, dict):
+                srcs = srcs.values()
+
+            srcs = (
+                os.path.join(
+                    src_prefix,
+                    src if src[0] not in '@/:' else os.path.basename(src)
+                )
+                for src in srcs
+            )
+            cmd = '$(exe {}) part '.format(typing_config)
+            if typing_options:
+                cmd += '--options="{}" '.format(typing_options)
+            cmd += '$OUT/{} {}'.format(file_name, ' '.join(srcs))
+            cmds.append(cmd)
+
+        if not cmds:
+            cmds.append('echo')
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = name
+        attrs['out'] = os.curdir
+        attrs['cmd'] = '\n'.join(cmds)
+        return Rule('genrule', attrs)

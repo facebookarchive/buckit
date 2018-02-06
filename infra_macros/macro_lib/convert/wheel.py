@@ -17,9 +17,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-import os
-import re
+with allow_unsafe_import():  # noqa: magic
+    import collections
+    import os
+    import re
 
 
 def import_macro_lib(path):
@@ -93,6 +94,9 @@ class PyWheelDefault(base.Converter):
             ('^{}$'.format(re.escape(py_platform)), [':' + version])
             for py_platform, version in sorted(platform_versions.items())
         ]
+        # TODO: Figure out how to handle typing info from wheels
+        if self.typing_config_target:
+            yield self.gen_typing_config(attrs['name'])
         yield Rule('python_library', attrs)
 
     def convert(self, base_path, platform_versions):
@@ -160,6 +164,9 @@ class PyWheel(base.Converter):
         if tests:
             attrs['tests'] = tests
 
+        # TODO: Figure out how to handle typing info from wheels
+        if self.typing_config_target:
+            yield self.gen_typing_config(attrs['name'])
         yield Rule('python_library', attrs)
 
     def get_allowed_args(self):

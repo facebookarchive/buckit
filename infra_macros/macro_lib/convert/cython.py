@@ -304,6 +304,7 @@ class Converter(base.Converter):
         base_path,
         package,
         types,
+        typing_options,
     ):
         name = parent + self.TYPING_SUFFIX
         return ':' + name, self.python_library.convert(
@@ -311,6 +312,8 @@ class Converter(base.Converter):
             base_path=base_path,
             base_module=package,
             srcs=types,
+            typing=True,
+            typing_options=','.join(['warn_incomplete_stub', typing_options]),
         )
 
     def py_normalize_externals(self, external_deps):
@@ -448,6 +451,7 @@ class Converter(base.Converter):
         python_external_deps=(),
         gen_stub=False,
         types=(),
+        typing_options='',
         tests=(),
         visibility=(),
     ):
@@ -575,7 +579,7 @@ class Converter(base.Converter):
 
             if types:
                 typing_target, typing_rules = self.gen_typing_target(
-                    name, base_path, package, types
+                    name, base_path, package, types, typing_options
                 )
                 for rule in typing_rules:
                     yield set_visibility(rule)
@@ -594,6 +598,19 @@ class Converter(base.Converter):
                 deps=[':' + name + self.LIB_SUFFIX],
             ):
                 yield set_tests(set_visibility(rule))
+
+        # Generate a typing_config target to gather up all types for us and
+        # our deps
+        if self.typing_config_target:
+            if types:
+                tdeps = itertools.chain(
+                    python_deps,
+                    deps,
+                    [':{}{}'.format(name, self.TYPING_SUFFIX)]
+                )
+            else:
+                tdeps = itertools.chain(python_deps, deps)
+            yield self.gen_typing_config(name, deps=tdeps)
 
         # Generate the cython-lib target for allowing cython_libraries
         # to depend on other cython_libraries and inherit their cpp_deps
@@ -632,6 +649,7 @@ class Converter(base.Converter):
             'srcs',
             'tests',
             'types',
+            'typing_options',
             'visibility',
 
         }

@@ -757,6 +757,7 @@ class PythonConverter(base.Converter):
         check_types=False,
         preload_deps=(),
         jemalloc_conf=None,
+        typing_options='',
     ):
         rules = []
         dependencies = []
@@ -936,7 +937,7 @@ class PythonConverter(base.Converter):
                 raise ValueError(
                     'parameter `check_types` is only supported on Python 3.'
                 )
-            rules.append(
+            rules.extend(
                 self.create_typecheck(
                     name,
                     main_module,
@@ -946,6 +947,7 @@ class PythonConverter(base.Converter):
                     dependencies,
                     platform_deps,
                     out_preload_deps,
+                    typing_options,
                 ),
             )
             attributes['tests'] = (
@@ -1005,10 +1007,13 @@ class PythonConverter(base.Converter):
         preload_deps=(),
         visibility=None,
         jemalloc_conf=None,
+        typing=False,
+        typing_options='',
+        check_types_options='',
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
-            library = self.create_library(
+            yield self.create_library(
                 base_path,
                 name,
                 base_module=base_module,
@@ -1020,7 +1025,17 @@ class PythonConverter(base.Converter):
                 external_deps=external_deps,
                 visibility=visibility,
             )
-            return [library]
+            if self.typing_config_target:
+
+                yield self.gen_typing_config(
+                    name,
+                    base_module if base_module is not None else base_path,
+                    srcs,
+                    [self.convert_build_target(base_path, dep) for dep in deps],
+                    typing,
+                    typing_options,
+                )
+            return
 
         # For binary rules, create a separate library containing the sources.
         # This will be added as a dep for python binaries and merged in for
@@ -1033,7 +1048,6 @@ class PythonConverter(base.Converter):
                 python_version = self.get_python_version(py_ver)
                 new_name = name + '-' + python_version
                 versions[py_ver] = new_name
-        rules = []
         rule_names = []
         for py_ver, py_name in sorted(versions.items()):
             library = self.create_library(
@@ -1047,6 +1061,15 @@ class PythonConverter(base.Converter):
                 tests=tests,
                 external_deps=external_deps,
             )
+            if self.typing_config_target:
+                yield self.gen_typing_config(
+                    py_name + '-library',
+                    base_module if base_module is not None else base_path,
+                    srcs,
+                    [self.convert_build_target(base_path, dep) for dep in deps],
+                    typing or check_types,
+                    typing_options
+                )
             one_set_rules = self.create_binary(
                 base_path,
                 py_name,
@@ -1070,8 +1093,10 @@ class PythonConverter(base.Converter):
                 check_types=check_types,
                 preload_deps=preload_deps,
                 jemalloc_conf=jemalloc_conf,
+                typing_options=check_types_options,
             )
-            rules.extend(one_set_rules)
+            for rule in one_set_rules:
+                yield rule
             rule_names.append(':' + py_name)
 
         # If we only have one then we don't need the genrule
@@ -1088,9 +1113,7 @@ class PythonConverter(base.Converter):
             for test in rule_names:
                 cmds.append('echo $(location {})'.format(test))
             attrs['cmd'] = ' && '.join(cmds)
-            rules.append(Rule('genrule', attrs))
-
-        return rules
+            yield Rule('genrule', attrs)
 
     def create_typecheck(
         self,
@@ -1102,11 +1125,18 @@ class PythonConverter(base.Converter):
         deps,
         platform_deps,
         preload_deps,
+        typing_options,
     ):
+
+        typing_config = self.typing_config_target
+
         typecheck_deps = deps[:]
         if ':python_typecheck-library' not in typecheck_deps:
             # Buck doesn't like duplicate dependencies.
             typecheck_deps.append('//libfb/py:python_typecheck-library')
+
+        if not typing_config:
+            typecheck_deps.append('//python/typeshed_internal:global_mypy_ini')
 
         attrs = collections.OrderedDict((
             ('name', name + '-typecheck'),
@@ -1123,7 +1153,7 @@ class PythonConverter(base.Converter):
              self.get_version_universe(self.get_py3_version())),
         ))
 
-        if ':' + library.attributes['name'] not in typecheck_deps:
+        if library.target_name not in typecheck_deps:
             # If the passed library is not a dependency, add its sources here.
             # This enables python_unittest targets to be type-checked, too.
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
@@ -1137,7 +1167,27 @@ class PythonConverter(base.Converter):
             # python_typecheck know where to start type checking the program.
             attrs['env'] = {"PYTHON_TYPECHECK_ENTRY_POINT": main_module}
 
-        return Rule('python_test', attrs)
+        if typing_config:
+            conf = collections.OrderedDict()
+            conf['name'] = name + '-typing=mypy.ini'
+            conf['out'] = os.curdir
+            cmd = '$(exe {}) gather '.format(typing_config)
+            if typing_options:
+                cmd += '--options="{}" '.format(typing_options)
+            cmd += '$(location {}-typing) $OUT'.format(library.target_name)
+            conf['cmd'] = cmd
+            conf['out'] = 'mypy.ini'
+            gen_rule = Rule('genrule', conf)
+            yield gen_rule
+            conf = collections.OrderedDict()
+            conf['name'] = name + '-mypy_ini'
+            conf['base_module'] = ''
+            conf['srcs'] = [gen_rule.target_name]
+            mypy_ini = Rule('python_library', conf)
+            yield mypy_ini
+            typecheck_deps.append(mypy_ini.target_name)
+
+        yield Rule('python_test', attrs)
 
     def create_monkeytype_rules(
         self,

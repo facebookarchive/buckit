@@ -15,18 +15,28 @@ from __future__ import unicode_literals
 import collections
 import pipes
 
-with allow_unsafe_import():
+with allow_unsafe_import():  # noqa: magic
     import os
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
-include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
+
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
+
+
+base = import_macro_lib('convert/base')
+cpp = import_macro_lib('convert/cpp')
+Rule = import_macro_lib('rule').Rule
+target = import_macro_lib('fbcode_target')
+RootRuleTarget = target.RootRuleTarget
+RuleTarget = target.RuleTarget
+ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 
 
 FLAGS = [
@@ -215,8 +225,6 @@ class PythonSwigConverter(SwigLangConverter):
             py_base_module=None,
             **kwargs):
 
-        rules = []
-
         # Build the C/C++ python extension from the generated C/C++ sources.
         out_compiler_flags = []
         # Generated code uses a lot of shadowing, so disable GCC warnings
@@ -225,27 +233,25 @@ class PythonSwigConverter(SwigLangConverter):
             out_compiler_flags.append('-Wno-shadow')
             out_compiler_flags.append('-Wno-shadow-local')
             out_compiler_flags.append('-Wno-shadow-compatible-local')
-        rules.extend(
-            self._cpp_python_extension_converter.convert(
-                    base_path,
-                    name=name + '-ext',
-                    srcs=[src],
-                    base_module=py_base_module,
-                    module_name='_' + module,
-                    compiler_flags=out_compiler_flags,
-                    # This is pretty gross.  We format the deps just to get
-                    # re-parsed by the C/C++ converter.  Long-term, it'd be
-                    # be nice to support a better API in the converters to
-                    # handle higher-leverl objects, but for now we're stuck
-                    # doing this to re-use other converters.
-                    deps=
-                        self.format_deps(
-                            [d for d in cpp_deps if d.repo is None]),
-                    external_deps=
-                        [(d.repo, d.base_path, None, d.name)
-                         for d in cpp_deps
-                         if d.repo is not None]))
-
+        for rule in self._cpp_python_extension_converter.convert(
+            base_path,
+            name=name + '-ext',
+            srcs=[src],
+            base_module=py_base_module,
+            module_name='_' + module,
+            compiler_flags=out_compiler_flags,
+            # This is pretty gross.  We format the deps just to get
+            # re-parsed by the C/C++ converter.  Long-term, it'd be
+            # be nice to support a better API in the converters to
+            # handle higher-leverl objects, but for now we're stuck
+            # doing this to re-use other converters.
+            deps=self.format_deps([d for d in cpp_deps if d.repo is None]),
+            external_deps=[
+                (d.repo, d.base_path, None, d.name)
+                for d in cpp_deps if d.repo is not None
+            ],
+        ):
+            yield rule
         # Generate the wrapping python library.
         attrs = collections.OrderedDict()
         attrs['name'] = name
@@ -256,9 +262,11 @@ class PythonSwigConverter(SwigLangConverter):
         attrs['deps'] = out_deps
         if py_base_module is not None:
             attrs['base_module'] = py_base_module
-        rules.append(Rule('python_library', attrs))
-
-        return rules
+        # At some point swig targets should also include typing Options
+        # For now we just need an empty directory.
+        if self.typing_config_target:
+            yield self.gen_typing_config(name)
+        yield Rule('python_library', attrs)
 
 
 class SwigLibraryConverter(base.Converter):

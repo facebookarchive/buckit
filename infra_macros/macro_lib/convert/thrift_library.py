@@ -1566,8 +1566,16 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             out_deps.append(':' + self.get_pyi_dependency(name))
 
         attrs['deps'] = out_deps
-
-        return [Rule('python_library', attrs)]
+        if self.typing_config_target:
+            base_module = attrs['base_module']
+            yield self.gen_typing_config(
+                attrs['name'],
+                base_module if base_module is not None else base_path,
+                attrs['srcs'],
+                out_deps,
+                typing=True
+            )
+        yield Rule('python_library', attrs)
 
 
 class OCamlThriftConverter(ThriftLangConverter):
@@ -2034,7 +2042,6 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             '$(exe //tupperware/thriftdoc/validator:generate_thriftdoc_ast)'
         source_suffix = '=gen-json_experimental'
 
-        rules = []
         py_library_srcs = {}
 
         # `sources_map` has genrules that produce `json_experimental`
@@ -2077,7 +2084,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             py_library_srcs[output_file] = thriftdoc_rule
 
             assert thriftdoc_rule.startswith(':')
-            rules.append(Rule('genrule', collections.OrderedDict(
+            yield Rule('genrule', collections.OrderedDict(
                 name=thriftdoc_rule[1:],  # Get rid of the initial ':',
                 out=self.AST_FILE,
                 srcs=[json_experimental_rule],
@@ -2087,16 +2094,16 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
                     # will get an unknown positional arg, and fail loudly.
                     generator_binary + ' --format py > "$OUT" < "$SRCS"/*',
                 ]),
-            )))
-
-        rules.append(Rule('python_library', collections.OrderedDict(
+            ))
+        if self.typing_config_target:
+            yield self.gen_typing_config(name)
+        yield Rule('python_library', collections.OrderedDict(
             name=name,
             # tupperware.thriftdoc.validator.registry recursively loads this:
             base_module='tupperware.thriftdoc.generated_asts',
             srcs=self.convert_source_map(base_path, py_library_srcs),
             deps=deps,
-        )))
-        return rules
+        ))
 
 
 RUST_KEYWORDS = {
