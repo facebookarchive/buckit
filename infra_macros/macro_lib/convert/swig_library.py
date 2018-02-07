@@ -413,7 +413,7 @@ class SwigLibraryConverter(base.Converter):
         gen_hdr_name = gen_name + '=' + hdr
         rules.append(
             self.copy_rule(
-                '$(location-platform :{})/gen/{}'.format(gen_name, hdr),
+                '$(location :{})/gen/{}'.format(gen_name, hdr),
                 gen_hdr_name,
                 hdr,
                 propagate_versions=True))
@@ -421,7 +421,7 @@ class SwigLibraryConverter(base.Converter):
         gen_src_name = gen_name + '=' + src
         rules.append(
             self.copy_rule(
-                '$(location-platform :{})/gen/{}'.format(gen_name, src),
+                '$(location :{})/gen/{}'.format(gen_name, src),
                 gen_src_name,
                 src,
                 propagate_versions=True))
