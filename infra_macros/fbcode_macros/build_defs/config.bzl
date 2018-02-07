@@ -360,6 +360,13 @@ def _get_thrift2_compiler():
     )
 
 
+def _get_thrift_deprecated_apache_compiler():
+    """
+    The target for the apache thrift compiler
+    """
+    return read_facebook_internal_string("thrift", "deprecated_apache_compiler", "")
+
+
 def _get_thrift_hs2_compiler():
     """
     The target for the haskell thrift compiler
@@ -478,6 +485,7 @@ config = struct(
     get_third_party_use_platform_subdir=_get_third_party_use_platform_subdir,
     get_third_party_use_tools_subdir=_get_third_party_use_tools_subdir,
     get_thrift2_compiler=_get_thrift2_compiler,
+    get_thrift_deprecated_apache_compiler=_get_thrift_deprecated_apache_compiler,
     get_thrift_compiler=_get_thrift_compiler,
     get_thrift_hs2_compiler=_get_thrift_hs2_compiler,
     get_thrift_ocaml_compiler=_get_thrift_ocaml_compiler,

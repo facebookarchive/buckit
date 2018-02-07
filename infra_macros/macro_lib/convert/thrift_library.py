@@ -1045,27 +1045,16 @@ class HaskellThriftConverter(ThriftLangConverter):
         return [Rule('haskell_library', attrs)]
 
 
-class JavaDeprecatedThriftConverter(ThriftLangConverter):
+class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
     """
-    Specializer to support generating Java libraries from thrift sources.
+    Specializer to support generating Java libraries from thrift sources
+    using plain fbthrift or Apache Thrift.
     """
 
     def __init__(self, context, *args, **kwargs):
-        super(JavaDeprecatedThriftConverter, self).__init__(
+        super(JavaDeprecatedThriftBaseConverter, self).__init__(
             context, *args, **kwargs)
         self._java_library_converter = java.JavaLibraryConverter(context)
-
-    # DO NOT USE
-    # This was an initial attempt to build without some of the supporting
-    # fbcode infrastructure. For now, it is present to help with developers
-    # using this legacy workflow, but it is unsupported.
-    def get_compiler(self):
-        return self.read_string(
-            'thrift', 'compiler',
-            super(JavaDeprecatedThriftConverter, self).get_compiler())
-
-    def get_lang(self):
-        return 'javadeprecated'
 
     def get_compiler_lang(self):
         return 'java'
@@ -1113,8 +1102,7 @@ class JavaDeprecatedThriftConverter(ThriftLangConverter):
         # the thrift library.
         out_deps = []
         out_deps.extend(deps)
-        out_deps.append('//thrift/lib/java:thrift')
-        out_deps.append('//third-party-java/org.slf4j:slf4j-api')
+        out_deps.extend(self._get_runtime_dependencies())
         rules.extend(self._java_library_converter.convert(
             base_path,
             name=name,
@@ -1123,6 +1111,70 @@ class JavaDeprecatedThriftConverter(ThriftLangConverter):
             maven_coords=java_thrift_maven_coords))
 
         return rules
+
+
+class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
+    """
+    Specializer to support generating Java libraries from thrift sources
+    using fbthrift.
+    """
+
+    def __init__(self, context, *args, **kwargs):
+        super(JavaDeprecatedThriftConverter, self).__init__(
+            context, *args, **kwargs)
+
+    def get_compiler(self):
+        return self.read_string(
+            'thrift', 'compiler',
+            super(JavaDeprecatedThriftConverter, self).get_compiler())
+
+    def get_lang(self):
+        return 'javadeprecated'
+
+    def _get_runtime_dependencies(self):
+        return [
+            '//thrift/lib/java:thrift',
+            '//third-party-java/org.slf4j:slf4j-api',
+        ]
+
+
+class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
+    """
+    Specializer to support generating Java libraries from thrift sources
+    using the Apache Thrift compiler.
+    """
+
+    def __init__(self, context, *args, **kwargs):
+        super(JavaDeprecatedApacheThriftConverter, self).__init__(
+            context, *args, **kwargs)
+
+    def get_lang(self):
+        return 'javadeprecated-apache'
+
+    def get_compiler(self):
+        return self._context.config.get_thrift_deprecated_apache_compiler()
+
+    def get_compiler_command(
+            self,
+            compiler,
+            compiler_args,
+            includes):
+        cmd = []
+        cmd.append('$(exe {})'.format(compiler))
+        cmd.extend(compiler_args)
+        cmd.append('-I')
+        cmd.append(
+            '$(location {})'.format(includes))
+        cmd.append('-o')
+        cmd.append('"$OUT"')
+        cmd.append('"$SRCS"')
+        return cmd
+
+    def _get_runtime_dependencies(self):
+        return [
+            '//third-party-java/org.apache.thrift:libthrift',
+            '//third-party-java/org.slf4j:slf4j-api',
+        ]
 
 
 class JsThriftConverter(ThriftLangConverter):
@@ -2309,6 +2361,7 @@ class ThriftLibraryConverter(base.Converter):
         ]
         if use_internal_java_converters:
             converters += [
+                JavaDeprecatedApacheThriftConverter(context),
                 JavaDeprecatedThriftConverter(context),
                 JavaSwiftConverter(context),
             ]
