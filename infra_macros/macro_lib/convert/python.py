@@ -570,16 +570,12 @@ class PythonConverter(base.Converter):
         """
         Associated Targets are buck rules that need to be built, when This
         target is built, but are not a code dependency. Which is why we
-        wrap them in a genrule so they could never be a code dependency
+        wrap them in a cxx_library so they could never be a code dependency
         """
         attrs = collections.OrderedDict()
-        attrs['name'] = name + '_build_also'
-        attrs['out'] = os.curdir
-        cmds = []
-        for target in targets:
-            cmds.append('echo $(location {})'.format(target))
-        attrs['cmd'] = ' && '.join(cmds)
-        return Rule('genrule', attrs)
+        attrs['name'] = name + '-build_also'
+        attrs['deps'] = targets
+        return Rule('cxx_library', attrs)
 
     def create_library(
         self,
