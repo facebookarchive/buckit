@@ -205,7 +205,7 @@ class ThriftLangConverter(base.Converter):
             cmd.append('--python-compiler')
             cmd.append('$(query_outputs "{}")'.format(additional_compiler))
         cmd.append('"$SRCS"')
-        return cmd
+        return ' '.join(cmd)
 
     def get_generated_sources(
             self,
@@ -1128,6 +1128,22 @@ class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
             'thrift', 'compiler',
             super(JavaDeprecatedThriftConverter, self).get_compiler())
 
+    def get_compiler_command(
+            self,
+            compiler,
+            compiler_args,
+            includes):
+        check_cmd = ' '.join([
+            '$(exe //tools/build/buck/java:check_thrift_flavor)',
+            'fb',
+            '$SRCS',
+        ])
+
+        return '{} && {}'.format(
+            check_cmd,
+            super(JavaDeprecatedThriftBaseConverter, self).get_compiler_command(
+                compiler, compiler_args, includes))
+
     def get_lang(self):
         return 'javadeprecated'
 
@@ -1159,6 +1175,12 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
             compiler,
             compiler_args,
             includes):
+        check_cmd = ' '.join([
+            '$(exe //tools/build/buck/java:check_thrift_flavor)',
+            'apache',
+            '$SRCS',
+        ])
+
         cmd = []
         cmd.append('$(exe {})'.format(compiler))
         cmd.extend(compiler_args)
@@ -1168,7 +1190,8 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
         cmd.append('-o')
         cmd.append('"$OUT"')
         cmd.append('"$SRCS"')
-        return cmd
+
+        return check_cmd + ' && ' + ' '.join(cmd)
 
     def _get_runtime_dependencies(self):
         return [
@@ -1304,7 +1327,7 @@ class JavaSwiftConverter(ThriftLangConverter):
         # the convention in the fbthrift generator
         cmd.append('"$OUT"{}'.format('/gen-swift'))
         cmd.append('"$SRCS"')
-        return cmd
+        return ' '.join(cmd)
 
     def get_generated_sources(
             self,
@@ -2531,11 +2554,10 @@ class ThriftLibraryConverter(base.Converter):
         cmds = []
 
         cmds.append(
-            ' '.join(
-                self._converters[lang].get_compiler_command(
-                    compiler,
-                    compiler_args,
-                    self.get_exported_include_tree(':' + name))))
+            self._converters[lang].get_compiler_command(
+                compiler,
+                compiler_args,
+                self.get_exported_include_tree(':' + name)))
 
         if postprocess_cmd is not None:
             cmds.append(postprocess_cmd)
