@@ -566,6 +566,21 @@ class PythonConverter(base.Converter):
             ['inplace', 'standalone'],
             'standalone')
 
+    def gen_associated_targets(self, name, targets):
+        """
+        Associated Targets are buck rules that need to be built, when This
+        target is built, but are not a code dependency. Which is why we
+        wrap them in a genrule so they could never be a code dependency
+        """
+        attrs = collections.OrderedDict()
+        attrs['name'] = name + '_build_also'
+        attrs['out'] = os.curdir
+        cmds = []
+        for target in targets:
+            cmds.append('echo $(location {})'.format(target))
+        attrs['cmd'] = ' && '.join(cmds)
+        return Rule('genrule', attrs)
+
     def create_library(
         self,
         base_path,
@@ -578,6 +593,7 @@ class PythonConverter(base.Converter):
         tests=[],
         external_deps=[],
         visibility=None,
+        cpp_deps=(),
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -715,6 +731,8 @@ class PythonConverter(base.Converter):
         for target in deps:
             dependencies.append(
                 self.convert_build_target(base_path, target))
+        if cpp_deps:
+            dependencies.extend(cpp_deps)
         if dependencies:
             attributes['deps'] = dependencies
 
@@ -758,6 +776,7 @@ class PythonConverter(base.Converter):
         preload_deps=(),
         jemalloc_conf=None,
         typing_options='',
+        runtime_deps=(),
     ):
         rules = []
         dependencies = []
@@ -959,6 +978,11 @@ class PythonConverter(base.Converter):
                 dependencies = []
             dependencies.append('//python:fbtestmain')
 
+        if runtime_deps:
+            rule = self.gen_associated_targets(name, runtime_deps)
+            dependencies.append(rule.target_name)
+            rules.append(rule)
+
         if dependencies:
             attributes['deps'] = dependencies
 
@@ -1010,9 +1034,27 @@ class PythonConverter(base.Converter):
         typing=False,
         typing_options='',
         check_types_options='',
+        runtime_deps=(),
+        cpp_deps=(),  # ctypes targets
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
+            if self.typing_config_target:
+
+                yield self.gen_typing_config(
+                    name,
+                    base_module if base_module is not None else base_path,
+                    srcs,
+                    [self.convert_build_target(base_path, dep) for dep in deps],
+                    typing,
+                    typing_options,
+                )
+
+            if runtime_deps:
+                rule = self.gen_associated_targets(name, runtime_deps)
+                deps = list(deps) + [rule.target_name]
+                yield rule
+
             yield self.create_library(
                 base_path,
                 name,
@@ -1024,17 +1066,9 @@ class PythonConverter(base.Converter):
                 tests=tests,
                 external_deps=external_deps,
                 visibility=visibility,
+                cpp_deps=cpp_deps,
             )
-            if self.typing_config_target:
 
-                yield self.gen_typing_config(
-                    name,
-                    base_module if base_module is not None else base_path,
-                    srcs,
-                    [self.convert_build_target(base_path, dep) for dep in deps],
-                    typing,
-                    typing_options,
-                )
             return
 
         # For binary rules, create a separate library containing the sources.
@@ -1060,6 +1094,7 @@ class PythonConverter(base.Converter):
                 deps=deps,
                 tests=tests,
                 external_deps=external_deps,
+                cpp_deps=cpp_deps,
             )
             if self.typing_config_target:
                 yield self.gen_typing_config(
@@ -1094,6 +1129,7 @@ class PythonConverter(base.Converter):
                 preload_deps=preload_deps,
                 jemalloc_conf=jemalloc_conf,
                 typing_options=check_types_options,
+                runtime_deps=runtime_deps,
             )
             for rule in one_set_rules:
                 yield rule
