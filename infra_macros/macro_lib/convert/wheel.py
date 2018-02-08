@@ -80,17 +80,20 @@ class PyWheelDefault(base.Converter):
         # platform deps onto "error" rules that will fail at build time.
         platform_versions = collections.OrderedDict(platform_versions)
         for platform in self.get_platforms():
-            for py_platform in (
-                    self.get_py3_platform(platform),
-                    self.get_py2_platform(platform)):
-                if py_platform not in platform_versions:
-                    msg = (
-                        '{}: wheel does not exist for python platform "{}"'
-                        .format(name, py_platform))
-                    error_name = '{}-{}-error'.format(name, py_platform)
-                    for rule in self.create_error_rules(error_name, msg):
-                        yield rule
-                    platform_versions[py_platform] = error_name
+            py2_plat = self.get_py2_platform(platform)
+            py3_plat = self.get_py3_platform(platform)
+            present_for_any_python_version = (
+                py2_plat in platform_versions or py3_plat in platform_versions
+            )
+            if not present_for_any_python_version:
+                msg = (
+                    '{}: wheel does not exist for platform "{}"'
+                    .format(name, platform))
+                error_name = '{}-{}-error'.format(name, platform)
+                for rule in self.create_error_rules(error_name, msg):
+                    yield rule
+                platform_versions[py2_plat] = error_name
+                platform_versions[py3_plat] = error_name
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
