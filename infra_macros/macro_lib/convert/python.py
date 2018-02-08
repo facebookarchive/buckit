@@ -740,9 +740,14 @@ class PythonConverter(base.Converter):
         if external_deps:
             attributes['platform_deps'] = (
                 self.format_platform_deps(
-                    self.to_platform_param(
-                        [self.normalize_external_dep(d, lang_suffix='-py')
-                         for d in external_deps])))
+                    # We support the auxiliary versions hack for neteng/Django.
+                    self.convert_auxiliary_deps(
+                        self.to_platform_param(
+                            [self.normalize_external_dep(
+                                 dep,
+                                 lang_suffix='-py',
+                                 parse_version=True)
+                             for dep in external_deps]))))
 
         return Rule('python_library', attributes)
 

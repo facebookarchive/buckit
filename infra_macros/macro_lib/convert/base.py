@@ -389,10 +389,6 @@ class Converter(object):
         conf = self._context.third_party_config['platforms'][platform]
         return LooseVersion(conf['tools']['projects'][project])
 
-    def get_auxiliary_versions(self):
-        config = self.get_third_party_config(self.get_default_platform())
-        return config['build']['auxiliary_versions']
-
     def get_target(self, repo, path, name):
         """
         Return the target for a given cell, path, and target name
@@ -472,7 +468,11 @@ class Converter(object):
 
         return [self.get_dep_target(d, platform=platform) for d in deps]
 
-    def normalize_external_dep(self, raw_target, lang_suffix=''):
+    def normalize_external_dep(
+            self,
+            raw_target,
+            lang_suffix='',
+            parse_version=False):
         """
         Normalize the various ways users can specify an external dep into a
         RuleTarget
@@ -487,16 +487,38 @@ class Converter(object):
         if parsed.repo is None:
             parsed = parsed._replace(repo=parsed.base_path)
 
-        # If the parsed version for this project is listed as an auxiliary
-        # version in the config, then redirect this dep to use the alternate
-        # project name it's installed as.
-        project = os.path.basename(parsed.base_path)
-        if (version is not None and
-                version in self.get_auxiliary_versions().get(project, [])):
-            parsed = (
-                parsed._replace(base_path=parsed.base_path + '-' + version))
+        return parsed if not parse_version else (parsed, version)
 
-        return parsed
+    def convert_auxiliary_deps(self, platform_deps):
+        """
+        Perform auxiliary dep processing on the given map of platforms to
+        (`RuleTarget`, version) tuples.
+        """
+
+        processed = collections.OrderedDict()
+
+        for platform, deps in platform_deps.items():
+
+            # Load the auxiliary version list from the config.
+            config = self.get_third_party_config(platform)
+            aux_versions = config['build']['auxiliary_versions']
+
+            processed_deps = []
+
+            for dep, vers in deps:
+
+                # If the parsed version for this project is listed as an
+                # auxiliary version in the config, then redirect this dep to
+                # use the alternate project name it's installed as.
+                proj = os.path.basename(dep.base_path)
+                if vers is not None and vers in aux_versions.get(proj, []):
+                    dep = dep._replace(base_path=dep.base_path + '-' + vers)
+
+                processed_deps.append(dep)
+
+            processed[platform] = processed_deps
+
+        return processed
 
     def convert_external_build_target(self, target, lang_suffix=''):
         """
