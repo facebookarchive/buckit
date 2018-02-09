@@ -3,6 +3,12 @@
 # `tests/test_subvolume_garbage_collector.py` uses this fake in order to
 # avoid instantiating actual btrfs subvolumes to delete.
 
+# Lets us test that the sudo override is working instead of failing later.
+if [[ "$*" == "MAGIC_SENTINEL" ]] ; then
+  echo -n "$*"
+  exit 0
+fi
+
 die() {
   echo "$@" 1>&2
   exit 1

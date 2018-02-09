@@ -5,6 +5,7 @@ import os
 import unittest
 import tempfile
 import subvolume_garbage_collector as sgc
+import subprocess
 
 
 class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
@@ -22,6 +23,14 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             os.path.dirname(os.path.dirname(__file__)), 'fake_sudo/'
         )
         os.environ['PATH'] = f'{fake_sudo_path}:{self._old_path}'
+
+        # Ensure the sudo override worked, so we don't mysteriously fail later.
+        fake_sudo_file = os.path.join(fake_sudo_path, 'sudo')
+        self.assertTrue(os.path.exists(fake_sudo_file), fake_sudo_file)
+        self.assertEqual(
+            b'MAGIC_SENTINEL',
+            subprocess.check_output(['sudo', 'MAGIC_SENTINEL']),
+        )
 
     def _touch(self, *path):
         with open(os.path.join(*path), 'a'):

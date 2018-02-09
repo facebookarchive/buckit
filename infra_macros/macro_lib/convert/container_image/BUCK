@@ -69,6 +69,7 @@ python_unittest(
         1.0,
         ":subvolume_garbage_collector",
     )],
+    par_style = "zip",  # "fastzip" won't work because of `fake_sudo.sh`
     deps = [
         ":fake_sudo",
         ":subvolume_garbage_collector",
