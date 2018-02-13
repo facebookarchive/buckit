@@ -1890,6 +1890,12 @@ class Converter(object):
         name = target_name + '-typing'
         cmds = []
         for dep in deps:
+            # Experimental has visibility restricted, just skip them
+            if dep.startswith('//experimental'):
+                continue
+            # not in fbcode don't follow out ex: xplat//target
+            if not dep.startswith(('//', ':')):
+                continue
             cmds.append(
                 'rsync -a $(location {}-typing)/ "$OUT"'.format(dep)
             )
