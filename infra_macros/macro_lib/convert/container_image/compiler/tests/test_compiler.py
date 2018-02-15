@@ -74,7 +74,9 @@ class CompilerTestCase(unittest.TestCase):
                 if tuple(cmd[-len(subcommand):]) == subcommand:
                     last_subcommand = subcommand
                     break
-            self.assertIsNot(None, last_subcommand, f'{expected_subcommands} {cmd}')
+            self.assertIsNot(
+                None, last_subcommand, f'{expected_subcommands} {cmd}'
+            )
             expected_subcommands.remove(last_subcommand)
             del cmd[-len(last_subcommand):]
 
