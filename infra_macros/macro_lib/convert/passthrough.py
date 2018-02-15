@@ -20,6 +20,12 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 
 
+SUPPORT_PYTHON_TYPING = {
+    'buck_python_library',
+    'export_file',
+}
+
+
 class PassthroughConverter(base.Converter):
     """
     Passthrough rules as-is.
@@ -77,4 +83,7 @@ class PassthroughConverter(base.Converter):
         attributes = collections.OrderedDict()
         attributes.update(self._default_attrs)
         attributes.update(kwargs)
-        return [Rule(self.get_buck_rule_type(), attributes)]
+        if self.get_fbconfig_rule_type() in SUPPORT_PYTHON_TYPING:
+            if self.typing_config_target:
+                yield self.gen_typing_config(attributes['name'])
+        yield Rule(self.get_buck_rule_type(), attributes)
