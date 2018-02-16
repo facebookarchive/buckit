@@ -440,7 +440,8 @@ class Project:
     """
 
     def __init__(
-        self, remove_files=True, add_fbcode_macros_cell=True, run_buckd=False
+        self, remove_files=True, add_fbcode_macros_cell=True,
+        add_skylib_cell=True, run_buckd=False
     ):
         """
         Create an instance of Project
@@ -450,12 +451,15 @@ class Project:
                           called
             add_fbcode_macros_cell: Whether to create the fbcode_macros cell
                                     when __enter__ is called
+            add_skylib_cell: Whether to create the skylib cell when __enter__
+                             is called
         """
 
         self.root_cell = None
         self.project_path = None
         self.remove_files = remove_files
         self.add_fbcode_macros_cell = add_fbcode_macros_cell
+        self.add_skylib_cell = add_skylib_cell
         self.cells = {}
         self.run_buckd = run_buckd
 
@@ -466,6 +470,8 @@ class Project:
 
         if self.add_fbcode_macros_cell:
             self.add_cell("fbcode_macros")
+        if self.add_skylib_cell:
+            self.add_cell("bazel_skylib")
         return self
 
     def __exit__(self, type, value, traceback):
