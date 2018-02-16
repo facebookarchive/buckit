@@ -743,11 +743,13 @@ class PythonConverter(base.Converter):
                     # We support the auxiliary versions hack for neteng/Django.
                     self.convert_auxiliary_deps(
                         self.to_platform_param(
-                            [self.normalize_external_dep(
-                                 dep,
-                                 lang_suffix='-py',
-                                 parse_version=True)
-                             for dep in external_deps]))))
+                            [
+                                self.normalize_external_dep(
+                                    dep,
+                                    lang_suffix='-py',
+                                    parse_version=True)
+                                for dep in external_deps
+                            ]))))
 
         return Rule('python_library', attributes)
 
@@ -778,6 +780,7 @@ class PythonConverter(base.Converter):
         jemalloc_conf=None,
         typing_options='',
         runtime_deps=(),
+        helper_deps=True,
     ):
         rules = []
         dependencies = []
@@ -932,7 +935,7 @@ class PythonConverter(base.Converter):
         # Generate the interpreter helpers, and add them to our deps. Note that
         # we must do this last, so that the interp rules get the same deps as
         # the main binary which we've built up to this point.
-        if self.should_generate_interp_rules():
+        if helper_deps and self.should_generate_interp_rules():
             interp_deps = list(dependencies)
             if self.is_test(rule_type):
                 rules.extend(self.gen_test_modules(base_path, library))
@@ -1037,6 +1040,7 @@ class PythonConverter(base.Converter):
         check_types_options='',
         runtime_deps=(),
         cpp_deps=(),  # ctypes targets
+        helper_deps=True,
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
@@ -1131,6 +1135,7 @@ class PythonConverter(base.Converter):
                 jemalloc_conf=jemalloc_conf,
                 typing_options=check_types_options,
                 runtime_deps=runtime_deps,
+                helper_deps=helper_deps,
             )
             for rule in one_set_rules:
                 yield rule
