@@ -584,7 +584,7 @@ class TestMethodRenamer(type):
 
 @six.add_metaclass(TestMethodRenamer)
 class TestCase(unittest.TestCase):
-    def assertSuccess(self, result):
+    def assertSuccess(self, result, *expected_results):
         """ Make sure that the command ran successfully """
         self.assertEqual(
             0, result.returncode,
@@ -592,6 +592,14 @@ class TestCase(unittest.TestCase):
                 result.stdout, result.stderr
             )
         )
+        if expected_results:
+            self.assertEqual(list(expected_results), result.debug_lines)
+
+    def assertFailureWithMessage(self, result, expected_message):
+        """ Make sure that we failed with a substring in stderr """
+        # TODO: Test
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(expected_message, result.stderr)
 
     def validateAudit(self, expected_results, result):
         """

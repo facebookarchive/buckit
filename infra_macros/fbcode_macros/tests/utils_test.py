@@ -337,3 +337,39 @@ class UtilsTest(tests.utils.TestCase):
             ret = root.run_audit(["foo/BUCK", "bar/BUCK"])
 
             self.validateAudit(expected, ret)
+
+    def test_assert_success_fails_on_invalid_return(self):
+        with tests.utils.Project(
+            remove_files=True, add_fbcode_macros_cell=True
+        ) as project:
+            root = project.root_cell
+            ret = root.run_unittests([], ['"string1"', '"string3"'])
+            with self.assertRaises(AssertionError):
+                self.assertSuccess(ret, "string1", "string2")
+
+    def test_assert_failure_fails_with_success(self):
+        with tests.utils.Project(
+            remove_files=True, add_fbcode_macros_cell=True
+        ) as project:
+            root = project.root_cell
+            ret = root.run_unittests([], ['"string1"', '"string3"'])
+            with self.assertRaises(AssertionError):
+                self.assertFailureWithMessage(ret, "string1")
+
+    def test_assert_failure_fails_with_bad_message(self):
+        with tests.utils.Project(
+            remove_files=True, add_fbcode_macros_cell=True
+        ) as project:
+            root = project.root_cell
+            ret = root.run_unittests([], ['"string1"', '"string3" +'])
+            with self.assertRaises(AssertionError):
+                self.assertFailureWithMessage(ret, "WTF")
+
+    def test_assert_failure_passes_with_right_message(self):
+        with tests.utils.Project(
+            remove_files=True, add_fbcode_macros_cell=True
+        ) as project:
+            root = project.root_cell
+            ret = root.run_unittests(
+                [], ['"string1"', '"string3"'], 'fail("WTF")')
+            self.assertFailureWithMessage(ret, "WTF")
