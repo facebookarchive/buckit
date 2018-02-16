@@ -324,7 +324,8 @@ class Cell:
         includes,
         statements,
         extra_declarations=None,
-        environment_overrides=None
+        environment_overrides=None,
+        buckfile="BUCK",
     ):
         """
         Evaluate a series of statements, parse their repr from buck, and
@@ -354,6 +355,7 @@ class Cell:
                                    the top of the generated environment when
                                    executing buck. If not provided, then a
                                    generated environment is used.
+            buckfile: The name of the temporary buckfile to write
         Returns:
             A UnitTestResult object that contains the returncode, stdout,
             stderr, of buck audit rules, as well as any deserialized objects
@@ -388,9 +390,9 @@ class Cell:
                 'print("TEST_RESULT: %r" % ({}))\n'.format(statement)
             )
 
-        cmd = ["buck", "audit", "rules", "BUCK"]
+        cmd = ["buck", "audit", "rules", buckfile]
         result = self.run(
-            cmd, {"BUCK": buck_file_content}, environment_overrides
+            cmd, {buckfile: buck_file_content}, environment_overrides
         )
         debug_lines = [
             # Sample line: DEBUG: /Users/user/temp/BUCK:1:1: TEST_RESULT: "hi"
