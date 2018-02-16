@@ -559,12 +559,16 @@ class TestMethodRenamer(type):
             suffixes = getattr(attr, "_function_suffixes", None)
             if callable(attr) and suffixes:
                 for suffix in suffixes:
-                    new_name = name + "_" + suffix
+                    new_name = str(name + "_" + suffix)
                     assert new_name not in newclassdict
 
                     # The extra lambda is so that things get bound properly.
                     def call_with_suffix(s=suffix, a=attr):
-                        return lambda *args, **kwargs: a(s, *args, **kwargs)
+                        def inner(*args, **kwargs):
+                            return a(s, *args, **kwargs)
+
+                        inner.__name__ = new_name
+                        return inner
 
                     newclassdict[new_name] = call_with_suffix()
             else:
