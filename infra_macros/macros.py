@@ -251,14 +251,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
     one or more Buck rules.
     """
 
-    # Ignore rules flagged as fbconfig-only.
-    if kwargs.get('fbconfig_only', False):
-        return
-
-    # Ingore the flag (regarless of value).
-    if 'buck_only' in kwargs:
-        del kwargs['buck_only']
-
     # Wrap the TARGETS rule into a `Rule` object.
     rule = rule_mod.Rule(type=rule_type, attributes=kwargs)
 
