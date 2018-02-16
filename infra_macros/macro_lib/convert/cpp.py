@@ -63,7 +63,6 @@ ASAN_UBSAN_FLAGS = [
     '-fsanitize=undefined',
 
     '-fno-sanitize=alignment',
-    '-fno-sanitize=bounds',
     '-fno-sanitize=enum',
     '-fno-sanitize=float-cast-overflow',
     '-fno-sanitize=function',
