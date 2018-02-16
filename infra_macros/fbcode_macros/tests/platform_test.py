@@ -46,14 +46,16 @@ class PlatformTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_transform_platform_overrides(self, root):
         # This should be a load time error
-        platform_overrides = textwrap.dedent("""\
+        platform_overrides = textwrap.dedent(
+            """\
             platform_overrides = {
                 "fbcode": {
                     "foo/bar": ["gcc5", "gcc5-other"],
                     "foo": ["gcc7"],
                 },
             }
-            """).strip()
+            """
+        ).strip()
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
@@ -81,13 +83,15 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         # This should be a load time error
-        platform_overrides = textwrap.dedent("""\
+        platform_overrides = textwrap.dedent(
+            """\
             platform_overrides = {
                 "fbcode": {
                     "foo/bar": ["gcc5", "invalid-platform"],
                 },
             }
-            """).strip()
+            """
+        ).strip()
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
@@ -109,13 +113,15 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         # This should be a load time error
-        platform_overrides = textwrap.dedent("""\
+        platform_overrides = textwrap.dedent(
+            """\
             platform_overrides = {
                 "fbcode": {
                     "foo/bar": ["gcc5", "gcc7"],
                 },
             }
-            """).strip()
+            """
+        ).strip()
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )

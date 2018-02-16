@@ -38,15 +38,14 @@ python_library(
 )
 
 skylark_integration_test(
-    name = "export_files_test",
-    srcs = ["export_files_test.py"],
+    name = "config_test",
+    srcs = ["config_test.py"],
     deps = [":utils"],
 )
 
 skylark_integration_test(
-    name = "utils_test",
-    srcs = ["utils_test.py"],
-    resources = ["testdata/utils_test/sample.txt"],
+    name = "export_files_test",
+    srcs = ["export_files_test.py"],
     deps = [":utils"],
 )
 
@@ -63,7 +62,8 @@ skylark_integration_test(
 )
 
 skylark_integration_test(
-    name = "config_test",
-    srcs = ["config_test.py"],
+    name = "utils_test",
+    srcs = ["utils_test.py"],
+    resources = ["testdata/utils_test/sample.txt"],
     deps = [":utils"],
 )

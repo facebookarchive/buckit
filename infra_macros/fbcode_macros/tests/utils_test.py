@@ -371,5 +371,6 @@ class UtilsTest(tests.utils.TestCase):
         ) as project:
             root = project.root_cell
             ret = root.run_unittests(
-                [], ['"string1"', '"string3"'], 'fail("WTF")')
+                [], ['"string1"', '"string3"'], 'fail("WTF")'
+            )
             self.assertFailureWithMessage(ret, "WTF")

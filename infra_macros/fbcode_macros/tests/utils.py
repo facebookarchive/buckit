@@ -442,8 +442,11 @@ class Project:
     """
 
     def __init__(
-        self, remove_files=True, add_fbcode_macros_cell=True,
-        add_skylib_cell=True, run_buckd=False
+        self,
+        remove_files=True,
+        add_fbcode_macros_cell=True,
+        add_skylib_cell=True,
+        run_buckd=False
     ):
         """
         Create an instance of Project

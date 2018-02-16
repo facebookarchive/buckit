@@ -23,12 +23,18 @@ class ExportFilesTest(tests.utils.TestCase):
         root.add_file("file2.sh", "echo file2")
         root.add_file("file3.sh", "echo file3")
         root.add_file("file4.sh", "echo file4")
-        root.add_file("BUCK", textwrap.dedent('''\
+        root.add_file(
+            "BUCK",
+            textwrap.dedent(
+                '''\
             load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
             export_files(["file1.sh", "file2.sh"])
             export_files(["file3.sh", "file4.sh"], visibility=[])
-        ''').strip())
-        expected = textwrap.dedent('''\
+        '''
+            ).strip()
+        )
+        expected = textwrap.dedent(
+            '''\
         export_file(
           name = "file1.sh",
           visibility = [
@@ -50,7 +56,8 @@ class ExportFilesTest(tests.utils.TestCase):
         export_file(
           name = "file4.sh",
         )
-        ''').strip()
+        '''
+        ).strip()
 
         result = root.run_audit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
