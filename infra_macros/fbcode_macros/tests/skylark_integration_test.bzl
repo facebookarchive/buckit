@@ -9,6 +9,12 @@
 Rules to help run integration tests for extension files
 """
 
+def targets_to_resource_paths(targets):
+    """
+    Converts a list of targets into a {resource_name: target} mapping
+    """
+    return {target_to_resource_path(target): target for target in targets}
+
 def target_to_resource_path(target):
     """
     Converts a resource name to a flattened path.

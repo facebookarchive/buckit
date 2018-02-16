@@ -2,6 +2,7 @@ load(
     "@fbcode_macros//tests:skylark_integration_test.bzl",
     "skylark_integration_test",
     "target_to_resource_path",
+    "targets_to_resource_paths",
 )
 
 BUILD_DEFS = [
@@ -9,10 +10,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs/config:read_configs.bzl",
 ]
 
-UTIL_DEFS = {
-    target_to_resource_path(target): target
-    for target in BUILD_DEFS
-}
+UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)
 
 python_library(
     name = "utils",
