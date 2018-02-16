@@ -1,4 +1,5 @@
-export_file(
-    name = "config.bzl",
-    visibility = ["PUBLIC"],
+load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+
+export_files(
+    glob(["*.bzl"]),
 )
