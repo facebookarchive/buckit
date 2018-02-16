@@ -8,6 +8,7 @@ load(
 BUILD_DEFS = [
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
     "bazel_skylib//lib:dicts.bzl",
     "bazel_skylib//lib:structs.bzl",
@@ -44,6 +45,12 @@ skylark_integration_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
     resources = ["testdata/utils_test/sample.txt"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "third_party_config_test",
+    srcs = ["third_party_config_test.py"],
     deps = [":utils"],
 )
 
