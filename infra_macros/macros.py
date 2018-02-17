@@ -292,21 +292,8 @@ def rule_handler(context, globals, rule_type, **kwargs):
 
     results = converter.convert(base.Context(**context), base_path, [rule])
     # Instantiate the Buck rules that got converted successfully.
-    for converted in results.rules:
+    for converted in results:
         eval(converted.type, globals)(**converted.attributes)
-
-    # If the rule failed to be converted, create "landmine" rules that'll
-    # fire with the error message if the user tries to build them.
-    for name, error in results.errors.iteritems():
-        msg = 'ERROR: {}: {}'.format(name, error)
-        msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
-        genrule(
-            name=name.split(':')[1],
-            out='out',
-            cmd='echo {} 1>&2; false'.format(pipes.quote(msg)),
-            visibility=['PUBLIC'],
-        )
-
 
 # Export global definitions.
 for key, val in global_defns.__dict__.iteritems():

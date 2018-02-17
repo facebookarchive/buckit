@@ -105,9 +105,6 @@ class ConversionError(Exception):
     pass
 
 
-Results = collections.namedtuple('Results', ['rules', 'errors'])
-
-
 def handle_errors(errors, skip_errors=False):
     """
     Helper function to either print or throw errors resulting from conversion.
@@ -332,7 +329,6 @@ def convert(context, base_path, rules):
         converter_map[converter.get_fbconfig_rule_type()] = converter
 
     results = []
-    errors = {}
 
     for rule in rules:
 
@@ -354,19 +350,14 @@ def convert(context, base_path, rules):
                         '{}() got an unexpected keyword argument: {!r}'
                         .format(rule.type, attribute))
 
-        try:
-            results.extend(   # Supports generators
-                set_default_visibility(
+        results.extend(   # Supports generators
+            set_default_visibility(
+                base_path,
+                converter_map[rule.type].convert(
                     base_path,
-                    converter_map[rule.type].convert(
-                        base_path,
-                        **rule.attributes
-                    ),
-                )
+                    **rule.attributes
+                ),
             )
-        except base.RuleError as e:
-            name = '{0}:{1}'.format(base_path, rule.attributes['name'])
-            errors[name] = str(e)
-            continue
+        )
 
-    return Results(results, errors)
+    return results

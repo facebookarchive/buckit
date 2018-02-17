@@ -187,10 +187,6 @@ def is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
     return isinstance(src, RuleTarget) and src.repo is not None
 
 
-class RuleError(Exception):
-    pass
-
-
 class Converter(object):
 
     def __init__(self, context):
