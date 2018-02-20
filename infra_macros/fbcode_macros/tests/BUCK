@@ -11,6 +11,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:platform.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:third_party_config.bzl",
+    "fbcode_macros//build_defs:visibility.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
     "bazel_skylib//lib:dicts.bzl",
     "bazel_skylib//lib:structs.bzl",
@@ -65,5 +66,11 @@ skylark_integration_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
     resources = ["testdata/utils_test/sample.txt"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "visibility_test",
+    srcs = ["visibility_test.py"],
     deps = [":utils"],
 )
