@@ -18,25 +18,28 @@ class ExportFilesTest(tests.utils.TestCase):
     maxDiff = None
 
     @tests.utils.with_project()
-    def test_imports_third_party_lib(self, root):
+    def test_export_file_handles_visibility(self, root):
         root.add_file("file1.sh", "echo file1")
         root.add_file("file2.sh", "echo file2")
         root.add_file("file3.sh", "echo file3")
-        root.add_file("file4.sh", "echo file4")
+
         root.add_file(
             "BUCK",
             textwrap.dedent(
-                '''\
-            load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
-            export_files(["file1.sh", "file2.sh"])
-            export_files(["file3.sh", "file4.sh"], visibility=[])
-        '''
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+            export_file(name="file1.sh")
+            export_file(name="file2.sh", visibility=["//..."])
+            export_file(name="file3.sh", visibility=None)
+        """
             ).strip()
         )
+
         expected = textwrap.dedent(
-            '''\
+            """\
         export_file(
           name = "file1.sh",
+          mode = "reference",
           visibility = [
             "PUBLIC",
           ],
@@ -44,6 +47,56 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          mode = "reference",
+          visibility = [
+            "//...",
+          ],
+        )
+
+        export_file(
+          name = "file3.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+        """
+        ).strip()
+
+        result = root.run_audit(["BUCK"])
+        self.validateAudit({"BUCK": expected}, result)
+
+    @tests.utils.with_project()
+    def test_exports_reference_mode_by_default(self, root):
+        root.add_file("file1.sh", "echo file1")
+        root.add_file("file2.sh", "echo file2")
+        root.add_file("file3.sh", "echo file3")
+
+        root.add_file(
+            "BUCK",
+            textwrap.dedent(
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+            export_file(name="file1.sh")
+            export_file(name="file2.sh", mode="reference")
+            export_file(name="file3.sh", mode="copy")
+        """
+            ).strip()
+        )
+
+        expected = textwrap.dedent(
+            """\
+        export_file(
+          name = "file1.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file2.sh",
+          mode = "reference",
           visibility = [
             "PUBLIC",
           ],
@@ -51,12 +104,74 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          mode = "copy",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+        """
+        ).strip()
+
+        result = root.run_audit(["BUCK"])
+        self.validateAudit({"BUCK": expected}, result)
+
+    @tests.utils.with_project()
+    def test_imports_third_party_lib(self, root):
+        root.add_file("file1.sh", "echo file1")
+        root.add_file("file2.sh", "echo file2")
+        root.add_file("file3.sh", "echo file3")
+        root.add_file("file4.sh", "echo file4")
+        root.add_file("file5.sh", "echo file5")
+        root.add_file("file6.sh", "echo file6")
+        root.add_file(
+            "BUCK",
+            textwrap.dedent(
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+            export_files(["file1.sh", "file2.sh"])
+            export_files(["file3.sh", "file4.sh"], visibility=[])
+            export_files(["file5.sh", "file6.sh"], visibility=[], mode="copy")
+        """
+            ).strip()
+        )
+        expected = textwrap.dedent(
+            """\
+        export_file(
+          name = "file1.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file2.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file3.sh",
+          mode = "reference",
         )
 
         export_file(
           name = "file4.sh",
+          mode = "reference",
         )
-        '''
+
+        export_file(
+          name = "file5.sh",
+          mode = "copy",
+        )
+
+        export_file(
+          name = "file6.sh",
+          mode = "copy",
+        )
+        """
         ).strip()
 
         result = root.run_audit(["BUCK"])
