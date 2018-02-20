@@ -54,9 +54,9 @@ def parse_target(
     if target.startswith('@/'):
         if not target.startswith(('@/third-party', '@/fbcode')):
             raise ValueError(
-                'Rules may not start with @/ unless they are using @/fbcode '
-                'or @/third-party style rules. Use // instead for %s' % target
-            )
+                'rule names may not start with @/ unless they are using '
+                '@/fbcode or @/third-party style rules -- use // instead for '
+                '%s' % target)
         normalized = target[2:]
     elif target.startswith(':'):
         normalized = target
