@@ -428,7 +428,7 @@ class PythonConverter(base.Converter):
         srcs, plat_srcs = self.format_source_map(src_map)
         return srcs, [(p[1:], s) for p, s in plat_srcs]
 
-    def should_generate_interp_rules(self):
+    def should_generate_interp_rules(self, helper_deps):
         """
         Return whether we should generate the interp helpers.
         """
@@ -436,12 +436,16 @@ class PythonConverter(base.Converter):
         # Our current implementation of the interp helpers is costly when using
         # omnibus linking, so only generate these by default for `dev` mode or
         # if explicitly set via config.
-        return self.read_bool(
+        config_setting = self.read_bool(
             'python',
             'helpers',
             # TODO(T20877452): Python helpers can't build on aarch64.
-            platform.machine() == 'x86_64' and
-            self._context.mode.startswith('dev'))
+            platform.machine() == 'x86_64' and self._context.mode.startswith('dev')
+        )
+        # If we set to true in config return else fallback to TARGETS setting
+        if config_setting:
+            return config_setting
+        return helper_deps
 
     def convert_interp_rules(
             self,
@@ -780,7 +784,7 @@ class PythonConverter(base.Converter):
         jemalloc_conf=None,
         typing_options='',
         runtime_deps=(),
-        helper_deps=True,
+        helper_deps=False,
     ):
         rules = []
         dependencies = []
@@ -935,7 +939,7 @@ class PythonConverter(base.Converter):
         # Generate the interpreter helpers, and add them to our deps. Note that
         # we must do this last, so that the interp rules get the same deps as
         # the main binary which we've built up to this point.
-        if helper_deps and self.should_generate_interp_rules():
+        if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test(rule_type):
                 rules.extend(self.gen_test_modules(base_path, library))
@@ -1040,7 +1044,7 @@ class PythonConverter(base.Converter):
         check_types_options='',
         runtime_deps=(),
         cpp_deps=(),  # ctypes targets
-        helper_deps=True,
+        helper_deps=False,
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
