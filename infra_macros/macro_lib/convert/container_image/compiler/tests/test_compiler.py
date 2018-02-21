@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 import itertools
-import tests.sample_items as si
 import tempfile
 import unittest
 import unittest.mock
 
+from ..compiler import parse_args, build_image
+from ..subvolume_on_disk import SubvolumeOnDisk
 
-from compiler import parse_args, build_image
-from tests.mock_subvolume_from_json_file import (
+from . import sample_items as si
+from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
 
 class CompilerTestCase(unittest.TestCase):
 
-    @unittest.mock.patch(
-        'subvolume_on_disk.SubvolumeOnDisk.from_build_buck_plumbing'
-    )
+    @unittest.mock.patch.object(SubvolumeOnDisk, 'from_build_buck_plumbing')
     @unittest.mock.patch('subprocess.check_output')
     def _compile(self, args, check_output, from_build_buck_plumbing):
         check_output.side_effect = lambda cmd: cmd

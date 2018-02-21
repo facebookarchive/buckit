@@ -2,9 +2,11 @@
 import io
 import json
 import os
-import subvolume_on_disk
 import unittest
 import unittest.mock
+
+from .. import subvolume_on_disk
+
 
 _MY_HOST = 'my_host'
 
@@ -20,8 +22,8 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         'Configure mocks shared by most of the tests.'
         self._mock_uuid_stack = []
 
-        self.patch_btrfs_get_volume_props = unittest.mock.patch(
-            'subvolume_on_disk._btrfs_get_volume_props'
+        self.patch_btrfs_get_volume_props = unittest.mock.patch.object(
+            subvolume_on_disk, '_btrfs_get_volume_props'
         )
         self.mock_btrfs_get_volume_props = \
             self.patch_btrfs_get_volume_props.start()

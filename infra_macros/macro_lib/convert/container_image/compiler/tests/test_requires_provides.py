@@ -5,8 +5,8 @@ Directly tests `requires.py` and `provides.py`, indirectly tests
 '''
 import unittest
 
-from provides import ProvidesDirectory, ProvidesFile
-from requires import require_directory
+from ..provides import ProvidesDirectory, ProvidesFile
+from ..requires import require_directory
 
 
 class RequiresProvidesTestCase(unittest.TestCase):

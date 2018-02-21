@@ -5,6 +5,9 @@ import unittest.mock
 
 from contextlib import contextmanager
 
+from ..subvolume_on_disk import SubvolumeOnDisk
+
+
 FAKE_SUBVOLS_DIR = 'fake subvolumes dir'
 
 
@@ -16,8 +19,8 @@ def mock_subvolume_from_json_file(test_case, path):
 
     A path of `None` means that `from_json_file` is not called.
     '''
-    with unittest.mock.patch(
-        'subvolume_on_disk.SubvolumeOnDisk.from_json_file'
+    with unittest.mock.patch.object(
+        SubvolumeOnDisk, 'from_json_file'
     ) as from_json_file:
         if not path:
             yield None

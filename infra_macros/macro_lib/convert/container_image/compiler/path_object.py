@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 
-from enriched_namedtuple import metaclass_new_enriched_namedtuple
+from .enriched_namedtuple import metaclass_new_enriched_namedtuple
 
 
 class PathObject(type):

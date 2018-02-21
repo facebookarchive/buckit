@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 
-from items import CopyFileItem, MakeDirsItem, TarballItem, FilesystemRootItem
+from ..items import CopyFileItem, MakeDirsItem, TarballItem, FilesystemRootItem
 
 
 # Our target names are too long :(

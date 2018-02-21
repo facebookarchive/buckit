@@ -11,10 +11,10 @@ top of `provides.py`.
 '''
 import os
 
-from enriched_namedtuple import metaclass_new_enriched_namedtuple
-from provides import ProvidesDirectory, ProvidesFile
-from requires import require_directory
-from subvolume_on_disk import SubvolumeOnDisk
+from .enriched_namedtuple import metaclass_new_enriched_namedtuple
+from .provides import ProvidesDirectory, ProvidesFile
+from .requires import require_directory
+from .subvolume_on_disk import SubvolumeOnDisk
 
 
 class ImageItem(type):

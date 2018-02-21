@@ -15,10 +15,10 @@ import itertools
 import subprocess
 import sys
 
-from dep_graph import dependency_order_items
-from items import gen_parent_layer_items
-from items_for_features import gen_items_for_features
-from subvolume_on_disk import SubvolumeOnDisk
+from .dep_graph import dependency_order_items
+from .items import gen_parent_layer_items
+from .items_for_features import gen_items_for_features
+from .subvolume_on_disk import SubvolumeOnDisk
 
 
 # At the moment, the target names emitted by `image_feature` targets seem to

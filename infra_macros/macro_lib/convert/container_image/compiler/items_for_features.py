@@ -2,7 +2,7 @@
 'Makes Items from the JSON that was produced by the Buck target image_feature'
 import json
 
-from items import MakeDirsItem, TarballItem, CopyFileItem
+from .items import MakeDirsItem, TarballItem, CopyFileItem
 
 
 def replace_targets_by_paths(x, target_to_filename):

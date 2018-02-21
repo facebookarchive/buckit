@@ -16,7 +16,8 @@ with short-circuiting.  E.g. FollowsSymlinks(Pred) would expand to:
 The predicates would then be wrapped into a PathObject.
 '''
 from collections import namedtuple
-from path_object import PathObject
+
+from .path_object import PathObject
 
 
 class PathRequiresPredicate(metaclass=PathObject):

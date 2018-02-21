@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import tests.sample_items as si
 import unittest
 
-from dep_graph import dependency_order_items
-from items_for_features import gen_items_for_features
+from ..dep_graph import dependency_order_items
+from ..items_for_features import gen_items_for_features
+
+from . import sample_items as si
 
 
 class ImageFeatureTestCase(unittest.TestCase):

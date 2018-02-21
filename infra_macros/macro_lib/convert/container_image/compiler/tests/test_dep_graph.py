@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import unittest
 
-from dep_graph import (
+from ..dep_graph import (
     DependencyGraph, dependency_order_items, ItemProv, ItemReq, ItemReqsProvs,
     ValidatedReqsProvs,
 )
-from items import CopyFileItem, ImageItem, MakeDirsItem, FilesystemRootItem
-from provides import ProvidesDirectory, ProvidesFile
-from requires import require_directory
+from ..items import CopyFileItem, ImageItem, MakeDirsItem, FilesystemRootItem
+from ..provides import ProvidesDirectory, ProvidesFile
+from ..requires import require_directory
 
 
 PATH_TO_ITEM = {

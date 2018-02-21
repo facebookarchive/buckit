@@ -4,13 +4,13 @@
 python_library(
     name = "subvolume_on_disk",
     srcs = ["subvolume_on_disk.py"],
-    base_module = "",
+    base_module = "compiler",
 )
 
 python_unittest(
     name = "test-subvolume-on-disk",
     srcs = ["tests/test_subvolume_on_disk.py"],
-    base_module = "",
+    base_module = "compiler",
     needed_coverage = [(
         1.0,
         ":subvolume_on_disk",
@@ -21,13 +21,13 @@ python_unittest(
 python_library(
     name = "enriched_namedtuple",
     srcs = ["enriched_namedtuple.py"],
-    base_module = "",
+    base_module = "compiler",
 )
 
 python_unittest(
     name = "test-enriched-namedtuple",
     srcs = ["tests/test_enriched_namedtuple.py"],
-    base_module = "",
+    base_module = "compiler",
     needed_coverage = [(
         1.0,
         ":enriched_namedtuple",
@@ -42,14 +42,14 @@ python_library(
         "provides.py",
         "requires.py",
     ],
-    base_module = "",
+    base_module = "compiler",
     deps = [":enriched_namedtuple"],
 )
 
 python_unittest(
     name = "test-requires-provides",
     srcs = ["tests/test_requires_provides.py"],
-    base_module = "",
+    base_module = "compiler",
     needed_coverage = [(
         1.0,
         ":requires_provides",
@@ -60,14 +60,14 @@ python_unittest(
 python_library(
     name = "mock_subvolume_from_json_file",
     srcs = ["tests/mock_subvolume_from_json_file.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [":subvolume_on_disk"],
 )
 
 python_library(
     name = "items",
     srcs = ["items.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [
         ":requires_provides",
         ":subvolume_on_disk",
@@ -77,7 +77,7 @@ python_library(
 python_unittest(
     name = "test-items",
     srcs = ["tests/test_items.py"],
-    base_module = "",
+    base_module = "compiler",
     needed_coverage = [(
         1.0,
         ":items",
@@ -91,14 +91,14 @@ python_unittest(
 python_library(
     name = "dep_graph",
     srcs = ["dep_graph.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [":items"],
 )
 
 python_unittest(
     name = "test-dep-graph",
     srcs = ["tests/test_dep_graph.py"],
-    base_module = "",
+    base_module = "compiler",
     needed_coverage = [(
         1.0,
         ":dep_graph",
@@ -109,14 +109,14 @@ python_unittest(
 python_library(
     name = "items_for_features",
     srcs = ["items_for_features.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [":items"],
 )
 
 python_library(
     name = "sample_items",
     srcs = ["tests/sample_items.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [":items"],
 )
 
@@ -148,7 +148,7 @@ TEST_TARGET_PREFIX = (
 )
 
 def image_feature_python_unittest(**kwargs):
-    kwargs["base_module"] = ""
+    kwargs["base_module"] = "compiler"
     kwargs["env"] = {
         "test_image_feature_path_to_" + t: "$(location {})".format(
             TEST_TARGET_PREFIX + t,
@@ -182,7 +182,7 @@ image_feature_python_unittest(
 python_library(
     name = "compiler",
     srcs = ["compiler.py"],
-    base_module = "",
+    base_module = "compiler",
     deps = [
         ":dep_graph",
         ":items_for_features",

@@ -29,7 +29,7 @@ to define its relationship with every Requires predicate, thus:
       return True or False
 '''
 
-from path_object import PathObject
+from .path_object import PathObject
 
 
 class ProvidesPathObject:

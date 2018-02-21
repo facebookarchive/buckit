@@ -6,15 +6,17 @@ import unittest
 import unittest.mock
 
 from contextlib import contextmanager
-from items import (
+
+from ..items import (
     TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
     FilesystemRootItem, gen_parent_layer_items,
 )
-from tests.mock_subvolume_from_json_file import (
+from ..provides import ProvidesDirectory, ProvidesFile
+from ..requires import require_directory
+
+from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
-from provides import ProvidesDirectory, ProvidesFile
-from requires import require_directory
 
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
