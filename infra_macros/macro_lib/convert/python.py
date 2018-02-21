@@ -19,7 +19,6 @@ import pipes
 with allow_unsafe_import():  # noqa: magic
     from distutils.version import LooseVersion
     import os
-    import platform
 
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
@@ -434,15 +433,9 @@ class PythonConverter(base.Converter):
         """
 
         # Our current implementation of the interp helpers is costly when using
-        # omnibus linking, so only generate these by default for `dev` mode or
-        # if explicitly set via config.
-        config_setting = self.read_bool(
-            'python',
-            'helpers',
-            # TODO(T20877452): Python helpers can't build on aarch64.
-            platform.machine() == 'x86_64' and self._context.mode.startswith('dev')
-        )
-        # If we set to true in config return else fallback to TARGETS setting
+        # omnibus linking, only generate these if explicitly set via config or TARGETS
+        config_setting = self.read_bool('python', 'helpers', False)
+        # Prefer true in config else fallback to TARGETS setting (Default = False)
         if config_setting:
             return config_setting
         return helper_deps
