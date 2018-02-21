@@ -41,11 +41,13 @@ class OCamlConverter(base.Converter):
             srcs=(),
             deps=(),
             compiler_flags=None,
+            ocamldep_flags=None,
             native=True,
             warnings_flags=None,
             supports_coverage=None,
             external_deps=(),
             visibility=None,
+            ppx_flag=None,
         ):
 
         extra_rules = []
@@ -67,6 +69,14 @@ class OCamlConverter(base.Converter):
                     base_path,
                     compiler_flags,
                     platform=self.get_default_platform()))
+
+        attributes['ocamldep_flags'] = []
+        if ocamldep_flags:
+            attributes['ocamldep_flags'].extend(ocamldep_flags)
+
+        if ppx_flag is not None:
+            attributes['compiler_flags'].extend(['-ppx', ppx_flag])
+            attributes['ocamldep_flags'].extend(['-ppx', ppx_flag])
 
         if not native:
             attributes['bytecode_only'] = True
