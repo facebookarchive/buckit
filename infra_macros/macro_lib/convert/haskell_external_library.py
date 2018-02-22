@@ -61,12 +61,15 @@ class HaskellExternalLibraryConverter(base.Converter):
             lib_dir=None,
             libs=(),
             linker_flags=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
 
         platform = self.get_tp2_build_dat(base_path)['platform']
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         out_exported_compiler_flags = []
         out_exported_compiler_flags.append('-expose-package')
