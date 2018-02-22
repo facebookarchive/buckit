@@ -1456,7 +1456,8 @@ class Converter(object):
             rule_type,
             platform,
             linker_flags=(),
-            static=True):
+            static=True,
+            visibility=None):
         """
         Create rules to generate a C/C++ library with build info.
         """
@@ -1473,6 +1474,8 @@ class Converter(object):
                 platform))
         source_attrs = collections.OrderedDict()
         source_attrs['name'] = source_name
+        if visibility is not None:
+            source_attrs['visibility'] = visibility
         source_attrs['out'] = source_name + '.c'
         source_attrs['cmd'] = (
             'mkdir -p `dirname $OUT` && echo {0} > $OUT'
@@ -1483,6 +1486,8 @@ class Converter(object):
         lib_name = name + '-cxx-build-info-lib'
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = lib_name
+        if visibility is not None:
+            lib_attrs['visibility'] = visibility
         lib_attrs['srcs'] = [':' + source_name]
         lib_attrs['compiler_flags'] = self.get_extra_cflags()
         lib_attrs['linker_flags'] = (
@@ -1585,7 +1590,7 @@ class Converter(object):
     def get_fbcode_dir_from_gen_dir(self):
         return os.path.relpath(os.curdir, self.get_gen_path())
 
-    def copy_rule(self, src, name, out=None, propagate_versions=False):
+    def copy_rule(self, src, name, out=None, propagate_versions=False, visibility=None):
         """
         Returns a `genrule` which copies the given source.
         """
@@ -1595,6 +1600,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = out
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname $OUT`',
@@ -1614,7 +1621,8 @@ class Converter(object):
             base_path,
             name,
             paths,
-            deps):
+            deps,
+            visibility=None):
         """
         Generate a rule which creates an output dir with the given paths merged
         with the merged directories of it's dependencies.
@@ -1632,6 +1640,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = sorted(paths)
         attrs['cmd'] = ' && '.join(cmds)
@@ -1769,7 +1779,7 @@ class Converter(object):
             self.get_tp2_project_target(project),
             platform=platform)
 
-    def create_error_rules(self, name, msg):
+    def create_error_rules(self, name, msg, visibility=None):
         """
         Return rules which generate an error with the given message at build
         time.
@@ -1782,6 +1792,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '{}-gen'.format(name)
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = 'out.cpp'
         attrs['cmd'] = 'echo {} 1>&2; false'.format(pipes.quote(msg))
         rules.append(Rule('cxx_genrule', attrs))
@@ -1877,7 +1889,8 @@ class Converter(object):
         srcs=(),
         deps=(),
         typing=False,
-        typing_options=''
+        typing_options='',
+        visibility=None,
     ):
         """
         Generate typing configs, and gather those for our deps
@@ -1923,6 +1936,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['cmd'] = '\n'.join(cmds)
         return Rule('genrule', attrs)
