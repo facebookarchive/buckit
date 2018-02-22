@@ -43,7 +43,8 @@ class CustomUnittestConverter(base.Converter):
             tags=(),
             type='json',
             deps=(),
-            env=None):
+            env=None,
+            visibility=None):
 
         extra_rules = []
         platform = self.get_platform(base_path)
@@ -51,6 +52,8 @@ class CustomUnittestConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['type'] = type
 
         if command:
@@ -87,6 +90,8 @@ class CustomUnittestConverter(base.Converter):
                 ])
                 command_attributes = collections.OrderedDict()
                 command_attributes['name'] = name + '-command'
+                if visibility is not None:
+                    command_attributes['visibility'] = visibility
                 command_attributes['out'] = name + '-command.sh'
                 # The command just creates the above script with exec perms.
                 command_attributes['cmd'] = (
