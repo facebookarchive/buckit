@@ -66,7 +66,8 @@ class CustomRuleConverter(base.Converter):
             deps=[],
             strict=True,
             output_subdir=None,
-            env=None):
+            env=None,
+            visibility=None):
 
         if strict and build_script_path is not None:
             raise ValueError(
@@ -79,6 +80,8 @@ class CustomRuleConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = out
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['out'] = out
 
         if srcs:
@@ -158,6 +161,8 @@ class CustomRuleConverter(base.Converter):
             # represented in the rule key.
             attrs = collections.OrderedDict()
             attrs['name'] = out + '-build-script'
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['out'] = os.path.join(out + '-build-script', full_path)
             attrs['src'] = os.path.relpath(full_path, base_path)
             extra_rules.append(Rule('export_file', attrs))
@@ -228,7 +233,8 @@ class CustomRuleConverter(base.Converter):
             base_path,
             name,
             out_name,
-            out):
+            out,
+            visibility):
 
         attributes = collections.OrderedDict()
         attributes['name'] = out_name
@@ -243,6 +249,8 @@ class CustomRuleConverter(base.Converter):
         attributes['cmd'] = cmds.get(platform.system(), cmds['Linux']).format(
             output_dir=self.get_output_dir(name),
             out=out)
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         return [Rule(self.get_buck_rule_type(), attributes)]
 
@@ -252,6 +260,7 @@ class CustomRuleConverter(base.Converter):
             name=None,
             output_gen_files=[],
             output_bin_files=[],
+            visibility=None,
             **kwargs):
 
         rules = []
@@ -276,7 +285,7 @@ class CustomRuleConverter(base.Converter):
 
         # Add the main rule which runs the custom rule and stores its outputs
         # in a ZIP archive.
-        rules.extend(self.convert_main_rule(base_path, name, **kwargs))
+        rules.extend(self.convert_main_rule(base_path, name, visibility=visibility, **kwargs))
 
         # For each output, create a `=<out>` rule which pulls it from the main
         # output directory so that consuming rules can use use one of the
@@ -288,20 +297,23 @@ class CustomRuleConverter(base.Converter):
                     base_path,
                     name,
                     out_name,
-                    out))
+                    out,
+                    visibility))
 
         # When we just have a single output, also add a rule with the original
         # name which just unpacks the only listed output.  This allows consuming
         # rules to avoid the `=<out>` suffix.
         if len(outs) == 1:
             rules.extend(
-                self.convert_output_rule(base_path, name, name, outs[0]))
+                self.convert_output_rule(base_path, name, name, outs[0], visibility))
 
         # Otherwise, use a dummy empty Python library to force runtime
         # dependencies to propagate onto all of the outputs of the custom rule.
         else:
             attrs = collections.OrderedDict()
             attrs['name'] = name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['deps'] = [':{0}={1}'.format(name, o) for o in outs]
             rules.append(Rule('python_library', attrs))
 
