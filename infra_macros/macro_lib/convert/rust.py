@@ -211,7 +211,8 @@ class RustConverter(base.Converter):
                     base_path,
                     name,
                     crate,
-                    self.get_fbconfig_rule_type()))
+                    self.get_fbconfig_rule_type(),
+                    visibility))
             dependencies.append(rust_build_info)
             extra_rules.extend(rust_build_info_rules)
 
@@ -247,6 +248,7 @@ class RustConverter(base.Converter):
                 test_link_style,
                 test_linker_flags,
                 allocator,
+                visibility,
             )
             tests.append(':' + test.attributes['name'])
             extra_rules.append(test)
@@ -274,7 +276,8 @@ class RustConverter(base.Converter):
             test_features,
             test_link_style,
             test_linker_flags,
-            allocator):
+            allocator,
+            visibility):
         """
         Construct a rust_test rule corresponding to a rust_library or
         rust_binary rule so that internal unit tests can be run.
@@ -284,6 +287,8 @@ class RustConverter(base.Converter):
         name = '%s-unittest' % attributes['name']
 
         test_attributes['name'] = name
+        if visibility is not None:
+            test_attributes['visibility'] = visibility
 
         # Regardless of the base rule type, the resulting unit test is always
         # an executable which needs to have buildinfo.
@@ -343,7 +348,8 @@ class RustConverter(base.Converter):
             base_path,
             name,
             crate,
-            rule_type):
+            rule_type,
+            visibility):
         """
         Create rules to generate a Rust library with build info.
         """
@@ -384,6 +390,8 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         source_name = name + "-rust-build-info"
         source_attrs = collections.OrderedDict()
         source_attrs['name'] = source_name
+        if visibility is not None:
+            source_attrs['visibility'] = visibility
         source_attrs['out'] = 'lib.rs'
         source_attrs['cmd'] = (
             'mkdir -p `dirname $OUT` && echo {0} > $OUT'
@@ -394,6 +402,8 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         lib_name = name + '-rust-build-info-lib'
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = lib_name
+        if visibility is not None:
+            lib_attrs['visibility'] = visibility
         lib_attrs['crate'] = (crate or name) + "_build_info"
         lib_attrs['preferred_linkage'] = 'static'
         lib_attrs['srcs'] = [':' + source_name]
