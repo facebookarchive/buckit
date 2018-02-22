@@ -223,7 +223,8 @@ class CppLibraryExternalConverter(base.Converter):
             shared_only=None,
             imports=None,
             implicit_project_deps=True,
-            supports_omnibus=None):
+            supports_omnibus=None,
+            visibility=None):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
@@ -239,6 +240,8 @@ class CppLibraryExternalConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         # TODO: This logic will be removed once the applicable
         #       libraries have migrated to use read_config
