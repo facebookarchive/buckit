@@ -70,7 +70,6 @@ ASAN_UBSAN_FLAGS = [
     '-fno-sanitize=null',
     '-fno-sanitize=object-size',
     '-fno-sanitize=shift-base',
-    '-fno-sanitize=signed-integer-overflow',
     '-fno-sanitize=unsigned-integer-overflow',
     '-fno-sanitize=vptr',
 ]
