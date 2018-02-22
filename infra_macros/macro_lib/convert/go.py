@@ -81,6 +81,7 @@ class GoConverter(base.Converter):
         platform_linker_flags=None,
         link_style=None,
         raw_headers=None,
+        visibility=None,
     ):
         if srcs is None:
             srcs = []
@@ -121,6 +122,9 @@ class GoConverter(base.Converter):
             name=name,
             srcs=self.convert_source_list(base_path, srcs + gen_srcs),
         )
+
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         if tests:
             attributes['tests'] = []
