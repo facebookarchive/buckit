@@ -113,9 +113,11 @@ SANITIZER_COMMON_FLAGS = [
 SYS_INC = re.compile('^(?:-I|-isystem)?/usr(?:/local)?/include')
 
 
-def create_dll_needed_syms_list_rule(name, dlls):
+def create_dll_needed_syms_list_rule(name, dlls, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms'.format(name)
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['out'] = 'symbols.txt'
     attrs['cmd'] = (
         'nm -gPu {} | awk \'{{print $1}}\' | '
@@ -124,9 +126,11 @@ def create_dll_needed_syms_list_rule(name, dlls):
     return Rule('cxx_genrule', attrs)
 
 
-def create_dll_syms_linker_script_rule(name, symbols_rule):
+def create_dll_syms_linker_script_rule(name, symbols_rule, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms-linker-script'.format(name)
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['out'] = 'extern_symbols.txt'
     attrs['cmd'] = (
         'cat $(location {}) | awk \'{{print "EXTERN("$1")"}}\' > "$OUT"'
@@ -134,9 +138,11 @@ def create_dll_syms_linker_script_rule(name, symbols_rule):
     return Rule('cxx_genrule', attrs)
 
 
-def create_dll_syms_dynamic_list_rule(name, symbols_rule):
+def create_dll_syms_dynamic_list_rule(name, symbols_rule, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms-dynamic-list'.format(name)
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['out'] = 'extern_symbols.txt'
     attrs['cmd'] = ' && '.join([
         'echo "{" > $OUT',
@@ -154,7 +160,8 @@ def create_dll_rules(
         rule_type_filter,
         rule_name_filter,
         dll_type,
-        fbcode_dir):
+        fbcode_dir,
+        visibility):
     """
     Create a rule to link a DLL.
     """
@@ -205,6 +212,8 @@ def create_dll_rules(
 
     attributes = collections.OrderedDict()
     attributes['name'] = name
+    if visibility is not None:
+        attributes['visibility'] = visibility
     attributes['out'] = lib_name
     fbcode = os.path.join('$GEN_DIR', fbcode_dir)
     attributes['cmd'] = 'cd {} && '.format(fbcode) + ' '.join(cmd)
@@ -212,8 +221,8 @@ def create_dll_rules(
 
     return rules
 
-
-def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
+# TODO: Remove the default value when haskell rules get converted
+def convert_dlls(base_path, name, platform, dlls, fbcode_dir, visibility=None):
     """
     """
 
@@ -237,18 +246,19 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
                 type_filter,
                 name_filter,
                 dll_type,
-                fbcode_dir))
+                fbcode_dir,
+                visibility))
 
     # Create the rule which extracts the symbols from all DLLs.
     sym_rule = (
-        create_dll_needed_syms_list_rule(name, dll_targets.values()))
+        create_dll_needed_syms_list_rule(name, dll_targets.values(), visibility))
     sym_target = ':{}'.format(sym_rule.attributes['name'])
     rules.append(sym_rule)
 
     # Create the rule which sets up a linker script with all missing DLL
     # symbols marked as extern.
     syms_linker_script = (
-        create_dll_syms_linker_script_rule(name, sym_target))
+        create_dll_syms_linker_script_rule(name, sym_target, visibility))
     rules.append(syms_linker_script)
     ldflags.append(
         '$(location :{})'
@@ -308,6 +318,8 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir):
     # Create the rule which copies the DLLs into the output location.
     attrs = collections.OrderedDict()
     attrs['name'] = name + '.dlls'
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['out'] = os.curdir
     cmds = []
     cmds.append('mkdir -p $OUT')
@@ -592,7 +604,7 @@ class CppConverter(base.Converter):
 
         return flags
 
-    def convert_lex(self, name, lex_flags, lex_src, platform):
+    def convert_lex(self, name, lex_flags, lex_src, platform, visibility):
         """
         Create rules to generate a C/C++ header and source from the given lex
         file.
@@ -608,6 +620,8 @@ class CppConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name_base
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = base + '.d'
         attrs['srcs'] = [lex_src]
         attrs['cmd'] = ' && '.join([
@@ -642,7 +656,7 @@ class CppConverter(base.Converter):
 
         return (':' + header_name, ':' + source_name, rules)
 
-    def convert_yacc(self, base_path, name, yacc_flags, yacc_src, platform):
+    def convert_yacc(self, base_path, name, yacc_flags, yacc_src, platform, visibility):
         """
         Create rules to generate a C/C++ header and source from the given yacc
         file.
@@ -711,12 +725,14 @@ class CppConverter(base.Converter):
             self.copy_rule(
                 '$(location :{})/{}'.format(name_base, header),
                 header_name,
-                header))
+                header,
+                visibility=visibility))
         rules.append(
             self.copy_rule(
                 '$(location :{})/{}'.format(name_base, source),
                 source_name,
-                source))
+                source,
+                visibility=visibility))
 
         return (':' + header_name, ':' + source_name, rules)
 
@@ -1196,7 +1212,7 @@ class CppConverter(base.Converter):
             srcs, self.LEX_EXTS)
         for lex_src in lex_srcs:
             header, source, rules = (
-                self.convert_lex(name, lex_args, lex_src, platform))
+                self.convert_lex(name, lex_args, lex_src, platform, visibility))
             out_headers.append(header)
             out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), ['-w']))
             extra_rules.extend(rules)
@@ -1211,7 +1227,8 @@ class CppConverter(base.Converter):
                     name,
                     yacc_args,
                     yacc_src,
-                    platform))
+                    platform,
+                    visibility))
             out_headers.append(header)
             out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
             extra_rules.extend(rules)
@@ -1296,7 +1313,7 @@ class CppConverter(base.Converter):
         if dlls:
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
                 convert_dlls(base_path, name, platform, dlls,
-                             self.get_fbcode_dir_from_gen_dir()))
+                             self.get_fbcode_dir_from_gen_dir(), visibility))
             extra_rules.extend(dll_rules)
             dependencies.extend(dll_deps)
             out_ldflags.extend(dll_ldflags)
@@ -1407,7 +1424,7 @@ class CppConverter(base.Converter):
         if self.get_fbconfig_rule_type() == 'cpp_python_extension':
             dependencies.append(ThirdPartyRuleTarget('python', 'python'))
             # Generate an empty typing_config
-            extra_rules.append(self.gen_typing_config(name))
+            extra_rules.append(self.gen_typing_config(name, visibility=visibility))
 
         # Lua main module rules depend on are custom lua main.
         if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':
@@ -1582,6 +1599,7 @@ class CppConverter(base.Converter):
             name,
             dlopen_enabled=None,
             lib_name=None,
+            visibility=None,
             **kwargs):
         """
         Convert a C/C++ Java extension.
@@ -1613,6 +1631,7 @@ class CppConverter(base.Converter):
                 name,
                 dlopen_enabled=dlopen_enabled,
                 lib_name=lib_name,
+                visibility=visibility,
                 **kwargs))
 
         # If we're building the monolithic extension, then setup additional
@@ -1626,6 +1645,8 @@ class CppConverter(base.Converter):
             # dependents will depend on.
             attrs = collections.OrderedDict()
             attrs['name'] = real_name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['soname'] = soname
             attrs['shared_lib'] = ':{}#{}'.format(name, platform)
             rules.append(Rule('prebuilt_cxx_library', attrs))
@@ -1637,6 +1658,7 @@ class CppConverter(base.Converter):
             base_path,
             name,
             dlopen_enabled=None,
+            visibility=None,
             **kwargs):
         """
         Convert a C/C++ Java extension.
@@ -1651,6 +1673,7 @@ class CppConverter(base.Converter):
                 base_path,
                 name + '-extension',
                 dlopen_enabled=True,
+                visibility=visibility,
                 **kwargs))
         rules[0].attributes['link_style'] = 'static_pic'
 
@@ -1660,6 +1683,8 @@ class CppConverter(base.Converter):
         dest = os.path.join('node_modules', name, name + '.node')
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = name + '-modules'
         attrs['cmd'] = ' && '.join([
             'mkdir -p $OUT/{}'.format(os.path.dirname(dest)),
@@ -1783,7 +1808,7 @@ class CppConverter(base.Converter):
 
         return args
 
-    def convert(self, base_path, name, **kwargs):
+    def convert(self, base_path, name, visibility=None, **kwargs):
         """
         Entry point for converting C/C++ rules.
         """
@@ -1793,12 +1818,12 @@ class CppConverter(base.Converter):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'cpp_java_extension':
             rules.extend(
-                self.convert_java_extension(base_path, name, **kwargs))
+                self.convert_java_extension(base_path, name, visibility=visibility, **kwargs))
         elif rtype == 'cpp_node_extension':
             rules.extend(
-                self.convert_node_extension(base_path, name, **kwargs))
+                self.convert_node_extension(base_path, name, visibility=visibility, **kwargs))
         else:
             rules.extend(
-                self.convert_rule(base_path, name, **kwargs))
+                self.convert_rule(base_path, name, visibility=visibility, **kwargs))
 
         return rules
