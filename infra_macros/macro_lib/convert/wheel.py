@@ -42,18 +42,22 @@ def get_url_basename(url):
     return os.path.basename(url).rsplit('#md5=')[0]
 
 
-def gen_remote_wheel(url, out, sha1):
+def gen_remote_wheel(url, out, sha1, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = out + '-remote'
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['out'] = out
     attrs['url'] = url
     attrs['sha1'] = sha1
     return Rule('remote_file', attrs)
 
 
-def gen_prebuilt_target(wheel, remote_target):
+def gen_prebuilt_target(wheel, remote_target, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = wheel
+    if visibility is not None:
+        attrs['visibility'] = visibility
     attrs['binary_src'] = remote_target
     return Rule('prebuilt_python_library', attrs)
 
@@ -71,7 +75,7 @@ class PyWheelDefault(base.Converter):
             'platform_versions'
         }
 
-    def convert_rule(self, base_path, platform_versions):
+    def convert_rule(self, base_path, platform_versions, visibility):
         name = os.path.basename(base_path)
 
         # If there is no default for either py2 or py3 for the given platform
@@ -97,22 +101,24 @@ class PyWheelDefault(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['platform_deps'] = [
             ('^{}$'.format(re.escape(py_platform)), [':' + version])
             for py_platform, version in sorted(platform_versions.items())
         ]
         # TODO: Figure out how to handle typing info from wheels
         if self.typing_config_target:
-            yield self.gen_typing_config(attrs['name'])
+            yield self.gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 
-    def convert(self, base_path, platform_versions):
+    def convert(self, base_path, platform_versions, visibility=None):
         """
         Entry point for converting python_wheel rules
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, platform_versions):
+        for rule in self.convert_rule(base_path, platform_versions, visibility=visibility):
             yield rule
 
 
@@ -128,6 +134,7 @@ class PyWheel(base.Converter):
         deps=(),
         external_deps=(),
         tests=(),
+        visibility=None,
     ):
         # We don't need duplicate targets if we have multiple usage of URLs
         urls = set(platform_urls.values())
@@ -140,14 +147,16 @@ class PyWheel(base.Converter):
             assert sha1, "There is no #sha1= tag on the end of URL: " + url
             # Opensource usage of this may have #md5 tags from pypi
             wheel = get_url_basename(orig_url)
-            rule = gen_remote_wheel(url, wheel, sha1)
+            rule = gen_remote_wheel(url, wheel, sha1, visibility)
             yield rule
-            rule = gen_prebuilt_target(wheel, rule.target_name)
+            rule = gen_prebuilt_target(wheel, rule.target_name, visibility)
             yield rule
             wheel_targets[url] = rule.target_name
 
         attrs = collections.OrderedDict()
         attrs['name'] = version
+        if visibility is not None:
+            attrs['visibility'] = visibility
         # Use platform_deps to rely on the correct wheel target for
         # each platform
         attrs['platform_deps'] = [
@@ -173,7 +182,7 @@ class PyWheel(base.Converter):
 
         # TODO: Figure out how to handle typing info from wheels
         if self.typing_config_target:
-            yield self.gen_typing_config(attrs['name'])
+            yield self.gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 
     def get_allowed_args(self):
@@ -185,11 +194,11 @@ class PyWheel(base.Converter):
             'tests',
         }
 
-    def convert(self, base_path, version, platform_urls, **kwargs):
+    def convert(self, base_path, version, platform_urls, visibility=None, **kwargs):
         """
         Entry point for converting python_wheel rules
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, version, platform_urls, **kwargs):
+        for rule in self.convert_rule(base_path, version, platform_urls, visibility=visibility, **kwargs):
             yield rule
