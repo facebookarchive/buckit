@@ -260,6 +260,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             cpp_deps,
             deps=(),
             src_includes=None,
+            visibility=None,
             **kwargs):
         rules = []
 
@@ -269,7 +270,8 @@ class RustBindgenLibraryConverter(rust.RustConverter):
                 base_path,
                 self.get_exported_include_tree(name),
                 [header],
-                []))
+                [],
+                visibility))
 
         genrule, extra_rules = self.generate_bindgen_rule(
             base_path,
@@ -288,6 +290,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             srcs=[genrule] + (src_includes or []),
             deps=list(cpp_deps) + list(deps),
             crate_root=genrule,
+            visibility=visibility,
             **kwargs)
 
         rules.extend(extra_rules)
