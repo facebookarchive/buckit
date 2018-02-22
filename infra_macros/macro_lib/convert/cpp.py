@@ -1114,7 +1114,15 @@ class CppConverter(base.Converter):
                   not core_tools.is_core_tool(base_path, name)):
                 out_ldflags.append('-Wl,--gdb-index')
             ld_threads = self._context.buck_ops.read_config('fbcode', 'ld-threads')
-            if ld_threads and not core_tools.is_core_tool(base_path, name):
+            # lld does not (yet?) support the --thread-count option, so prevent
+            # it from being forwarded when using lld.
+            # FIXME: -fuse-ld= may take a path to an lld executable, for which
+            #        this check will not work properly. Instead, maybe Context
+            #        should have a member named 'linker', as it does with
+            #        'compiler'?
+            if ld_threads and \
+               not core_tools.is_core_tool(base_path, name) and \
+               '-fuse-ld=lld' not in out_ldflags:
                 out_ldflags.extend([
                     '-Wl,--threads',
                     '-Wl,--thread-count,' + ld_threads,
