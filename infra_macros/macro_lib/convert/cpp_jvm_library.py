@@ -32,9 +32,11 @@ class CppJvmLibrary(base.Converter):
             'major_version',
         ])
 
-    def convert(self, base_path, name, major_version):
+    def convert(self, base_path, name, major_version, visibility=None):
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
 
         ppflags = []
         ldflags = []
