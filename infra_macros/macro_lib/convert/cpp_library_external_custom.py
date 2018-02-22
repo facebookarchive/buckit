@@ -108,12 +108,15 @@ class CppLibraryExternalCustomConverter(base.Converter):
             shared_link=None,
             shared_libs=None,
             propagated_pp_flags=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
 
         platform = self.get_tp2_platform(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         out_static_link = (
             None if static_link is None
