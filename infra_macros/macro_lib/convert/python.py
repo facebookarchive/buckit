@@ -298,7 +298,8 @@ class PythonConverter(base.Converter):
             name,
             main_module,
             platform,
-            python_version):
+            python_version,
+            visibility):
         """
         Build the rules that create the `__manifest__` module.
         """
@@ -319,6 +320,8 @@ class PythonConverter(base.Converter):
         manifest_name = name + '-manifest'
         manifest_attrs = collections.OrderedDict()
         manifest_attrs['name'] = manifest_name
+        if visibility is not None:
+            manifest_attrs['visibility'] = visibility
         manifest_attrs['out'] = name + '-__manifest__.py'
         manifest_attrs['cmd'] = (
             'echo -n {} > $OUT'.format(pipes.quote(manifest)))
@@ -327,6 +330,8 @@ class PythonConverter(base.Converter):
         manifest_lib_name = name + '-manifest-lib'
         manifest_lib_attrs = collections.OrderedDict()
         manifest_lib_attrs['name'] = manifest_lib_name
+        if visibility is not None:
+            manifest_lib_attrs['visibility'] = visibility
         manifest_lib_attrs['base_module'] = ''
         manifest_lib_attrs['srcs'] = {'__manifest__.py': ':' + manifest_name}
         rules.append(Rule('python_library', manifest_lib_attrs))
@@ -448,7 +453,8 @@ class PythonConverter(base.Converter):
             python_platform,
             deps,
             platform_deps,
-            preload_deps):
+            preload_deps,
+            visibility):
         """
         Generate rules to build intepreter helpers.
         """
@@ -458,6 +464,8 @@ class PythonConverter(base.Converter):
         for interp, interp_main_module, interp_dep in INTERPS:
             attrs = collections.OrderedDict()
             attrs['name'] = name + '-' + interp
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['main_module'] = interp_main_module
             attrs['cxx_platform'] = platform
             attrs['platform'] = python_platform
@@ -473,7 +481,7 @@ class PythonConverter(base.Converter):
 
     # TODO(T23173403): move this to `base.py` and make available for other
     # languages.
-    def get_jemalloc_malloc_conf_dep(self, base_path, name, malloc_conf, deps):
+    def get_jemalloc_malloc_conf_dep(self, base_path, name, malloc_conf, deps, visibility):
         """
         Build a rule which wraps the JEMalloc allocator and links default
         configuration via the `jemalloc_conf` variable.
@@ -483,6 +491,8 @@ class PythonConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '__{}_jemalloc_conf_src__'.format(name)
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = 'jemalloc_conf.c'
         attrs['cmd'] = (
             'echo \'const char* malloc_conf = "{}";\' > "$OUT"'
@@ -493,6 +503,8 @@ class PythonConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '__{}_jemalloc_conf_lib__'.format(name)
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
         lib_rule = Rule('cxx_library', attrs)
@@ -500,7 +512,7 @@ class PythonConverter(base.Converter):
 
         return RootRuleTarget(base_path, lib_rule.attributes['name']), rules
 
-    def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None):
+    def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None, visibility=None):
         """
         Add C/C++ deps which need to preloaded by Python binaries.
         """
@@ -529,7 +541,8 @@ class PythonConverter(base.Converter):
                         base_path,
                         name,
                         jemalloc_conf,
-                        allocator_deps))
+                        allocator_deps,
+                        visibility))
                 allocator_deps = [conf_dep]
                 rules.extend(conf_rules)
             deps.extend(allocator_deps)
@@ -563,7 +576,7 @@ class PythonConverter(base.Converter):
             ['inplace', 'standalone'],
             'standalone')
 
-    def gen_associated_targets(self, name, targets):
+    def gen_associated_targets(self, name, targets, visibility):
         """
         Associated Targets are buck rules that need to be built, when This
         target is built, but are not a code dependency. Which is why we
@@ -571,6 +584,8 @@ class PythonConverter(base.Converter):
         """
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-build_also'
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['deps'] = targets
         return Rule('cxx_library', attrs)
 
@@ -778,6 +793,7 @@ class PythonConverter(base.Converter):
         typing_options='',
         runtime_deps=(),
         helper_deps=False,
+        visibility=None,
     ):
         rules = []
         dependencies = []
@@ -796,6 +812,8 @@ class PythonConverter(base.Converter):
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         if not rule_type:
             rule_type = self.get_buck_rule_type()
@@ -853,7 +871,7 @@ class PythonConverter(base.Converter):
 
         # Add any special preload deps.
         default_preload_deps, default_preload_rules = (
-            self.get_preload_deps(base_path, name, allocator, jemalloc_conf))
+            self.get_preload_deps(base_path, name, allocator, jemalloc_conf, visibility))
         out_preload_deps.extend(self.format_deps(default_preload_deps))
         rules.extend(default_preload_rules)
 
@@ -868,7 +886,8 @@ class PythonConverter(base.Converter):
                 name,
                 self.get_fbconfig_rule_type(),
                 platform,
-                static=False))
+                static=False,
+                visibility=visibility))
         out_preload_deps.append(self.get_dep_target(cxx_build_info))
         rules.extend(cxx_build_info_rules)
 
@@ -893,7 +912,8 @@ class PythonConverter(base.Converter):
                 name,
                 main_module,
                 platform,
-                python_version))
+                python_version,
+                visibility))
         rules.extend(manifest_rules)
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
@@ -935,7 +955,7 @@ class PythonConverter(base.Converter):
         if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test(rule_type):
-                rules.extend(self.gen_test_modules(base_path, library))
+                rules.extend(self.gen_test_modules(base_path, library, visibility))
                 interp_deps.append(
                     ':{}-testmodules-lib'.format(library.attributes['name'])
                 )
@@ -947,7 +967,8 @@ class PythonConverter(base.Converter):
                     python_platform,
                     interp_deps,
                     platform_deps,
-                    out_preload_deps))
+                    out_preload_deps,
+                    visibility))
             rules.extend(interp_rules)
             dependencies.extend(
                 ':' + r.attributes['name'] for r in interp_rules)
@@ -968,6 +989,7 @@ class PythonConverter(base.Converter):
                     platform_deps,
                     out_preload_deps,
                     typing_options,
+                    visibility
                 ),
             )
             attributes['tests'] = (
@@ -980,7 +1002,7 @@ class PythonConverter(base.Converter):
             dependencies.append('//python:fbtestmain')
 
         if runtime_deps:
-            rule = self.gen_associated_targets(name, runtime_deps)
+            rule = self.gen_associated_targets(name, runtime_deps, visibility)
             dependencies.append(rule.target_name)
             rules.append(rule)
 
@@ -1050,10 +1072,11 @@ class PythonConverter(base.Converter):
                     [self.convert_build_target(base_path, dep) for dep in deps],
                     typing,
                     typing_options,
+                    visibility,
                 )
 
             if runtime_deps:
-                rule = self.gen_associated_targets(name, runtime_deps)
+                rule = self.gen_associated_targets(name, runtime_deps, visibility)
                 deps = list(deps) + [rule.target_name]
                 yield rule
 
@@ -1097,6 +1120,7 @@ class PythonConverter(base.Converter):
                 tests=tests,
                 external_deps=external_deps,
                 cpp_deps=cpp_deps,
+                visibility=visibility,
             )
             if self.typing_config_target:
                 yield self.gen_typing_config(
@@ -1105,7 +1129,8 @@ class PythonConverter(base.Converter):
                     srcs,
                     [self.convert_build_target(base_path, dep) for dep in deps],
                     typing or check_types,
-                    typing_options
+                    typing_options,
+                    visibility=visibility,
                 )
             one_set_rules = self.create_binary(
                 base_path,
@@ -1133,6 +1158,7 @@ class PythonConverter(base.Converter):
                 typing_options=check_types_options,
                 runtime_deps=runtime_deps,
                 helper_deps=helper_deps,
+                visibility=visibility,
             )
             for rule in one_set_rules:
                 yield rule
@@ -1145,6 +1171,8 @@ class PythonConverter(base.Converter):
         if genrule and self.get_fbconfig_rule_type() == 'python_unittest':
             attrs = collections.OrderedDict()
             attrs['name'] = name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['out'] = os.curdir
             attrs['tests'] = rule_names
             # With this we are telling buck we depend on the test targets
@@ -1165,6 +1193,7 @@ class PythonConverter(base.Converter):
         platform_deps,
         preload_deps,
         typing_options,
+        visibility,
     ):
 
         typing_config = self.typing_config_target
@@ -1191,6 +1220,8 @@ class PythonConverter(base.Converter):
             ('version_universe',
              self.get_version_universe(self.get_py3_version())),
         ))
+        if visibility is not None:
+            attrs['visibility'] = visibility
 
         if library.target_name not in typecheck_deps:
             # If the passed library is not a dependency, add its sources here.
@@ -1209,6 +1240,8 @@ class PythonConverter(base.Converter):
         if typing_config:
             conf = collections.OrderedDict()
             conf['name'] = name + '-typing=mypy.ini'
+            if visibility is not None:
+                conf['visibility'] = visibility
             conf['out'] = os.curdir
             cmd = '$(exe {}) gather '.format(typing_config)
             if typing_options:
@@ -1220,6 +1253,8 @@ class PythonConverter(base.Converter):
             yield gen_rule
             conf = collections.OrderedDict()
             conf['name'] = name + '-mypy_ini'
+            if visibility is not None:
+                conf['visibility'] = visibility
             conf['base_module'] = ''
             conf['srcs'] = [gen_rule.target_name]
             mypy_ini = Rule('python_library', conf)
@@ -1236,12 +1271,15 @@ class PythonConverter(base.Converter):
     ):
         rules = []
         name = attributes['name']
+        visibility = attributes['visibility']
         lib_main_module_attrs_name = None
         if 'main_module' in attributes:
             # we need to preserve the original main_module, so we inject a
             # library with a module for it that the main wrapper picks up
             main_module_attrs = collections.OrderedDict()
             main_module_attrs['name'] = name + '-monkeytype_main_module'
+            if visibility is not None:
+                main_module_attrs['visibility'] = visibility
             main_module_attrs['out'] = name + '-__monkeytype_main_module__.py'
             main_module_attrs['cmd'] = (
                 'echo {} > $OUT'.format(pipes.quote(
@@ -1256,6 +1294,8 @@ class PythonConverter(base.Converter):
             lib_main_module_attrs_name = name + '-monkeytype_main_module-lib'
             lib_main_module_attrs = collections.OrderedDict()
             lib_main_module_attrs['name'] = lib_main_module_attrs_name
+            if visibility is not None:
+                lib_main_module_attrs['visibility'] = visibility
             lib_main_module_attrs['base_module'] = ''
             lib_main_module_attrs['deps'] = ['//python:fbtestmain', ':' + name]
             lib_main_module_attrs['srcs'] = {
@@ -1266,6 +1306,8 @@ class PythonConverter(base.Converter):
         # Create a variant of the target that is running with monkeytype
         wrapper_attrs = attributes.copy()
         wrapper_attrs['name'] = name + '-monkeytype'
+        if visibility is not None:
+            wrapper_attrs['visibility'] = visibility
         if 'deps' in wrapper_attrs:
             wrapper_deps = list(wrapper_attrs['deps'])
         else:
@@ -1289,6 +1331,7 @@ class PythonConverter(base.Converter):
         # And create a target that can be used for stub creation
         stub_gen_attrs = collections.OrderedDict((
             ('name', attributes['name'] + '-monkeytype-gen-stubs'),
+            ('visibility', visibility),
             ('main_module', 'python.monkeytype.tools.get_stub'),
             ('cxx_platform', attributes['cxx_platform']),
             ('platform', attributes['platform']),
@@ -1301,7 +1344,7 @@ class PythonConverter(base.Converter):
         rules.append(Rule('python_binary', stub_gen_attrs))
         return rules
 
-    def gen_test_modules(self, base_path, library):
+    def gen_test_modules(self, base_path, library, visibility):
         lines = ['TEST_MODULES = [']
         for src in sorted(library.attributes.get('srcs') or ()):
             lines.append(
@@ -1317,6 +1360,8 @@ class PythonConverter(base.Converter):
         name = library.attributes['name']
         gen_attrs = collections.OrderedDict()
         gen_attrs['name'] = name + '-testmodules'
+        if visibility is not None:
+            gen_attrs['visibility'] = visibility
         gen_attrs['out'] = name + '-__test_modules__.py'
         gen_attrs['cmd'] = ' && '.join(
             'echo {} >> $OUT'.format(pipes.quote(line))
@@ -1326,6 +1371,8 @@ class PythonConverter(base.Converter):
 
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = name + '-testmodules-lib'
+        if visibility is not None:
+            lib_attrs['visibility'] = visibility
         lib_attrs['base_module'] = ''
         lib_attrs['deps'] = ['//python:fbtestmain', ':' + name]
         lib_attrs['srcs'] = {'__test_modules__.py': ':' + gen_attrs['name']}
