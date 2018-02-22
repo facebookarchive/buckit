@@ -178,7 +178,8 @@ class LuaConverter(base.Converter):
             name,
             interactive=False,
             base_module=None,
-            main_module=None):
+            main_module=None,
+            visibility=None):
         """
         Create the run file used by fbcode's custom Lua bootstrapper.
         """
@@ -197,6 +198,8 @@ class LuaConverter(base.Converter):
                         base_module=base_module)))
         source_attrs = collections.OrderedDict()
         source_attrs['name'] = source_name
+        if visibility is not None:
+            source_attrs['visibility'] = visibility
         source_attrs['out'] = '_run.lua'
         source_attrs['cmd'] = (
             'echo -n {} > $OUT'.format(pipes.quote(source)))
@@ -204,6 +207,8 @@ class LuaConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-run'
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = [':' + source_name]
         attrs['base_module'] = ''
         attrs['deps'] = [
@@ -222,7 +227,8 @@ class LuaConverter(base.Converter):
             cpp_main=None,
             cpp_main_args=(),
             run_file=None,
-            allocator='malloc'):
+            allocator='malloc',
+            visibility=None):
         """
         Create the C/C++ main entry point.
         """
@@ -241,6 +247,8 @@ class LuaConverter(base.Converter):
         cpp_main_source_name = name + '-cpp-main-source'
         cpp_main_source_attrs = collections.OrderedDict()
         cpp_main_source_attrs['name'] = cpp_main_source_name
+        if visibility is not None:
+            cpp_main_source_attrs['visibility'] = visibility
         cpp_main_source_attrs['out'] = name + '.cpp'
         cpp_main_source_attrs['cmd'] = (
             'echo -n {} > $OUT'.format(pipes.quote(cpp_main_source)))
@@ -249,6 +257,8 @@ class LuaConverter(base.Converter):
         cpp_main_name = name + '-cpp-main'
         cpp_main_attrs = collections.OrderedDict()
         cpp_main_attrs['name'] = name + '-cpp-main'
+        if visibility is not None:
+            cpp_main_attrs['visibility'] = visibility
         cpp_main_attrs['compiler_flags'] = self.get_extra_cxxflags()
         cpp_main_attrs['linker_flags'] = self.get_extra_ldflags()
         cpp_main_attrs['exported_linker_flags'] = [
@@ -291,7 +301,8 @@ class LuaConverter(base.Converter):
             base_module=None,
             srcs=(),
             deps=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
         """
         Buckify a library rule.
         """
@@ -299,6 +310,8 @@ class LuaConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         attributes['srcs'] = self.convert_sources(base_path, srcs)
 
@@ -348,7 +361,8 @@ class LuaConverter(base.Converter):
             srcs=(),
             deps=(),
             external_deps=(),
-            allocator='malloc'):
+            allocator='malloc',
+            visibility=None):
         """
         Buckify a binary rule.
         """
@@ -357,6 +371,8 @@ class LuaConverter(base.Converter):
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         rules = []
         dependencies = []
@@ -372,7 +388,8 @@ class LuaConverter(base.Converter):
                     base_module=base_module,
                     srcs=srcs,
                     deps=deps,
-                    external_deps=external_deps))
+                    external_deps=external_deps,
+                    visibility=visibility))
             dependencies.append(RootRuleTarget(base_path, lib_name))
             deps = []
             external_deps = []
@@ -398,7 +415,8 @@ class LuaConverter(base.Converter):
                     name,
                     interactive=interactive,
                     main_module=main_module,
-                    base_module=base_module))
+                    base_module=base_module,
+                    visibility=visibility))
             rules.extend(extra_rules)
             dependencies.append(RootRuleTarget(base_path, lib))
 
@@ -412,7 +430,8 @@ class LuaConverter(base.Converter):
                 cpp_main=cpp_main,
                 cpp_main_args=cpp_main_args,
                 run_file=run_file,
-                allocator=allocator))
+                allocator=allocator,
+                visibility=visibility))
         rules.extend(extra_rules)
         attributes['native_starter_library'] = cpp_main_lib
 
@@ -448,6 +467,7 @@ class LuaConverter(base.Converter):
             name=None,
             tags=(),
             type='lua',
+            visibility=None,
             **kwargs):
         """
         Buckify a unittest rule.
@@ -461,6 +481,7 @@ class LuaConverter(base.Converter):
             self.convert_binary(
                 base_path,
                 name=name,
+                visibility=visibility,
                 **kwargs))
         binary_rules[0].attributes['name'] = binary_name
         binary_rules[0].attributes['package_style'] = 'inplace'
@@ -470,6 +491,8 @@ class LuaConverter(base.Converter):
         # that testpilot knows it's a lua test.
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['test'] = ':' + binary_name
         platform = self.get_platform(base_path)
         attributes['labels'] = (
