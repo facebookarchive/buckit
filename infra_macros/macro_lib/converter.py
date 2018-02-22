@@ -17,6 +17,8 @@ import os
 import re
 
 
+ALWAYS_ALLOWED_ARGS = {'visibility'}
+
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
     global _import_macro_lib__imported
@@ -166,20 +168,6 @@ def is_supported_platform(context, converter, pattern):
     full_platform_string = '%s-%s' % (platform, mode_string)
 
     return re.search(pattern, full_platform_string)
-
-
-def set_default_visibility(base_path, converted_rules):
-    for rule in converted_rules:
-
-        # Experimental code can only be depended on by other experimental code.
-        if (base_path.split(os.sep)[0] == 'experimental' and
-                (base_path, rule.attributes['name']) not in EXPERIMENTAL_WHITELIST):
-            rule.attributes['visibility'] = ['//experimental/...']
-
-        # Make sure we don't override previous visibility
-        rule.attributes.setdefault('visibility', ['PUBLIC'])
-
-        yield rule
 
 
 def convert(context, base_path, rules):
@@ -345,19 +333,16 @@ def convert(context, base_path, rules):
         allowed_args = converter_map[rule.type].get_allowed_args()
         if allowed_args is not None:
             for attribute in rule.attributes:
-                if attribute not in allowed_args:
+                if attribute not in allowed_args and attribute not in ALWAYS_ALLOWED_ARGS:
                     raise TypeError(
                         '{}() got an unexpected keyword argument: {!r}'
                         .format(rule.type, attribute))
 
         results.extend(   # Supports generators
-            set_default_visibility(
+            converter_map[rule.type].convert(
                 base_path,
-                converter_map[rule.type].convert(
-                    base_path,
-                    **rule.attributes
-                ),
-            )
+                **rule.attributes
+            ),
         )
 
     return results

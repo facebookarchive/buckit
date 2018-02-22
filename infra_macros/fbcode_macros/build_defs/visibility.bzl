@@ -24,9 +24,9 @@ EXPERIMENTAL_WHITELIST = {
     ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'classerrormeter'): None,
     ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'mapmeter'): None,
     ('experimental/everstore/orphaned_needles/WorkitemList', 'workitemlist_client_lib'): None,
-    ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift-py'): None,
+    ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift'): None,
     ('experimental/guruqu/transformers', 'segmax_predict'): None,
-    ('experimental/pshinghal/dummy_service', 'thrift-py'): None,
+    ('experimental/pshinghal/dummy_service', 'thrift'): None,
 }
 
 def get_visibility_for_base_path(visibility_attr, name_attr, base_path):

@@ -240,6 +240,7 @@ class ImageFeatureConverter(base.Converter):
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features=None,
+        visibility=None,
     ):
 
         def normalize_target(target):
@@ -300,4 +301,5 @@ class ImageFeatureConverter(base.Converter):
                 ),
                 out=quote(json.dumps(out_dict, sort_keys=True)),
             ),
+            visibility=visibility,
         ))]

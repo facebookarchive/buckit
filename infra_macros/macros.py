@@ -60,6 +60,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 # /macros/.buckconfig
 # /macros/macros.py
 load('@fbcode_macros//build_defs:config.bzl', 'config')
+load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/BuildMode.py'.format(MACRO_LIB_DIR), 'BuildMode')
@@ -271,6 +272,12 @@ def rule_handler(context, globals, rule_type, **kwargs):
     context['build_mode'] = get_build_mode(base_path).get(context['mode'])
     context['third_party_config'] = third_party_config
     context['config'] = config
+
+    # Set default visibility
+    rule.attributes['visibility'] = get_visibility_for_base_path(
+        rule.attributes.get('visibility'),
+        rule.attributes.get('name'),
+        base_path)
 
     results = converter.convert(base.Context(**context), base_path, [rule])
     # Instantiate the Buck rules that got converted successfully.
