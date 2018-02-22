@@ -71,13 +71,6 @@ include_defs('//{}/convert/cpp.py'.format(MACRO_LIB_DIR), 'cpp')
 
 __all__ = []
 
-EXTERNAL_LIBRARY_OVERRIDE = collections.defaultdict(list)
-if read_config('tp2', 'override'):
-    for setting in read_config('tp2', 'override').split(','):
-        k, v = setting.split('=', 1)
-        EXTERNAL_LIBRARY_OVERRIDE[k].append(v)
-
-
 def get_oss_third_party_config():
     interpreter = read_config('python#py3', 'interpreter', 'python3')
     if interpreter.endswith('python3'):
@@ -278,17 +271,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
     context['build_mode'] = get_build_mode(base_path).get(context['mode'])
     context['third_party_config'] = third_party_config
     context['config'] = config
-
-    if rule_type == 'cpp_library_external':
-        if kwargs['name'] in EXTERNAL_LIBRARY_OVERRIDE:
-            # Apply settings
-            for override in EXTERNAL_LIBRARY_OVERRIDE[kwargs['name']]:
-                k, v = override.split('=', 1)
-                simple_map = {
-                    'True': True,
-                    'False': False,
-                }
-                kwargs[k] = simple_map[v]
 
     results = converter.convert(base.Context(**context), base_path, [rule])
     # Instantiate the Buck rules that got converted successfully.
