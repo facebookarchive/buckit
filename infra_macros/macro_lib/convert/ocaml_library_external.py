@@ -36,11 +36,14 @@ class OCamlLibraryExternalConverter(base.Converter):
             c_libs=None,
             deps=(),
             external_deps=(),
-            native=True):
+            native=True,
+            visibility=None):
 
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         attributes['lib_name'] = name
         attributes['lib_dir'] = ''

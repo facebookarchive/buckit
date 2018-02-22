@@ -88,7 +88,8 @@ class OCamlConverter(base.Converter):
                     base_path,
                     name,
                     self.get_fbconfig_rule_type(),
-                    self.get_default_platform()))
+                    self.get_default_platform(),
+                    visibility=visibility))
             dependencies.append(self.get_dep_target(cxx_build_info))
             extra_rules.extend(cxx_build_info_rules)
 
