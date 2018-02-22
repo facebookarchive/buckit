@@ -76,7 +76,8 @@ class JsConverter(base.Converter):
             base_path,
             name,
             srcs,
-            deps):
+            deps,
+            visibility):
         """
         Generate a rule which exports the transitive set of node modules.
         """
@@ -100,6 +101,8 @@ class JsConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = srcs.values()
         attrs['cmd'] = ' && '.join(cmds)
@@ -112,7 +115,8 @@ class JsConverter(base.Converter):
             node=None,
             node_module_name=None,
             deps=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
 
         rules = []
 
@@ -130,7 +134,8 @@ class JsConverter(base.Converter):
                 base_path,
                 name,
                 out_srcs,
-                self.convert_deps(base_path, deps, external_deps)))
+                self.convert_deps(base_path, deps, external_deps),
+                visibility))
 
         return rules
 
@@ -142,7 +147,8 @@ class JsConverter(base.Converter):
             node=None,
             node_module_name=None,
             deps=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
 
         rules = []
 
@@ -161,7 +167,8 @@ class JsConverter(base.Converter):
                 base_path,
                 name,
                 out_srcs,
-                self.convert_deps(base_path, deps, external_deps)))
+                self.convert_deps(base_path, deps, external_deps),
+                visibility))
 
         return rules
 
@@ -174,7 +181,8 @@ class JsConverter(base.Converter):
             node_flags=(),
             srcs=(),
             deps=(),
-            external_deps=()):
+            external_deps=(),
+            visibility=None):
 
         rules = []
 
@@ -186,13 +194,16 @@ class JsConverter(base.Converter):
                 name + '-modules',
                 collections.OrderedDict(
                     [(os.path.join(base_path, s), s) for s in srcs]),
-                self.convert_deps(base_path, deps, external_deps)))
+                self.convert_deps(base_path, deps, external_deps),
+                visibility))
         rules.append(modules_tree)
 
         # Use a genrule to call the JSAR builder, giving it the modules tree
         # and outputting and executable.
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = name + '.jsar'
         attrs['executable'] = True
         attrs['cmd'] = ' '.join([
@@ -207,7 +218,7 @@ class JsConverter(base.Converter):
 
         return rules
 
-    def convert(self, base_path, name, **kwargs):
+    def convert(self, base_path, name, visibility=None, **kwargs):
         """
         """
 
@@ -215,12 +226,12 @@ class JsConverter(base.Converter):
 
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'js_executable':
-            rules.extend(self.convert_executable(base_path, name, **kwargs))
+            rules.extend(self.convert_executable(base_path, name, visibility=visibility, **kwargs))
         elif rtype == 'js_node_module_external':
             rules.extend(
-                self.convert_node_module_external(base_path, name, **kwargs))
+                self.convert_node_module_external(base_path, name, visibility=visibility, **kwargs))
         elif rtype == 'js_npm_module':
-            rules.extend(self.convert_npm_module(base_path, name, **kwargs))
+            rules.extend(self.convert_npm_module(base_path, name, visibility=visibility, **kwargs))
         else:
             raise Exception('invalid rule type: ' + rtype)
 
