@@ -48,6 +48,7 @@ class DConverter(base.Converter):
                 tags=(),
                 linker_flags=(),
                 external_deps=(),
+                visibility=None,
                 **kwargs):
 
         platform = self.get_default_platform()
@@ -55,6 +56,8 @@ class DConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['srcs'] = srcs
 
         if self.is_test(self.get_buck_rule_type()):
