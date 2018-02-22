@@ -409,7 +409,7 @@ class HaskellConverter(base.Converter):
         else:
             return options
 
-    def convert_happy(self, name, platform, happy_src):
+    def convert_happy(self, name, platform, happy_src, visibility):
         """
         Create rules to generate a Haskell source from the given happy file.
         """
@@ -418,6 +418,8 @@ class HaskellConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + happy_src
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.path.splitext(happy_src)[0] + '.hs'
         attrs['srcs'] = [happy_src]
         attrs['cmd'] = ' && '.join([
@@ -429,7 +431,7 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def convert_alex(self, name, platform, alex_src):
+    def convert_alex(self, name, platform, alex_src, visibility):
         """
         Create rules to generate a Haskell source from the given alex file.
         """
@@ -438,6 +440,8 @@ class HaskellConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + alex_src
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.path.splitext(alex_src)[0] + '.hs'
         attrs['srcs'] = [alex_src]
         attrs['cmd'] = ' && '.join([
@@ -449,7 +453,7 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def _get_dep_rule(self, name, deps):
+    def _get_dep_rule(self, name, deps, visibility):
         """
         Sets up a dummy rule with the given dep objects formatted and installed
         using `deps` and `platform_deps` to support multi-platform builds.
@@ -462,11 +466,13 @@ class HaskellConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['preferred_linkage'] = 'static'
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
         return Rule('cxx_library', attrs)
 
-    def convert_c2hs(self, name, platform, source, deps):
+    def convert_c2hs(self, name, platform, source, deps, visibility):
         """
         Construct the rules to generate a haskell source from the given `c2hs`
         source.
@@ -479,10 +485,12 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         all_deps = deps + self.get_binary_link_deps()
-        rules.append(self._get_dep_rule(deps_name, all_deps))
+        rules.append(self._get_dep_rule(deps_name, all_deps, visibility))
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['cmd'] = (
             C2HS_TEMPL.format(
                 fbcode=(
@@ -497,7 +505,7 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def convert_hsc2hs(self, name, platform, source, deps):
+    def convert_hsc2hs(self, name, platform, source, deps, visibility):
         """
         Construct the rules to generate a haskell source from the given
         `hsc2hs` source.
@@ -510,12 +518,14 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         all_deps = deps + self.get_binary_link_deps()
-        rules.append(self._get_dep_rule(deps_name, all_deps))
+        rules.append(self._get_dep_rule(deps_name, all_deps, visibility))
 
         out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['cmd'] = (
             HSC2HS_TEMPL.format(
                 fbcode=(
@@ -555,7 +565,8 @@ class HaskellConverter(base.Converter):
             force_static=None,
             fb_haskell=True,
             allocator='jemalloc',
-            dlls={}):
+            dlls={},
+            visibility=None):
 
         rules = []
         out_compiler_flags = []
@@ -565,6 +576,8 @@ class HaskellConverter(base.Converter):
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
 
         if self.is_binary():
             if main is not None:
@@ -670,25 +683,25 @@ class HaskellConverter(base.Converter):
         for src in srcs:
             _, ext = os.path.splitext(src)
             if ext == '.y':
-                src, extra_rules = self.convert_happy(name, platform, src)
+                src, extra_rules = self.convert_happy(name, platform, src, visibility)
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES))
             elif ext == '.x':
-                src, extra_rules = self.convert_alex(name, platform, src)
+                src, extra_rules = self.convert_alex(name, platform, src, visibility)
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(ALEX_PACKAGES))
             elif ext == '.hsc':
                 src, extra_rules = (
-                    self.convert_hsc2hs(name, platform, src, user_deps))
+                    self.convert_hsc2hs(name, platform, src, user_deps, visibility))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             elif ext == '.chs':
                 src, extra_rules = (
-                    self.convert_c2hs(name, platform, src, user_deps))
+                    self.convert_c2hs(name, platform, src, user_deps, visibility))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             else:
@@ -706,7 +719,8 @@ class HaskellConverter(base.Converter):
         if dlls:
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
                 cpp.convert_dlls(base_path, name, platform,
-                                 dlls, self.get_fbcode_dir_from_gen_dir()))
+                                 dlls, self.get_fbcode_dir_from_gen_dir(),
+                                 visibility=visibility))
             rules.extend(dll_rules)
             dependencies.extend(dll_deps)
             optlflags = []
@@ -766,6 +780,7 @@ class HaskellConverter(base.Converter):
             name,
             tags=(),
             env=None,
+            visibility=None,
             **kwargs):
         """
         Buckify a unittest rule.
@@ -779,6 +794,7 @@ class HaskellConverter(base.Converter):
             self.convert_rule(
                 base_path,
                 name=binary_name,
+                visibility=visibility,
                 **kwargs))
         rules.extend(binary_rules)
 
@@ -786,6 +802,8 @@ class HaskellConverter(base.Converter):
         # that testpilot knows it's a haskell test.
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['test'] = ':' + binary_name
         attributes['env'] = env
         platform = self.get_platform(base_path)
@@ -795,7 +813,7 @@ class HaskellConverter(base.Converter):
 
         return rules
 
-    def convert_dll(self, base_path, name, dll, **kwargs):
+    def convert_dll(self, base_path, name, dll, visibility=None, **kwargs):
         """
         Generate rules to build a dynamic library.
         """
@@ -813,6 +831,7 @@ class HaskellConverter(base.Converter):
                 lib_name,
                 link_whole=True,
                 force_static=True,
+                visibility=visibility,
                 **kwargs))
 
         # For backwards compatiblity with fbbuild, generate a noop rule under
@@ -820,6 +839,8 @@ class HaskellConverter(base.Converter):
         # don't break the build.
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = 'empty'
         attrs['cmd'] = 'touch "$OUT"'
         rules.append(Rule('genrule', attrs))
@@ -841,11 +862,14 @@ class HaskellConverter(base.Converter):
             base_path,
             name,
             deps=(),
-            haddock_flags=()):
+            haddock_flags=(),
+            visibility=None):
         rules = []
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         if haddock_flags:
             attrs['haddock_flags'] = haddock_flags
         attrs['platform'] = self.get_platform(base_path)
