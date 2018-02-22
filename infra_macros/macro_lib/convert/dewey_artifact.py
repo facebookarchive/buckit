@@ -39,9 +39,12 @@ class DeweyArtifactConverter(base.Converter):
             commit,
             artifact,
             path,
+            visibility,
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if visibility is not None:
+            attributes['visibility'] = visibility
         attributes['out'] = os.path.basename(path)
         attributes['srcs'] = []
         bash = """
@@ -66,9 +69,9 @@ class DeweyArtifactConverter(base.Converter):
             commit,
             artifact,
             path,
-            visibility=[],
+            visibility=None,
             **kwargs
     ):
         rules = []
-        rules.append(self.get_download_rule(name, project, commit, artifact, path))
+        rules.append(self.get_download_rule(name, project, commit, artifact, path, visibility))
         return rules
