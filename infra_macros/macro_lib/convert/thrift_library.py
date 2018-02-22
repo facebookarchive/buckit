@@ -238,6 +238,7 @@ class ThriftLangConverter(base.Converter):
             options,
             sources,
             deps,
+            visibility,
             **kwargs):
         """
         Generate the language-specific library rule (and any extra necessary
@@ -429,6 +430,7 @@ class CppThriftConverter(ThriftLangConverter):
             cpp2_external_deps=(),
             cpp_compiler_flags=(),
             cpp2_compiler_flags=(),
+            visibility=None,
             **kwargs):
         """
         Generates a handful of rules:
@@ -623,6 +625,7 @@ class CppThriftConverter(ThriftLangConverter):
             # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
             # and build //thrift/lib/cpp2/test:exceptservice-cpp2-types).
             undefined_symbols=True,
+            visibility=visibility,
         )
         clients_rules = self._cpp_converter.convert(
             base_path,
@@ -635,6 +638,7 @@ class CppThriftConverter(ThriftLangConverter):
             # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
             # and build //thrift/lib/cpp2/test:Presult-cpp2-clients).
             undefined_symbols=True,
+            visibility=visibility,
         )
         services_rules = self._cpp_converter.convert(
             base_path,
@@ -644,6 +648,7 @@ class CppThriftConverter(ThriftLangConverter):
             deps=services_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            visibility=visibility,
         )
         # Create a master rule that depends on -types, -services and -clients
         # for compatibility
@@ -656,7 +661,8 @@ class CppThriftConverter(ThriftLangConverter):
                 ':' + name + types_suffix,
                 ':' + name + clients_suffix,
                 ':' + name + services_suffix,
-            ]
+            ],
+            visibility=visibility,
         )
         return (
             types_rules + clients_rules + services_rules +
@@ -706,12 +712,15 @@ class DThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
 
         sources = self.merge_sources_map(sources_map)
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = sources
 
         out_deps = []
@@ -793,6 +802,7 @@ class GoThriftConverter(ThriftLangConverter):
             go_pkg_base_path=None,
             go_thrift_namespaces=None,
             go_thrift_src_inter_deps={},
+            visibility=None,
             **kwargs):
 
         rules = []
@@ -813,6 +823,8 @@ class GoThriftConverter(ThriftLangConverter):
 
             attrs = collections.OrderedDict()
             attrs['name'] = rule_name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['srcs'] = sources.values()
             attrs['package_name'] = pkg
 
@@ -841,6 +853,8 @@ class GoThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = []
         attrs['package_name'] = pkg_name
         attrs['exported_deps'] = sorted(export_deps)
@@ -1011,10 +1025,13 @@ class HaskellThriftConverter(ThriftLangConverter):
             deps,
             hs_packages=(),
             hs2_deps=[],
+            visibility=None,
             **kwargs):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = self.merge_sources_map(sources_map)
 
         dependencies = []
@@ -1080,6 +1097,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             sources_map,
             deps,
             java_thrift_maven_coords=None,
+            visibility=None,
             **kwargs):
 
         rules = []
@@ -1091,6 +1109,8 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             src_zip_name = name + '.src.zip'
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['srcs'] = (
                 [source for sources in sources_map.itervalues()
                     for source in sources.itervalues()])
@@ -1108,7 +1128,8 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             name=name,
             srcs=out_srcs,
             exported_deps=out_deps,
-            maven_coords=java_thrift_maven_coords))
+            maven_coords=java_thrift_maven_coords,
+            visibility=visibility))
 
         return rules
 
@@ -1245,6 +1266,7 @@ class JsThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility=None,
             **kwargs):
 
         sources = self.merge_sources_map(sources_map)
@@ -1262,6 +1284,8 @@ class JsThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = sources.values()
         attrs['cmd'] = ' && '.join(cmds)
@@ -1349,6 +1373,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             sources_map,
             deps,
             java_swift_maven_coords=None,
+            visibility=None,
             **kwargs):
         rules = []
         out_srcs = []
@@ -1359,6 +1384,8 @@ class JavaSwiftConverter(ThriftLangConverter):
             src_zip_name = name + '.src.zip'
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['srcs'] = (
                 [source for sources in sources_map.values()
                     for source in sources.values()])
@@ -1390,6 +1417,7 @@ class JavaSwiftConverter(ThriftLangConverter):
         rules.extend(self._java_library_converter.convert(
             base_path,
             name=name,
+            visibility=visibility,
             srcs=out_srcs,
             exported_deps=out_deps,
             maven_coords=java_swift_maven_coords,
@@ -1611,10 +1639,13 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = self.merge_sources_map(sources_map)
         attrs['base_module'] = self.get_base_module(**kwargs)
 
@@ -1648,7 +1679,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
                 base_module if base_module is not None else base_path,
                 attrs['srcs'],
                 out_deps,
-                typing=True
+                typing=True,
+                visibility=visibility,
             )
         yield Rule('python_library', attrs)
 
@@ -1738,10 +1770,13 @@ class OCamlThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = self.merge_sources_map(sources_map).values()
 
         dependencies = []
@@ -1904,6 +1939,7 @@ class Python3ThriftConverter(ThriftLangConverter):
             sources,
             deps,
             py3_namespace='',
+            visibility=None,
             **kwargs):
         """
         Generate the language-specific library rule (and any extra necessary
@@ -1928,12 +1964,13 @@ class Python3ThriftConverter(ThriftLangConverter):
                          self.gen_rule_thrift_clients):
             for rule in gen_func(
                 name, base_path, sources, thrift_srcs,
-                py3_namespace, deps, generated
+                py3_namespace, deps, generated, visibility=visibility,
             ):
                 yield rule
 
     def gen_rule_thrift_types(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        visibility,
     ):
         """Generates rules for Thrift types."""
 
@@ -1956,11 +1993,13 @@ class Python3ThriftConverter(ThriftLangConverter):
                 self.get_thrift_dep_target('thrift/lib/py3', 'types'),
             ] + [d + self.types_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
+            visibility=visibility,
         ):
             yield rule
 
     def gen_rule_thrift_services(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        visibility,
     ):
         """Generate rules for Thrift Services"""
         # Services and support
@@ -2014,11 +2053,13 @@ class Python3ThriftConverter(ThriftLangConverter):
             cpp_compiler_flags=['-fno-strict-aliasing'],
             api=collections.OrderedDict(
                 cython_api('services', thrift_srcs)),
+            visibility=visibility,
         ):
             yield rule
 
     def gen_rule_thrift_clients(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        visibility,
     ):
         # Clients and support
         def clients_srcs():
@@ -2057,6 +2098,7 @@ class Python3ThriftConverter(ThriftLangConverter):
                 self.get_thrift_dep_target('thrift/lib/py3', 'client'),
             ] + [d + self.clients_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
+            visibility=visibility,
         ):
             yield rule
 
@@ -2111,6 +2153,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
 
         generator_binary = \
@@ -2161,6 +2204,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             assert thriftdoc_rule.startswith(':')
             yield Rule('genrule', collections.OrderedDict(
                 name=thriftdoc_rule[1:],  # Get rid of the initial ':',
+                visibility=visibility,
                 out=self.AST_FILE,
                 srcs=[json_experimental_rule],
                 cmd=' && '.join([
@@ -2174,6 +2218,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             yield self.gen_typing_config(name)
         yield Rule('python_library', collections.OrderedDict(
             name=name,
+            visibility=visibility,
             # tupperware.thriftdoc.validator.registry recursively loads this:
             base_module='tupperware.thriftdoc.generated_asts',
             srcs=self.convert_source_map(base_path, py_library_srcs),
@@ -2267,11 +2312,14 @@ class RustThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
         sources = self.merge_sources_map(sources_map).values()
 
         attrs = collections.OrderedDict()
         attrs['name'] = '%s-gen-rs' % name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
         attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} -o $OUT; /bin/rustfmt $OUT' \
@@ -2289,6 +2337,7 @@ class RustThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
 
         thrift_base = (
@@ -2320,6 +2369,7 @@ class RustThriftConverter(ThriftLangConverter):
             external_deps=out_external_deps,
             unittests=False,    # nothing meaningful
             crate=crate_name,
+            visibility=visibility,
             **kwargs
         )
 
@@ -2331,6 +2381,7 @@ class RustThriftConverter(ThriftLangConverter):
             options,
             sources_map,
             deps,
+            visibility,
             **kwargs):
         # Construct some rules:
         # json -> rust
@@ -2340,10 +2391,10 @@ class RustThriftConverter(ThriftLangConverter):
 
         rules.extend(
             self.get_ast_to_rust(
-                base_path, name, thrift_srcs, options, sources_map, deps, **kwargs))
+                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
         rules.extend(
             self.get_rust_to_rlib(
-                base_path, name, thrift_srcs, options, sources_map, deps, **kwargs))
+                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
 
         return rules
 
@@ -2478,7 +2529,8 @@ class ThriftLibraryConverter(base.Converter):
         name,
         thrift_srcs,
         base_module,
-        include_sr=False
+        include_sr=False,
+        visibility=None,
     ):
         """
         Generate all the py-remote rules.
@@ -2498,6 +2550,8 @@ class ThriftLibraryConverter(base.Converter):
             for service in services:
                 attrs = collections.OrderedDict()
                 attrs['name'] = '{}-{}-pyremote'.format(name, service)
+                if visibility is not None:
+                    attrs['visibility'] = visibility
                 attrs['py_version'] = '<3'
                 attrs['base_module'] = ''
                 attrs['main_module'] = '.'.join(filter(bool, [
@@ -2540,7 +2594,8 @@ class ThriftLibraryConverter(base.Converter):
             lang,
             compiler_args,
             source,
-            postprocess_cmd=None):
+            postprocess_cmd=None,
+            visibility=None):
         """
         Generate a rule which runs the thrift compiler for the given inputs.
         """
@@ -2548,6 +2603,8 @@ class ThriftLibraryConverter(base.Converter):
         attrs = collections.OrderedDict()
         attrs['name'] = (
             '{}-{}-{}'.format(name, lang, self.get_source_name(source)))
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = [source]
 
@@ -2566,7 +2623,7 @@ class ThriftLibraryConverter(base.Converter):
 
         return Rule('genrule', attrs)
 
-    def generate_generated_source_rules(self, compile_name, srcs):
+    def generate_generated_source_rules(self, compile_name, srcs, visibility):
         """
         Create rules to extra individual sources out of the directory of thrift
         sources the compiler generated.
@@ -2578,6 +2635,8 @@ class ThriftLibraryConverter(base.Converter):
         for name, src in srcs.iteritems():
             attrs = collections.OrderedDict()
             attrs['name'] = '{}={}'.format(compile_name, src)
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['out'] = src
             attrs['cmd'] = ' && '.join([
                 'mkdir -p `dirname $OUT`',
@@ -2597,6 +2656,7 @@ class ThriftLibraryConverter(base.Converter):
             deps=(),
             external_deps=(),
             languages=None,
+            visibility=None,
             **kwargs):
         """
         Thrift library conversion implemented purely via macros (i.e. no Buck
@@ -2622,7 +2682,8 @@ class ThriftLibraryConverter(base.Converter):
                 base_path,
                 self.get_exported_include_tree(name),
                 sorted(includes),
-                map(self.get_exported_include_tree, deps)))
+                map(self.get_exported_include_tree, deps),
+                visibility))
 
         # py3 thrift requires cpp2
         if 'py3' in languages and 'cpp2' not in languages:
@@ -2675,7 +2736,8 @@ class ThriftLibraryConverter(base.Converter):
                             base_path,
                             thrift_name,
                             '$OUT',
-                            **kwargs)))
+                            **kwargs),
+                        visibility=visibility))
                 rules.append(compile_rule)
 
                 # Create wrapper rules to extract individual generated sources
@@ -2687,11 +2749,13 @@ class ThriftLibraryConverter(base.Converter):
                         thrift_name,
                         services,
                         options,
+                        visibility=visibility,
                         **kwargs))
                 gen_srcs, gen_src_rules = (
                     self.generate_generated_source_rules(
                         compile_rule.attributes['name'],
-                        gen_srcs))
+                        gen_srcs,
+                        visibility=visibility))
                 all_gen_srcs[thrift_name] = gen_srcs
                 rules.extend(gen_src_rules)
 
@@ -2704,6 +2768,7 @@ class ThriftLibraryConverter(base.Converter):
                     options,
                     all_gen_srcs,
                     [dep + '-' + lang for dep in deps],
+                    visibility=visibility,
                     **kwargs))
         return rules
 
@@ -2764,7 +2829,7 @@ class ThriftLibraryConverter(base.Converter):
 
         return allowed_args
 
-    def convert(self, base_path, name=None, languages=None, **kwargs):
+    def convert(self, base_path, name=None, languages=None, visibility=None, **kwargs):
         rules = []
 
         supported_languages = self.read_list('thrift', 'supported_languages')
@@ -2774,7 +2839,7 @@ class ThriftLibraryConverter(base.Converter):
         # Convert rules we support via macros.
         macro_languages = self.get_languages(languages)
         if macro_languages:
-            rules.extend(self.convert_macros(base_path, name=name, languages=languages, **kwargs))
+            rules.extend(self.convert_macros(base_path, name=name, languages=languages, visibility=visibility, **kwargs))
 
         # If python is listed in languages, then also generate the py-remote
         # rules.
@@ -2785,6 +2850,7 @@ class ThriftLibraryConverter(base.Converter):
                     name,
                     self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
                     kwargs.get('py_base_module'),
-                    include_sr=kwargs.get('py_remote_service_router', False)))
+                    include_sr=kwargs.get('py_remote_service_router', False),
+                    visibility=visibility))
 
         return rules
