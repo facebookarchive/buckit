@@ -18,7 +18,8 @@ class VisibilityTest(tests.utils.TestCase):
     includes = [
         (
             "@fbcode_macros//build_defs:visibility.bzl",
-            "get_visibility"
+            "get_visibility",
+            "get_visibility_for_base_path"
         )
     ]
 
@@ -30,3 +31,19 @@ class VisibilityTest(tests.utils.TestCase):
         ]
         result = root.run_unittests(self.includes, statements)
         self.assertSuccess(result, ["PUBLIC"], ["//..."])
+
+    @tests.utils.with_project()
+    def test_returns_experimental_visibility_for_experimental_things(self, root):
+        statements = [
+            ('get_visibility_for_base_path(None, "other", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
+            ('get_visibility_for_base_path(None, "lib", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
+            ('get_visibility_for_base_path(["//..."], "lib", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
+            'get_visibility_for_base_path(None, "target", "other_dir")',
+            'get_visibility_for_base_path(["//..."], "target", "target_dir")',
+        ]
+        result = root.run_unittests(self.includes, statements)
+        self.assertSuccess(result, ["//experimental/..."], ["PUBLIC"],
+                           ["//..."], ["PUBLIC"], ["//..."])
