@@ -391,7 +391,7 @@ class Converter(base.Converter):
 
     def gen_shared_lib(
         self, name, base_path, api_headers, deps, cpp_compiler_flags, cpp_deps,
-        srcs, headers, header_namespace, cpp_external_deps,
+        srcs, headers, header_namespace, cpp_external_deps, visibility,
     ):
         # Ok so cxx_library header map, is dst -> src
         # python_library is src -> dst
@@ -429,6 +429,7 @@ class Converter(base.Converter):
             headers=headers,
             header_namespace=header_namespace,
             external_deps=cpp_external_deps,
+            visibility=visibility,
         )
 
     def convert_rule(
@@ -453,7 +454,7 @@ class Converter(base.Converter):
         types=(),
         typing_options='',
         tests=(),
-        visibility=(),
+        visibility=None,
     ):
         # Empty srcs results in a cxx_library, not an cxx_python_extension
         # Used for gathering pxd files,
@@ -471,8 +472,8 @@ class Converter(base.Converter):
         def set_visibility(rule):
             if visibility:
                 # Make it harder to break subrules
-                _visibility = ('//' + base_path + ':', ) + visibility
-                rule.attributes.setdefault('visibility', _visibility)
+                _visibility = ('//' + base_path + ':', ) + tuple(visibility)
+                rule.attributes['visibility'] = _visibility
             return rule
 
         def set_tests(rule):
@@ -626,6 +627,7 @@ class Converter(base.Converter):
             headers,
             header_namespace,
             cpp_external_deps,
+            visibility=visibility,
         ):
             yield rule
 
