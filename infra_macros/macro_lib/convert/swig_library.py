@@ -90,6 +90,7 @@ class SwigLangConverter(base.Converter):
             gen_srcs,
             cpp_deps,
             deps,
+            visibility,
             **kwargs):
         """
         Generate the language-specific library rule (and any extra necessary
@@ -134,6 +135,7 @@ class JavaSwigConverter(SwigLangConverter):
             cpp_deps,
             deps,
             java_library_name=None,
+            visibility=None,
             **kwargs):
 
         rules = []
@@ -141,6 +143,8 @@ class JavaSwigConverter(SwigLangConverter):
         # Build the C/C++ Java extension from the generated C/C++ sources.
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-ext'
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = [src]
         # Swig-generated code breaks strict-aliasing with gcc
         # (http://www.swig.org/Doc3.0/SWIGDocumentation.html#Java_compiling_dynamic).
@@ -163,6 +167,8 @@ class JavaSwigConverter(SwigLangConverter):
         src_zip_name = name + '.src.zip'
         attrs = collections.OrderedDict()
         attrs['name'] = src_zip_name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         # Java rules are C/C++ platform agnostic, so we're forced to choose a
         # fixed platform at parse-time (which means Java binaries will only
         # ever build against one platform at a time).
@@ -175,6 +181,8 @@ class JavaSwigConverter(SwigLangConverter):
         # Generate the wrapping Java library.
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = [':' + src_zip_name]
         out_deps = []
         out_deps.extend(deps)
@@ -223,6 +231,7 @@ class PythonSwigConverter(SwigLangConverter):
             cpp_deps,
             deps,
             py_base_module=None,
+            visibility=None,
             **kwargs):
 
         # Build the C/C++ python extension from the generated C/C++ sources.
@@ -255,6 +264,8 @@ class PythonSwigConverter(SwigLangConverter):
         # Generate the wrapping python library.
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['srcs'] = gen_srcs
         out_deps = []
         out_deps.extend(deps)
@@ -318,39 +329,6 @@ class SwigLibraryConverter(base.Converter):
 
         return dep + '-swig-includes'
 
-    def generate_exported_include_tree(
-            self,
-            base_path,
-            name,
-            includes,
-            deps):
-        """
-        Generate a rule which exports the transitive set of swig sources
-        used by this swig library, to be included by dependents.  We
-        intentionally copy in all swig sources from our dependencies, as
-        this is the only way to allow dependencies to inherit these in their
-        include paths via parse-time transformations.
-        """
-
-        cmds = []
-
-        for dep in sorted(deps):
-            cmds.append(
-                'rsync -a $(location {})/ "$OUT"'
-                .format(self.get_exported_include_tree(dep)))
-        for src in sorted(includes):
-            src = self.get_source_name(src)
-            dst = os.path.join('"$OUT"', base_path, src)
-            cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
-            cmds.append('cp {} {}'.format(src, dst))
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = self.get_exported_include_tree(name)
-        attrs['out'] = os.curdir
-        attrs['srcs'] = sorted(includes)
-        attrs['cmd'] = ' && '.join(cmds)
-        return Rule('genrule', attrs)
-
     def generate_compile_rule(
             self,
             base_path,
@@ -359,6 +337,7 @@ class SwigLibraryConverter(base.Converter):
             lang,
             interface,
             cpp_deps,
+            visibility,
             **kwargs):
         """
         Generate a rule which runs the swig compiler for the given inputs.
@@ -380,6 +359,8 @@ class SwigLibraryConverter(base.Converter):
         gen_name = '{}-{}-gen'.format(name, lang)
         attrs = collections.OrderedDict()
         attrs['name'] = gen_name
+        if visibility is not None:
+            attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = [interface]
         cmds = [
@@ -431,7 +412,7 @@ class SwigLibraryConverter(base.Converter):
             ':' + gen_hdr_name,
             ':' + gen_src_name, rules)
 
-    def generate_generated_source_rules(self, name, src_name, srcs):
+    def generate_generated_source_rules(self, name, src_name, srcs, visibility):
         """
         Create rules to extra individual sources out of the directory of swig
         sources the compiler generated.
@@ -443,6 +424,8 @@ class SwigLibraryConverter(base.Converter):
         for sname, src in srcs.items():
             attrs = collections.OrderedDict()
             attrs['name'] = '{}={}'.format(name, src)
+            if visibility is not None:
+                attrs['visibility'] = visibility
             attrs['out'] = src
             attrs['cmd'] = ' && '.join([
                 'mkdir -p `dirname $OUT`',
@@ -465,6 +448,7 @@ class SwigLibraryConverter(base.Converter):
             ext_deps=(),
             ext_external_deps=(),
             deps=(),
+            visibility=None,
             **kwargs):
         """
         Swig library conversion implemented purely via macros (i.e. no Buck
@@ -489,7 +473,8 @@ class SwigLibraryConverter(base.Converter):
                 base_path,
                 self.get_exported_include_tree(name),
                 [interface],
-                map(self.get_exported_include_tree, deps)))
+                map(self.get_exported_include_tree, deps),
+                visibility=visibility))
 
         # Generate rules for all supported languages.
         for lang in languages:
@@ -504,6 +489,7 @@ class SwigLibraryConverter(base.Converter):
                     lang,
                     interface,
                     cpp_deps,
+                    visibility=visibility,
                     **kwargs))
             rules.extend(extra_rules)
 
@@ -514,7 +500,8 @@ class SwigLibraryConverter(base.Converter):
                 self.generate_generated_source_rules(
                     '{}-{}-src'.format(name, lang),
                     compile_rule,
-                    gen_srcs))
+                    gen_srcs,
+                    visibility=visibility))
             rules.extend(gen_src_rules)
 
             # Generate the per-language rules.
@@ -528,6 +515,7 @@ class SwigLibraryConverter(base.Converter):
                     gen_srcs,
                     sorted(set(cpp_deps + ext_deps)),
                     [dep + '-' + lang for dep in deps],
+                    visibility=visibility,
                     **kwargs))
 
         return rules
@@ -555,12 +543,12 @@ class SwigLibraryConverter(base.Converter):
 
         return allowed_args
 
-    def convert(self, base_path, name=None, **kwargs):
+    def convert(self, base_path, name=None, visibility=None, **kwargs):
         rules = []
 
         # Convert rules we support via macros.
         macro_languages = self.get_languages(kwargs.get('languages'))
         if macro_languages:
-            rules.extend(self.convert_macros(base_path, name=name, **kwargs))
+            rules.extend(self.convert_macros(base_path, name=name, visibility=visibility, **kwargs))
 
         return rules
