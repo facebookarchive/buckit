@@ -69,6 +69,7 @@ ASAN_UBSAN_FLAGS = [
     '-fno-sanitize=nonnull-attribute',
     '-fno-sanitize=null',
     '-fno-sanitize=object-size',
+    '-fno-sanitize=shift-base',
     '-fno-sanitize=unsigned-integer-overflow',
     '-fno-sanitize=vptr',
 ]
