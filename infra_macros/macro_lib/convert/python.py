@@ -443,7 +443,9 @@ class PythonConverter(base.Converter):
         # Prefer true in config else fallback to TARGETS setting (Default = False)
         if config_setting:
             return config_setting
-        return helper_deps
+
+        # Only allow TARGETS to ONLY enable for @mode/dev
+        return helper_deps if self._context.mode.startswith('dev') else False
 
     def convert_interp_rules(
             self,
