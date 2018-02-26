@@ -1939,8 +1939,9 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
+        # Maybe we can fix this in the future, but specific visibility rules
+        # break typing rules from depending on each other
+        attrs['visibility'] = ['PUBLIC']
         attrs['out'] = os.curdir
         attrs['cmd'] = '\n'.join(cmds)
         return Rule('genrule', attrs)
