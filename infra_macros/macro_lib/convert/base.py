@@ -1425,6 +1425,9 @@ class Converter(object):
         if self._context.coverage:
             deps.extend(self.get_coverage_binary_deps())
 
+        # We link in our own implementation of `kill` to binaries (S110576).
+        deps.append(RootRuleTarget('common/init', 'kill'))
+
         return deps
 
     def get_allocator_deps(self, allocator):
