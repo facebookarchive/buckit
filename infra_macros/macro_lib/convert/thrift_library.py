@@ -1670,18 +1670,24 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         if self._flavor in (self.NORMAL, self.ASYNCIO):
             out_deps.append(':' + self.get_pyi_dependency(name))
+            has_types = True
+        else:
+            has_types = False
 
         attrs['deps'] = out_deps
         if self.typing_config_target:
             base_module = attrs['base_module']
-            yield self.gen_typing_config(
-                attrs['name'],
-                base_module if base_module is not None else base_path,
-                attrs['srcs'],
-                out_deps,
-                typing=True,
-                visibility=visibility,
-            )
+            if has_types:
+                yield self.gen_typing_config(
+                    name,
+                    base_module if base_module is not None else base_path,
+                    attrs['srcs'].keys(),
+                    out_deps,
+                    typing=True,
+                    visibility=visibility,
+                )
+            else:
+                yield self.gen_typing_config(name)
         yield Rule('python_library', attrs)
 
 

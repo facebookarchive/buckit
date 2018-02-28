@@ -313,7 +313,7 @@ class Converter(base.Converter):
             base_module=package,
             srcs=types,
             typing=True,
-            typing_options=','.join(['warn_incomplete_stub', typing_options]),
+            typing_options=typing_options,
         )
 
     def py_normalize_externals(self, external_deps):
