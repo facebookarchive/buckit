@@ -595,6 +595,8 @@ class TestMethodRenamer(type):
 
 @six.add_metaclass(TestMethodRenamer)
 class TestCase(unittest.TestCase):
+    maxDiff = None
+
     def assertSuccess(self, result, *expected_results):
         """ Make sure that the command ran successfully """
         self.assertEqual(

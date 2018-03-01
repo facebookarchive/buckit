@@ -16,7 +16,6 @@ from tests.utils import dedent
 
 
 class PlatformTest(tests.utils.TestCase):
-    maxDiff = None
     includes = [("@fbcode_macros//build_defs:platform.bzl", "platform")]
 
     current_arch = platform.machine()

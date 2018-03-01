@@ -15,7 +15,6 @@ import tests.utils
 
 
 class ConfigTest(tests.utils.TestCase):
-    maxDiff = None
     includes = [("@fbcode_macros//build_defs:config.bzl", "config")]
 
     @tests.utils.with_project()

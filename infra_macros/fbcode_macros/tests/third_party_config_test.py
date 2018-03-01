@@ -14,7 +14,6 @@ import tests.utils
 
 
 class ThirdPartyConfigTest(tests.utils.TestCase):
-    maxDiff = None
     includes = [
         (
             "@fbcode_macros//build_defs:third_party_config.bzl",

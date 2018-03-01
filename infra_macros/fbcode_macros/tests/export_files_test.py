@@ -14,7 +14,6 @@ import tests.utils
 from tests.utils import dedent
 
 class ExportFilesTest(tests.utils.TestCase):
-    maxDiff = None
 
     @tests.utils.with_project()
     def test_export_file_handles_visibility(self, root):

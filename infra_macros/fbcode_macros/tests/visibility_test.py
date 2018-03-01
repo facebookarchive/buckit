@@ -14,7 +14,6 @@ import tests.utils
 
 
 class VisibilityTest(tests.utils.TestCase):
-    maxDiff = None
     includes = [
         (
             "@fbcode_macros//build_defs:visibility.bzl",
