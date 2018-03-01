@@ -122,54 +122,6 @@ def handle_errors(errors, skip_errors=False):
         raise Exception(os.linesep.join(msg))
 
 
-def is_supported_platform(context, converter, pattern):
-    """
-    Returns False if we should pretend tha the current rule doesn't
-    exist.  This is used to control whether a rule participates in
-    the build for a given platform.
-
-    For regular fbcode builds on linux the platform name will be
-    something like `gcc-X.Y-glibc-A.B`.  The recommendation is that
-    linux specific rules should specify:
-
-       supported_platforms_regex='glibc'
-
-    For the macos platform builds, we'll define the platform to be
-    something like:
-
-       clang-X.Y-macos-A.B (where A.B is the value of
-         MACOSX_DEPLOYMENT_TARGET used with that platform)
-
-    The platform name is composed with the internal vs public build
-    mode.  This build mode helps to scope dependencies on things
-    that are not opensourced.  The default value of the build mode
-    is 'facebook' which indicates that all of fbcode is available
-    to build.  The open source build will have this set to 'public'.
-
-    This means that the fully qualified platform string, for the
-    purposes of this function will typically be something like:
-
-       gcc-X.Y-glibc-A.B-facebook
-       clang-X.Y-macos-A.B-public
-
-    The pattern match is unanchored which allows using a pattern
-    like 'public' to specify public only rules, 'facebook' for
-    facebook internal rules, 'glibc' for linux only rules and so on.
-    """
-
-    if pattern is None:
-        # No restriction: the rule is available on all platforms
-        return True
-
-    mode_string = 'facebook'
-    if context.buck_ops.read_config('fbcode', 'is_public', False):
-        mode_string = 'public'
-    platform = converter.get_default_platform()
-    full_platform_string = '%s-%s' % (platform, mode_string)
-
-    return re.search(pattern, full_platform_string)
-
-
 def convert(context, base_path, rules):
     """
     Convert the python representation of a targets file into a python
@@ -323,11 +275,6 @@ def convert(context, base_path, rules):
         if rule.type not in converter_map:
             name = '{0}:{1}'.format(base_path, rule.attributes['name'])
             raise ValueError('unknown rule type ' + rule.type)
-
-        pattern = rule.attributes.pop('supported_platforms_regex', None)
-        if not is_supported_platform(context, converter_map[rule.type], pattern):
-            # Elide this rule as it is not applicable in the current environment
-            continue
 
         # Verify arguments.
         allowed_args = converter_map[rule.type].get_allowed_args()
