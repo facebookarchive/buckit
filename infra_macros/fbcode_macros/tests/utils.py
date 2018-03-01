@@ -95,6 +95,7 @@ class Cell:
     def __init__(self, name, project):
         self.name = name
         self.buckconfig = collections.defaultdict(dict)
+        self.buckconfig["ui"]["superconsole"] = "disabled"
         self.project = project
         self._directories = []
         self._files = recursively_get_files_contents(name, True)
