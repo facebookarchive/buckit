@@ -213,13 +213,6 @@ def _get_fbcode_style_deps_are_third_party():
     return read_boolean("fbcode", "fbcode_style_deps_are_third_party", True)
 
 
-def _get_forbid_raw_buck_rules():
-    """
-    Whether to forbid raw buck rules that are not in whitelisted_raw_buck_rules
-    """
-    return read_boolean("fbcode", "forbid_raw_buck_rules", False)
-
-
 def _get_gtest_lib_dependencies():
     """
     The targets that will provide gtest C++ tests\' gtest and gmock deps
@@ -423,30 +416,6 @@ def _get_use_custom_par_args():
     return read_boolean("fbcode", "use_custom_par_args", False)
 
 
-def _get_whitelisted_raw_buck_rules():
-    """
-    A list of rules that are allowed to use each type of raw buck rule.
-
-    This is a list of buck rule types to path:target that should be allowed to
-    use raw buck rules. e.g. cxx_library=watchman:headers
-
-    Returns:
-        dictionary of rule type to list of tuples of base path / rule name
-    """
-    whitelisted_raw_buck_rules_str = read_string(
-        "fbcode", "whitelisted_raw_buck_rules", ""
-    )
-    whitelisted_raw_buck_rules = {}
-    for rule_group in whitelisted_raw_buck_rules_str.strip().split(","):
-        if not rule_group:
-            continue
-        rule_type, rule = rule_group.strip().split("=", 1)
-        if rule_type not in whitelisted_raw_buck_rules:
-            whitelisted_raw_buck_rules[rule_type] = []
-        whitelisted_raw_buck_rules[rule_type].append(tuple(rule.split(":", 1)))
-    return whitelisted_raw_buck_rules
-
-
 config = struct(
     get_add_auto_headers_glob=_get_add_auto_headers_glob,
     get_allocators=_get_allocators,
@@ -462,7 +431,6 @@ config = struct(
     get_default_link_style=_get_default_link_style,
     get_fbcode_style_deps=_get_fbcode_style_deps,
     get_fbcode_style_deps_are_third_party=_get_fbcode_style_deps_are_third_party,
-    get_forbid_raw_buck_rules=_get_forbid_raw_buck_rules,
     get_gtest_lib_dependencies=_get_gtest_lib_dependencies,
     get_gtest_main_dependency=_get_gtest_main_dependency,
     get_header_namespace_whitelist=_get_header_namespace_whitelist,
@@ -485,5 +453,4 @@ config = struct(
     get_unknown_cells_are_third_party=_get_unknown_cells_are_third_party,
     get_use_build_info_linker_flags=_get_use_build_info_linker_flags,
     get_use_custom_par_args=_get_use_custom_par_args,
-    get_whitelisted_raw_buck_rules=_get_whitelisted_raw_buck_rules,
 )

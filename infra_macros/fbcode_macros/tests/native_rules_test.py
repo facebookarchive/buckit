@@ -256,3 +256,50 @@ class NativeRulesTest(tests.utils.TestCase):
         result = root.run_audit(['foo/BUCK'])
 
         self.validateAudit({'foo/BUCK': expected}, result)
+
+    @tests.utils.with_project()
+    def test_gated_rules_accepted_on_non_whitelisted_if_forbid_disabled(self, root):
+        whitelist = (
+            'cxx_binary=foo:bar_bin,'
+            'cxx_library=foo:bar_lib,'
+            'cxx_test=foo:bar_test'
+        )
+        root.update_buckconfig(
+            'fbcode', 'whitelisted_raw_buck_rules', whitelist)
+        # don't forbid raw_rules by default
+        contents = dedent("""
+            load(
+                "@fbcode_macros//build_defs:native_rules.bzl",
+                "buck_cxx_binary", "buck_cxx_library", "buck_cxx_test"
+            )
+            buck_cxx_binary(name="bar_bin", srcs=["main.cpp"])
+            buck_cxx_library(name="bar_lib", srcs=["lib.cpp"])
+            buck_cxx_test(name="bar_test", srcs=["test.cpp"])
+        """)
+        root.add_file('not_foo/BUCK', contents)
+
+        expected = dedent("""
+            cxx_binary(
+              name = "bar_bin",
+              srcs = [
+                "main.cpp",
+              ],
+            )
+
+            cxx_library(
+              name = "bar_lib",
+              srcs = [
+                "lib.cpp",
+              ],
+            )
+
+            cxx_test(
+              name = "bar_test",
+              srcs = [
+                "test.cpp",
+              ],
+            )
+        """)
+        result = root.run_audit(['not_foo/BUCK'])
+
+        self.validateAudit({'not_foo/BUCK': expected}, result)

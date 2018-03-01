@@ -47,7 +47,6 @@ class ConfigTest(tests.utils.TestCase):
             "static",  # get_default_link_style
             False,  # get_fbcode_style_deps
             True,  # get_fbcode_style_deps_are_third_party
-            False,  # get_forbid_raw_buck_rules
             None,  # get_gtest_lib_dependencies
             None,  # get_gtest_main_dependency
             [],  # get_header_namespace_whitelist
@@ -68,7 +67,6 @@ class ConfigTest(tests.utils.TestCase):
             False,  # get_unknown_cells_are_third_party
             False,  # get_use_build_info_linker_flags
             False,  # get_use_custom_par_args
-            {},  # get_whitelisted_raw_buck_rules
         ]
 
         statements = [
@@ -86,7 +84,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_default_link_style()",
             "config.get_fbcode_style_deps()",
             "config.get_fbcode_style_deps_are_third_party()",
-            "config.get_forbid_raw_buck_rules()",
             "config.get_gtest_lib_dependencies()",
             "config.get_gtest_main_dependency()",
             "config.get_header_namespace_whitelist()",
@@ -107,7 +104,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_unknown_cells_are_third_party()",
             "config.get_use_build_info_linker_flags()",
             "config.get_use_custom_par_args()",
-            "config.get_whitelisted_raw_buck_rules()",
         ]
 
         ret = root.run_unittests(self.includes, statements)
@@ -155,8 +151,6 @@ class ConfigTest(tests.utils.TestCase):
                 "true",
                 "fbcode_style_deps_are_third_party":
                 "false",
-                "forbid_raw_buck_rules":
-                "true",
                 "gtest_lib_dependencies":
                 "//third-party/gtest:gtest",
                 "gtest_main_dependency":
@@ -185,10 +179,6 @@ class ConfigTest(tests.utils.TestCase):
                 "true",
                 "use_custom_par_args":
                 "true",
-                "whitelisted_raw_buck_rules": (
-                    "cxx_library=//foo:bar,"
-                    "cxx_library=//bar:baz,cxx_test=//baz:foo"
-                ),
             },
             "cython": {
                 "cython_compiler": "//tools:cython",
@@ -226,7 +216,6 @@ class ConfigTest(tests.utils.TestCase):
             "shared",  # get_default_link_style
             True,  # get_fbcode_style_deps
             False,  # get_fbcode_style_deps_are_third_party
-            True,  # get_forbid_raw_buck_rules
             "//third-party/gtest:gtest",  # get_gtest_lib_dependencies
             "//third-party/gtest:gtest_main",  # get_gtest_main_dependency
             [
@@ -250,10 +239,6 @@ class ConfigTest(tests.utils.TestCase):
             True,  # get_unknown_cells_are_third_party
             True,  # get_use_build_info_linker_flags
             True,  # get_use_custom_par_args
-            {
-                "cxx_library": [("//foo", "bar"), ("//bar", "baz")],
-                "cxx_test": [("//baz", "foo")],
-            },  # get_whitelisted_raw_buck_rules
         ]
 
         statements = [
@@ -271,7 +256,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_default_link_style()",
             "config.get_fbcode_style_deps()",
             "config.get_fbcode_style_deps_are_third_party()",
-            "config.get_forbid_raw_buck_rules()",
             "config.get_gtest_lib_dependencies()",
             "config.get_gtest_main_dependency()",
             "config.get_header_namespace_whitelist()",
@@ -292,7 +276,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_unknown_cells_are_third_party()",
             "config.get_use_build_info_linker_flags()",
             "config.get_use_custom_par_args()",
-            "config.get_whitelisted_raw_buck_rules()",
         ]
 
         root.update_buckconfig_with_dict(buckconfig)

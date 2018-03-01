@@ -4,7 +4,10 @@ Wrappers to native buck rules.
 These generally are only allowed to be used by certain pre-configured targets
 """
 
-load("@fbcode_macros//build_defs:config.bzl", "config")
+load(
+    "@fbcode_macros//build_defs/config:read_configs.bzl",
+    "read_boolean", "read_string"
+)
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
 
@@ -13,12 +16,41 @@ _FBCODE_UI_MESSAGE = (
     'Please use supported fbcode rules (https://fburl.com/fbcode-targets) ' +
     'instead.')
 
+def _get_forbid_raw_buck_rules():
+    """
+    Whether to forbid raw buck rules that are not in whitelisted_raw_buck_rules
+    """
+    return read_boolean("fbcode", "forbid_raw_buck_rules", False)
+
+def _get_whitelisted_raw_buck_rules():
+    """
+    A list of rules that are allowed to use each type of raw buck rule.
+
+    This is a list of buck rule types to path:target that should be allowed to
+    use raw buck rules. e.g. cxx_library=watchman:headers
+
+    Returns:
+        dictionary of rule type to list of tuples of base path / rule name
+    """
+    whitelisted_raw_buck_rules_str = read_string(
+        "fbcode", "whitelisted_raw_buck_rules", ""
+    )
+    whitelisted_raw_buck_rules = {}
+    for rule_group in whitelisted_raw_buck_rules_str.strip().split(","):
+        if not rule_group:
+            continue
+        rule_type, rule = rule_group.strip().split("=", 1)
+        if rule_type not in whitelisted_raw_buck_rules:
+            whitelisted_raw_buck_rules[rule_type] = []
+        whitelisted_raw_buck_rules[rule_type].append(tuple(rule.split(":", 1)))
+    return whitelisted_raw_buck_rules
+
 def _verify_whitelisted_rule(rule_type, package_name, target_name):
     """
     Verifies that a rule is whitelisted to use native rules. If not, fail
     """
-    if config.get_forbid_raw_buck_rules():
-        whitelist = config.get_whitelisted_raw_buck_rules().get(rule_type, {})
+    if _get_forbid_raw_buck_rules():
+        whitelist = _get_whitelisted_raw_buck_rules().get(rule_type, {})
         if (package_name, target_name) not in whitelist:
             fail(
                 "{}\n{}(): native rule {}:{} is not whitelisted".format(
