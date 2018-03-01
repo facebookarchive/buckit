@@ -29,6 +29,8 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
+load("@fbcode_macros//build_defs:export_files.bzl",
+        "export_file", "export_files", "buck_export_file")
 
 with allow_unsafe_import():  # noqa: F821
     import sys
@@ -190,11 +192,6 @@ def convert(context, base_path, rule):
         wheel.PyWheelDefault(context),
         passthrough.PassthroughConverter(
             context,
-            'export_file',
-            'export_file',
-            {'mode': 'reference'}),
-        passthrough.PassthroughConverter(
-            context,
             'versioned_alias',
             'versioned_alias'),
         passthrough.PassthroughConverter(
@@ -250,7 +247,6 @@ def convert(context, base_path, rule):
             'cxx_genrule',
         ))
     for buck_rule in (
-            'export_file',
             'genrule',
             'project_config',
             'python_binary',
@@ -264,7 +260,11 @@ def convert(context, base_path, rule):
                 buck_rule))
 
     converter_map = {}
-    new_converter_map = {}
+    new_converter_map = {
+        'buck_export_file': buck_export_file,
+        'export_file': export_file,
+        'export_files': export_files,
+    }
 
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter
