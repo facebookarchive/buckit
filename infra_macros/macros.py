@@ -279,7 +279,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
         rule.attributes.get('name'),
         base_path)
 
-    results = converter.convert(base.Context(**context), base_path, [rule])
+    results = converter.convert(base.Context(**context), base_path, rule)
     # Instantiate the Buck rules that got converted successfully.
     for converted in results:
         eval(converted.type, globals)(**converted.attributes)

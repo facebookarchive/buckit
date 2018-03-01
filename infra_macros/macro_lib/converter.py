@@ -122,7 +122,7 @@ def handle_errors(errors, skip_errors=False):
         raise Exception(os.linesep.join(msg))
 
 
-def convert(context, base_path, rules):
+def convert(context, base_path, rule):
     """
     Convert the python representation of a targets file into a python
     representation of a buck file.
@@ -264,32 +264,38 @@ def convert(context, base_path, rules):
                 buck_rule))
 
     converter_map = {}
+    new_converter_map = {}
 
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter
 
-    results = []
+    converter = converter_map.get(rule.type, new_converter_map.get(rule.type))
 
-    for rule in rules:
+    if converter is None:
+        name = '{0}:{1}'.format(base_path, rule.attributes['name'])
+        raise ValueError('unknown rule type %s for %s' % (rule.type, name))
 
-        if rule.type not in converter_map:
-            name = '{0}:{1}'.format(base_path, rule.attributes['name'])
-            raise ValueError('unknown rule type ' + rule.type)
+    # New style rules don't return anything, they instantiate rules
+    # directly. Just return an empty list here so that callers, like
+    # macros.py, will not break for now. Eventually most of this code will
+    # disappear
+    if rule.type in new_converter_map:
+        converter(**rule.attributes)
+        return []
 
-        # Verify arguments.
-        allowed_args = converter_map[rule.type].get_allowed_args()
-        if allowed_args is not None:
-            for attribute in rule.attributes:
-                if attribute not in allowed_args and attribute not in ALWAYS_ALLOWED_ARGS:
-                    raise TypeError(
-                        '{}() got an unexpected keyword argument: {!r}'
-                        .format(rule.type, attribute))
+    # Verify arguments for old style rules. Newer rules should blow up
+    # with a more readable message.
+    allowed_args = converter_map[rule.type].get_allowed_args()
+    if allowed_args is not None:
+        for attribute in rule.attributes:
+            if (attribute not in allowed_args and
+                    attribute not in ALWAYS_ALLOWED_ARGS):
+                raise TypeError(
+                    '{}() got an unexpected keyword argument: {!r}'
+                    .format(rule.type, attribute))
 
-        results.extend(   # Supports generators
-            converter_map[rule.type].convert(
-                base_path,
-                **rule.attributes
-            ),
-        )
-
-    return results
+    # Potentially convert from a generator
+    return list(converter_map[rule.type].convert(
+        base_path,
+        **rule.attributes
+    ))
