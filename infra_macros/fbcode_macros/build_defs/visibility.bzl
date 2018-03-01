@@ -58,11 +58,9 @@ def get_visibility_for_base_path(visibility_attr, name_attr, base_path):
         return visibility_attr
 
 
-def get_visibility(visibility_attr):
+def get_visibility(visibility_attr, name_attr):
     """
     Returns either the provided visibility list, or a default visibility if None
     """
-    if visibility_attr == None:
-        return ["PUBLIC"]
-    else:
-        return visibility_attr
+    return get_visibility_for_base_path(
+        visibility_attr, name_attr, native.package_name())

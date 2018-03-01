@@ -26,11 +26,30 @@ class VisibilityTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_returns_default_visibility_or_original_visibility(self, root):
         statements = [
-            'get_visibility(None)',
-            'get_visibility(["//..."])',
+            'get_visibility(None, "foo")',
+            'get_visibility(["//..."], "foo")',
         ]
         result = root.run_unittests(self.includes, statements)
         self.assertSuccess(result, ["PUBLIC"], ["//..."])
+
+    @tests.utils.with_project()
+    def test_returns_default_visibility_inside_of_experimental(self, root):
+        statements = [
+            'get_visibility(None, "all_lua")',
+            'get_visibility(None, "foo")',
+            'get_visibility(["//..."], "all_lua")',
+            'get_visibility(["//..."], "foo")',
+        ]
+        result = root.run_unittests(
+            self.includes,
+            statements,
+            buckfile="experimental/deeplearning/BUCK")
+        self.assertSuccess(
+            result,
+            ["PUBLIC"],
+            ["//experimental/..."],
+            ["//..."],
+            ["//experimental/..."])
 
     @tests.utils.with_project()
     def test_returns_experimental_visibility_for_experimental_things(self, root):
