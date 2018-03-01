@@ -16,6 +16,103 @@ from tests.utils import dedent
 class ExportFilesTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
+    def test_buck_export_file_handles_visibility(self, root):
+        root.add_file("file1.sh", "echo file1")
+        root.add_file("file2.sh", "echo file2")
+        root.add_file("file3.sh", "echo file3")
+
+        root.add_file(
+            "BUCK",
+            dedent(
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl",
+                    "buck_export_file")
+            buck_export_file(name="file1.sh")
+            buck_export_file(name="file2.sh", visibility=["//..."])
+            buck_export_file(name="file3.sh", visibility=None)
+        """
+            )
+        )
+
+        expected = dedent(
+            """\
+        export_file(
+          name = "file1.sh",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file2.sh",
+          visibility = [
+            "//...",
+          ],
+        )
+
+        export_file(
+          name = "file3.sh",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+        """
+        )
+
+        result = root.run_audit(["BUCK"])
+        self.validateAudit({"BUCK": expected}, result)
+
+    @tests.utils.with_project()
+    def test_buck_export_file_exports_copy_mode_by_default(self, root):
+        root.add_file("file1.sh", "echo file1")
+        root.add_file("file2.sh", "echo file2")
+        root.add_file("file3.sh", "echo file3")
+
+        root.add_file(
+            "BUCK",
+            dedent(
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl",
+                "buck_export_file")
+            buck_export_file(name="file1.sh")
+            buck_export_file(name="file2.sh", mode="reference")
+            buck_export_file(name="file3.sh", mode="copy")
+        """
+            )
+        )
+
+        expected = dedent(
+            """\
+        export_file(
+          name = "file1.sh",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file2.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file3.sh",
+          mode = "copy",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+        """
+        )
+
+        result = root.run_audit(["BUCK"])
+        self.validateAudit({"BUCK": expected}, result)
+
+
+    @tests.utils.with_project()
     def test_export_file_handles_visibility(self, root):
         root.add_file("file1.sh", "echo file1")
         root.add_file("file2.sh", "echo file2")
@@ -114,7 +211,7 @@ class ExportFilesTest(tests.utils.TestCase):
         self.validateAudit({"BUCK": expected}, result)
 
     @tests.utils.with_project()
-    def test_imports_third_party_lib(self, root):
+    def test_export_files_exports_multiple_files(self, root):
         root.add_file("file1.sh", "echo file1")
         root.add_file("file2.sh", "echo file2")
         root.add_file("file3.sh", "echo file3")

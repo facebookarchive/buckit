@@ -20,8 +20,16 @@ def export_files(files, visibility=None, mode="reference"):
             mode = mode,
         )
 
-def export_file(name, visibility=None, mode="reference", *args, **kwargs):
+def buck_export_file(name, visibility=None, *args, **kwargs):
     """ Proxy for native.export file """
+    return native.export_file(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs)
+
+def export_file(name, visibility=None, mode="reference", *args, **kwargs):
+    """ Proxy for native.export file using reference mode by default """
     return native.export_file(
         name = name,
         visibility = get_visibility(visibility, name),
