@@ -11,8 +11,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import platform
-import textwrap
 import tests.utils
+from tests.utils import dedent
 
 
 class PlatformTest(tests.utils.TestCase):
@@ -22,7 +22,7 @@ class PlatformTest(tests.utils.TestCase):
     current_arch = platform.machine()
     other_arch = "x86_64" if current_arch == "aarch64" else "aarch64"
 
-    third_party_config = textwrap.dedent(
+    third_party_config = dedent(
         """\
             third_party_config = {{
                 "platforms": {{
@@ -41,12 +41,12 @@ class PlatformTest(tests.utils.TestCase):
                 }},
             }}
         """.format(current_arch=current_arch, other_arch=other_arch)
-    ).strip()
+    )
 
     @tests.utils.with_project()
     def test_transform_platform_overrides(self, root):
         # This should be a load time error
-        platform_overrides = textwrap.dedent(
+        platform_overrides = dedent(
             """\
             platform_overrides = {
                 "fbcode": {
@@ -55,7 +55,7 @@ class PlatformTest(tests.utils.TestCase):
                 },
             }
             """
-        ).strip()
+        )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
@@ -83,7 +83,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         # This should be a load time error
-        platform_overrides = textwrap.dedent(
+        platform_overrides = dedent(
             """\
             platform_overrides = {
                 "fbcode": {
@@ -91,7 +91,7 @@ class PlatformTest(tests.utils.TestCase):
                 },
             }
             """
-        ).strip()
+        )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
@@ -113,7 +113,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         # This should be a load time error
-        platform_overrides = textwrap.dedent(
+        platform_overrides = dedent(
             """\
             platform_overrides = {
                 "fbcode": {
@@ -121,7 +121,7 @@ class PlatformTest(tests.utils.TestCase):
                 },
             }
             """
-        ).strip()
+        )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
@@ -183,7 +183,7 @@ class PlatformTest(tests.utils.TestCase):
     def test_gets_correct_platform_for_various_directories_and_archs(
         self, root
     ):
-        platform_overrides = textwrap.dedent(
+        platform_overrides = dedent(
             """\
             platform_overrides = {"fbcode": {
                 "foo/bar": ["gcc5-other", "gcc5"],
@@ -192,7 +192,7 @@ class PlatformTest(tests.utils.TestCase):
                 "": ["gcc7"],
             }}
         """
-        ).strip()
+        )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", self.third_party_config
         )

@@ -14,7 +14,6 @@ import os
 import re
 import shutil
 import subprocess
-import textwrap
 
 try:
     import ConfigParser as configparser
@@ -22,6 +21,7 @@ except ImportError:
     import configparser
 
 import tests.utils
+from tests.utils import dedent
 
 
 class UtilsTest(tests.utils.TestCase):
@@ -40,14 +40,14 @@ class UtilsTest(tests.utils.TestCase):
             root.add_directory("foo/bar/dir")
             root.add_file(
                 "testing/file.bzl",
-                textwrap.dedent(
+                dedent(
                     """
                 def identity(value):
                     return value
                 def get_struct(**kwargs):
                     return struct(**kwargs)
                 """
-                ).strip()
+                )
             )
             root.add_resources_from("testdata/utils_test/sample.txt")
             root.update_buckconfig("foo", "bar", "baz")
@@ -79,14 +79,14 @@ class UtilsTest(tests.utils.TestCase):
             self.assertTrue(os.path.isfile(file_bzl))
             with open(file_bzl, "r") as fin:
                 self.assertEqual(
-                    textwrap.dedent(
+                    dedent(
                         """
                 def identity(value):
                     return value
                 def get_struct(**kwargs):
                     return struct(**kwargs)
                 """
-                    ).strip(), fin.read()
+                    ), fin.read()
                 )
 
             sample_txt = os.path.join(
@@ -249,34 +249,34 @@ class UtilsTest(tests.utils.TestCase):
             root = project.root_cell
             root.add_file(
                 "foo/main.cpp",
-                textwrap.dedent(
+                dedent(
                     """\
             #include "bar/lib.h"
             int main() { bar::f(); return 0; } }
             """
-                ).strip()
+                )
             )
             root.add_file(
                 "bar/lib.h",
-                textwrap.dedent(
+                dedent(
                     """\
             #pragma once
             namespace bar { void f(); }
             """
-                ).strip()
+                )
             )
             root.add_file(
                 "bar/lib.cpp",
-                textwrap.dedent(
+                dedent(
                     """\
             #include "bar/lib.h"
             namespace bar { void f() { return; } }
             """
-                ).strip()
+                )
             )
             root.add_file(
                 "bar/BUCK",
-                textwrap.dedent(
+                dedent(
                     """\
             cxx_library(
                 name="lib",
@@ -285,11 +285,11 @@ class UtilsTest(tests.utils.TestCase):
                 visibility=["PUBLIC"],
             )
             """
-                ).strip()
+                )
             )
             root.add_file(
                 "foo/BUCK",
-                textwrap.dedent(
+                dedent(
                     """\
             cxx_binary(
                 name="main",
@@ -297,12 +297,12 @@ class UtilsTest(tests.utils.TestCase):
                 deps=["//bar:lib"],
             )
             """
-                ).strip()
+                )
             )
 
             expected = {
                 "foo/BUCK":
-                textwrap.dedent(
+                dedent(
                     """\
                     cxx_binary(
                       name = "main",
@@ -314,9 +314,9 @@ class UtilsTest(tests.utils.TestCase):
                       ],
                     )
                     """
-                ).strip(),
+                ),
                 "bar/BUCK":
-                textwrap.dedent(
+                dedent(
                     """\
                     cxx_library(
                       name = "lib",
@@ -331,7 +331,7 @@ class UtilsTest(tests.utils.TestCase):
                       ],
                     )
                     """
-                ).strip()
+                )
             }
 
             ret = root.run_audit(["foo/BUCK", "bar/BUCK"])

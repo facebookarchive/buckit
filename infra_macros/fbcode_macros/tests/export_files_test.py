@@ -10,9 +10,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import textwrap
 import tests.utils
-
+from tests.utils import dedent
 
 class ExportFilesTest(tests.utils.TestCase):
     maxDiff = None
@@ -25,17 +24,17 @@ class ExportFilesTest(tests.utils.TestCase):
 
         root.add_file(
             "BUCK",
-            textwrap.dedent(
+            dedent(
                 """\
             load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
             export_file(name="file1.sh")
             export_file(name="file2.sh", visibility=["//..."])
             export_file(name="file3.sh", visibility=None)
         """
-            ).strip()
+            )
         )
 
-        expected = textwrap.dedent(
+        expected = dedent(
             """\
         export_file(
           name = "file1.sh",
@@ -61,7 +60,7 @@ class ExportFilesTest(tests.utils.TestCase):
           ],
         )
         """
-        ).strip()
+        )
 
         result = root.run_audit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
@@ -74,17 +73,17 @@ class ExportFilesTest(tests.utils.TestCase):
 
         root.add_file(
             "BUCK",
-            textwrap.dedent(
+            dedent(
                 """\
             load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
             export_file(name="file1.sh")
             export_file(name="file2.sh", mode="reference")
             export_file(name="file3.sh", mode="copy")
         """
-            ).strip()
+            )
         )
 
-        expected = textwrap.dedent(
+        expected = dedent(
             """\
         export_file(
           name = "file1.sh",
@@ -110,7 +109,7 @@ class ExportFilesTest(tests.utils.TestCase):
           ],
         )
         """
-        ).strip()
+        )
 
         result = root.run_audit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
@@ -125,16 +124,16 @@ class ExportFilesTest(tests.utils.TestCase):
         root.add_file("file6.sh", "echo file6")
         root.add_file(
             "BUCK",
-            textwrap.dedent(
+            dedent(
                 """\
             load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
             export_files(["file1.sh", "file2.sh"])
             export_files(["file3.sh", "file4.sh"], visibility=[])
             export_files(["file5.sh", "file6.sh"], visibility=[], mode="copy")
         """
-            ).strip()
+            )
         )
-        expected = textwrap.dedent(
+        expected = dedent(
             """\
         export_file(
           name = "file1.sh",
@@ -172,7 +171,7 @@ class ExportFilesTest(tests.utils.TestCase):
           mode = "copy",
         )
         """
-        ).strip()
+        )
 
         result = root.run_audit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)

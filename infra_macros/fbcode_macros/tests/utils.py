@@ -21,6 +21,7 @@ import shutil
 import logging
 import re
 import StringIO
+import textwrap
 import unittest
 
 import six
@@ -40,6 +41,10 @@ UnitTestResult = collections.namedtuple(
 AuditTestResult = collections.namedtuple(
     'AuditTestResult', ['returncode', 'stdout', 'stderr', 'files']
 )
+
+
+def dedent(text):
+    return textwrap.dedent(text).strip()
 
 
 def __recursively_get_files_contents(base):
