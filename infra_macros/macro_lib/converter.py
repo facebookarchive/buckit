@@ -31,6 +31,21 @@ def import_macro_lib(path):
 
 load("@fbcode_macros//build_defs:export_files.bzl",
         "export_file", "export_files", "buck_export_file")
+load(
+    "@fbcode_macros//build_defs:native_rules.bzl",
+    "buck_command_alias",
+    "buck_cxx_binary",
+    "cxx_genrule",
+    "buck_cxx_library",
+    "buck_cxx_test",
+    "buck_genrule",
+    "buck_python_binary",
+    "buck_python_library",
+    "buck_sh_binary",
+    "buck_sh_test",
+    "remote_file",
+    "versioned_alias",
+)
 
 with allow_unsafe_import():  # noqa: F821
     import sys
@@ -63,7 +78,6 @@ js = import_macro_lib('convert/js')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 ocaml_library_external = import_macro_lib('convert/ocaml_library_external')
-passthrough = import_macro_lib('convert/passthrough')
 python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
@@ -170,19 +184,6 @@ def convert(context, base_path, rule):
         rust_library_external.RustLibraryExternalConverter(context),
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
-        passthrough.PassthroughConverter(
-            context,
-            'versioned_alias',
-            'versioned_alias'),
-        passthrough.PassthroughConverter(
-            context,
-            'remote_file',
-            'remote_file'),
-        passthrough.PassthroughConverter(
-            context,
-            'buck_command_alias',
-            'command_alias',
-            convert_targets_on=['exe']),
     ]
     if use_internal_java_converters:
         converters += [
@@ -195,55 +196,23 @@ def convert(context, base_path, rule):
 
     converters += get_fbonly_converters(context)
 
-    # Passthrough support for fbconfig rules prefixed with "buck_".
-    converters.append(
-        passthrough.PassthroughConverter(
-            context,
-            'buck_cxx_binary',
-            'cxx_binary',
-            # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_binary', []),
-            whitelist_error_msg=FBCODE_UI_MESSAGE))
-    converters.append(
-        passthrough.PassthroughConverter(
-            context,
-            'buck_cxx_library',
-            'cxx_library',
-            # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_library', []),
-            whitelist_error_msg=FBCODE_UI_MESSAGE))
-    converters.append(
-        passthrough.PassthroughConverter(
-            context,
-            'buck_cxx_test',
-            'cxx_test',
-            # DO NOT ADD TO THIS WHITELIST! (#15633732).
-            whitelist=context.config.get_whitelisted_raw_buck_rules().get('cxx_test', []),
-            whitelist_error_msg=FBCODE_UI_MESSAGE))
-    converters.append(
-        passthrough.PassthroughConverter(
-            context,
-            'cxx_genrule',
-            'cxx_genrule',
-        ))
-    for buck_rule in (
-            'genrule',
-            'project_config',
-            'python_binary',
-            'python_library',
-            'sh_binary',
-            'sh_test'):
-        converters.append(
-            passthrough.PassthroughConverter(
-                context,
-                'buck_' + buck_rule,
-                buck_rule))
-
     converter_map = {}
     new_converter_map = {
+        'buck_cxx_binary': buck_cxx_binary,
+        'cxx_genrule': cxx_genrule,
+        'buck_cxx_library': buck_cxx_library,
+        'buck_cxx_test': buck_cxx_test,
         'buck_export_file': buck_export_file,
+        'buck_genrule': buck_genrule,
+        'buck_python_binary': buck_python_binary,
+        'buck_python_library': buck_python_library,
+        'buck_sh_binary': buck_sh_binary,
+        'buck_sh_test': buck_sh_test,
         'export_file': export_file,
         'export_files': export_files,
+        'versioned_alias': versioned_alias,
+        'remote_file': remote_file,
+        'buck_command_alias': buck_command_alias,
     }
 
     for converter in converters:

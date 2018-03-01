@@ -28,7 +28,7 @@ def buck_command_alias(*args, **kwargs):
     """ Wrapper to access Buck's native command_alias rule """
     native.command_alias(*args, **kwargs)
 
-def buck_cxx_genrule(*args, **kwargs):
+def cxx_genrule(*args, **kwargs):
     """ Wrapper to access Buck's native cxx_genrule rule """
     native.cxx_genrule(*args, **kwargs)
 
@@ -46,7 +46,7 @@ def buck_python_library(name, *args, **kwargs):
         gen_typing_config(name)
     native.python_library(name=name, *args, **kwargs)
 
-def buck_remote_file(*args, **kwargs):
+def remote_file(*args, **kwargs):
     """ Wrapper to access Buck's native remote_file rule """
     native.remote_file(*args, **kwargs)
 
@@ -58,7 +58,7 @@ def buck_sh_test(*args, **kwargs):
     """ Wrapper to access Buck's native sh_test rule """
     native.sh_test(*args, **kwargs)
 
-def buck_versioned_alias(*args, **kwargs):
+def versioned_alias(*args, **kwargs):
     """ Wrapper to access Buck's native versioned_alias rule """
     native.versioned_alias(*args, **kwargs)
 

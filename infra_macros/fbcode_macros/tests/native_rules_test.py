@@ -19,14 +19,14 @@ class NativeRulesTest(tests.utils.TestCase):
     import_lines = dedent("""
         load("@fbcode_macros//build_defs:native_rules.bzl",
             "buck_command_alias",
-            "buck_cxx_genrule",
+            "cxx_genrule",
             "buck_genrule",
             "buck_python_binary",
             "buck_python_library",
-            "buck_remote_file",
+            "remote_file",
             "buck_sh_binary",
             "buck_sh_test",
-            "buck_versioned_alias",
+            "versioned_alias",
             "buck_cxx_binary",
             "buck_cxx_library",
             "buck_cxx_test",
@@ -37,18 +37,18 @@ class NativeRulesTest(tests.utils.TestCase):
     def test_ungated_rules_propagate_properly(self, root):
         root.add_file("BUCK", self.import_lines + "\n" + dedent("""
             buck_command_alias(name="command_alias", exe=":sh_binary")
-            buck_cxx_genrule(name="cxx_genrule", out="out.h", cmd="echo > $OUT")
+            cxx_genrule(name="cxx_genrule", out="out.h", cmd="echo > $OUT")
             buck_genrule(name="genrule", out="out", cmd="echo > $OUT")
             buck_python_binary(name="python_binary", deps=[":python_library"], main_module="python_binary")
             buck_python_library(name="python_library", srcs=["python_library.py"])
-            buck_remote_file(
+            remote_file(
                 name="file",
                 url="http://example.com/foo",
                 sha1="d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
             )
             buck_sh_binary(name="sh_binary", main="sh_binary.sh")
             buck_sh_test(name="sh_test", test="sh_test.sh")
-            buck_versioned_alias(
+            versioned_alias(
                 name="versioned_alias",
                 versions={
                     "1.0": ":sh_binary",
