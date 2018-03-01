@@ -6,10 +6,12 @@
 # of patent rights can be found in the PATENTS file in the same directory.
 
 """
-Quick function that re-exports files
+Function used to re-export files
 """
 
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbcode_macros//build_defs:python_typing.bzl",
+        "get_typing_config_target", "gen_typing_config")
 
 def export_files(files, visibility=None, mode="reference"):
     """ Takes a list of files, and exports each of them """
@@ -22,17 +24,34 @@ def export_files(files, visibility=None, mode="reference"):
 
 def buck_export_file(name, visibility=None, *args, **kwargs):
     """ Proxy for native.export file """
-    return native.export_file(
+    native.export_file(
         name = name,
         visibility = get_visibility(visibility, name),
         *args,
         **kwargs)
 
-def export_file(name, visibility=None, mode="reference", *args, **kwargs):
-    """ Proxy for native.export file using reference mode by default """
-    return native.export_file(
+def export_file(name, visibility=None, mode="reference",
+                create_typing_rule=True, *args, **kwargs):
+    """
+    Proxy for native.export file using reference mode by default
+
+    Args:
+      name: The name of the exported file. This will also be used for child
+            rules if create_typing_rule is True
+      visibility: Normal visibility rules
+      mode: The mode for the export_file call. Defaults to reference
+      create_typing_rule: Whether or not to create a companion python typing
+                          rule. This is necessary so that parent rules that
+                          have a -typing suffix that depend on exported files
+                          can blindly depend on '-typing' suffixed rules.
+                          This will likely go away in the future.
+    """
+    visibility = get_visibility(visibility, name)
+    if create_typing_rule and get_typing_config_target():
+        gen_typing_config(target_name=name, visibility=visibility)
+    native.export_file(
         name = name,
-        visibility = get_visibility(visibility, name),
         mode = mode,
+        visibility = visibility,
         *args,
         **kwargs)

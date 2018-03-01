@@ -271,3 +271,53 @@ class ExportFilesTest(tests.utils.TestCase):
 
         result = root.run_audit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
+
+    @tests.utils.with_project()
+    def test_creates_typing_rule_if_enabled_in_config_and_params(self, root):
+        root.add_file("file1.sh", "echo file1")
+        root.add_file("file2.sh", "echo file2")
+        root.update_buckconfig("python", "typing_config", "//python:typing")
+
+        root.add_file(
+            "BUCK",
+            dedent(
+                """\
+            load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+            export_file(name="file1.sh")
+            export_file(name="file2.sh", create_typing_rule=False)
+        """
+            )
+        )
+
+        expected = dedent(
+            """\
+        genrule(
+          name = "file1.sh-typing",
+          cmd = "mkdir -p \\"$OUT\\"",
+          out = "root",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file1.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        export_file(
+          name = "file2.sh",
+          mode = "reference",
+          visibility = [
+            "PUBLIC",
+          ],
+        )
+
+        """
+        )
+
+        result = root.run_audit(["BUCK"])
+        self.validateAudit({"BUCK": expected}, result)
