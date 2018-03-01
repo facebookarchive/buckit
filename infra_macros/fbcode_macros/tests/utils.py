@@ -611,11 +611,12 @@ class TestCase(unittest.TestCase):
         if expected_results:
             self.assertEqual(list(expected_results), result.debug_lines)
 
-    def assertFailureWithMessage(self, result, expected_message):
+    def assertFailureWithMessage(self, result, expected_message, *other_messages):
         """ Make sure that we failed with a substring in stderr """
-        # TODO: Test
         self.assertNotEqual(0, result.returncode)
         self.assertIn(expected_message, result.stderr)
+        for message in expected_message:
+            self.assertIn(message, result.stderr)
 
     def validateAudit(self, expected_results, result):
         """

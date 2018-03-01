@@ -8,6 +8,7 @@ load(
 BUILD_DEFS = [
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:native_rules.bzl",
     "fbcode_macros//build_defs:platform.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:python_typing.bzl",
@@ -48,6 +49,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "export_files_test",
     srcs = ["export_files_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "native_rules_test",
+    srcs = ["native_rules_test.py"],
     deps = [":utils"],
 )
 

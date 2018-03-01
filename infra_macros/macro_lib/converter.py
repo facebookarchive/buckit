@@ -85,26 +85,6 @@ FBCODE_UI_MESSAGE = (
     'instead.')
 
 
-# DO NOT MODIFY THIS LIST.  This grandfathers in some places where non-
-# experimental rules depend on experimental rules and should not grow.  Please
-# reach out to fbcode foundation with any questions.
-EXPERIMENTAL_WHITELIST = (
-    ('experimental/deeplearning', 'all_lua'),
-    ('experimental/deeplearning/mobile-vision/segmentation/tools/create_coco_format_dataset/tests', 'analyze_json_lib'),
-    ('experimental/deeplearning/ntt/detection_caffe2/lib', 'lib'),
-    ('experimental/deeplearning/vajdap/xray', 'xray_lib'),
-    ('experimental/deeplearning/vision/cluster_utils', 'io'),
-    ('experimental/deeplearning/vision/cluster_utils', 'io'),
-    ('experimental/deeplearning/wym/classification_attribute/datasets', 'attr_data'),
-    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'classerrormeter'),
-    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'mapmeter'),
-    ('experimental/everstore/orphaned_needles/WorkitemList', 'workitemlist_client_lib'),
-    ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift-py'),
-    ('experimental/guruqu/transformers', 'segmax_predict'),
-    ('experimental/pshinghal/dummy_service', 'thrift-py'),
-)
-
-
 class ConversionError(Exception):
     pass
 
