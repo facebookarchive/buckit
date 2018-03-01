@@ -67,7 +67,7 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
-
+load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 
 SANITIZERS = {
     'address': 'asan',
@@ -1881,10 +1881,6 @@ class Converter(object):
     def convert(self, base_path, **kwargs):
         raise NotImplementedError()
 
-    @property
-    def typing_config_target(self):
-        return self._context.config.get_python_typing_config_tool()
-
     def gen_typing_config(
         self,
         target_name,
@@ -1898,50 +1894,12 @@ class Converter(object):
         """
         Generate typing configs, and gather those for our deps
         """
-        typing_config = self.typing_config_target
-        name = target_name + '-typing'
-        cmds = []
-        for dep in deps:
-            # Experimental has visibility restricted, just skip them
-            if dep.startswith('//experimental'):
-                continue
-            # not in fbcode don't follow out ex: xplat//target
-            if not dep.startswith(('//', ':')):
-                continue
-            cmds.append(
-                'rsync -a $(location {}-typing)/ "$OUT"'.format(dep)
-            )
-
-        if typing:
-            src_prefix = base_path.replace('.', '/')
-            file_name = os.path.join(src_prefix, target_name)
-            cmds.append('mkdir -p `dirname $OUT/{}`'.format(file_name))
-            # We should support generated sources at some pointa
-            # If srcs is a dict then we should use the values
-            if isinstance(srcs, dict):
-                srcs = srcs.values()
-
-            srcs = (
-                os.path.join(
-                    src_prefix,
-                    src if src[0] not in '@/:' else os.path.basename(src)
-                )
-                for src in srcs
-            )
-            cmd = '$(exe {}) part '.format(typing_config)
-            if typing_options:
-                cmd += '--options="{}" '.format(typing_options)
-            cmd += '$OUT/{} {}'.format(file_name, ' '.join(srcs))
-            cmds.append(cmd)
-
-        if not cmds:
-            cmds.append('echo')
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        # Maybe we can fix this in the future, but specific visibility rules
-        # break typing rules from depending on each other
-        attrs['visibility'] = ['PUBLIC']
-        attrs['out'] = os.curdir
-        attrs['cmd'] = '\n'.join(cmds)
-        return Rule('genrule', attrs)
+        return Rule('genrule', gen_typing_config_attrs(
+            target_name=target_name,
+            base_path=base_path,
+            srcs=srcs,
+            deps=deps,
+            typing=typing,
+            typing_options=typing_options,
+            visibility=visibility,
+        ))

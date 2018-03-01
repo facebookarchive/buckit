@@ -261,14 +261,6 @@ def _get_pyfi_overrides_path():
     """
     return read_string("python", "pyfi_overrides_path", None)
 
-
-def _get_python_typing_config_tool():
-    """
-    If set, use this tool to generate typing information for python-typecheck
-    """
-    return read_string("python", "typing_config", None)
-
-
 def _get_require_platform():
     """
     If true, require that fbcode.platform is specified
@@ -476,7 +468,6 @@ config = struct(
     get_header_namespace_whitelist=_get_header_namespace_whitelist,
     get_lto_type=_get_lto_type,
     get_pyfi_overrides_path=_get_pyfi_overrides_path,
-    get_python_typing_config_tool=_get_python_typing_config_tool,
     get_require_platform=_get_require_platform,
     get_sanitizer=_get_sanitizer,
     get_third_party_buck_directory=_get_third_party_buck_directory,

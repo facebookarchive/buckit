@@ -49,6 +49,8 @@ target = import_macro_lib('fbcode_target')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 THRIFT_FLAGS = [
@@ -1675,7 +1677,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             has_types = False
 
         attrs['deps'] = out_deps
-        if self.typing_config_target:
+        if get_typing_config_target():
             base_module = attrs['base_module']
             if has_types:
                 yield self.gen_typing_config(
@@ -2220,7 +2222,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
                     generator_binary + ' --format py > "$OUT" < "$SRCS"/*',
                 ]),
             ))
-        if self.typing_config_target:
+        if get_typing_config_target():
             yield self.gen_typing_config(name)
         yield Rule('python_library', collections.OrderedDict(
             name=name,

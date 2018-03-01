@@ -47,6 +47,8 @@ python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 global_defns = import_macro_lib('global_defns')
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 def split_matching_extensions(srcs, exts):
@@ -602,7 +604,7 @@ class Converter(base.Converter):
 
         # Generate a typing_config target to gather up all types for us and
         # our deps
-        if self.typing_config_target:
+        if get_typing_config_target():
             if types:
                 tdeps = itertools.chain(
                     python_deps,
@@ -611,7 +613,7 @@ class Converter(base.Converter):
                 )
             else:
                 tdeps = itertools.chain(python_deps, deps)
-            yield self.gen_typing_config(name, deps=tdeps)
+            yield self.gen_typing_config(name, deps=tdeps, visibility=visibility)
 
         # Generate the cython-lib target for allowing cython_libraries
         # to depend on other cython_libraries and inherit their cpp_deps

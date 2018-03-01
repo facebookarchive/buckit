@@ -35,6 +35,8 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 def get_url_basename(url):
@@ -108,7 +110,7 @@ class PyWheelDefault(base.Converter):
             for py_platform, version in sorted(platform_versions.items())
         ]
         # TODO: Figure out how to handle typing info from wheels
-        if self.typing_config_target:
+        if get_typing_config_target():
             yield self.gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 
@@ -181,7 +183,7 @@ class PyWheel(base.Converter):
             attrs['tests'] = tests
 
         # TODO: Figure out how to handle typing info from wheels
-        if self.typing_config_target:
+        if get_typing_config_target():
             yield self.gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 

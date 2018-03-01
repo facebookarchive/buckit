@@ -449,7 +449,7 @@ class Project:
 
     def __init__(
         self,
-        remove_files=True,
+        remove_files=None,
         add_fbcode_macros_cell=True,
         add_skylib_cell=True,
         run_buckd=False
@@ -465,6 +465,9 @@ class Project:
             add_skylib_cell: Whether to create the skylib cell when __enter__
                              is called
         """
+
+        if remove_files is None:
+            remove_files = os.environ.get('FBCODE_MACROS_KEEP_DIRS') != '1'
 
         self.root_cell = None
         self.project_path = None

@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from . import utils
+from tools.build.buck.parser import BuildFileContext
 
 
 class Py3ThriftConverterTest(utils.ConverterTestCase):
@@ -40,15 +41,15 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
         )
 
     def test_cpp2_auto_included(self):
-        rules = self._converter.convert(
-            'base',
-            'name',
-            thrift_srcs={'service.thrift': []},
-            languages=[
-                'py3',
-            ]
-        )
-
+        with self._state.parser._with_stacked_build_env(BuildFileContext("base")):
+            rules = self._converter.convert(
+                'base',
+                'name',
+                thrift_srcs={'service.thrift': []},
+                languages=[
+                    'py3',
+                ]
+            )
         for rule in rules:
             if rule.attributes['name'] == "name-cpp2":
                 self.assertEqual('cxx_library', rule.type)
@@ -58,13 +59,14 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
 
     def test_cpp2_options_copy_to_py3_options(self):
         OPTIONS = "BLAHBLAHBLAH"
-        rules = self._converter.convert(
-            'base',
-            'name',
-            thrift_srcs={'service.thrift': []},
-            languages=['py3', 'cpp2'],
-            thrift_cpp2_options=OPTIONS,
-        )
+        with self._state.parser._with_stacked_build_env(BuildFileContext("base")):
+            rules = self._converter.convert(
+                'base',
+                'name',
+                thrift_srcs={'service.thrift': []},
+                languages=['py3', 'cpp2'],
+                thrift_cpp2_options=OPTIONS,
+            )
         for rule in rules:
             if rule.attributes['name'] == "name-py3-service.thrift":
                 self.assertEqual('genrule', rule.type)

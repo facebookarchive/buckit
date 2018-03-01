@@ -37,6 +37,8 @@ target = import_macro_lib('fbcode_target')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 FLAGS = [
@@ -275,7 +277,7 @@ class PythonSwigConverter(SwigLangConverter):
             attrs['base_module'] = py_base_module
         # At some point swig targets should also include typing Options
         # For now we just need an empty directory.
-        if self.typing_config_target:
+        if get_typing_config_target():
             yield self.gen_typing_config(name)
         yield Rule('python_library', attrs)
 

@@ -39,6 +39,8 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 INTERPS = [
@@ -1065,7 +1067,7 @@ class PythonConverter(base.Converter):
     ):
         # For libraries, create the library and return it.
         if not self.is_binary():
-            if self.typing_config_target:
+            if get_typing_config_target():
 
                 yield self.gen_typing_config(
                     name,
@@ -1124,7 +1126,7 @@ class PythonConverter(base.Converter):
                 cpp_deps=cpp_deps,
                 visibility=visibility,
             )
-            if self.typing_config_target:
+            if get_typing_config_target():
                 yield self.gen_typing_config(
                     py_name + '-library',
                     base_module if base_module is not None else base_path,
@@ -1198,7 +1200,7 @@ class PythonConverter(base.Converter):
         visibility,
     ):
 
-        typing_config = self.typing_config_target
+        typing_config = get_typing_config_target()
 
         typecheck_deps = deps[:]
         if ':python_typecheck-library' not in typecheck_deps:

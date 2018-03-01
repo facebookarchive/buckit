@@ -18,6 +18,8 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:python_typing.bzl",
+     "get_typing_config_target")
 
 
 SUPPORT_PYTHON_TYPING = {
@@ -84,6 +86,6 @@ class PassthroughConverter(base.Converter):
         attributes.update(self._default_attrs)
         attributes.update(kwargs)
         if self.get_fbconfig_rule_type() in SUPPORT_PYTHON_TYPING:
-            if self.typing_config_target:
+            if get_typing_config_target():
                 yield self.gen_typing_config(attributes['name'])
         yield Rule(self.get_buck_rule_type(), attributes)
