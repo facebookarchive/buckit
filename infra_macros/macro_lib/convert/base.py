@@ -1040,7 +1040,8 @@ class Converter(object):
 
         # Apply the general sanitizer/coverage flags.
         for lang in c_langs:
-            compiler_flags[lang].extend(self.get_sanitizer_flags())
+            if self.get_sanitizer() is not None:
+                compiler_flags[lang].extend(self.get_sanitizer_flags())
             compiler_flags[lang].extend(self.get_coverage_flags(base_path))
 
         # Apply flags from the build mode file.

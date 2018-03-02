@@ -504,9 +504,12 @@ class CppConverter(base.Converter):
         support.
         """
 
+        sanitizer = self.get_sanitizer()
+        assert sanitizer is not None
+
         flags = []
 
-        if self.get_sanitizer() == 'address':
+        if sanitizer.startswith('address'):
             flags.append(
                 '-Wl,--dynamic-list='
                 '$(location //tools/build/buck:asan_dynamic_list.txt)')
@@ -518,9 +521,9 @@ class CppConverter(base.Converter):
         Return compiler/preprocessor flags needed to support sanitized
         builds.
         """
+
         sanitizer = self.get_sanitizer()
-        if sanitizer is None:
-            return []
+        assert sanitizer is not None
 
         assert self._context.compiler == 'clang'
         assert sanitizer in SANITIZER_FLAGS
@@ -528,6 +531,26 @@ class CppConverter(base.Converter):
         flags = SANITIZER_COMMON_FLAGS + SANITIZER_FLAGS[sanitizer]
 
         return flags
+
+    def get_sanitizer_non_binary_deps(self):
+        """
+        Return deps needed when using sanitizers.
+        """
+
+        sanitizer = self.get_sanitizer()
+        assert sanitizer is not None
+
+        deps = []
+
+        # We link ASAN weak stub symbols into every DSO so that we don't leave
+        # undefined references to *SAN symbols at shared library link time,
+        # which allows us to pass `--no-undefined` to the linker to prevent
+        # undefined symbols.
+        if (sanitizer.startswith('address') and
+                self.get_link_style() == 'shared'):
+            deps.append(RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
+
+        return deps
 
     def allowed_by_coverage_only(self, base_path):
         """
@@ -1043,7 +1066,8 @@ class CppConverter(base.Converter):
         # Form preprocessor flags.
         out_preprocessor_flags = []
         if not cuda:
-            out_preprocessor_flags.extend(self.get_sanitizer_flags())
+            if self.get_sanitizer() is not None:
+                out_preprocessor_flags.extend(self.get_sanitizer_flags())
             out_preprocessor_flags.extend(self.get_coverage_flags(base_path))
         self.verify_preprocessor_flags(
             'preprocessor_flags',
@@ -1120,8 +1144,14 @@ class CppConverter(base.Converter):
                 lto=enable_lto,
                 platform=platform if self.is_deployable() else None))
 
+        # Add non-binary sanitizer dependencies.
+        if (not self.is_binary(dlopen_info) and
+                self.get_sanitizer() is not None):
+            dependencies.extend(self.get_sanitizer_non_binary_deps())
+
         if self.is_binary(dlopen_info):
-            out_ldflags.extend(self.get_sanitizer_binary_ldflags())
+            if self.get_sanitizer() is not None:
+                out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(self.get_coverage_ldflags(base_path))
             if (self._context.buck_ops.read_config('fbcode', 'gdb-index') and
                   not core_tools.is_core_tool(base_path, name)):
@@ -1329,9 +1359,10 @@ class CppConverter(base.Converter):
         # Some libraries need to opt-out of linker errors about undefined
         # symbols.
         if (self.is_library() and
-                # TODO(T23121628): The way we build shared libs in ASAN leaves
-                # undefined references to ASAN symbols.
-                self.get_sanitizer() is None and
+                # TODO(T23121628): The way we build shared libs in non-ASAN
+                # sanitizer modes leaves undefined references to *SAN symbols.
+                (self.get_sanitizer() is None or
+                 self.get_sanitizer().startswith('address')) and
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
                 # via the link-style and ignore for now.
