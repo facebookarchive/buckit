@@ -268,6 +268,7 @@ if not buckit_use_system('boost'):
         cmd=cmd,
         build_rule_visibility=['PUBLIC'],
     )
+
 else:
     libs = [l._replace(lib_name=l.lib_name + '-mt') for l in libs]
     buckit_system_library(
