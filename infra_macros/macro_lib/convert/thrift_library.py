@@ -2248,6 +2248,9 @@ RUST_KEYWORDS = {
     "while", "yield",
 }
 
+RUST_AST_CODEGEN_FLAGS = {
+    "--add_serde_derives"
+}
 
 class RustThriftConverter(ThriftLangConverter):
     """
@@ -2272,20 +2275,27 @@ class RustThriftConverter(ThriftLangConverter):
     def get_compiler(self):
         return self._context.config.get_thrift_hs2_compiler()
 
+    def format_options(self, options):
+        args = []
+        for option, val in options.iteritems():
+            flag = '--' + option
+            if val is not None:
+                flag += '=' + val
+            args.append(flag)
+        return args
+
     def get_compiler_args(
             self,
             flags,
             options,
             hs_required_symbols=None,
             **kwargs):
-        args = ["--emit-json", "--rust"]
-
         # Format the options and pass them into the hs2 compiler.
-        for option, val in options.iteritems():
-            flag = '--' + option
-            if val is not None:
-                flag += '=' + val
-            args.append(flag)
+        args = ["--emit-json", "--rust"] + self.format_options(options)
+
+        # Exclude AST specific flags,
+        # that are needed for get_ast_to_rust only
+        args = filter(lambda a: a not in RUST_AST_CODEGEN_FLAGS, args)
 
         # Include rule-specific flags.
         args.extend(filter(lambda a: a not in ['--strict'], flags))
@@ -2330,8 +2340,8 @@ class RustThriftConverter(ThriftLangConverter):
             attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
-        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} -o $OUT; /bin/rustfmt $OUT' \
-            .format(' '.join(['$(location %s)' % s for s in sources]))
+        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} {} -o $OUT; /bin/rustfmt $OUT' \
+            .format(' '.join(['$(location %s)' % s for s in sources]), ' '.join(self.format_options(options)))
 
         # generated file: <name>/lib.rs
 
@@ -2361,6 +2371,13 @@ class RustThriftConverter(ThriftLangConverter):
             ('rust-crates-io', None, 'lazy_static'),
             ('rust-crates-io', None, 'tokio-service'),
         ]
+
+        if 'add_serde_derives' in options:
+            out_external_deps += [
+                ('rust-crates-io', None, 'serde_derive'),
+                ('rust-crates-io', None, 'serde'),
+            ]
+
 
         out_deps += deps
 
@@ -2714,6 +2731,11 @@ class ThriftLibraryConverter(base.Converter):
         if 'py-asyncio' in languages:
             languages.add('pyi-asyncio')
 
+        if 'rust' in languages:
+            rust_options = (
+                self.parse_thrift_options(
+                    kwargs.get('thrift_rust_options', ())))
+
         # Generate rules for all supported languages.
         for lang in languages:
             converter = self._converters[lang]
@@ -2724,6 +2746,8 @@ class ThriftLibraryConverter(base.Converter):
                         lang.replace('-', '_')), ())))
             if lang == 'py3':
                 options.update(cpp2_options)
+            if lang == 'rust':
+                options.update(rust_options)
             all_gen_srcs = collections.OrderedDict()
             for thrift_src, services in thrift_srcs.iteritems():
                 thrift_name = self.get_source_name(thrift_src)
