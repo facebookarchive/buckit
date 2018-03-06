@@ -30,6 +30,15 @@ BUILD_DEFS = [
 
 UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)
 
+UTIL_DEFS[".buckversion"] = ":buckversion"
+
+# This should change whenever the buck version meaningfully changes
+genrule(
+    name = "buckversion",
+    out = "buckversion",
+    cmd = "buck --version | awk {'print $3'} > $OUT",
+)
+
 python_library(
     name = "utils",
     srcs = [

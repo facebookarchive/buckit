@@ -480,7 +480,7 @@ class Project:
     def __enter__(self):
         self.project_path = tempfile.mkdtemp()
         self.root_cell = self.add_cell("root")
-        self.root_cell.add_file(".buckversion", "latest")
+        self.root_cell.add_resources_from(".buckversion")
 
         if self.add_fbcode_macros_cell:
             self.add_cell("fbcode_macros")
