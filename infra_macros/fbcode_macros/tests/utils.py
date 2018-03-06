@@ -421,7 +421,7 @@ class Cell:
         """
 
         def struct(**kwargs):
-            return collections.namedtuple("struct", kwargs.keys())(**kwargs)
+            return collections.namedtuple("struct", sorted(kwargs.keys()))(**kwargs)
 
         def function(name):
             return collections.namedtuple("function", ["name"])(name)
@@ -669,4 +669,4 @@ class TestCase(unittest.TestCase):
         Creates a namedtuple that can be compared to 'struct' objects that
         are parsed in unittests
         """
-        return collections.namedtuple("struct", *kwargs.keys())(**kwargs)
+        return collections.namedtuple("struct", sorted(kwargs.keys()))(**kwargs)
