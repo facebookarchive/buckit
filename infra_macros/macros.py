@@ -59,11 +59,11 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 #  includes = macros//macros.py
 # /macros/.buckconfig
 # /macros/macros.py
+load('@fbcode_macros//build_defs:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
-include_defs('//{}/BuildMode.py'.format(MACRO_LIB_DIR), 'BuildMode')
 include_defs('//{}/global_defns.py'.format(MACRO_LIB_DIR), 'global_defns')
 include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
@@ -141,69 +141,6 @@ else:
     third_party_config = get_oss_third_party_config()
 
 
-BUILD_MODE_CACHE = {}
-
-
-def get_empty_build_mode():
-    return BuildMode.BuildMode('empty', BuildMode.BuildSettings())
-
-
-def get_build_mode(base_path):
-    """
-    Look up and load the build mode settings that apply to given base path.
-    """
-
-    local_modes = BUILD_MODE_CACHE.get(base_path)
-    if local_modes is not None:
-        return local_modes
-
-    local_modes = {}
-
-    # Walk up the dir tree looking for the closest BUILD_MODE file.
-    path = base_path
-    while path:
-
-        # Check for a `BUILD_MODE` file at this level of the directory tree.
-        build_mode_path = os.path.join(path, 'BUILD_MODE')
-        add_build_file_dep('//' + build_mode_path)
-        if os.path.exists(build_mode_path):
-
-            # Before importing, make sure to clear out existing build mode
-            # settings in the `BuildMode` module.  This has two effects:
-            # 1) Remove the fbconfig/fbmake defaults, since Buck uses its own
-            # 2) Prevent BUILD_MODE files from leaking their changes by
-            #    modifying module state.
-            BuildMode.DEV = get_empty_build_mode()
-            BuildMode.OPT = get_empty_build_mode()
-            BuildMode.DBG = get_empty_build_mode()
-            BuildMode.DBGO = get_empty_build_mode()
-
-            # Since `include_defs` modifies the current context's globals, make
-            # sure we save them and restore them before and after importing.
-            current = globals()
-            saved = dict(current)
-
-            # BUILD_MODE files import the `BuildMode` module, so make sure it's
-            # available via the correct name.
-            sys.modules['BuildMode'] = BuildMode
-            try:
-                include_defs('//' + os.path.join(path, 'BUILD_MODE'))
-                local_modes = current.get('modes', {})
-            finally:
-                del sys.modules['BuildMode']
-
-            # Restore our globals.
-            current.clear()
-            current.update(saved)
-
-            break
-
-        path, _ = os.path.split(path)
-
-    BUILD_MODE_CACHE[base_path] = local_modes
-    return local_modes
-
-
 # Add the `util` class supporting fbconfig/fbmake globs.
 class Empty(object):
     pass
@@ -269,7 +206,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
             glob,
             include_defs,
             read_config))
-    context['build_mode'] = get_build_mode(base_path).get(context['mode'])
+    context['build_mode'] = build_mode.get_build_modes_for_base_path(base_path).get(context['mode'])
     context['third_party_config'] = third_party_config
     context['config'] = config
 

@@ -1007,20 +1007,20 @@ class Converter(object):
         if build_mode is not None:
 
             # Apply language-specific build mode flags.
-            compiler_flags['c_cpp_output'].extend(build_mode.settings.CFLAGS)
+            compiler_flags['c_cpp_output'].extend(build_mode.c_flags)
             compiler_flags['cxx_cpp_output'].extend(
-                build_mode.settings.CXXFLAGS)
+                build_mode.cxx_flags)
 
             # Apply compiler-specific build mode flags.
             for lang in c_langs:
                 if self._context.compiler == 'gcc':
-                    compiler_flags[lang].extend(build_mode.settings.GCCFLAGS)
+                    compiler_flags[lang].extend(build_mode.gcc_flags)
                 else:
-                    compiler_flags[lang].extend(build_mode.settings.CLANGFLAGS)
+                    compiler_flags[lang].extend(build_mode.clang_flags)
 
             # Cuda always uses GCC.
             compiler_flags['cuda_cpp_output'].extend(
-                build_mode.settings.GCCFLAGS)
+                build_mode.gcc_flags)
 
         # Add in command line flags last.
         compiler_flags['c_cpp_output'].extend(self.get_extra_cflags())
@@ -1272,7 +1272,7 @@ class Converter(object):
         # 1. Add in build-mode ldflags.
         build_mode = self.get_build_mode()
         if build_mode is not None:
-            ldflags.extend(build_mode.settings.LDFLAGS)
+            ldflags.extend(build_mode.ld_flags)
 
         # 2. Add flag to strip debug symbols.
         if strip_mode is None:

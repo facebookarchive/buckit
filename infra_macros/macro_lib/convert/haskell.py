@@ -655,7 +655,7 @@ class HaskellConverter(base.Converter):
             self.get_language_options(lang_opts,fb_haskell))
         build_mode = self.get_build_mode()
         if build_mode is not None:
-            out_compiler_flags.extend(build_mode.settings.GHCFLAGS)
+            out_compiler_flags.extend(build_mode.ghc_flags)
         out_compiler_flags.extend(self.read_extra_ghc_compiler_flags())
         if out_compiler_flags:
             attributes['compiler_flags'] = out_compiler_flags

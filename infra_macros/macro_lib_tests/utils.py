@@ -105,6 +105,7 @@ class ConverterTestCase(unittest.TestCase):
             yield
 
         config = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/config.bzl')
+        create_build_mode = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/create_build_mode.bzl')
         base = parser.load_include('tools/build/buck/infra_macros/macro_lib/convert/base.py')
 
         parsed_config = config.config
@@ -120,7 +121,7 @@ class ConverterTestCase(unittest.TestCase):
         context = (
             base.Context(
                 buck_ops=buck_ops,
-                build_mode=BuildMode.DEV,
+                build_mode=create_build_mode.create_build_mode(),
                 compiler='gcc',
                 coverage=False,
                 link_style='shared',

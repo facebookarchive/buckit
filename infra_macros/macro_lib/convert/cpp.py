@@ -1088,15 +1088,15 @@ class CppConverter(base.Converter):
         # Form language-specific preprocessor flags.
         out_lang_preprocessor_flags = collections.defaultdict(list)
         if build_mode is not None:
-            if build_mode.settings.ASPPFLAGS:
+            if build_mode.aspp_flags:
                 out_lang_preprocessor_flags['assembler_with_cpp'].extend(
-                    build_mode.settings.ASPPFLAGS)
-            if build_mode.settings.CPPFLAGS:
+                    build_mode.aspp_flags)
+            if build_mode.cpp_flags:
                 out_lang_preprocessor_flags['c'].extend(
-                    build_mode.settings.CPPFLAGS)
-            if build_mode.settings.CXXPPFLAGS:
+                    build_mode.cpp_flags)
+            if build_mode.cxxpp_flags:
                 out_lang_preprocessor_flags['cxx'].extend(
-                    build_mode.settings.CXXPPFLAGS)
+                    build_mode.cxxpp_flags)
         out_lang_preprocessor_flags['c'].extend(
             self.get_extra_cppflags())
         out_lang_preprocessor_flags['cxx'].extend(
