@@ -82,13 +82,24 @@ def _get_platform_overrides():
     """
     return _platform_overrides
 
-# TODO: Replace base.py's call with this
 def _get_default_platform():
     """ Returns the default cxx platform to use """
     if config.get_require_platform():
         return read_config("fbcode", "platform")
     else:
         return read_config("cxx", "default_platform", "default")
+
+def _get_platform_for_base_path(base_path):
+    """
+    Returns `get_platform_for_cell_path_and_arch()` for the given base_path
+
+    Args:
+      base_path: The base path within the default repository
+    """
+    return _get_platform_for_cell_path_and_arch(
+        config.get_current_repo_name(),
+        base_path,
+        _current_architecture)
 
 def _get_platform_for_current_buildfile():
     """  Returns `get_platform_for_cell_path_and_arch()` for the build file that calls this method """
@@ -129,6 +140,7 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
 platform = struct(
     get_default_platform=_get_default_platform,
     get_platform_for_current_buildfile=_get_platform_for_current_buildfile,
+    get_platform_for_base_path=_get_platform_for_base_path,
     get_platform_for_cell_path_and_arch=_get_platform_for_cell_path_and_arch,
     get_platform_overrides=_get_platform_overrides,
 )

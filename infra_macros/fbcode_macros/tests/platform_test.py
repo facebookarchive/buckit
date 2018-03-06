@@ -179,6 +179,36 @@ class PlatformTest(tests.utils.TestCase):
         self.assertSuccess(results, "default")
 
     @tests.utils.with_project()
+    def test_base_name_gets_correct_platform_for_various_directories_and_archs(
+        self, root
+    ):
+        platform_overrides = dedent(
+            """\
+            platform_overrides = {"fbcode": {
+                "foo/bar": ["gcc5-other", "gcc5"],
+                "foo/bar-other": ["gcc5-other"],
+                "foo": ["gcc6"],
+                "": ["gcc7"],
+            }}
+        """
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/third_party_config.bzl", self.third_party_config
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/platform_overrides.bzl", platform_overrides
+        )
+        statements = [
+            'platform.get_platform_for_base_path("foo/bar")',
+            'platform.get_platform_for_base_path("foo/bar-other")',
+            'platform.get_platform_for_base_path("foo/baz")',
+            'platform.get_platform_for_base_path("foo")',
+            'platform.get_platform_for_base_path("foobar")',
+        ]
+        result = root.run_unittests(self.includes, statements)
+        self.assertSuccess(result, "gcc5", "gcc6", "gcc6", "gcc6", "gcc7")
+
+    @tests.utils.with_project()
     def test_gets_correct_platform_for_various_directories_and_archs(
         self, root
     ):

@@ -179,32 +179,3 @@ class BaseConverterTest(utils.ConverterTestCase):
         with self.assertRaises(ValueError):
             self._converter.normalize_external_dep(
                 ('way', 'way', 'too', 'many', 'parts'))
-
-    def test_find_platform_with_no_file(self):
-        self.assertEquals(
-            self._converter.find_platform_for_path('foo/bar'),
-            None)
-
-    def test_platform_from_current_dir(self):
-        self.write_file('foo/bar/PLATFORM', 'platform')
-        self.assertEquals(
-            self._converter.find_platform_for_path('foo/bar'),
-            'platform')
-
-    def test_platform_from_parent_dir(self):
-        self.write_file('foo/PLATFORM', 'platform')
-        self.assertEquals(
-            self._converter.find_platform_for_path('foo/bar'),
-            'platform')
-
-    def test_fbcode_platform_from_current_dir(self):
-        self.write_file('foo/bar/FBCODE_PLATFORM', 'platform')
-        self.assertEquals(
-            self._converter.find_platform_for_path('foo/bar'),
-            'platform')
-
-    def test_fbcode_platform_from_parent_dir(self):
-        self.write_file('foo/FBCODE_PLATFORM', 'platform')
-        self.assertEquals(
-            self._converter.find_platform_for_path('foo/bar'),
-            'platform')

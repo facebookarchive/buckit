@@ -68,6 +68,7 @@ RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
+load("@fbcode_macros//build_defs:platform.bzl", "platform")
 
 SANITIZERS = {
     'address': 'asan',
@@ -191,7 +192,6 @@ class Converter(object):
 
     def __init__(self, context):
         self._context = context
-        self._platform_file_cache = {}
         self._tp2_build_dat_cache = {}
         self._core_tools = None
 
@@ -252,53 +252,11 @@ class Converter(object):
 
         return None if not platforms else platforms[0]
 
-    def find_platform_for_path(self, base_path):
-        """
-        Walk up the dir tree searching for a platform specified in a PLATFORM
-        file.
-        """
-
-        # If we've cached this platform file, return it.
-        if base_path in self._platform_file_cache:
-            return self._platform_file_cache[base_path]
-
-        platform = None
-
-        # If there's a platform file in this dir, parse it and return its
-        # platform.  We support both `FBCODE_PLATFORM` and `PLATFORM`, as the
-        # former is more specific and less likely to collide with directory
-        # names (which is more likely on case-insensitive filesystems).
-        platform_names = ['FBCODE_PLATFORM', 'PLATFORM']
-        for platform_name in platform_names:
-            platform_file = os.path.join(base_path, platform_name)
-            self._context.buck_ops.add_build_file_dep('//' + platform_file)
-            if os.path.isfile(platform_file):
-                platform = self.parse_platform_file(platform_file)
-                if platform is not None:
-                    break
-
-        # Otherwise, walk up the dir tree.
-        if platform is None and base_path:
-            dirpath = os.path.split(base_path)[0]
-            platform = self.find_platform_for_path(dirpath)
-
-        # Cache and return the result.
-        self._platform_file_cache[base_path] = platform
-        return platform
-
     def get_platform(self, base_path):
         """
         Get the fbcode platform to use for the given base path.
         """
-
-        # First, try to find the platform from a `PLATFORM` file.
-        if self.read_bool('fbcode', 'platform_files', True):
-            platform = self.find_platform_for_path(base_path)
-            if platform is not None:
-                return platform
-
-        # Otherwise, use the global default.
-        return self.get_default_platform()
+        return platform.get_platform_for_base_path(base_path)
 
     def get_platform_architecture(self, platform):
         """
