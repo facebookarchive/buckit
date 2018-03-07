@@ -12,6 +12,7 @@ Helpers to discover information about platforms as defined by fbcode
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
 def __get_current_architecture():
@@ -72,6 +73,12 @@ def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
 
 _platform_overrides = _transform_platform_overrides(platform_overrides)
 
+def _get_use_platform_files():
+    """
+    Determines whether platform files should be used, or just the default
+    """
+    return read_boolean('fbcode', 'platform_files', True)
+
 def _get_platform_overrides():
     """
     Gets a validated and modified version of platform_overrides
@@ -124,6 +131,9 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
         and is valid for the current host architecture. If nothing matches, the
         default platform is returned
     """
+    if not _get_use_platform_files():
+        return _get_default_platform()
+
     per_cell_overrides = _platform_overrides.get(cell)
     if per_cell_overrides != None:
         # Make "foo" loop twice. Once for "foo", once for "". foo/bar gets you
