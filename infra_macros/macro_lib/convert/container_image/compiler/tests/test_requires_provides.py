@@ -59,3 +59,7 @@ class RequiresProvidesTestCase(unittest.TestCase):
                         AssertionError, '^Tried to match .* against .*$'
                     ):
                         p.matches(path_to_reqs_provs, r)
+
+
+if __name__ == '__main__':
+    unittest.main()

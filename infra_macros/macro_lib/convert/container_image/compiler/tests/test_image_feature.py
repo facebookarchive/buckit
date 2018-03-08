@@ -40,3 +40,7 @@ class ImageFeatureTestCase(unittest.TestCase):
         self.assertLess(
             id_to_idx['foo/borf/beep'], id_to_idx['foo/borf/hello_world']
         )
+
+
+if __name__ == '__main__':
+    unittest.main()

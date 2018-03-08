@@ -99,3 +99,7 @@ class CompilerTestCase(unittest.TestCase):
                     parent_in_args=['--parent-layer-json', json],
                     parent_out_args=['--base-layer-path', parent],
                 )
+
+
+if __name__ == '__main__':
+    unittest.main()

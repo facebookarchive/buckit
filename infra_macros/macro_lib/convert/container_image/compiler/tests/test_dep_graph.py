@@ -167,3 +167,7 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
                 ),
                 BadFilesystemRootItem(from_target=''),
             ]))
+
+
+if __name__ == '__main__':
+    unittest.main()

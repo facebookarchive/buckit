@@ -326,3 +326,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         ]:
             with self.assertRaisesRegex(RuntimeError, 'in line details:'):
                 _parse_bytes_to_list(bad_line)
+
+
+if __name__ == '__main__':
+    unittest.main()

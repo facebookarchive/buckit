@@ -180,3 +180,7 @@ class EnrichedNamedtupleTestCase(unittest.TestCase):
         )
         with self.assertRaises(AttributeError):
             g.boof = 3
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -251,3 +251,7 @@ dir/child
         check_output.assert_called_once_with(
             ['sudo', 'btrfs', 'subvolume', 'show', child]
         )
+
+
+if __name__ == '__main__':
+    unittest.main()

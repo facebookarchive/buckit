@@ -235,3 +235,7 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
                 n.kept_refs | {'new:subvol.json'}, set(os.listdir(n.refs_dir)),
             )
             self.assertEqual(n.kept_subs, set(os.listdir(n.subs_dir)))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -40,3 +40,7 @@ class VolumeForRepoTestCase(unittest.TestCase):
             except Exception:
                 pass  # Might not have been mounted in case of an earlier error
             shutil.rmtree(artifacts_dir)
+
+
+if __name__ == '__main__':
+    unittest.main()

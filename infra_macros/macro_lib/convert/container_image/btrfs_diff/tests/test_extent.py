@@ -449,3 +449,7 @@ class ExtentTestCase(unittest.TestCase):
 
     def test_gen_trimmed_leaves_empty(self):
         self.assertEqual([], list(Extent.empty().gen_trimmed_leaves()))
+
+
+if __name__ == '__main__':
+    unittest.main()

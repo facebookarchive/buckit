@@ -532,3 +532,7 @@ class FindClonesTestCase(unittest.TestCase):
         # Drive-by check: we refuse to populate chunks twice.
         with self.assertRaisesRegex(RuntimeError, 'was already populated'):
             list(gen_files_populating_chunks_and_clones(fs))
+
+
+if __name__ == '__main__':
+    unittest.main()

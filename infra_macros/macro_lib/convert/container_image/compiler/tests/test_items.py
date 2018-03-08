@@ -157,3 +157,7 @@ class ItemsTestCase(unittest.TestCase):
                 [ParentLayerItem(from_target='T', path='potato')],
                 list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
             )
+
+
+if __name__ == '__main__':
+    unittest.main()
