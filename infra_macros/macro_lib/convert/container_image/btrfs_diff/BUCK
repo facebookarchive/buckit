@@ -42,3 +42,48 @@ python_unittest(
     )],
     deps = [":find_clones"],
 )
+
+export_file(
+    name = "print_demo_dump.sh",
+    src = "tests/print_demo_dump.sh",
+)
+
+python_library(
+    name = "parse_dump",
+    srcs = ["parse_dump.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
+        "compiler:enriched_namedtuple",
+    ],
+)
+
+export_file(
+    # The reason we need this is explained in `update_gold_print_demo_dump.sh`.
+    name = "gold_print_demo_dump.out",
+    src = "tests/gold_print_demo_dump.out",
+)
+
+python_unittest(
+    name = "test-parse-dump",
+    srcs = ["tests/test_parse_dump.py"],
+    base_module = "btrfs_diff",
+    gen_srcs = {
+        ":print_demo_dump.sh": "tests/print_demo_dump.sh",
+        ":gold_print_demo_dump.out": "tests/gold_print_demo_dump.out",
+    },
+    needed_coverage = [(
+        1.0,
+        ":parse_dump",
+    )],
+    par_style = "zip",  # our 'export_file' deps won't work with "fastzip"
+    deps = [
+        ":gold_print_demo_dump.out",
+        ":parse_dump",
+        ":print_demo_dump.sh",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":artifacts_dir",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":volume_for_repo",
+    ],
+)

@@ -13,7 +13,8 @@ export_file(name = "subvolume_version.py")
 # The rest of this file only exist to enable automatic continuous builds and
 # integration tests for the Buck image-building toolchain.
 
-export_file(name = "set_up_volume.sh")  # For `volume_for_repo.py` test
+# For `test_volume_for_repo.py`. At build time, we find use `dirname(__file__)`
+export_file(name = "set_up_volume.sh")
 
 # A separate library because otherwise `pyunitcoveragerunner.py` will demand
 # coverage on the `.sh` file.
@@ -41,6 +42,12 @@ python_unittest(
     )],
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
     deps = [":volume_for_repo"],
+)
+
+python_library(
+    name = "artifacts_dir",
+    srcs = ["artifacts_dir.py"],
+    base_module = "",
 )
 
 python_library(
