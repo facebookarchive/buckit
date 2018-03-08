@@ -1,0 +1,16 @@
+python_library(
+    name = "extent",
+    srcs = ["extent.py"],
+    base_module = "btrfs_diff",
+)
+
+python_unittest(
+    name = "test-extent",
+    srcs = ["tests/test_extent.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":extent",
+    )],
+    deps = [":extent"],
+)
