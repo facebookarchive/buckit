@@ -35,6 +35,8 @@ from collections import Counter, OrderedDict
 from compiler.enriched_namedtuple import metaclass_new_enriched_namedtuple
 from typing import Any, BinaryIO, Callable, Dict, Iterable, Optional, Pattern
 
+from .subvol_path import SubvolPath
+
 
 _ESCAPED_TO_UNESCAPED = OrderedDict([
     (br'\a', b'\a'),
@@ -97,11 +99,23 @@ class RegexParsedItem:
     regex: Pattern = re.compile(b'')
 
     @classmethod
-    def parse_details(cls, details: bytes) -> Optional[Dict[str, Any]]:
+    def parse_details(
+        cls, path: SubvolPath, details: bytes
+    ) -> Optional[Dict[str, Any]]:
         m = cls.regex.fullmatch(details)
         return {
-            # Handle conv_FIELD_NAME class methods for converting fields.
-            k: getattr(cls, f'conv_{k}', lambda x: x)(v)
+            # Handle `conv_FIELD_NAME` class methods for converting fields.
+            # These take a single positional argument, and handle most
+            # cases.
+            #
+            # We currently only use `context_conv_FIELD_NAME` when a detail
+            # field needs to know the path to process correctly, see `link`.
+            k: getattr(
+                cls, f'context_conv_{k}', lambda value, path: value
+            )(
+                getattr(cls, f'conv_{k}', lambda x: x)(v),
+                path=path,
+            )
                 for k, v in m.groupdict().items()
         } if m else None
 
@@ -162,20 +176,30 @@ class DumpItems:
         pass
 
     class symlink(RegexParsedItem, metaclass=DumpItem):
-        fields = ['dest']  # This path is not quoted in `send-dump.c`
+        # NB unlike the paths in other items, the symlink target is just an
+        # arbitrary string with no filesystem signficance, so we do not
+        # process it at all.  Unfortunately, `dest` is not quoted in
+        # `send-dump.c`.
+        fields = ['dest']
         regex = re.compile(br'dest=(?P<dest>.*)')
 
     class rename(RegexParsedItem, metaclass=DumpItem):
         fields = ['dest']  # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
-        conv_dest = staticmethod(os.path.normpath)  # Normalize like .path
+        conv_dest = staticmethod(SubvolPath._new)  # Normalize like .path
 
     class link(RegexParsedItem, metaclass=DumpItem):
         fields = ['dest']  # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
-        # Future: `btrfs receive` is inconsistent -- unlike other paths,
-        # this `dest` does not start with the subvolume path.  It's not that
-        # easy to fix that now, since the item doesn't know its context.
+
+        # `btrfs receive` is inconsistent -- unlike other paths, its `dest`
+        # does not start with the subvolume path.
+        @staticmethod
+        def context_conv_dest(dest: bytes, path: SubvolPath) -> SubvolPath:
+            return SubvolPath(
+                subvol=path.subvol,
+                path=os.path.normpath(dest),
+            )
 
     class unlink(RegexParsedItem, metaclass=DumpItem):
         pass
@@ -196,7 +220,7 @@ class DumpItems:
         # The path `from` is not quoted in `send-dump.c`, but a greedy
         # regex can still parse this fixed format correctly.
         #
-        # We have to name it `from_file` due to `namedtuple` constraints.
+        # We have to name it `from_file` since `from` is a reserved keyword.
         fields = ['offset', 'len', 'from_file', 'clone_offset']
         regex = re.compile(
             br'offset=(?P<offset>[0-9]+) '
@@ -206,7 +230,7 @@ class DumpItems:
         )
         conv_offset = staticmethod(int)
         conv_len = staticmethod(int)
-        conv_from_file = staticmethod(os.path.normpath)  # Normalize like .path
+        conv_from_file = staticmethod(SubvolPath._new)  # Normalize like .path
         conv_clone_offset = staticmethod(int)
 
     class set_xattr(metaclass=DumpItem):
@@ -223,7 +247,9 @@ class DumpItems:
         second_regex = re.compile(br'name=(.*) data=')
 
         @classmethod
-        def parse_details(cls, details: bytes) -> Optional[Dict[str, Any]]:
+        def parse_details(
+            cls, path: SubvolPath, details: bytes,
+        ) -> Optional[Dict[str, Any]]:
             m = cls.first_regex.fullmatch(details)
             if not m:
                 return None
@@ -307,18 +333,17 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[DumpItem]:
         if not item_class:
             raise RuntimeError(f'unknown item type {item_name} in {repr(l)}')
 
-        fields = item_class.parse_details(details)
+        # We MUST unquote here, or paths in field 1 will not be comparable
+        # with as-of-now unquoted paths in the other fields.  For example,
+        # `ItemFilters.rename` compares such paths.
+        path = SubvolPath._new(unquote_btrfs_progs_path(path))
+
+        fields = item_class.parse_details(path, details)
         if fields is None:
             raise RuntimeError(f'unexpected format in line details: {repr(l)}')
 
         assert 'path' not in fields, f'{item_name}.regex defined <path>'
-        # We MUST unquote here, or paths in field 1 will not be comparable
-        # with as-of-now unquoted paths in the other fields.  For example,
-        # `ItemFilters.rename` compares such paths.
-        #
-        # `normpath` is useful since `btrfs receive --dump` is inconsistent
-        # about trailing slashes on directory paths.
-        fields['path'] = os.path.normpath(unquote_btrfs_progs_path(path))
+        fields['path'] = path
 
         yield item_class(**fields)
 

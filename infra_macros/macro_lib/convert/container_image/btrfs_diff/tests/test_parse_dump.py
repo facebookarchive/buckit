@@ -12,6 +12,7 @@ from ..parse_dump import (
     DumpItems, get_frequency_of_selinux_xattrs, ItemFilters, NAME_TO_ITEM_TYPE,
     parse_btrfs_dump, unquote_btrfs_progs_path,
 )
+from ..subvol_path import SubvolPath
 
 # `unittest`'s output shortening makes tests much harder to debug.
 unittest.util._MAX_LENGTH = 10e4
@@ -121,15 +122,20 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
 
         di = DumpItems
 
+        def p(path):
+            if isinstance(path, str):  # forgive missing `b`s, it's a test
+                path = path.encode()
+            return SubvolPath._new(path)
+
         def chown(path):
-            return di.chown(path=path, gid=0, uid=0)
+            return di.chown(path=p(path), gid=0, uid=0)
 
         def chmod(path, mode=0o644):
-            return di.chmod(path=path, mode=mode)
+            return di.chmod(path=p(path), mode=mode)
 
         def utimes(path):
             return di.utimes(
-                path=path,
+                path=p(path),
                 atime=build_start_time,
                 mtime=build_start_time,
                 ctime=build_start_time,
@@ -144,11 +150,13 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             yield item
             renamed_item = di.rename(
                 path=item.path,
-                dest=os.path.join(os.path.dirname(item.path), real_name),
+                dest=p(
+                    os.path.join(os.path.dirname(bytes(item.path)), real_name)
+                ),
             )
             yield renamed_item
             if utimes_parent:  # Rarely, `btrfs send` breaks the pattern.
-                yield utimes(os.path.dirname(renamed_item.dest))
+                yield utimes(os.path.dirname(bytes(renamed_item.dest)))
 
         # These make it quite easy to update the test after you run
         # `update_gold_print_demo_dump.sh`.
@@ -163,134 +171,140 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             nonlocal temp_path_counter
             temp_path_counter += 1
             mid = temp_path_middles[prefix]
-            return f'{prefix}/o{temp_path_counter}-{mid}-0'.encode()
+            return p(f'{prefix}/o{temp_path_counter}-{mid}-0')
 
         self.assertEqual([
             di.subvol(
-                path=b'create_ops', uuid=uuid_create, transid=transid_create,
+                path=p('create_ops'), uuid=uuid_create, transid=transid_create,
             ),
-            *base_metadata(b'create_ops', mode=0o755),
+            *base_metadata('create_ops', mode=0o755),
 
             *and_rename(di.mkdir(path=temp_path('create_ops')), b'hello'),
             di.set_xattr(
-                path=b'create_ops/hello',
+                path=p('create_ops/hello'),
                 name=b'user.test_attr',
                 data=b'chickens',
                 len=8,
             ),
-            *base_metadata(b'create_ops/hello', mode=0o755),
+            *base_metadata('create_ops/hello', mode=0o755),
 
             *and_rename(
                 di.mkdir(path=temp_path('create_ops')), b'dir_to_remove'
             ),
-            *base_metadata(b'create_ops/dir_to_remove', mode=0o755),
+            *base_metadata('create_ops/dir_to_remove', mode=0o755),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'goodbye',
                 utimes_parent=False,
             ),
-            di.link(path=b'create_ops/hello/world', dest=b'goodbye'),
-            utimes(b'create_ops'),
-            utimes(b'create_ops/hello'),
-            di.truncate(path=b'create_ops/goodbye', size=0),
-            *base_metadata(b'create_ops/goodbye'),
+            di.link(
+                path=p('create_ops/hello/world'), dest=p('create_ops/goodbye'),
+            ),
+            utimes('create_ops'),
+            utimes('create_ops/hello'),
+            di.truncate(path=p('create_ops/goodbye'), size=0),
+            *base_metadata('create_ops/goodbye'),
 
             *and_rename(di.mknod(
                 path=temp_path('create_ops'), mode=0o60644, dev=0x7a539b7,
             ), b'buffered'),
-            *base_metadata(b'create_ops/buffered'),
+            *base_metadata('create_ops/buffered'),
 
             *and_rename(di.mknod(
                 path=temp_path('create_ops'), mode=0o20644, dev=0x7a539b7,
             ), b'unbuffered'),
-            *base_metadata(b'create_ops/unbuffered'),
+            *base_metadata('create_ops/unbuffered'),
 
             *and_rename(di.mkfifo(path=temp_path('create_ops')), b'fifo'),
-            *base_metadata(b'create_ops/fifo'),
+            *base_metadata('create_ops/fifo'),
 
             *and_rename(
                 di.mksock(path=temp_path('create_ops')), b'unix_sock',
             ),
-            *base_metadata(b'create_ops/unix_sock', mode=0o755),
+            *base_metadata('create_ops/unix_sock', mode=0o755),
 
             *and_rename(di.symlink(
-                path=temp_path('create_ops'), dest=b'hello/world'
+                path=temp_path('create_ops'), dest=b'hello/world',
             ), b'goodbye_symbolic'),
-            chown(b'create_ops/goodbye_symbolic'),
-            utimes(b'create_ops/goodbye_symbolic'),
+            chown('create_ops/goodbye_symbolic'),
+            utimes('create_ops/goodbye_symbolic'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'1MB_nuls',
             ),
-            di.update_extent(path=b'create_ops/1MB_nuls', offset=0, len=2**20),
-            di.truncate(path=b'create_ops/1MB_nuls', size=2**20),
-            *base_metadata(b'create_ops/1MB_nuls'),
+            di.update_extent(
+                path=p('create_ops/1MB_nuls'), offset=0, len=2**20,
+            ),
+            di.truncate(path=p('create_ops/1MB_nuls'), size=2**20),
+            *base_metadata('create_ops/1MB_nuls'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'1MB_nuls_clone',
             ),
             di.clone(
-                path=b'create_ops/1MB_nuls_clone', offset=0, len=2**20,
-                from_file=b'create_ops/1MB_nuls', clone_offset=0,
+                path=p('create_ops/1MB_nuls_clone'), offset=0, len=2**20,
+                from_file=p('create_ops/1MB_nuls'), clone_offset=0,
             ),
-            di.truncate(path=b'create_ops/1MB_nuls_clone', size=2**20),
-            *base_metadata(b'create_ops/1MB_nuls_clone'),
+            di.truncate(path=p('create_ops/1MB_nuls_clone'), size=2**20),
+            *base_metadata('create_ops/1MB_nuls_clone'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'zeros_hole_zeros',
             ),
             di.update_extent(
-                path=b'create_ops/zeros_hole_zeros', offset=0, len=16384,
+                path=p('create_ops/zeros_hole_zeros'), offset=0, len=16384,
             ),
             di.update_extent(
-                path=b'create_ops/zeros_hole_zeros', offset=32768, len=16384,
+                path=p('create_ops/zeros_hole_zeros'), offset=32768, len=16384,
             ),
-            di.truncate(path=b'create_ops/zeros_hole_zeros', size=49152),
-            *base_metadata(b'create_ops/zeros_hole_zeros'),
+            di.truncate(path=p('create_ops/zeros_hole_zeros'), size=49152),
+            *base_metadata('create_ops/zeros_hole_zeros'),
 
             di.snapshot(
-                path=b'mutate_ops',
+                path=p('mutate_ops'),
                 uuid=uuid_mutate,
                 transid=transid_mutate,
                 parent_uuid=uuid_create,
                 parent_transid=transid_create,
             ),
-            utimes(b'mutate_ops'),
+            utimes('mutate_ops'),
             di.rename(
-                path=b'mutate_ops/hello', dest=b'mutate_ops/hello_renamed',
+                path=p('mutate_ops/hello'), dest=p('mutate_ops/hello_renamed'),
             ),
-            utimes(b'mutate_ops'),
-            utimes(b'mutate_ops'),  # `btrfs send` is not so parsimonious
+            utimes('mutate_ops'),
+            utimes('mutate_ops'),  # `btrfs send` is not so parsimonious
 
             di.remove_xattr(
-                path=b'mutate_ops/hello_renamed', name=b'user.test_attr',
+                path=p('mutate_ops/hello_renamed'), name=b'user.test_attr',
             ),
-            utimes(b'mutate_ops/hello_renamed'),
+            utimes('mutate_ops/hello_renamed'),
 
-            di.rmdir(path=b'mutate_ops/dir_to_remove'),
-            utimes(b'mutate_ops'),
+            di.rmdir(path=p('mutate_ops/dir_to_remove')),
+            utimes('mutate_ops'),
 
-            di.link(path=b'mutate_ops/farewell', dest=b'goodbye'),
-            di.unlink(path=b'mutate_ops/goodbye'),
-            di.unlink(path=b'mutate_ops/hello_renamed/world'),
-            utimes(b'mutate_ops'),
-            utimes(b'mutate_ops'),
-            utimes(b'mutate_ops/hello_renamed'),
-            di.truncate(path=b'mutate_ops/farewell', size=0),
-            utimes(b'mutate_ops/farewell'),
+            di.link(
+                path=p('mutate_ops/farewell'), dest=p('mutate_ops/goodbye'),
+            ),
+            di.unlink(path=p('mutate_ops/goodbye')),
+            di.unlink(path=p('mutate_ops/hello_renamed/world')),
+            utimes('mutate_ops'),
+            utimes('mutate_ops'),
+            utimes('mutate_ops/hello_renamed'),
+            di.truncate(path=p('mutate_ops/farewell'), size=0),
+            utimes('mutate_ops/farewell'),
 
             *and_rename(
                 di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
             ),
-            di.write(path=b'mutate_ops/hello_renamed/een', offset=0, len=5),
-            di.truncate(path=b'mutate_ops/hello_renamed/een', size=5),
-            *base_metadata(b'mutate_ops/hello_renamed/een'),
+            di.write(path=p('mutate_ops/hello_renamed/een'), offset=0, len=5),
+            di.truncate(path=p('mutate_ops/hello_renamed/een'), size=5),
+            *base_metadata('mutate_ops/hello_renamed/een'),
         ], items)
 
     def test_common_errors(self):
         ok_line = b'mkfile ./cat\\ and\\ dog\n'  # Drive-by test of unquoting
         self.assertEqual(
-            [DumpItems.mkfile(path=b'cat and dog')],
+            [DumpItems.mkfile(path=SubvolPath._new(b'cat and dog'))],
             _parse_bytes_to_list(ok_line),
         )
 
@@ -312,8 +326,8 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         for l in [7, 8]:  # \0-terminated would add 1 char
             self.assertEqual(
                 [DumpItems.set_xattr(
-                    path=b'subvol/file', name=b'MY_ATTR', data=b'MY_DATA',
-                    len=l,
+                    path=SubvolPath._new(b'subvol/file'),
+                    name=b'MY_ATTR', data=b'MY_DATA', len=l,
                 )],
                 _parse_bytes_to_list(make_line(len_v=l)),
             )
