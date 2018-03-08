@@ -18,6 +18,8 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:visibility.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
+    "fbcode_macros//tools:get_platform.py",
+    "fbcode_macros//tools:BUCK",
     "bazel_skylib//lib:dicts.bzl",
     "bazel_skylib//lib:structs.bzl",
     "bazel_skylib//lib:selects.bzl",

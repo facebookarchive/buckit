@@ -1,0 +1,37 @@
+load("@fbcode_macros//build_defs:platform.bzl", "platform")
+
+export_file(
+    name = "get_platform.py",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "BUCK",
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "parsed_platforms",
+    out = "parsed_platforms.py",
+    cmd = "cat > $OUT <<EOF\nplatforms = %r\nEOF" % platform.get_platform_overrides(),
+)
+
+python_library(
+    name = "get_platform-lib",
+    srcs = ["get_platform.py"],
+)
+
+python_binary(
+    name = "get_platform-bin",
+    main_module = "tools.get_platform",
+    deps = [":get_platform-lib"],
+)
+
+command_alias(
+    name = "get_platform",
+    args = [
+        "--platforms-file",
+        "$(location :parsed_platforms)",
+    ],
+    exe = ":get_platform-bin",
+)

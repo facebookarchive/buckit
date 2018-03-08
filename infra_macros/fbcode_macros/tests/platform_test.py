@@ -283,3 +283,42 @@ class PlatformTest(tests.utils.TestCase):
             self.includes, ["platform.get_default_platform()"]
         )
         self.assertSuccess(results, "default")
+
+    @tests.utils.with_project()
+    def test_helper_util_runs_properly(self, root):
+        platform_overrides = dedent(
+            """\
+            platform_overrides = {"fbcode": {
+                "foo/bar": ["gcc5-other", "gcc5"],
+                "foo/bar-other": ["gcc5-other"],
+                "foo": ["gcc6"],
+                "": ["gcc7"],
+            }}
+        """
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/third_party_config.bzl", self.third_party_config
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/platform_overrides.bzl", platform_overrides
+        )
+
+        result = root.run([
+            'buck',
+            'run',
+            'fbcode_macros//tools:get_platform',
+            'foo/bar',
+            'foo/bar-other',
+            'foo/baz',
+            'foo',
+            'foobar',
+        ], {}, {})
+        self.assertSuccess(result)
+        expected = dedent("""
+            foo/bar:gcc5
+            foo/bar-other:gcc6
+            foo/baz:gcc6
+            foo:gcc6
+            foobar:gcc7
+            """) + "\n"
+        self.assertEqual(expected, result.stdout)
