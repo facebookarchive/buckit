@@ -49,7 +49,7 @@ class _CloneExtentRef(NamedTuple):
     #
     # We could avoid this denormalization by keying `CloneChunk`s on
     # `(file_offset, offset, length, extent)`, which is unique.  And
-    # `find_clones_and_populate_file_chunks` does already track
+    # `gen_files_populating_chunks_and_clones` does already track
     # `file_offset`.  However, the denormalized approach seemed cleaner.
     leaf_idx: int
 
@@ -225,20 +225,20 @@ def _file_to_leaf_idx_to_chunk_clones(files: Iterable[File]):
             assert leaf_ref.leaf_idx not in d
             # `leaf_idx` is the position in `gen_trimmed_leaves` of the
             # chunk, whose clones we computed.  That fully specifies where
-            #  `find_clones_and_populate_file_chunks` should put the clones.
+            #  `gen_files_populating_chunks_and_clones` should put the clones.
             d[leaf_ref.leaf_idx] = offsets_clones
 
     return file_to_leaf_idx_to_chunk_clones
 
 
-def find_clones_and_populate_file_chunks(files: Sequence[File]):
+def gen_files_populating_chunks_and_clones(files: Sequence[File]):
     '''
-    Populates `file.chunks`, raises if it any file's chunks were populated.
-    Explained in detail in the docstring for `file.py`.
+    Yields copies of `files` with `.chunks` populated. Raises if any
+    `.chunks != None`.  Explained in detail in the docstring for `file.py`.
     '''
     # Don't make changes to files in which only some have populated chunks.
     for f in files:
-        if f.chunks != []:
+        if f.chunks is not None:
             # This is saner than re-populating them, since the user might
             # get it into their head to call us with two different lists of
             # files, which would produce grossly inconsistent clone
@@ -249,6 +249,7 @@ def find_clones_and_populate_file_chunks(files: Sequence[File]):
     f_to_leaf_idx_to_chunk_clones = _file_to_leaf_idx_to_chunk_clones(files)
     for f in files:
         leaf_to_chunk_clones = f_to_leaf_idx_to_chunk_clones.get(f, {})
+        new_chunks = []
         for leaf_idx, (offset, length, extent) in enumerate(
             f.extent.gen_trimmed_leaves()
         ):
@@ -256,20 +257,20 @@ def find_clones_and_populate_file_chunks(files: Sequence[File]):
             assert isinstance(extent.content, Extent.Kind)
 
             # If the chunk kind matches, merge into the previous chunk.
-            if f.chunks and f.chunks[-1].kind == extent.content:
-                prev_length = f.chunks[-1].length
-                prev_clones = f.chunks[-1].chunk_clones
+            if new_chunks and new_chunks[-1].kind == extent.content:
+                prev_length = new_chunks[-1].length
+                prev_clones = new_chunks[-1].chunk_clones
             else:  # Otherwise, make a new one.
                 prev_length = 0
                 prev_clones = set()
-                f.chunks.append(None)
+                new_chunks.append(None)
 
-            f.chunks[-1] = Chunk(
+            new_chunks[-1] = Chunk(
                 kind=extent.content,
                 length=length + prev_length,
                 chunk_clones=prev_clones,
             )
-            f.chunks[-1].chunk_clones.update(
+            new_chunks[-1].chunk_clones.update(
                 # Future: when switching to frozentype, __new__ should
                 # vaidate that clone offset & length are sane relative
                 # to the trimmed extent.
@@ -281,3 +282,4 @@ def find_clones_and_populate_file_chunks(files: Sequence[File]):
                     offset=clone_offset + prev_length - offset
                 ) for clone_offset, clone in chunk_clones
             )
+        yield f._replace(chunks=tuple(new_chunks))  # Future: deepfrozen?

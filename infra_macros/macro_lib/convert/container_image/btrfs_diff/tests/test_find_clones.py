@@ -7,7 +7,7 @@ import unittest
 
 from ..extent import Extent
 from ..file import File
-from ..find_clones import find_clones_and_populate_file_chunks
+from ..find_clones import gen_files_populating_chunks_and_clones
 
 
 def _gen_ranges_from_figure(figure: str):
@@ -73,9 +73,9 @@ def _repr_file_chunks(fs):
 
 
 def _repr_chunks_from_figure(s, **kwargs):
-    fs = list(_gen_files_from_figure(s, **kwargs))
-    find_clones_and_populate_file_chunks(fs)
-    return _repr_file_chunks(fs)
+    return _repr_file_chunks(gen_files_populating_chunks_and_clones(
+        list(_gen_files_from_figure(s, **kwargs))
+    ))
 
 
 class FindClonesTestCase(unittest.TestCase):
@@ -243,7 +243,7 @@ class FindClonesTestCase(unittest.TestCase):
         '''
         This is the only test that checks that `extent_left`,
         `extent_right`, and `slice_spacing` do not break
-        `find_clones_and_populate_file_chunks`.  The single example in FIG1
+        `gen_files_populating_chunks_and_clones`.  The single example in FIG1
         is rich enough that using it to exercise these offset variations
         gives us a confidence in our position arithmetic.
         '''
@@ -427,10 +427,9 @@ class FindClonesTestCase(unittest.TestCase):
         # files, let's make sure the clone detection does the right thing.
         # Also add an empty file to make sure that corner case works.
 
-        fs = [
+        fs = list(gen_files_populating_chunks_and_clones([
             File('a', a), File('b', b), File('c', c), File('e', Extent.empty())
-        ]
-        find_clones_and_populate_file_chunks(fs)
+        ]))
 
         # I iteratively built this up from the "trimmed leaves" data above,
         # and checked against the real output, one file at a time.  So, this
@@ -532,4 +531,4 @@ class FindClonesTestCase(unittest.TestCase):
 
         # Drive-by check: we refuse to populate chunks twice.
         with self.assertRaisesRegex(RuntimeError, 'was already populated'):
-            find_clones_and_populate_file_chunks(fs)
+            list(gen_files_populating_chunks_and_clones(fs))

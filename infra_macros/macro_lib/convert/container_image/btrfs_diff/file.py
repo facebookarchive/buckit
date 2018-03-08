@@ -6,7 +6,7 @@ The workflow for creating a mock filesystem is as follows:
     * `File`s and their `Extent`s,
     * the path -> `File` mapping.
 
- - Run `find_clones.find_clones_and_populate_file_chunks()` to condense the
+ - Run `find_clones.gen_files_populating_chunks_and_clones()` to condense the
    files' nested, history-preserving, clone-aware `Extent` objects into a
    test-friendly list of `Chunk`s.
 
@@ -97,25 +97,24 @@ The workflow for creating a mock filesystem is as follows:
     real applications.  See the 'bbaa\naabb' example in
     `test_simple_figures()`,
 '''
-from typing import NamedTuple, Set
+from typing import NamedTuple, Set, Optional, Sequence
 
 from .extent import Extent
 
 
-# Future: try to make this class immutable.
-class File:
-    def __init__(self, description, extent):
-        # Why is this `description` and not `name` or `path`? To support
-        # hardlinks, a `File` object must effectively be a nameless inode.
-        # However, it is really useful to be able to put **something** into
-        # the structure to be used as a debugging identifier.  In tests,
-        # these are short strings, in mock filesystems, we might use an
-        # autoincrement integer plus one of the inode's paths.
-        self.description = description
-        self.extent = extent
-        # The file is a concatenation of Chunks. Once the filesystem is
-        # ready, `find_clones_and_populate_file_chunks` populates this list.
-        self.chunks = []
+class File(NamedTuple):
+    # Why is this `description` and not `name` or `path`? To support
+    # hardlinks, a `File` object must effectively be a nameless inode.
+    # However, it is really useful to be able to put **something** into the
+    # structure to be used as a debugging identifier.  In tests, these are
+    # short strings, in mock filesystems, we might use an autoincrement
+    # integer plus one of the inode's paths.
+    description: str
+    extent: Extent
+
+    # The file data is a concatenation of Chunks. Once the filesystem is
+    # ready, `gen_files_populating_chunks_and_clones` populates this.
+    chunks: Optional[Sequence['Chunk']] = None
 
     def __repr__(self):
         return f'(File: {self.description}/{self.extent.length})'
