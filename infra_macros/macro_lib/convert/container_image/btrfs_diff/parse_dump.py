@@ -23,7 +23,6 @@ Limitations of `btrfs receive --dump` (filed as T25376790):
  - timestamps are printed only to 1-second resolution, while
 
 TODOs:
- - convert integer fields to integers, including `len` of `set_xattr`,
  - consider parsing the `btrfs send` stream directly, which should be both
    faster and more future-proof than relying on `--dump` output. Examples:
    https://github.com/osandov/osandov-linux/blob/master/scripts/btrfs-send-sanitize.py
@@ -107,6 +106,10 @@ class RegexParsedItem:
         } if m else None
 
 
+def _from_octal(s: bytes) -> int:
+    return int(s, base=8)
+
+
 class DumpItems:
     '''
     This class only exists to group its inner classes, see NAME_TO_ITEM_TYPE.
@@ -124,6 +127,7 @@ class DumpItems:
             br'uuid=(?P<uuid>[-0-9a-f]+) '
             br'transid=(?P<transid>[0-9]+)'
         )
+        conv_transid = staticmethod(int)
 
     class snapshot(RegexParsedItem, metaclass=DumpItem):
         fields = ['uuid', 'transid', 'parent_uuid', 'parent_transid']
@@ -133,6 +137,8 @@ class DumpItems:
             br'parent_uuid=(?P<parent_uuid>[-0-9a-f]+) '
             br'parent_transid=(?P<parent_transid>[0-9]+)'
         )
+        conv_transid = staticmethod(int)
+        conv_parent_transid = staticmethod(int)
 
     class mkfile(RegexParsedItem, metaclass=DumpItem):
         pass
@@ -141,8 +147,13 @@ class DumpItems:
         pass
 
     class mknod(RegexParsedItem, metaclass=DumpItem):
-        fields = ['mode', 'dev']  # octal & hex
+        fields = ['mode', 'dev']
         regex = re.compile(br'mode=(?P<mode>[0-7]+) dev=0x(?P<dev>[0-9a-f]+)')
+        conv_mode = staticmethod(_from_octal)
+
+        @staticmethod
+        def conv_dev(dev: bytes) -> int:
+            return int(dev, base=16)
 
     class mkfifo(RegexParsedItem, metaclass=DumpItem):
         pass
@@ -157,15 +168,14 @@ class DumpItems:
     class rename(RegexParsedItem, metaclass=DumpItem):
         fields = ['dest']  # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
-
-        @classmethod
-        def conv_dest(cls, p: bytes) -> bytes:
-            'normalize this the same way we normalize "path".'
-            return os.path.normpath(p)
+        conv_dest = staticmethod(os.path.normpath)  # Normalize like .path
 
     class link(RegexParsedItem, metaclass=DumpItem):
         fields = ['dest']  # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
+        # Future: `btrfs receive` is inconsistent -- unlike other paths,
+        # this `dest` does not start with the subvolume path.  It's not that
+        # easy to fix that now, since the item doesn't know its context.
 
     class unlink(RegexParsedItem, metaclass=DumpItem):
         pass
@@ -179,6 +189,8 @@ class DumpItems:
         # to compare the filesystem data separately from this tool.
         fields = ['offset', 'len']
         regex = re.compile(br'offset=(?P<offset>[0-9]+) len=(?P<len>[0-9]+)')
+        conv_offset = staticmethod(int)
+        conv_len = staticmethod(int)
 
     class clone(RegexParsedItem, metaclass=DumpItem):
         # The path `from` is not quoted in `send-dump.c`, but a greedy
@@ -192,11 +204,10 @@ class DumpItems:
             br'from=(?P<from_file>.+) '
             br'clone_offset=(?P<clone_offset>[0-9]+)'
         )
-
-        @classmethod
-        def conv_from_file(cls, p: bytes) -> bytes:
-            'normalize this the same way we normalize "path".'
-            return os.path.normpath(p)
+        conv_offset = staticmethod(int)
+        conv_len = staticmethod(int)
+        conv_from_file = staticmethod(os.path.normpath)  # Normalize like .path
+        conv_clone_offset = staticmethod(int)
 
     class set_xattr(metaclass=DumpItem):
         # IMPORTANT: `len` will generally be greater than `len(data)`
@@ -231,7 +242,7 @@ class DumpItems:
                     return {
                         'name': m.group(1),
                         'data': rest[end_of_data:],
-                        'len': length,
+                        'len': int(length),
                     }
             return None
 
@@ -242,14 +253,18 @@ class DumpItems:
     class truncate(RegexParsedItem, metaclass=DumpItem):
         fields = ['size']
         regex = re.compile(br'size=(?P<size>[0-9]+)')
+        conv_size = staticmethod(int)
 
     class chmod(RegexParsedItem, metaclass=DumpItem):
         fields = ['mode']
-        regex = re.compile(br'mode=(?P<mode>[0-7]+)')  # octal
+        regex = re.compile(br'mode=(?P<mode>[0-7]+)')
+        conv_mode = staticmethod(_from_octal)
 
     class chown(RegexParsedItem, metaclass=DumpItem):
         fields = ['gid', 'uid']
         regex = re.compile(br'gid=(?P<gid>[0-9]+) uid=(?P<uid>[0-9]+)')
+        conv_gid = staticmethod(int)
+        conv_uid = staticmethod(int)
 
     class utimes(RegexParsedItem, metaclass=DumpItem):
         fields = ['atime', 'mtime', 'ctime']

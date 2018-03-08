@@ -122,9 +122,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         di = DumpItems
 
         def chown(path):
-            return di.chown(path=path, gid=b'0', uid=b'0')
+            return di.chown(path=path, gid=0, uid=0)
 
-        def chmod(path, mode=b'644'):
+        def chmod(path, mode=0o644):
             return di.chmod(path=path, mode=mode)
 
         def utimes(path):
@@ -135,7 +135,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
                 ctime=build_start_time,
             )
 
-        def base_metadata(path, mode=b'644'):
+        def base_metadata(path, mode=0o644):
             return [chown(path), chmod(path, mode), utimes(path)]
 
         # Future: if we end up doing a lot of mid-list insertions, we can
@@ -153,9 +153,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         # These make it quite easy to update the test after you run
         # `update_gold_print_demo_dump.sh`.
         uuid_create = b'e34c8a50-ffc1-2d41-ab67-9219669ea9f3'
-        transid_create = b'1993'
+        transid_create = 1993
         uuid_mutate = b'ed28f410-3173-b64f-8769-0ba7c3b6ac6d'
-        transid_mutate = b'1996'
+        transid_mutate = 1996
         temp_path_middles = {'create_ops': 1991, 'mutate_ops': 1995}
         temp_path_counter = 256  # I have never seen this initial value change.
 
@@ -169,21 +169,21 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             di.subvol(
                 path=b'create_ops', uuid=uuid_create, transid=transid_create,
             ),
-            *base_metadata(b'create_ops', mode=b'755'),
+            *base_metadata(b'create_ops', mode=0o755),
 
             *and_rename(di.mkdir(path=temp_path('create_ops')), b'hello'),
             di.set_xattr(
                 path=b'create_ops/hello',
                 name=b'user.test_attr',
                 data=b'chickens',
-                len=b'8',
+                len=8,
             ),
-            *base_metadata(b'create_ops/hello', mode=b'755'),
+            *base_metadata(b'create_ops/hello', mode=0o755),
 
             *and_rename(
                 di.mkdir(path=temp_path('create_ops')), b'dir_to_remove'
             ),
-            *base_metadata(b'create_ops/dir_to_remove', mode=b'755'),
+            *base_metadata(b'create_ops/dir_to_remove', mode=0o755),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'goodbye',
@@ -192,16 +192,16 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             di.link(path=b'create_ops/hello/world', dest=b'goodbye'),
             utimes(b'create_ops'),
             utimes(b'create_ops/hello'),
-            di.truncate(path=b'create_ops/goodbye', size=b'0'),
+            di.truncate(path=b'create_ops/goodbye', size=0),
             *base_metadata(b'create_ops/goodbye'),
 
             *and_rename(di.mknod(
-                path=temp_path('create_ops'), mode=b'60644', dev=b'7a539b7',
+                path=temp_path('create_ops'), mode=0o60644, dev=0x7a539b7,
             ), b'buffered'),
             *base_metadata(b'create_ops/buffered'),
 
             *and_rename(di.mknod(
-                path=temp_path('create_ops'), mode=b'20644', dev=b'7a539b7',
+                path=temp_path('create_ops'), mode=0o20644, dev=0x7a539b7,
             ), b'unbuffered'),
             *base_metadata(b'create_ops/unbuffered'),
 
@@ -211,7 +211,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             *and_rename(
                 di.mksock(path=temp_path('create_ops')), b'unix_sock',
             ),
-            *base_metadata(b'create_ops/unix_sock', mode=b'755'),
+            *base_metadata(b'create_ops/unix_sock', mode=0o755),
 
             *and_rename(di.symlink(
                 path=temp_path('create_ops'), dest=b'hello/world'
@@ -222,33 +222,30 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'1MB_nuls',
             ),
-            di.update_extent(
-                path=b'create_ops/1MB_nuls', offset=b'0', len=b'1048576',
-            ),
-            di.truncate(path=b'create_ops/1MB_nuls', size=b'1048576'),
+            di.update_extent(path=b'create_ops/1MB_nuls', offset=0, len=2**20),
+            di.truncate(path=b'create_ops/1MB_nuls', size=2**20),
             *base_metadata(b'create_ops/1MB_nuls'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'1MB_nuls_clone',
             ),
             di.clone(
-                path=b'create_ops/1MB_nuls_clone', offset=b'0', len=b'1048576',
-                from_file=b'create_ops/1MB_nuls', clone_offset=b'0',
+                path=b'create_ops/1MB_nuls_clone', offset=0, len=2**20,
+                from_file=b'create_ops/1MB_nuls', clone_offset=0,
             ),
-            di.truncate(path=b'create_ops/1MB_nuls_clone', size=b'1048576'),
+            di.truncate(path=b'create_ops/1MB_nuls_clone', size=2**20),
             *base_metadata(b'create_ops/1MB_nuls_clone'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'zeros_hole_zeros',
             ),
             di.update_extent(
-                path=b'create_ops/zeros_hole_zeros', offset=b'0', len=b'16384',
+                path=b'create_ops/zeros_hole_zeros', offset=0, len=16384,
             ),
             di.update_extent(
-                path=b'create_ops/zeros_hole_zeros',
-                offset=b'32768', len=b'16384',
+                path=b'create_ops/zeros_hole_zeros', offset=32768, len=16384,
             ),
-            di.truncate(path=b'create_ops/zeros_hole_zeros', size=b'49152'),
+            di.truncate(path=b'create_ops/zeros_hole_zeros', size=49152),
             *base_metadata(b'create_ops/zeros_hole_zeros'),
 
             di.snapshot(
@@ -279,16 +276,14 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             utimes(b'mutate_ops'),
             utimes(b'mutate_ops'),
             utimes(b'mutate_ops/hello_renamed'),
-            di.truncate(path=b'mutate_ops/farewell', size=b'0'),
+            di.truncate(path=b'mutate_ops/farewell', size=0),
             utimes(b'mutate_ops/farewell'),
 
             *and_rename(
                 di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
             ),
-            di.write(
-                path=b'mutate_ops/hello_renamed/een', offset=b'0', len=b'5',
-            ),
-            di.truncate(path=b'mutate_ops/hello_renamed/een', size=b'5'),
+            di.write(path=b'mutate_ops/hello_renamed/een', offset=0, len=5),
+            di.truncate(path=b'mutate_ops/hello_renamed/een', size=5),
             *base_metadata(b'mutate_ops/hello_renamed/een'),
         ], items)
 
@@ -318,7 +313,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             self.assertEqual(
                 [DumpItems.set_xattr(
                     path=b'subvol/file', name=b'MY_ATTR', data=b'MY_DATA',
-                    len=f'{l}'.encode(),
+                    len=l,
                 )],
                 _parse_bytes_to_list(make_line(len_v=l)),
             )
