@@ -14,3 +14,31 @@ python_unittest(
     )],
     deps = [":extent"],
 )
+
+python_library(
+    name = "file",
+    srcs = ["file.py"],
+    base_module = "btrfs_diff",
+    deps = [":extent"],
+)
+
+python_library(
+    name = "find_clones",
+    srcs = ["find_clones.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":extent",
+        ":file",
+    ],
+)
+
+python_unittest(
+    name = "test-find-clones",
+    srcs = ["tests/test_find_clones.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":find_clones",
+    )],
+    deps = [":find_clones"],
+)
