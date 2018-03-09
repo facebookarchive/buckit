@@ -42,10 +42,13 @@ HEADER_EXTS = (
 #    (when such support is available).
 HEADER_SUFFIXES = (
     '.h',
+    '.hpp',
     '.tcc',
     '-inl.h',
+    '-inl.hpp',
     '-inl.tcc',
     '-defs.h',
+    '-defs.hpp',
     '-defs.tcc',
     'If.h',
     'If.tcc',
