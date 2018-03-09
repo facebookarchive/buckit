@@ -54,6 +54,10 @@ class PlatformTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/build_mode_overrides.bzl",
+            "build_mode_overrides = {}")
+
         statements = [
             'create_build_mode(aspp_flags=["-DFLAG"])',
             'create_build_mode(c_flags=["-DFLAG"])',
