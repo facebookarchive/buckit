@@ -148,6 +148,12 @@ class UtilsTest(tests.utils.TestCase):
         self.assertFalse(os.path.isdir(temp_dir))
 
     def test_runs_buckd_and_cleans_up(self):
+        for dir in os.environ["PATH"].split(os.pathsep):
+            if os.path.exists(os.path.join(dir, "jps")):
+                break
+        else:
+            self.skipTest("Could not find jps")
+
         buckd_dir = None
         with tests.utils.Project(run_buckd=True) as project:
             buckd_dir = os.path.join(project.root_cell.full_path(), ".buckd")
