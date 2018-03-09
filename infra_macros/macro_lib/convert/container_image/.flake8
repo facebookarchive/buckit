@@ -7,6 +7,7 @@ max-line-length = 80
 #         .bar())
 # E266 (no doubled # in comments) removes a useful emphasis mechanism.
 # W503 is silly because leading with operators is more legible.
-ignore = E123,E126,E127,E128,E131,E266,W503
+# B305 is not useful in a pure-Py3 codebase
+ignore = E123,E126,E127,E128,E131,E266,W503,B305
 # Future: Re-enable T4 after I land my `deepfrozen` work
 select = B,C,E,F,P,W,B9

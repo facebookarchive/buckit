@@ -33,31 +33,42 @@ python_unittest(
 )
 
 python_library(
-    name = "file",
-    srcs = ["file.py"],
+    name = "inode",
+    srcs = ["inode.py"],
     base_module = "btrfs_diff",
     deps = [":extent"],
 )
 
+python_unittest(
+    name = "test-inode",
+    srcs = ["tests/test_inode.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":inode",
+    )],
+    deps = [":inode"],
+)
+
 python_library(
-    name = "find_clones",
-    srcs = ["find_clones.py"],
+    name = "finalize_inodes",
+    srcs = ["finalize_inodes.py"],
     base_module = "btrfs_diff",
     deps = [
         ":extent",
-        ":file",
+        ":inode",
     ],
 )
 
 python_unittest(
-    name = "test-find-clones",
-    srcs = ["tests/test_find_clones.py"],
+    name = "test-finalize-inodes",
+    srcs = ["tests/test_finalize_inodes.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
         1.0,
-        ":find_clones",
+        ":finalize_inodes",
     )],
-    deps = [":find_clones"],
+    deps = [":finalize_inodes"],
 )
 
 export_file(
