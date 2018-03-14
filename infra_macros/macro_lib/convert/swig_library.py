@@ -175,7 +175,7 @@ class JavaSwigConverter(SwigLangConverter):
         # fixed platform at parse-time (which means Java binaries will only
         # ever build against one platform at a time).
         attrs['srcs'] = (
-            ['{}#{}'.format(s, self.get_default_platform())
+            ['{}#{}'.format(s, self.get_platform(base_path))
              for s in gen_srcs.values()])
         attrs['out'] = src_zip_name
         rules.append(Rule('zip_file', attrs))
