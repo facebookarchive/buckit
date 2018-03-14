@@ -181,6 +181,12 @@ class EnrichedNamedtupleTestCase(unittest.TestCase):
         with self.assertRaises(AttributeError):
             g.boof = 3
 
+    def test_repr(self):
+        self.assertEqual(
+            "Algae(color='green', has_roots=True, is_saltwater=False)",
+            repr(Algae(has_roots=True, is_saltwater=False)),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

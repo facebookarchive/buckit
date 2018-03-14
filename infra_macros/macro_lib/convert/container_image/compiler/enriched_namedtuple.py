@@ -225,6 +225,12 @@ def metaclass_new_enriched_namedtuple(
                 ),
             )
 
+        def __repr__(self):
+            return class_name + '(' + ', '.join(
+                f'{f}={repr(getattr(self, f))}'
+                    for f in self._fields if f != 'DO_NOT_USE_type'
+            ) + ')'
+
     # Since we're inheriting from `tuple`, __slots__ must be empty if set.
     #
     # Enriched namedtuples like PathObject below are supposed to be immutable,
