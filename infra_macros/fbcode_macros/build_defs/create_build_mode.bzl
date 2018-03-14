@@ -26,7 +26,10 @@ def create_build_mode(
         gdc_flags=(),
         ldc_flags=(),
         par_flags=(),
-        ghc_flags=()):
+        ghc_flags=(),
+        asan_options=(),
+        ubsan_options=(),
+        tsan_options=()):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -50,6 +53,9 @@ def create_build_mode(
         ldc_flags: Extra D flags
         par_flags: Extra flags to send to PAR
         ghc_flags: Extra flags for the haskell compiler
+        asan_options: Extra ASAN runtime options
+        ubsan_options: Extra UBSAN runtime options
+        tsan_options: Extra TSAN runtime options
 
     Returns:
         A struct with each of the provided fields, or () if the field was
@@ -70,4 +76,7 @@ def create_build_mode(
         ldc_flags=ldc_flags,
         par_flags=par_flags,
         ghc_flags=ghc_flags,
+        asan_options=asan_options,
+        ubsan_options=ubsan_options,
+        tsan_options=tsan_options,
     )

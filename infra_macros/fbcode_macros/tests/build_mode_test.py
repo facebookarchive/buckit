@@ -35,7 +35,10 @@ class PlatformTest(tests.utils.TestCase):
             gdc_flags=(),
             ldc_flags=(),
             par_flags=(),
-            ghc_flags=()):
+            ghc_flags=(),
+            asan_options=(),
+            ubsan_options=(),
+            tsan_options=()):
         return self.struct(
             aspp_flags=aspp_flags,
             cpp_flags=cpp_flags,
@@ -50,7 +53,10 @@ class PlatformTest(tests.utils.TestCase):
             gdc_flags=gdc_flags,
             ldc_flags=ldc_flags,
             par_flags=par_flags,
-            ghc_flags=ghc_flags)
+            ghc_flags=ghc_flags,
+            asan_options=asan_options,
+            ubsan_options=ubsan_options,
+            tsan_options=tsan_options)
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
@@ -73,6 +79,9 @@ class PlatformTest(tests.utils.TestCase):
             'create_build_mode(ldc_flags=["-DFLAG"])',
             'create_build_mode(ld_flags=["-DFLAG"])',
             'create_build_mode(par_flags=["-DFLAG"])',
+            'create_build_mode(asan_options={"a":"1"})',
+            'create_build_mode(ubsan_options={"b":"2"})',
+            'create_build_mode(tsan_options={"c":"3"})',
         ]
         expected = [
             self._create_mode_struct(aspp_flags=["-DFLAG"]),
@@ -89,6 +98,9 @@ class PlatformTest(tests.utils.TestCase):
             self._create_mode_struct(ldc_flags=["-DFLAG"]),
             self._create_mode_struct(ld_flags=["-DFLAG"]),
             self._create_mode_struct(par_flags=["-DFLAG"]),
+            self._create_mode_struct(asan_options={"a":"1"}),
+            self._create_mode_struct(ubsan_options={"b":"2"}),
+            self._create_mode_struct(tsan_options={"c":"3"}),
         ]
         result = root.run_unittests(self.includes, statements)
         self.assertSuccess(result, *expected)
@@ -168,7 +180,10 @@ class PlatformTest(tests.utils.TestCase):
             gdc_flags=(),
             ldc_flags=(),
             par_flags=(),
-            ghc_flags=())
+            ghc_flags=(),
+            asan_options=(),
+            ubsan_options=(),
+            tsan_options=())
 
         self.assertSuccess(result1, {'dev': expected})
         self.assertSuccess(result2, {'dev': expected})
@@ -229,7 +244,10 @@ class PlatformTest(tests.utils.TestCase):
             gdc_flags=(),
             ldc_flags=(),
             par_flags=(),
-            ghc_flags=())
+            ghc_flags=(),
+            asan_options=(),
+            ubsan_options=(),
+            tsan_options=())
 
         self.assertSuccess(
             result,
