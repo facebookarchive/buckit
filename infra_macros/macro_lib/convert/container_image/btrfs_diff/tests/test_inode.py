@@ -11,7 +11,7 @@ class InodeTestCase(unittest.TestCase):
 
     def _inode(self, st_mode, **kwargs):
         return Inode._new(
-            id=InodeIDMap().next(['path']),
+            id=InodeIDMap().next('path'),
             st_mode=st_mode,
             owner=InodeOwner(uid=3, gid=5),
             utimes=InodeUtimes(ctime=8., mtime=13., atime=21.),
@@ -56,7 +56,7 @@ class InodeTestCase(unittest.TestCase):
                 self._inode(kwargs.pop('st_mode'), **kwargs)
 
     def test_chunk_clone(self):
-        clone = Clone(inode_id=InodeIDMap().next(['a']), offset=17, length=3)
+        clone = Clone(inode_id=InodeIDMap().next('a'), offset=17, length=3)
         self.assertEqual('a:17+3', repr(clone))
         self.assertEqual('a:17+3@22', repr(ChunkClone(offset=22, clone=clone)))
 
@@ -64,7 +64,7 @@ class InodeTestCase(unittest.TestCase):
         id_map = InodeIDMap()
         chunk = Chunk(kind=Extent.Kind.DATA, length=12, chunk_clones=set())
         self.assertEqual('(DATA/12)', repr(chunk))
-        ino_id = id_map.next(['a'])
+        ino_id = id_map.next('a')
         chunk.chunk_clones.add(ChunkClone(
             offset=3, clone=Clone(inode_id=ino_id, offset=7, length=2),
         ))

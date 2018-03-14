@@ -166,7 +166,7 @@ class ExtentsToChunksTestCase(unittest.TestCase):
                     length=length
                 )
                 file_offset += slice_spacing + length
-            yield self.inode_map.next([name]), file_extent
+            yield self.inode_map.next(name), file_extent
 
     def _repr_chunks_from_figure(self, s, **kwargs):
         return _repr_ids_and_chunks(extents_to_chunks_with_clones(list(
@@ -454,10 +454,10 @@ class ExtentsToChunksTestCase(unittest.TestCase):
         # Also add an empty file to make sure that corner case works.
 
         ids_and_chunks = list(extents_to_chunks_with_clones([
-            (self.inode_map.next(['a']), a),
-            (self.inode_map.next(['b']), b),
-            (self.inode_map.next(['c']), c),
-            (self.inode_map.next(['e']), Extent.empty()),
+            (self.inode_map.next('a'), a),
+            (self.inode_map.next('b'), b),
+            (self.inode_map.next('c'), c),
+            (self.inode_map.next('e'), Extent.empty()),
         ]))
 
         # I iteratively built this up from the "trimmed leaves" data above,

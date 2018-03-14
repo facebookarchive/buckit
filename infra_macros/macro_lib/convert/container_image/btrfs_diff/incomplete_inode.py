@@ -36,7 +36,7 @@ class IncompleteInode:
 
     def __init__(self, *, item: DumpItem, id_map: InodeIDMap):
         assert isinstance(item, self.INITIAL_ITEM)
-        self.id = id_map.next([item.path])
+        self.id = id_map.next(item.path)
         self.xattrs = {}
         self.owner = None
         self.mode = None

@@ -10,7 +10,7 @@ import itertools
 
 from collections import defaultdict
 
-from typing import Mapping, NamedTuple, Optional, Set, Sequence
+from typing import Mapping, NamedTuple, Optional, Set
 
 
 class InodeID(NamedTuple):
@@ -44,19 +44,27 @@ class InodeIDMap:
         self.id_to_paths = defaultdict(set)
         self.path_to_id = {}
 
-    def next(self, paths: Sequence[bytes]) -> InodeID:
+    def next(self, path: Optional[bytes]=None) -> InodeID:
         inode_id = InodeID(id=next(self.inode_id_counter), id_map=self)
-        self.add_paths(inode_id, paths)
+        if path is not None:
+            self.add_path(inode_id, path)
         return inode_id
 
-    def add_paths(self, inode_id: InodeID, paths: Sequence[bytes]) -> None:
-        for path in paths:
-            old_id = self.path_to_id.setdefault(path, inode_id)
-            if old_id != inode_id:
-                raise RuntimeError(
-                    f'Path {path} has 2 inodes: {inode_id.id} and {old_id.id}'
-                )
-        self.id_to_paths[inode_id.id].update(paths)
+    def add_path(self, inode_id: InodeID, path: bytes) -> None:
+        old_id = self.path_to_id.setdefault(path, inode_id)
+        if old_id != inode_id:
+            raise RuntimeError(
+                f'Path {path} has 2 inodes: {inode_id.id} and {old_id.id}'
+            )
+        self.id_to_paths[inode_id.id].add(path)
+
+    def remove_path(self, path: bytes) -> InodeID:
+        ino_id = self.path_to_id.pop(path)
+        paths = self.id_to_paths[ino_id.id]
+        paths.remove(path)
+        if not paths:
+            del self.id_to_paths[ino_id.id]
+        return ino_id
 
     def get_paths(self, inode_id: InodeID) -> Set[bytes]:
         if inode_id.id_map is not self:
