@@ -4,23 +4,75 @@ Inode, and the structures it contains, represent the final, constructed
 state of the filesystem. They are immutable, designed to be easy to
 construct, and easy to compare in tests.
 '''
-import itertools
+import stat
 
-from collections import defaultdict
-from typing import Mapping, NamedTuple, Set, Sequence
+from typing import NamedTuple, Optional, Set, Sequence
 
 from .extent import Extent
 from .inode_id import InodeID
 
 
+class InodeOwner(NamedTuple):
+    uid: int
+    gid: int
+
+
+class InodeUtimes(NamedTuple):
+    ctime: float
+    mtime: float
+    atime: float
+
+
+_S_IFMT_TO_FILE_TYPE_NAME = {
+    stat.S_IFBLK: 'Block',
+    stat.S_IFCHR: 'Char',
+    stat.S_IFDIR: 'Dir',
+    stat.S_IFIFO: 'FIFO',
+    stat.S_IFLNK: 'Symlink',
+    stat.S_IFREG: 'File',
+    stat.S_IFSOCK: 'Socket',
+}
+
+# Future: `frozentype` should let us mirror the `Incomplete*` hierarchy,
+# instead of making this enum + union type hack.
 class Inode(NamedTuple):
     id: InodeID
+
+    # All inode types
+    st_mode: int  # file_type | mode
+    owner: InodeOwner
+    utimes: InodeUtimes
+
+    # The subsequent fields are specific to particular file_types.  `_new`
+    # will assert that they are not None iff they are relevant.
+
+    # FILE
+    #
     # The inode's data fork is a concatenation of Chunks, computed from a
     # set of `Extent`s by `extents_to_chunks_with_clones`.
-    chunks: Sequence['Chunk']
+    chunks: Optional[Sequence['Chunk']] = None
+
+    # DEVICE -- block vs character is encoded as `S_IFMT(st_mode)`
+    dev: Optional[int] = None
+
+    # SYMLINK
+    dest: Optional[bytes] = None
+
+    @staticmethod
+    def _new(*, st_mode, chunks=None, dev=None, dest=None, **kwargs):
+        assert (stat.S_ISCHR(st_mode) or stat.S_ISBLK(st_mode)) ^ (dev is None)
+        assert stat.S_ISREG(st_mode) ^ (chunks is None)
+        assert stat.S_ISLNK(st_mode) ^ (dest is None)
+        # Symlink permissions are ignored, so ensure they're canonical.
+        assert not stat.S_ISLNK(st_mode) or stat.S_IMODE(st_mode) == 0
+        return Inode(
+            st_mode=st_mode, chunks=chunks, dev=dev, dest=dest, **kwargs,
+        )
 
     def __repr__(self):
-        return f'(Inode: {self.id})'
+        file_type = stat.S_IFMT(self.st_mode)
+        name = _S_IFMT_TO_FILE_TYPE_NAME.get(file_type, file_type)
+        return f'({name}: {self.id})'
 
 
 class Clone(NamedTuple):
