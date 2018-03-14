@@ -289,7 +289,6 @@ class CppThriftConverter(ThriftLangConverter):
         ('_custom_protocol.h', SERVICES_HEADER),
         ('_processmap_binary.cpp', SERVICES_SOURCE),
         ('_processmap_compact.cpp', SERVICES_SOURCE),
-        ('_gperf.tcc', SERVICES_HEADER),
         ('.tcc', SERVICES_HEADER),
         ('.h', SERVICES_HEADER),
         ('.cpp', SERVICES_SOURCE),
@@ -349,7 +348,6 @@ class CppThriftConverter(ThriftLangConverter):
         is_bootstrap = 'bootstrap' in options
         gen_layouts = 'frozen2' in options
         gen_templates = self._is_cpp2 or 'templates' in options
-        gen_perfhash = not self._is_cpp2 and 'perfhash' in options
 
         genfiles.append('%s_constants.h' % (thrift_base,))
         genfiles.append('%s_constants.cpp' % (thrift_base,))
@@ -387,8 +385,6 @@ class CppThriftConverter(ThriftLangConverter):
                 genfiles.append('%s_processmap_compact.cpp' % (service,))
             if gen_templates:
                 genfiles.append('%s.tcc' % (service,))
-            if gen_perfhash:
-                genfiles.append('%s_gperf.tcc' % (service,))
 
         # Everything is in the 'gen-cpp' directory
         lang = self.get_lang()
