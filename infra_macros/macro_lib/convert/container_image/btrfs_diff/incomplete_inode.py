@@ -2,7 +2,7 @@
 '''
 To construct our filesystem, it is convenient to have mutable classes that
 track the state-in-progress.  The `IncompleteInode` hierarchy stores that
-state, and knows how to apply parsed `DumpItems` to mutate the state.
+state, and knows how to apply parsed `SendStreamItems` to mutate the state.
 
 Once the filesystem is done, we will "freeze" it into immutable, hashable,
 easily comparable `Inode` objects, making it a "breeze" to validate it.
@@ -14,7 +14,7 @@ from typing import Dict, Optional
 from .extent import Extent
 from .inode_id import InodeID, InodeIDMap
 from .inode import InodeOwner, InodeUtimes
-from .parse_dump import DumpItem, DumpItems
+from .parse_dump import SendStreamItem, SendStreamItems
 
 
 # Future: with `deepfrozen` done, it'd be interesting to see if using a
@@ -34,7 +34,7 @@ class IncompleteInode:
     file_type: int  # Upper bits of `st_mode` matching `S_IFMT`
     utimes: Optional[InodeUtimes]
 
-    def __init__(self, *, item: DumpItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
         assert isinstance(item, self.INITIAL_ITEM)
         self.id = id_map.next(item.path)
         self.xattrs = {}
@@ -43,20 +43,20 @@ class IncompleteInode:
         self.utimes = None
         self.file_type = self.FILE_TYPE
 
-    def apply_item(self, item: DumpItem) -> None:
-        if isinstance(item, DumpItems.remove_xattr):
+    def apply_item(self, item: SendStreamItem) -> None:
+        if isinstance(item, SendStreamItems.remove_xattr):
             del self.xattrs[item.name]
-        elif isinstance(item, DumpItems.set_xattr):
+        elif isinstance(item, SendStreamItems.set_xattr):
             self.xattrs[item.name] = item.data
-        elif isinstance(item, DumpItems.chmod):
+        elif isinstance(item, SendStreamItems.chmod):
             if stat.S_IFMT(item.mode) != 0:
                 raise RuntimeError(
                     f'{item} cannot change file type bits of {self}'
                 )
             self.mode = item.mode
-        elif isinstance(item, DumpItems.chown):
+        elif isinstance(item, SendStreamItems.chown):
             self.owner = InodeOwner(uid=item.uid, gid=item.gid)
-        elif isinstance(item, DumpItems.utimes):
+        elif isinstance(item, SendStreamItems.utimes):
             self.utimes = InodeUtimes(
                 ctime=item.ctime,
                 mtime=item.mtime,
@@ -71,26 +71,28 @@ class IncompleteInode:
 
 class IncompleteDir(IncompleteInode):
     FILE_TYPE = stat.S_IFDIR
-    INITIAL_ITEM = DumpItems.mkdir
+    INITIAL_ITEM = SendStreamItems.mkdir
 
 
 class IncompleteFile(IncompleteInode):
     extent: Extent
 
     FILE_TYPE = stat.S_IFREG
-    INITIAL_ITEM = DumpItems.mkfile
+    INITIAL_ITEM = SendStreamItems.mkfile
 
-    def __init__(self, *, item: DumpItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
         super().__init__(item=item, id_map=id_map)
         self.extent = Extent.empty()
 
-    def apply_item(self, item: DumpItem) -> None:
-        if isinstance(item, DumpItems.clone):
+    def apply_item(self, item: SendStreamItem) -> None:
+        if isinstance(item, SendStreamItems.clone):
             # Temporary: added in the stack after the Subvolume diff.
             raise NotImplementedError  # pragma: no cover
-        elif isinstance(item, DumpItems.truncate):
+        elif isinstance(item, SendStreamItems.truncate):
             self.extent = self.extent.truncate(length=item.size)
-        elif isinstance(item, (DumpItems.write, DumpItems.update_extent)):
+        elif isinstance(
+            item, (SendStreamItems.write, SendStreamItems.update_extent),
+        ):
             self.extent = self.extent.write(
                 offset=item.offset, length=item.len,
             )
@@ -104,20 +106,20 @@ class IncompleteFile(IncompleteInode):
 
 class IncompleteSocket(IncompleteInode):
     FILE_TYPE = stat.S_IFSOCK
-    INITIAL_ITEM = DumpItems.mksock
+    INITIAL_ITEM = SendStreamItems.mksock
 
 
 class IncompleteFifo(IncompleteInode):
     FILE_TYPE = stat.S_IFIFO
-    INITIAL_ITEM = DumpItems.mkfifo
+    INITIAL_ITEM = SendStreamItems.mkfifo
 
 
 class IncompleteDevice(IncompleteInode):
     dev: int
 
-    INITIAL_ITEM = DumpItems.mknod
+    INITIAL_ITEM = SendStreamItems.mknod
 
-    def __init__(self, *, item: DumpItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
         self.FILE_TYPE = stat.S_IFMT(item.mode)
         if self.FILE_TYPE not in (stat.S_IFBLK, stat.S_IFCHR):
             raise RuntimeError(f'unexpected device mode in {item}')
@@ -132,14 +134,14 @@ class IncompleteSymlink(IncompleteInode):
     dest: bytes
 
     FILE_TYPE = stat.S_IFLNK
-    INITIAL_ITEM = DumpItems.symlink
+    INITIAL_ITEM = SendStreamItems.symlink
 
-    def __init__(self, *, item: DumpItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
         super().__init__(item=item, id_map=id_map)
         self.dest = item.dest
 
-    def apply_item(self, item: DumpItem) -> None:
-        if isinstance(item, DumpItems.chmod):
+    def apply_item(self, item: SendStreamItem) -> None:
+        if isinstance(item, SendStreamItems.chmod):
             raise RuntimeError(f'{item} cannot chmod symlink {self}')
         else:
             super().apply_item(item=item)

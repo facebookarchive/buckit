@@ -9,8 +9,8 @@ from artifacts_dir import get_per_repo_artifacts_dir
 from volume_for_repo import get_volume_for_current_repo
 
 from ..parse_dump import (
-    DumpItems, get_frequency_of_selinux_xattrs, ItemFilters, NAME_TO_ITEM_TYPE,
-    parse_btrfs_dump, unquote_btrfs_progs_path,
+    SendStreamItems, get_frequency_of_selinux_xattrs, ItemFilters,
+    NAME_TO_ITEM_TYPE, parse_btrfs_dump, unquote_btrfs_progs_path,
 )
 from ..subvol_path import SubvolPath
 
@@ -87,7 +87,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         # We an item per line, and the items cover the expected operations.
         self.assertEqual(len(items), len(out_lines))
         self.assertEqual(
-            {getattr(DumpItems, op_name) for op_name in expected_ops},
+            {getattr(SendStreamItems, op_name) for op_name in expected_ops},
             {i.__class__ for i in items},
         )
 
@@ -120,7 +120,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         )
         items = list(items)
 
-        di = DumpItems
+        di = SendStreamItems
 
         def p(path):
             if isinstance(path, str):  # forgive missing `b`s, it's a test
@@ -303,7 +303,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
     def test_common_errors(self):
         ok_line = b'mkfile ./cat\\ and\\ dog\n'  # Drive-by test of unquoting
         self.assertEqual(
-            [DumpItems.mkfile(path=SubvolPath._new(b'cat and dog'))],
+            [SendStreamItems.mkfile(path=SubvolPath._new(b'cat and dog'))],
             _parse_bytes_to_list(ok_line),
         )
 
@@ -324,7 +324,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         # Before breaking it, ensure that `make_line` actually works
         for data in (b'MY_DATA', b'MY_DATA\0'):
             self.assertEqual(
-                [DumpItems.set_xattr(
+                [SendStreamItems.set_xattr(
                     path=SubvolPath._new(b'subvol/file'),
                     name=b'MY_ATTR',
                     data=data,
