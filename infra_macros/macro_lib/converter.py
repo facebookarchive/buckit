@@ -190,6 +190,7 @@ def convert(context, base_path, rule):
             java.JavaLibraryConverter(context),
             java.JavaBinaryConverter(context),
             java_plugins.JarShadeConverter(context),
+            java_plugins.ProtocConverter(context),
             java.JavaTestConverter(context),
             java.PrebuiltJarConverter(context),
         ]

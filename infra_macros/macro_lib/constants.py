@@ -108,6 +108,7 @@ FBCODE_RULES = [
     'ocaml_binary',
     'ocaml_external_library',
     'ocaml_library',
+    'protoc_library',
     'python_binary',
     'python_library',
     'python_unittest',
