@@ -132,8 +132,12 @@ class DumpItems:
     https://github.com/kdave/btrfs-progs/blob/master/send-dump.c
 
     Exceptions:
-     - `from` in `clone` became `from_file` due to `namedtuple` limitations.
+     - `from` in `clone` became `from_path` due to `namedtuple` limitations.
     '''
+
+    #
+    # operations making new subvolumes
+    #
 
     class subvol(RegexParsedItem, metaclass=DumpItem):
         fields = ['uuid', 'transid']
@@ -153,6 +157,10 @@ class DumpItems:
         )
         conv_transid = staticmethod(int)
         conv_parent_transid = staticmethod(int)
+
+    #
+    # operations making new inodes
+    #
 
     class mkfile(RegexParsedItem, metaclass=DumpItem):
         pass
@@ -183,6 +191,10 @@ class DumpItems:
         fields = ['dest']
         regex = re.compile(br'dest=(?P<dest>.*)')
 
+    #
+    # operations on the path -> inode mapping
+    #
+
     class rename(RegexParsedItem, metaclass=DumpItem):
         fields = ['dest']  # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
@@ -207,6 +219,10 @@ class DumpItems:
     class rmdir(RegexParsedItem, metaclass=DumpItem):
         pass
 
+    #
+    # per-inode operations
+    #
+
     class write(RegexParsedItem, metaclass=DumpItem):
         # NB: `btrfs receive --dump` omits the `data` field here (because it
         # would, naturally, be quite large.  For this reason, we still have
@@ -220,25 +236,22 @@ class DumpItems:
         # The path `from` is not quoted in `send-dump.c`, but a greedy
         # regex can still parse this fixed format correctly.
         #
-        # We have to name it `from_file` since `from` is a reserved keyword.
-        fields = ['offset', 'len', 'from_file', 'clone_offset']
+        # We have to name it `from_path` since `from` is a reserved keyword.
+        fields = ['offset', 'len', 'from_path', 'clone_offset']
         regex = re.compile(
             br'offset=(?P<offset>[0-9]+) '
             br'len=(?P<len>[0-9]+) '
-            br'from=(?P<from_file>.+) '
+            br'from=(?P<from_path>.+) '
             br'clone_offset=(?P<clone_offset>[0-9]+)'
         )
         conv_offset = staticmethod(int)
         conv_len = staticmethod(int)
-        conv_from_file = staticmethod(SubvolPath._new)  # Normalize like .path
+        conv_from_path = staticmethod(SubvolPath._new)  # Normalize like .path
         conv_clone_offset = staticmethod(int)
 
     class set_xattr(metaclass=DumpItem):
-        # IMPORTANT: `len` will generally be greater than `len(data)`
-        # because at present, `btrfs` prints xattrs with this `printf`:
-        #   "name=%s data=%.*s len=%d", name, len, (char *)data, len
-        # The end result is that `data` gets printed up to the first \0.
-        fields = ['name', 'data', 'len']
+        # The `len` field is just `len(data)`, but see the caveat below.
+        fields = ['name', 'data']
 
         # This cannot be parsed unambiguously with a single regex because
         # both `name` and `data` can contain arbitrary bytes, and neither is
@@ -257,19 +270,32 @@ class DumpItems:
 
             # An awful hack to deal with the fact that we cannot
             # unambiguously parse this name / data line as implemented.
-            # First, we trust that all of `data` was printed.  If that
-            # doesn't work, we try again, assuming that it just has a
-            # trailing \0 byte. If that doesn't work either, we give up.
+            # The reason is that, `btrfs receive --dump` prints xattrs with
+            # this `printf`:
+            #   "name=%s data=%.*s len=%d", name, len, (char *)data, len
+            # The end result is that `data` gets printed up to the first \0.
+            #
+            # Our workaround is to first assume that all of `data` was
+            # printed.  If that doesn't work, we try again, assuming that it
+            # just has a trailing \0 byte.  If that doesn't work either, we
+            # give up.
+            #
+            # The alternative would be for the parse to store `len` &
+            # `data`, with `len(data) < len` in some cases.  This seems
+            # broken and useless, and makes downstream code harder.  If we
+            # need to support xattrs with \0 chars in the middle, we should
+            # either fix `btrfs receive --dump` to do quoting, or just parse
+            # the binary send-stream.
             length = m.group(2)
-            for i in range(2):
-                end_of_data = len(rest) - int(length) + i
+            for has_trailing_nul in [False, True]:
+                end_of_data = len(rest) - int(length) + has_trailing_nul
                 m = cls.second_regex.fullmatch(rest[:end_of_data])
+                data = rest[end_of_data:]
+                if has_trailing_nul:
+                    data += b'\0'
+                assert len(data) == int(length)  # We don't need to store `len`
                 if m:
-                    return {
-                        'name': m.group(1),
-                        'data': rest[end_of_data:],
-                        'len': int(length),
-                    }
+                    return {'name': m.group(1), 'data': data}
             return None
 
     class remove_xattr(RegexParsedItem, metaclass=DumpItem):

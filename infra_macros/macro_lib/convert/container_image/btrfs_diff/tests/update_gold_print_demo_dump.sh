@@ -23,4 +23,4 @@ cd "$d_volume"
   date +%s   # for `build_start_time`
   sudo "$d_tests/print_demo_dump.sh"
   date +%s   # for `build_end_time`
-) > "$d_tests/gold_print_demo_dump.txt"
+) > "$d_tests/gold_print_demo_dump.out"

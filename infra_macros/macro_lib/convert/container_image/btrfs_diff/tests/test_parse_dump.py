@@ -160,11 +160,11 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
 
         # These make it quite easy to update the test after you run
         # `update_gold_print_demo_dump.sh`.
-        uuid_create = b'e34c8a50-ffc1-2d41-ab67-9219669ea9f3'
-        transid_create = 1993
-        uuid_mutate = b'ed28f410-3173-b64f-8769-0ba7c3b6ac6d'
-        transid_mutate = 1996
-        temp_path_middles = {'create_ops': 1991, 'mutate_ops': 1995}
+        uuid_create = b'c065a6aa-c53c-624e-8f10-a2b080b9e580'
+        transid_create = 2797
+        uuid_mutate = b'32f71a40-1253-da49-81fe-0c182ed6cb79'
+        transid_mutate = 2800
+        temp_path_middles = {'create_ops': 2795, 'mutate_ops': 2799}
         temp_path_counter = 256  # I have never seen this initial value change.
 
         def temp_path(prefix):
@@ -184,7 +184,6 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
                 path=p('create_ops/hello'),
                 name=b'user.test_attr',
                 data=b'chickens',
-                len=8,
             ),
             *base_metadata('create_ops/hello', mode=0o755),
 
@@ -206,9 +205,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             *base_metadata('create_ops/goodbye'),
 
             *and_rename(di.mknod(
-                path=temp_path('create_ops'), mode=0o60644, dev=0x7a539b7,
+                path=temp_path('create_ops'), mode=0o60600, dev=0x7a539b7,
             ), b'buffered'),
-            *base_metadata('create_ops/buffered'),
+            *base_metadata('create_ops/buffered', mode=0o600),
 
             *and_rename(di.mknod(
                 path=temp_path('create_ops'), mode=0o20644, dev=0x7a539b7,
@@ -243,7 +242,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             ),
             di.clone(
                 path=p('create_ops/1MB_nuls_clone'), offset=0, len=2**20,
-                from_file=p('create_ops/1MB_nuls'), clone_offset=0,
+                from_path=p('create_ops/1MB_nuls'), clone_offset=0,
             ),
             di.truncate(path=p('create_ops/1MB_nuls_clone'), size=2**20),
             *base_metadata('create_ops/1MB_nuls_clone'),
@@ -323,13 +322,15 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             ).encode('ascii')
 
         # Before breaking it, ensure that `make_line` actually works
-        for l in [7, 8]:  # \0-terminated would add 1 char
+        for data in (b'MY_DATA', b'MY_DATA\0'):
             self.assertEqual(
                 [DumpItems.set_xattr(
                     path=SubvolPath._new(b'subvol/file'),
-                    name=b'MY_ATTR', data=b'MY_DATA', len=l,
+                    name=b'MY_ATTR',
+                    data=data,
                 )],
-                _parse_bytes_to_list(make_line(len_v=l)),
+                # The `--dump` line does NOT show the \0, the parser infers it.
+                _parse_bytes_to_list(make_line(len_v=len(data))),
             )
 
         for bad_line in [

@@ -71,6 +71,7 @@ subvols_to_delete+=("$PWD/create_ops")
   touch hello/world                                 # mkfile,utimes,chmod,chown
   setfattr -n user.test_attr -v chickens hello/     # set_xattr
   mknod buffered b 1337 31415                       # mknod
+  chmod og-r buffered                               # chmod a device
   mknod unbuffered c 1337 31415
   mkfifo fifo                                       # mkfifo
   nc -l -U unix_sock &                              # mksock
@@ -106,6 +107,12 @@ subvols_to_delete+=("$PWD/mutate_ops")
   mv goodbye farewell                               # NOT a rename... {,un}link
   mv hello/ hello_renamed/                          # yes, a rename!
   echo push > hello_renamed/een                     # write
+  # This is a no-op because `btfs send` does not support `chattr` at
+  # present.  However, it's good to have a canary so that our tests start
+  # failing the moment it is supported -- that will remind us to update the
+  # mock VFS.  NB: The absolute path to `chattr` is a clowny hack to work
+  # around a clowny hack, which works around clowny hacks.  Don't ask.
+  /usr/bin/chattr +a hello_renamed/een
 )
 
 make_read_only_and_dump_subvolume mutate_ops -p create_ops
