@@ -192,6 +192,7 @@ def convert(context, base_path, rule):
             java_plugins.JarShadeConverter(context),
             java_plugins.Antlr3Converter(context),
             java_plugins.ProtocConverter(context),
+            java_plugins.ScalaLibraryConverter(context),
             java.JavaTestConverter(context),
             java.PrebuiltJarConverter(context),
         ]
