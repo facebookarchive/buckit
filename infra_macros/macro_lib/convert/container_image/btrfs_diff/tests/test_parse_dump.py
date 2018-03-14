@@ -9,9 +9,10 @@ from artifacts_dir import get_per_repo_artifacts_dir
 from volume_for_repo import get_volume_for_current_repo
 
 from ..parse_dump import (
-    SendStreamItems, get_frequency_of_selinux_xattrs, ItemFilters,
-    NAME_TO_ITEM_TYPE, parse_btrfs_dump, unquote_btrfs_progs_path,
+    SendStreamItems, NAME_TO_ITEM_TYPE, parse_btrfs_dump,
+    unquote_btrfs_progs_path,
 )
+from ..send_stream import get_frequency_of_selinux_xattrs, ItemFilters
 from ..subvol_path import SubvolPath
 
 # `unittest`'s output shortening makes tests much harder to debug.

@@ -3,6 +3,28 @@
 Library + demonstration tool for parsing the metadata contained in a `btrfs
 send` stream, as printed by `btrfs receive --dump`.
 
+Do not rely on parsing `--dump` output for production purposes. Instead use
+the binary parser in `parse_send_stream.py`.  The latter is better because:
+
+ - It sidesteps the bugs & limitation of `--dump` described below.
+
+ - It avoids a dependency on `btrfs-progs`, thus allowing this library
+   to be used in more contexts.
+
+We bother parsing `--dump` output for two reasons:
+
+ - It ensures that we never diverge from `btrfs-progs`'s parsing. By
+   checking that our parse of the send-stream is effectively identical to
+   our parse of `--dump` output, we verify that both the Python and C
+   implementations of send-stream parsing work the same way.
+
+ - It continuously tests `--dump` functionality. It is important for that
+   feature to work correctly for the send-stream functionality to be
+   discoverable and understandable by new users without scrutinizing the
+   code.  Any differences in parsed items must be attributable to the known
+   set of `--dump` bugs, and nothing else.
+ -
+
 Usage:
 
   btrfs send --no-data SUBVOL/ | btrfs receive --dump | parse_dump.py
@@ -15,27 +37,30 @@ sequential chunks of an extent, but `update_extent` is emitted just once per
 extent.
 
 Limitations of `btrfs receive --dump` (filed as T25376790):
+
  - With the exception of the path of the object being manipulated by the
    current dump item, none of the string attributes (paths, xattr names &
    values) are quoted in the current version of `btrfs`. This means that
    if any of those values have a newline, we will fail to parse.
- - xattr values are only printed up to the first \\0 character, see `set_xattr`
- - timestamps are printed only to 1-second resolution, while
 
-TODOs:
- - consider parsing the `btrfs send` stream directly, which should be both
-   faster and more future-proof than relying on `--dump` output. Examples:
-   https://github.com/osandov/osandov-linux/blob/master/scripts/btrfs-send-sanitize.py
+ - xattr values are only printed up to the first \\0 character, see `set_xattr`
+
+ - timestamps are printed only to 1-second resolution, while the filesystem
+   records timestamps with nanosecond precision.
+
+ - `clone` commands specify the source subvolume's UUID & transid, but
+   `btrfs receive --dump` does not output those, making it impossible to
+   unravel the source of a clone when more than one source is in use.
 '''
 import datetime
 import os
 import re
 
-from collections import Counter, OrderedDict
-from compiler.enriched_namedtuple import metaclass_new_enriched_namedtuple
+from collections import OrderedDict
 from typing import Any, BinaryIO, Callable, Dict, Iterable, Optional, Pattern
 
 from .subvol_path import SubvolPath
+from .send_stream import SendStreamItem, SendStreamItems
 
 
 _ESCAPED_TO_UNESCAPED = OrderedDict([
@@ -68,7 +93,6 @@ _ESCAPED_TO_UNESCAPED = OrderedDict([
 _ESCAPED_REGEX = re.compile(
     b'|'.join(re.escape(e) for e in _ESCAPED_TO_UNESCAPED)
 )
-_SELINUX_XATTR = b'security.selinux'
 
 
 def unquote_btrfs_progs_path(s):
@@ -82,19 +106,8 @@ def unquote_btrfs_progs_path(s):
     return _ESCAPED_REGEX.sub(lambda m: _ESCAPED_TO_UNESCAPED[m.group(0)], s)
 
 
-class SendStreamItem(type):
-    'Metaclass for the types of lines that `btrfs receive --dump` produces.'
-    def __new__(metacls, classname, bases, dct):
-        return metaclass_new_enriched_namedtuple(
-            __class__,
-            ['path'],
-            metacls, classname, bases, dct
-        )
-
-
-class RegexParsedItem:
+class RegexItemParser:
     'Almost all item types can be parsed with a single regex.'
-    __slots__ = ()
 
     regex: Pattern = re.compile(b'')
 
@@ -124,31 +137,22 @@ def _from_octal(s: bytes) -> int:
     return int(s, base=8)
 
 
-class SendStreamItems:
+class SendStreamItemParsers:
     '''
-    This class only exists to group its inner classes, see NAME_TO_ITEM_TYPE.
+    This class exists to group its inner classes, see NAME_TO_PARSER_TYPE.
 
-    This list should exactly match the content of `btrfs_print_send_ops` in
-    https://github.com/kdave/btrfs-progs/blob/master/send-dump.c
-
-    Exceptions:
-     - `from` in `clone` became `from_path` due to `namedtuple` limitations.
+    The correspondence to `SendStreamItems` members is automatic via the
+    inner class name.
     '''
 
-    #
-    # operations making new subvolumes
-    #
-
-    class subvol(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['uuid', 'transid']
+    class subvol(RegexItemParser):
         regex = re.compile(
             br'uuid=(?P<uuid>[-0-9a-f]+) '
             br'transid=(?P<transid>[0-9]+)'
         )
         conv_transid = staticmethod(int)
 
-    class snapshot(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['uuid', 'transid', 'parent_uuid', 'parent_transid']
+    class snapshot(RegexItemParser):
         regex = re.compile(
             br'uuid=(?P<uuid>[-0-9a-f]+) '
             br'transid=(?P<transid>[0-9]+) '
@@ -158,18 +162,13 @@ class SendStreamItems:
         conv_transid = staticmethod(int)
         conv_parent_transid = staticmethod(int)
 
-    #
-    # operations making new inodes
-    #
-
-    class mkfile(RegexParsedItem, metaclass=SendStreamItem):
+    class mkfile(RegexItemParser):
         pass
 
-    class mkdir(RegexParsedItem, metaclass=SendStreamItem):
+    class mkdir(RegexItemParser):
         pass
 
-    class mknod(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['mode', 'dev']
+    class mknod(RegexItemParser):
         regex = re.compile(br'mode=(?P<mode>[0-7]+) dev=0x(?P<dev>[0-9a-f]+)')
         conv_mode = staticmethod(_from_octal)
 
@@ -177,31 +176,26 @@ class SendStreamItems:
         def conv_dev(dev: bytes) -> int:
             return int(dev, base=16)
 
-    class mkfifo(RegexParsedItem, metaclass=SendStreamItem):
+    class mkfifo(RegexItemParser):
         pass
 
-    class mksock(RegexParsedItem, metaclass=SendStreamItem):
+    class mksock(RegexItemParser):
         pass
 
-    class symlink(RegexParsedItem, metaclass=SendStreamItem):
+    class symlink(RegexItemParser):
         # NB unlike the paths in other items, the symlink target is just an
         # arbitrary string with no filesystem signficance, so we do not
         # process it at all.  Unfortunately, `dest` is not quoted in
         # `send-dump.c`.
-        fields = ['dest']
         regex = re.compile(br'dest=(?P<dest>.*)')
 
-    #
-    # operations on the path -> inode mapping
-    #
-
-    class rename(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['dest']  # This path is not quoted in `send-dump.c`
+    class rename(RegexItemParser):
+        # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
         conv_dest = staticmethod(SubvolPath._new)  # Normalize like .path
 
-    class link(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['dest']  # This path is not quoted in `send-dump.c`
+    class link(RegexItemParser):
+        # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
 
         # `btrfs receive` is inconsistent -- unlike other paths, its `dest`
@@ -213,35 +207,26 @@ class SendStreamItems:
                 path=os.path.normpath(dest),
             )
 
-    class unlink(RegexParsedItem, metaclass=SendStreamItem):
+    class unlink(RegexItemParser):
         pass
 
-    class rmdir(RegexParsedItem, metaclass=SendStreamItem):
+    class rmdir(RegexItemParser):
         pass
 
-    #
-    # per-inode operations
-    #
-
-    class write(RegexParsedItem, metaclass=SendStreamItem):
+    class write(RegexItemParser):
         # NB: `btrfs receive --dump` omits the `data` field here (because it
-        # would, naturally, be quite large.  For this reason, we still have
-        # to compare the filesystem data separately from this tool.
-        fields = ['offset', 'len']
+        # can be huge, and not very illuminating to the user).
         regex = re.compile(br'offset=(?P<offset>[0-9]+) len=(?P<len>[0-9]+)')
         conv_offset = staticmethod(int)
         conv_len = staticmethod(int)
 
-    class clone(RegexParsedItem, metaclass=SendStreamItem):
+    class clone(RegexItemParser):
         # The path `from` is not quoted in `send-dump.c`, but a greedy
         # regex can still parse this fixed format correctly.
-        #
-        # We have to name it `from_path` since `from` is a reserved keyword.
-        fields = ['offset', 'len', 'from_path', 'clone_offset']
         regex = re.compile(
             br'offset=(?P<offset>[0-9]+) '
             br'len=(?P<len>[0-9]+) '
-            br'from=(?P<from_path>.+) '
+            br'from=(?P<from_path>.+) '  # the field is `from_path`, not `from`
             br'clone_offset=(?P<clone_offset>[0-9]+)'
         )
         conv_offset = staticmethod(int)
@@ -249,10 +234,10 @@ class SendStreamItems:
         conv_from_path = staticmethod(SubvolPath._new)  # Normalize like .path
         conv_clone_offset = staticmethod(int)
 
-    class set_xattr(metaclass=SendStreamItem):
-        # The `len` field is just `len(data)`, but see the caveat below.
-        fields = ['name', 'data']
-
+    class set_xattr:
+        # `btrfs --dump` outputs a `len` field, which is just `len(data)`,
+        # but see the caveat below.
+        #
         # This cannot be parsed unambiguously with a single regex because
         # both `name` and `data` can contain arbitrary bytes, and neither is
         # quoted.
@@ -298,28 +283,24 @@ class SendStreamItems:
                     return {'name': m.group(1), 'data': data}
             return None
 
-    class remove_xattr(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['name']  # This name is not quoted in `send-dump.c`
+    class remove_xattr(RegexItemParser):
+        # This name is not quoted in `send-dump.c`
         regex = re.compile(br'name=(?P<name>.*)')
 
-    class truncate(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['size']
+    class truncate(RegexItemParser):
         regex = re.compile(br'size=(?P<size>[0-9]+)')
         conv_size = staticmethod(int)
 
-    class chmod(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['mode']
+    class chmod(RegexItemParser):
         regex = re.compile(br'mode=(?P<mode>[0-7]+)')
         conv_mode = staticmethod(_from_octal)
 
-    class chown(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['gid', 'uid']
+    class chown(RegexItemParser):
         regex = re.compile(br'gid=(?P<gid>[0-9]+) uid=(?P<uid>[0-9]+)')
         conv_gid = staticmethod(int)
         conv_uid = staticmethod(int)
 
-    class utimes(RegexParsedItem, metaclass=SendStreamItem):
-        fields = ['atime', 'mtime', 'ctime']
+    class utimes(RegexItemParser):
         regex = re.compile(
             br'atime=(?P<atime>[^ ]+) '
             br'mtime=(?P<mtime>[^ ]+) '
@@ -340,11 +321,16 @@ class SendStreamItems:
     update_extent = write
 
 
-# The inner classes of SendStreamItems, after filtering out things like __doc__.
+# The inner classes of SendStreamItems, omitting internals like __doc__.
 # The keys must be bytes because `btrfs` does not give us unicode.
+NAME_TO_PARSER_TYPE = {
+    k.encode(): v
+        for k, v in SendStreamItemParsers.__dict__.items() if k[0] != '_'
+}
 NAME_TO_ITEM_TYPE = {
     k.encode(): v for k, v in SendStreamItems.__dict__.items() if k[0] != '_'
 }
+assert set(NAME_TO_PARSER_TYPE.keys()) == set(NAME_TO_ITEM_TYPE.keys())
 
 
 def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
@@ -358,13 +344,14 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
         item_class = NAME_TO_ITEM_TYPE.get(item_name)
         if not item_class:
             raise RuntimeError(f'unknown item type {item_name} in {repr(l)}')
+        item_parser = NAME_TO_PARSER_TYPE[item_name]
 
         # We MUST unquote here, or paths in field 1 will not be comparable
         # with as-of-now unquoted paths in the other fields.  For example,
         # `ItemFilters.rename` compares such paths.
         path = SubvolPath._new(unquote_btrfs_progs_path(path))
 
-        fields = item_class.parse_details(path, details)
+        fields = item_parser.parse_details(path, details)
         if fields is None:
             raise RuntimeError(f'unexpected format in line details: {repr(l)}')
 
@@ -372,67 +359,6 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
         fields['path'] = path
 
         yield item_class(**fields)
-
-
-def get_frequency_of_selinux_xattrs(items):
-    'Returns {"xattr_value": <count>}. Useful for ItemFilters.selinux_xattr.'
-    counter = Counter()
-    for item in items:
-        if isinstance(item, SendStreamItems.set_xattr):
-            if item.name == _SELINUX_XATTR:
-                counter[item.data] += 1
-    return counter
-
-
-class ItemFilters:
-    '''
-    A namespace of filters for taking a just-parsed Iterable[SendStreamItems],
-    and making it useful for filesystem testing.
-    '''
-
-    @staticmethod
-    def selinux_xattr(
-        items: Iterable[SendStreamItem],
-        discard_fn: Callable[[bytes, bytes], bool],
-    ) -> Iterable[SendStreamItem]:
-        '''
-        SELinux always sets a security context on filesystem objects, but most
-        images will not ship data with non-default contexts, so it is easiest to
-        just filter out these `set_xattr`s
-        '''
-        for item in items:
-            if isinstance(item, SendStreamItems.set_xattr):
-                if (
-                    item.name == _SELINUX_XATTR and
-                    discard_fn(item.path, item.data)
-                ):
-                    continue
-            yield item
-
-    @staticmethod
-    def normalize_utimes(
-        items: Iterable[SendStreamItem],
-        start_time: float,
-        end_time: float,
-    ) -> Iterable[SendStreamItem]:
-        '''
-        Build-time timestamps will vary, since the build takes some time.
-        We can make them predictable by replacing any timestamp within the
-        build time-range by `start_time`.
-        '''
-        def normalize_time(t):
-            return start_time if start_time <= t <= end_time else t
-
-        for item in items:
-            if isinstance(item, SendStreamItems.utimes):
-                yield type(item)(
-                    path=item.path,
-                    atime=normalize_time(item.atime),
-                    mtime=normalize_time(item.mtime),
-                    ctime=normalize_time(item.ctime),
-                )
-            else:
-                yield item
 
 
 if __name__ == '__main__':  # pragma: no cover

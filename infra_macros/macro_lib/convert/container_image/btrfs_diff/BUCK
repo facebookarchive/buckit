@@ -78,7 +78,7 @@ python_library(
         ":extent",
         ":inode",
         ":inode_id",
-        ":parse_dump",
+        ":parse_send_stream",
     ],
 )
 
@@ -120,8 +120,11 @@ export_file(
 )
 
 python_library(
-    name = "parse_dump",
-    srcs = ["parse_dump.py"],
+    name = "parse_send_stream",
+    srcs = [
+        "parse_dump.py",
+        "send_stream.py",
+    ],
     base_module = "btrfs_diff",
     deps = [
         ":subvol_path",
@@ -137,7 +140,7 @@ export_file(
 )
 
 python_unittest(
-    name = "test-parse-dump",
+    name = "test-send-stream",
     srcs = ["tests/test_parse_dump.py"],
     base_module = "btrfs_diff",
     gen_srcs = {
@@ -146,12 +149,12 @@ python_unittest(
     },
     needed_coverage = [(
         1.0,
-        ":parse_dump",
+        ":parse_send_stream",
     )],
     par_style = "zip",  # our 'export_file' deps won't work with "fastzip"
     deps = [
         ":gold_print_demo_dump.out",
-        ":parse_dump",
+        ":parse_send_stream",
         ":print_demo_dump.sh",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":artifacts_dir",
