@@ -8,7 +8,7 @@ import unittest
 from typing import Iterable, Tuple
 
 from ..extent import Extent
-from ..inode import InodeIDMap
+from ..inode_id import InodeIDMap
 from ..extents_to_chunks import extents_to_chunks_with_clones
 
 # `unittest`'s output shortening makes tests much harder to debug.

@@ -33,10 +33,30 @@ python_unittest(
 )
 
 python_library(
+    name = "inode_id",
+    srcs = ["inode_id.py"],
+    base_module = "btrfs_diff",
+)
+
+python_unittest(
+    name = "test-inode-id",
+    srcs = ["tests/test_inode_id.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":inode_id",
+    )],
+    deps = [":inode_id"],
+)
+
+python_library(
     name = "inode",
     srcs = ["inode.py"],
     base_module = "btrfs_diff",
-    deps = [":extent"],
+    deps = [
+        ":extent",
+        ":inode_id",
+    ],
 )
 
 python_unittest(

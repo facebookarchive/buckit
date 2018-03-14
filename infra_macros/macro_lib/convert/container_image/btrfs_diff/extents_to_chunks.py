@@ -117,7 +117,8 @@ from collections import defaultdict
 from typing import Dict, Iterable, NamedTuple, Sequence, Tuple
 
 from .extent import Extent
-from .inode import Clone, Chunk, ChunkClone, InodeID
+from .inode import Clone, Chunk, ChunkClone
+from .inode_id import InodeID
 
 
 class _CloneExtentRef(NamedTuple):
