@@ -157,7 +157,7 @@ class JavaSwigConverter(SwigLangConverter):
         attrs['link_style'] = kwargs.get('java_link_style')
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(
-                cpp_deps + [ThirdPartyRuleTarget('openjdk', 'jvm')]))
+                cpp_deps + [RootRuleTarget('common/java/jvm', 'jvm')]))
         # When using e.g. %feature("director") in Something.i, SWIG includes
         # "Something.h" in the source code of the C/C++ Java extension.
         attrs['headers'] = [hdr]
