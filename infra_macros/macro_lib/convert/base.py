@@ -79,6 +79,28 @@ SANITIZERS = {
     'address-undefined-dev': 'asan-ubsan',
 }
 
+ASAN_DEFAULT_OPTIONS = {
+    'check_initialization_order': '1',
+    'detect_invalid_pointer_pairs': '1',
+    'detect_leaks': '0',
+    'detect_odr_violation': '1',
+    'detect_stack_use_after_return': '1',
+    'print_scariness': '1',
+    'strict_init_order': '1',
+}
+
+UBSAN_DEFAULT_OPTIONS = {
+    'print_stacktrace': '1',
+    'report_error_type': '1',
+}
+
+TSAN_DEFAULT_OPTIONS = {
+    'detect_deadlocks': '1',
+    'halt_on_error': '1',
+    'second_deadlock_stack': '1',
+    'symbolize': '0',
+}
+
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -1513,6 +1535,110 @@ class Converter(object):
             int(read_config('build_info', 'upstream_revision_epochtime', '0')))
         build_info['user'] = read_config('build_info', 'user', '')
         return build_info
+
+    def create_sanitizer_configuration(
+            self,
+            base_path,
+            name,
+            linker_flags=()):
+        """
+        Create rules to generate a C/C++ library with sanitizer configuration
+        """
+
+        deps = []
+        rules = []
+
+        sanitizer = self.get_sanitizer()
+        build_mode = self.get_build_mode()
+
+        if not sanitizer:
+            return deps, rules
+
+        configuration_src = []
+
+        def gen_options_var(name, default_options, extra_options):
+            if extra_options:
+                options = default_options.copy()
+                options.update(extra_options)
+            else:
+                options = default_options
+
+            s = 'const char* {name} = "{options}";'.format(
+                name=name,
+                options=':'.join([
+                    '{}={}'.format(k, v)
+                    for k, v in sorted(options.iteritems())
+                ])
+            )
+            return s
+
+        if sanitizer.startswith('address'):
+            configuration_src.append(gen_options_var(
+                'AsanDefaultOptions',
+                ASAN_DEFAULT_OPTIONS,
+                build_mode.asan_options if build_mode else None,
+            ))
+            configuration_src.append(gen_options_var(
+                'UbsanDefaultOptions',
+                UBSAN_DEFAULT_OPTIONS,
+                build_mode.ubsan_options if build_mode else None,
+            ))
+        if sanitizer == 'thread':
+            configuration_src.append(gen_options_var(
+                'TsanDefaultOptions',
+                TSAN_DEFAULT_OPTIONS,
+                build_mode.tsan_options if build_mode else None,
+            ))
+
+        lib_name = name + '-cxx-sanitizer-configuration-lib'
+        # Setup a rule to generate the sanitizer configuration C file.
+        source_name = name + '-cxx-sanitizer-configuration'
+        source_attrs = collections.OrderedDict()
+        source_attrs['name'] = source_name
+        source_attrs['visibility'] = [
+            '//{base_path}:{lib_name}'
+            .format(base_path=base_path, lib_name=lib_name)
+        ]
+        source_attrs['out'] = source_name + '.c'
+        source_attrs['cmd'] = (
+            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
+            .format(pipes.quote('\n'.join(configuration_src))))
+        rules.append(Rule('genrule', source_attrs))
+
+        # Setup a rule to compile the sanitizer configuration C file
+        # into a library.
+        lib_attrs = collections.OrderedDict()
+        lib_attrs['name'] = lib_name
+        lib_attrs['visibility'] = [
+            '//{base_path}:{name}'
+            .format(base_path=base_path, name=name)
+        ]
+        lib_attrs['srcs'] = [':' + source_name]
+        lib_attrs['compiler_flags'] = self.get_extra_cflags()
+        if linker_flags:
+            lib_attrs['linker_flags'] = (
+                list(self.get_extra_ldflags()) +
+                ['-nodefaultlibs'] +
+                list(linker_flags)
+            )
+
+        # Clang does not support fat LTO objects, so we build everything
+        # as IR only, and must also link everything with -flto
+        if self.is_lto_enabled() and self._context.compiler == 'clang':
+            lib_attrs['linker_flags'].append(
+                '-flto=thin' if self._context.lto_type == 'thin' else '-flto')
+
+        # Use link_whole to make sure the build info symbols are always
+        # added to the binary, even if the binary does not refer to them.
+        lib_attrs['link_whole'] = True
+        # Use force_static so that the build info symbols are always put
+        # directly in the main binary, even if dynamic linking is used.
+        lib_attrs['force_static'] = True
+
+        rules.append(Rule('cxx_library', lib_attrs))
+        deps.append(RootRuleTarget(base_path, lib_name))
+
+        return deps, rules
 
     def convert_contacts(self, owner=None, emails=None):
         """
