@@ -51,8 +51,8 @@ python_unittest(
 )
 
 python_library(
-    name = "finalize_inodes",
-    srcs = ["finalize_inodes.py"],
+    name = "extents_to_chunks",
+    srcs = ["extents_to_chunks.py"],
     base_module = "btrfs_diff",
     deps = [
         ":extent",
@@ -61,14 +61,14 @@ python_library(
 )
 
 python_unittest(
-    name = "test-finalize-inodes",
-    srcs = ["tests/test_finalize_inodes.py"],
+    name = "test-extents-to-chunks",
+    srcs = ["tests/test_extents_to_chunks.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
         1.0,
-        ":finalize_inodes",
+        ":extents_to_chunks",
     )],
-    deps = [":finalize_inodes"],
+    deps = [":extents_to_chunks"],
 )
 
 export_file(

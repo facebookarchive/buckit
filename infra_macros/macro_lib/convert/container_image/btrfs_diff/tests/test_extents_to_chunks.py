@@ -5,9 +5,11 @@ import re
 import textwrap
 import unittest
 
+from typing import Iterable, Tuple
+
 from ..extent import Extent
-from ..inode import IncompleteInode, InodeIDMap
-from ..finalize_inodes import finalize_inodes
+from ..inode import InodeIDMap
+from ..extents_to_chunks import extents_to_chunks_with_clones
 
 # `unittest`'s output shortening makes tests much harder to debug.
 unittest.util._MAX_LENGTH = 10e4
@@ -29,31 +31,31 @@ def _gen_ranges_from_figure(figure: str):
             offset += len(v)
 
 
-def _repr_inode_chunks(fs):
+def _repr_ids_and_chunks(ids_and_chunks: Iterable[Tuple['InodeID', 'Chunk']]):
     return {
-        repr(f): [
+        repr(id): [
             (
                 f'{c.kind.name}/{c.length}',
                 # I don't want to think about clone ordering within a chunk,
                 # since it's largely arbitrary and not very important.
                 {repr(cc) for cc in c.chunk_clones},
-            ) for c in f.chunks
-        ] for f in fs
+            ) for c in chunks
+        ] for id, chunks in ids_and_chunks
     }
 
 
-class FindClonesTestCase(unittest.TestCase):
+class ExtentsToChunksTestCase(unittest.TestCase):
     '''
     This test has one main focus, plus a few additional checks.
 
-    Primarily: Given a single DATA Extent whose slices are cloned into a few
-    inodes, we must compute a correct presentation of those inodes' clone
-    structure.
+    Primarily: Given a "backing" DATA `Extent` whose slices are cloned into
+    a few `Extent`s representing files, we must compute a correct
+    presentation of those files' clone structure.
 
     Additionally, I exercise the case of multiple extents in a "kitchen
     sink" fashion in `test_multi_extent`.  I did not go for more
     reductionistic tests because -- with the exception of chunk merging in
-    the final pass -- the code in `finalize_inodes.py` does not allow
+    the final pass -- the code in `extents_to_chunks.py` does not allow
     interactions between different leaf extents.  Instead, it loops over
     each extent separately.  The main risk with multiple-extent scenarios is
     incorrect keying / aggregation of the clones.  This is covered amply by
@@ -63,38 +65,38 @@ class FindClonesTestCase(unittest.TestCase):
     Besides exercising clone detection in extents, we need to check:
      - that chunk merging works correctly (including clones), and
      - that the extent-relative coordinates of `ChunkClones` are correctly
-       trimmed to match the inode's `gen_trimmed_leaves` output.
-    Both of these are covered by `test_FIG1_*` -- take a look at the
-    underlying trimmed leaf extents in `test_gen_inodes_from_figure_*` to
-    confirm this. Then, `test_multi_extent` gives even more coverage.
+       trimmed to match the file extent's `gen_trimmed_leaves` output.
+    Both of these are covered by `test_FIG1_*` -- look at the underlying
+    trimmed leaf extents in `test_gen_ids_and_extents_from_figure_*` to
+    confirm this.  Then, `test_multi_extent` gives even more coverage.
 
     ## How to read these tests
 
-    Most tests use `_repr_inode_chunks` to compactly verify outputs. Read
+    Most tests use `_repr_ids_and_chunks` to compactly verify outputs. Read
     this to understand its notation.
 
-    (1) An inode is a sequence of chunks. The next example refers to a
-        hole (unallocated space filled with 0s) of 10 bytes, followed by
-        actual data-on-disk of 20 bytes.  The two ...  sets refer to `clone`
-        links to other inodes.  Cloning is a mechanism by which btrfs shares
-        the same blocks on disk to represent identical data in different
-        inode locations -- in particular, this makes `cp` nearly instant,
-        and allows filesystem deduplication.
+    (1) An file's data fork is a sequence of chunks. The next example refers
+        to a hole (unallocated space filled with 0s) of 10 bytes, followed
+        by actual data-on-disk of 20 bytes.  The two ...  sets refer to
+        `clone` links to other files.  Cloning is a mechanism by which btrfs
+        shares the same blocks on disk to represent identical data in
+        different file locations -- in particular, this makes `cp` nearly
+        instant, and allows filesystem deduplication.
 
         [('HOLE/10'x, {...}), ('DATA/20', {...})]
 
     (1) The notation for ChunkClone objects is as follows:
 
-        <inode paths>:<inode offset>+<length>@<offset in the current chunk>
+        <file paths>:<file offset>+<length>@<offset in the current chunk>
 
         So, the first clone of `('DATA/30', {'A:123+17@5', ...})` states
         that the 17 bytes of this data chunk starting from offset 5 are
-        cloned (share storage with) the 123rd byte of inode with path "A".
+        cloned (share storage with) the 123rd byte of file "A".
 
     ## How to read the "figure" notation
 
     Many tests use the "figure" notation to concisely describe how many
-    different inodes clone their chunks from a single underlying Extent.
+    different files clone their chunks from a single underlying Extent.
     Reading a figure pretty much as expected, but I will spell out a simple
     example for explicitness -- also look at `test_docstring_example`:
 
@@ -105,11 +107,11 @@ class FindClonesTestCase(unittest.TestCase):
 
     The numbered bottom line serves solely to help the reader quickly
     identify lengths and offsets. The letter lines say that:
-     - The inode A concatenates a clone of length 3 at offset 0 with a second
-       clone of length 3 at offset 5.  The inode's total length is thus 6.
-     - The inode B consists of a single clone at offset 2, length 4.
+     - File A concatenates a clone of length 3 at offset 0 with a second
+       clone of length 3 at offset 5.  The file's total length is thus 6.
+     - File B consists of a single clone at offset 2, length 4.
      - C concatenates two clones: offset 1, length 3 with offset 6, length 6.
-     - Thus, offset 2 of the portrayed Extent is cloned into all 3 inodes.
+     - Thus, offset 2 of the portrayed Extent is cloned into all 3 files.
      - Review the ChunkClones for this figure in `test_docstring_example`.
 
     IMPORTANT: Figures must NOT specify two overlapping ranges for the same
@@ -122,29 +124,26 @@ class FindClonesTestCase(unittest.TestCase):
         self.maxDiff = 10e4
         self.inode_map = InodeIDMap()
 
-    def _new_inode(self, path: bytes, e: Extent) -> IncompleteInode:
-        return IncompleteInode(id=self.inode_map.next([path]), extent=e)
-
-    def _gen_inodes_from_figure(
+    def _gen_ids_and_extents_from_figure(
         self, s, extent_left=0, extent_right=0, slice_spacing=0,
     ):
         '''
         Given a figure,
 
-         - Create a backing DATA Extent, from which every inode will clone.
+         - Create a backing DATA Extent, from which every file will clone.
 
          - Parse from the figure the sequential slices of the Extent that are
            identified by contiguous sequences of letters (aka filenames). A
            slice is an offset & length.
 
-         - Create an IncompleteInode for each mentioned filename.
+         - Create an `InodeID` + file `Extent` for each mentioned filename.
 
-         - Pack, from left-to-right, each filename's slices of the main Extent
-           into the Extent of the corresponding Inode.  Optionally, we will
-           separate the slices by HOLEs of `slice_spacing` bytes.  Note that a
-           `slice_spacing` hole is also inserted at the beginning of each inode.
-           The intent of this option is simply to check that we don't compute
-           the right inode offsets by accident.
+         - Pack, from left-to-right, each filename's slices of the backing
+           Extent into the corresponding file Extent.  Optionally, we will
+           separate the slices by HOLEs of `slice_spacing` bytes.  Note that
+           a `slice_spacing` hole is also inserted at the beginning of each
+           file.  The intent of this option is simply to check that we
+           don't compute the right file offsets by accident.
 
          - Similarly, `extent_{left,right}` add uncloned bytes on the left &
            right of the backing extent.
@@ -157,22 +156,22 @@ class FindClonesTestCase(unittest.TestCase):
             ) + extent_right,
         )
         for name, group in itertools.groupby(ranges, key=lambda x: x[0]):
-            inode_extent = Extent.empty()
-            inode_offset = slice_spacing
+            file_extent = Extent.empty()
+            file_offset = slice_spacing
             for _, offset, length in group:
-                inode_extent = inode_extent.clone(
-                    to_offset=inode_offset,
+                file_extent = file_extent.clone(
+                    to_offset=file_offset,
                     from_extent=source_extent,
                     from_offset=extent_left + offset,
                     length=length
                 )
-                inode_offset += slice_spacing + length
-            yield self._new_inode(name, inode_extent)
+                file_offset += slice_spacing + length
+            yield self.inode_map.next([name]), file_extent
 
     def _repr_chunks_from_figure(self, s, **kwargs):
-        return _repr_inode_chunks(finalize_inodes(
-            list(self._gen_inodes_from_figure(s, **kwargs))
-        ))
+        return _repr_ids_and_chunks(extents_to_chunks_with_clones(list(
+            self._gen_ids_and_extents_from_figure(s, **kwargs)
+        )))
 
     def test_gen_ranges_from_figure(self):
         self.assertEqual(
@@ -195,7 +194,7 @@ class FindClonesTestCase(unittest.TestCase):
         with self.assertRaises(AssertionError):
             list(_gen_ranges_from_figure('10234'))
 
-    def test_gen_inodes_from_figure(self):
+    def test_gen_ids_and_extents_from_figure(self):
         # The numeric line has 21 chars, but it is not counted.
         e = Extent(Extent.Kind.DATA, 0, 19)
         self.assertEqual(
@@ -208,12 +207,14 @@ class FindClonesTestCase(unittest.TestCase):
                 'F': [(11, 2, e)],
             },
             {
-                repr(ino.id): list(ino.extent.gen_trimmed_leaves())
-                    for ino in self._gen_inodes_from_figure(self.FIG1)
+                repr(id): list(extent.gen_trimmed_leaves())
+                    for id, extent in self._gen_ids_and_extents_from_figure(
+                        self.FIG1
+                    )
             },
         )
 
-    def test_gen_inodes_from_figure_with_extent_left_and_right(self):
+    def test_gen_ids_and_extents_from_figure_with_extent_left_and_right(self):
         # Check extent_left & extent_right
         e = Extent(Extent.Kind.DATA, 0, 2119)
         self.assertEqual(
@@ -226,14 +227,14 @@ class FindClonesTestCase(unittest.TestCase):
                 'F': [(111, 2, e)],
             },
             {
-                repr(ino.id): list(ino.extent.gen_trimmed_leaves())
-                    for ino in self._gen_inodes_from_figure(
+                repr(id): list(extent.gen_trimmed_leaves())
+                    for id, extent in self._gen_ids_and_extents_from_figure(
                         self.FIG1, extent_left=100, extent_right=2000,
                     )
             },
         )
 
-    def test_gen_inodes_from_figure_with_spacing_extent_left_and_right(self):
+    def test_gen_ids_and_extents_from_figure_with_all_kwargs(self):
         # Check slice_spacing -- the leaf trimming offsets & lengths do not
         # change, but we do get HOLEs in the expected places.
         e = Extent(Extent.Kind.DATA, 0, 2119)
@@ -248,8 +249,8 @@ class FindClonesTestCase(unittest.TestCase):
                 'F': [hole, (111, 2, e)],
             },
             {
-                repr(ino.id): list(ino.extent.gen_trimmed_leaves())
-                    for ino in self._gen_inodes_from_figure(
+                repr(id): list(extent.gen_trimmed_leaves())
+                    for id, extent in self._gen_ids_and_extents_from_figure(
                         self.FIG1, extent_left=100, extent_right=2000,
                         slice_spacing=17,
                     )
@@ -266,30 +267,26 @@ class FindClonesTestCase(unittest.TestCase):
 
     # The result without `slice_spacing` is the same even if we vary
     # `extent_left` & `extent_right` -- that internal representation
-    # detail should not be captured in our inode-offset clone list.
+    # detail should not be captured in our file-offset clone list.
     FIG1_repr_chunks_no_spacing = {
         # This shows successful merging of chunks -- the preceding test
         # demonstrated that we emit 2 trimmed leaves of size 9 & 3 for
         # A, but here they became one chunk of 12:
-        '(Inode: A)': [('DATA/12', {'C:0+4@5', 'D:0+6@3', 'E:6+1@9'})],
-        '(Inode: B)': [('DATA/5', {
-            'C:4+5@0', 'D:6+1@0', 'E:0+4@1', 'F:0+2@2',
-        })],
-        '(Inode: C)': [('DATA/9', {
+        'A': [('DATA/12', {'C:0+4@5', 'D:0+6@3', 'E:6+1@9'})],
+        'B': [('DATA/5', {'C:4+5@0', 'D:6+1@0', 'E:0+4@1', 'F:0+2@2'})],
+        'C': [('DATA/9', {
             'A:5+4@0', 'B:0+5@4', 'D:2+5@0', 'E:0+4@5', 'F:0+2@6',
         })],
-        '(Inode: D)': [('DATA/7', {'A:3+6@0', 'B:0+1@6', 'C:0+5@2'})],
-        '(Inode: E)': [('DATA/7', {
-            'A:9+1@6', 'B:1+4@0', 'C:5+4@0', 'F:0+2@1',
-        })],
-        '(Inode: F)': [('DATA/2', {'B:2+2@0', 'C:6+2@0', 'E:1+2@0'})],
+        'D': [('DATA/7', {'A:3+6@0', 'B:0+1@6', 'C:0+5@2'})],
+        'E': [('DATA/7', {'A:9+1@6', 'B:1+4@0', 'C:5+4@0', 'F:0+2@1'})],
+        'F': [('DATA/2', {'B:2+2@0', 'C:6+2@0', 'E:1+2@0'})],
     }
 
     # The next three tests are the only tests that checks that
     # `extent_left`, `extent_right`, and `slice_spacing` do not break
-    # `finalize_inodes`.  The single example in FIG1 is rich enough that
-    # using it to exercise these offset variations gives us a confidence in
-    # our position arithmetic.
+    # `extents_to_chunks_with_clones`.  The single example in FIG1 is rich
+    # enough that using it to exercise these offset variations gives us a
+    # confidence in our position arithmetic.
 
     def test_finalize_FIG1(self):
         self.assertEqual(
@@ -311,26 +308,26 @@ class FindClonesTestCase(unittest.TestCase):
         self.assertEqual(
             {
                 # This time, chunk merging is prevented by the hole.
-                '(Inode: A)': [
+                'A': [
                     hole,
                     ('DATA/9', {'C:100+4@5', 'D:100+6@3'}),
                     hole,
                     ('DATA/3', {'E:106+1@0'}),
                 ],
-                '(Inode: B)': [hole, ('DATA/5', {
+                'B': [hole, ('DATA/5', {
                     'C:104+5@0', 'D:106+1@0', 'E:100+4@1', 'F:100+2@2',
                 })],
-                '(Inode: C)': [hole, ('DATA/9', {
+                'C': [hole, ('DATA/9', {
                     'A:105+4@0', 'B:100+5@4', 'D:102+5@0', 'E:100+4@5',
                     'F:100+2@6',
                 })],
-                '(Inode: D)': [hole, ('DATA/7', {
+                'D': [hole, ('DATA/7', {
                     'A:103+6@0', 'B:100+1@6', 'C:100+5@2',
                 })],
-                '(Inode: E)': [hole, ('DATA/7', {
+                'E': [hole, ('DATA/7', {
                     'A:209+1@6', 'B:101+4@0', 'C:105+4@0', 'F:100+2@1',
                 })],
-                '(Inode: F)': [hole, ('DATA/2', {
+                'F': [hole, ('DATA/2', {
                     'B:102+2@0', 'C:106+2@0', 'E:101+2@0',
                 })],
             },
@@ -340,19 +337,17 @@ class FindClonesTestCase(unittest.TestCase):
         )
 
     def test_nothing_cloned(self):
-        self.assertEqual({
-            '(Inode: a)': [('DATA/4', set())],
-            '(Inode: b)': [('DATA/6', set())],
-        }, self._repr_chunks_from_figure('aabbbaabbb'))
+        self.assertEqual(
+            {'a': [('DATA/4', set())], 'b': [('DATA/6', set())]},
+            self._repr_chunks_from_figure('aabbbaabbb'),
+        )
 
     def test_docstring_example(self):
         # Note that A's and C's disjoint chunks are merged before output.
         self.assertEqual({
-            '(Inode: A)': [('DATA/6', {
-                'B:0+1@2', 'B:3+1@3', 'C:0+2@1', 'C:3+2@4',
-            })],
-            '(Inode: B)': [('DATA/4', {'A:2+1@0', 'A:3+1@3', 'C:1+2@0'})],
-            '(Inode: C)': [('DATA/9', {'A:1+2@0', 'A:4+2@3', 'B:0+2@1'})],
+            'A': [('DATA/6', {'B:0+1@2', 'B:3+1@3', 'C:0+2@1', 'C:3+2@4'})],
+            'B': [('DATA/4', {'A:2+1@0', 'A:3+1@3', 'C:1+2@0'})],
+            'C': [('DATA/9', {'A:1+2@0', 'A:4+2@3', 'B:0+2@1'})],
         }, self._repr_chunks_from_figure('''
             AAA  AAA
               BBBBCCCCCC
@@ -362,9 +357,9 @@ class FindClonesTestCase(unittest.TestCase):
 
     def test_a_and_b_are_subsequences_of_c(self):
         self.assertEqual({
-            '(Inode: a)': [('DATA/6', {'c:0+3@0', 'c:5+2@3', 'c:12+1@5'})],
-            '(Inode: b)': [('DATA/4', {'c:3+2@0', 'c:7+2@2'})],
-            '(Inode: c)': [('DATA/14', {
+            'a': [('DATA/6', {'c:0+3@0', 'c:5+2@3', 'c:12+1@5'})],
+            'b': [('DATA/4', {'c:3+2@0', 'c:7+2@2'})],
+            'c': [('DATA/14', {
                 'a:0+3@0', 'a:3+2@5', 'a:5+1@12', 'b:0+2@3', 'b:2+2@7',
             })],
         }, self._repr_chunks_from_figure('''
@@ -375,24 +370,20 @@ class FindClonesTestCase(unittest.TestCase):
 
     def test_four_identical_clones(self):
         self.assertEqual({
-            '(Inode: a)': [('DATA/1', {'b:0+1@0', 'c:0+1@0', 'd:0+1@0'})],
-            '(Inode: b)': [('DATA/1', {'a:0+1@0', 'c:0+1@0', 'd:0+1@0'})],
-            '(Inode: c)': [('DATA/1', {'a:0+1@0', 'b:0+1@0', 'd:0+1@0'})],
-            '(Inode: d)': [('DATA/1', {'a:0+1@0', 'b:0+1@0', 'c:0+1@0'})],
+            'a': [('DATA/1', {'b:0+1@0', 'c:0+1@0', 'd:0+1@0'})],
+            'b': [('DATA/1', {'a:0+1@0', 'c:0+1@0', 'd:0+1@0'})],
+            'c': [('DATA/1', {'a:0+1@0', 'b:0+1@0', 'd:0+1@0'})],
+            'd': [('DATA/1', {'a:0+1@0', 'b:0+1@0', 'c:0+1@0'})],
         }, self._repr_chunks_from_figure('d\nc\na\nb'))
 
     def test_ladder_of_clones(self):
         self.assertEqual({
-            '(Inode: a)': [('DATA/3', {'b:0+2@1', 'c:0+1@2'})],
-            '(Inode: b)': [('DATA/3', {'a:1+2@0', 'c:0+2@1', 'd:0+1@2'})],
-            '(Inode: c)': [('DATA/3', {
-                'a:2+1@0', 'b:1+2@0', 'd:0+2@1', 'e:0+1@2',
-            })],
-            '(Inode: d)': [('DATA/3', {
-                'b:2+1@0', 'c:1+2@0', 'e:0+2@1', 'f:0+1@2',
-            })],
-            '(Inode: e)': [('DATA/3', {'c:2+1@0', 'd:1+2@0', 'f:0+2@1'})],
-            '(Inode: f)': [('DATA/3', {'d:2+1@0', 'e:1+2@0'})],
+            'a': [('DATA/3', {'b:0+2@1', 'c:0+1@2'})],
+            'b': [('DATA/3', {'a:1+2@0', 'c:0+2@1', 'd:0+1@2'})],
+            'c': [('DATA/3', {'a:2+1@0', 'b:1+2@0', 'd:0+2@1', 'e:0+1@2'})],
+            'd': [('DATA/3', {'b:2+1@0', 'c:1+2@0', 'e:0+2@1', 'f:0+1@2'})],
+            'e': [('DATA/3', {'c:2+1@0', 'd:1+2@0', 'f:0+2@1'})],
+            'f': [('DATA/3', {'d:2+1@0', 'e:1+2@0'})],
         }, self._repr_chunks_from_figure('''
                ddd
               ccc
@@ -404,8 +395,8 @@ class FindClonesTestCase(unittest.TestCase):
     def test_cannot_merge_adjacent_clones(self):
         # Shows that we don't currently have merging of adjacent clones
         self.assertEqual({
-            '(Inode: a)': [('DATA/4', {'b:0+2@0', 'b:2+2@2'})],
-            '(Inode: b)': [('DATA/4', {'a:0+2@0', 'a:2+2@2'})],
+            'a': [('DATA/4', {'b:0+2@0', 'b:2+2@2'})],
+            'b': [('DATA/4', {'a:0+2@0', 'a:2+2@2'})],
         }, self._repr_chunks_from_figure('''
             bbaa
             aabb
@@ -462,18 +453,18 @@ class FindClonesTestCase(unittest.TestCase):
         # files, let's make sure the clone detection does the right thing.
         # Also add an empty file to make sure that corner case works.
 
-        fs = list(finalize_inodes([
-            self._new_inode('a', a),
-            self._new_inode('b', b),
-            self._new_inode('c', c),
-            self._new_inode('e', Extent.empty()),
+        ids_and_chunks = list(extents_to_chunks_with_clones([
+            (self.inode_map.next(['a']), a),
+            (self.inode_map.next(['b']), b),
+            (self.inode_map.next(['c']), c),
+            (self.inode_map.next(['e']), Extent.empty()),
         ]))
 
         # I iteratively built this up from the "trimmed leaves" data above,
         # and checked against the real output, one file at a time.  So, this
         # is not just "blind gold data", but a real worked example.
         self.assertEqual({
-            '(Inode: b)': [
+            'b': [
                 ('HOLE/6', {  # merged: `b_trunc` (5) + `a_hole` (1) = 6
                     'a:2+1@5',  # `a_hole` original location in `a`
                     'c:11+1@5',  # `a_hole` from `c.clone(10, a)`
@@ -493,7 +484,7 @@ class FindClonesTestCase(unittest.TestCase):
                     'a:38+8@3',  # `b_wr` from `a.clone(4, c.clone(25, b))`
                 }),
             ],
-            '(Inode: c)': [
+            'c': [
                 ('DATA/10', {'a:4+10@0'}),  # `c_wr`, via `a.clone(4, c)`
                 ('HOLE/2', {  # `a_hole`
                     # `b` instance & its copy in `c`, and the next one in `a`
@@ -526,7 +517,7 @@ class FindClonesTestCase(unittest.TestCase):
                     'b:6+3@0', 'b:9+8@3',
                 }),
             ],
-            '(Inode: a)': [
+            'a': [
                 ('HOLE/3', {  # `a_hole`
                     'b:5+1@2',  # `a_hole` copy from `b`
                     # These are copied with minor changes from b/17, HOLE/6
@@ -564,8 +555,8 @@ class FindClonesTestCase(unittest.TestCase):
                     'c:31+3@0', 'c:34+8@3',  # `c` counterparts (via `b` copy)
                 }),
             ],
-            '(Inode: e)': [],
-        }, _repr_inode_chunks(fs))
+            'e': [],
+        }, _repr_ids_and_chunks(ids_and_chunks))
 
 
 if __name__ == '__main__':
