@@ -13,16 +13,6 @@ from .extent import Extent
 from .inode_id import InodeID
 
 
-# Future: with `deepfrozen` done, it'd be interesting to see if using a
-# "freezabletype" idiom makes the Inode/IncompleteInode split clearer.
-class IncompleteInode(NamedTuple):
-    id: InodeID  # The final `Inode` object inherits this ID.
-    extent: Extent
-
-    def __repr__(self):
-        return f'(IncompleteInode: {self.id}/{self.extent.length})'
-
-
 class Inode(NamedTuple):
     id: InodeID
     # The inode's data fork is a concatenation of Chunks, computed from a

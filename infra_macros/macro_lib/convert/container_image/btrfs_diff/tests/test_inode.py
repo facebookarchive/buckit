@@ -2,17 +2,11 @@
 import unittest
 
 from ..extent import Extent
-from ..inode import Chunk, ChunkClone, Clone, Inode, IncompleteInode
+from ..inode import Chunk, ChunkClone, Clone, Inode
 from ..inode_id import InodeIDMap
 
 
 class InodeTestCase(unittest.TestCase):
-
-    def test_incomplete_inode(self):
-        self.assertEqual('(IncompleteInode: a,b/17)', repr(IncompleteInode(
-            id=InodeIDMap().next(['a', 'b']),
-            extent=Extent.empty().truncate(length=17),
-        )))
 
     def test_inode(self):
         self.assertEqual('(Inode: c)', repr(Inode(
