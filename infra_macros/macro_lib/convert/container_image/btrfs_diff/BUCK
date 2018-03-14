@@ -71,6 +71,29 @@ python_unittest(
 )
 
 python_library(
+    name = "incomplete_inode",
+    srcs = ["incomplete_inode.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":extent",
+        ":inode",
+        ":inode_id",
+        ":parse_dump",
+    ],
+)
+
+python_unittest(
+    name = "test-incomplete-inode",
+    srcs = ["tests/test_incomplete_inode.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":incomplete_inode",
+    )],
+    deps = [":incomplete_inode"],
+)
+
+python_library(
     name = "extents_to_chunks",
     srcs = ["extents_to_chunks.py"],
     base_module = "btrfs_diff",
