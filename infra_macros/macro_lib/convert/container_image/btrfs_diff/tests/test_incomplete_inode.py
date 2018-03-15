@@ -29,7 +29,9 @@ class IncompleteInodeTestCase(unittest.TestCase):
         ino.apply_item(SendStreamItems.truncate(path=b'a', size=17))
         self.assertEqual('(IncompleteFile: a/17)', repr(ino))
 
-        ino.apply_item(SendStreamItems.write(path=b'a', offset=10, len=15))
+        ino.apply_item(
+            SendStreamItems.write(path=b'a', offset=10, data=b'x' * 15)
+        )
         self.assertEqual('(IncompleteFile: a/25)', repr(ino))
 
         ino.apply_item(

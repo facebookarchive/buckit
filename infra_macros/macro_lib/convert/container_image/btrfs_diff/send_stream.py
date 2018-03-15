@@ -91,11 +91,17 @@ class SendStreamItems:
     #
 
     class write(metaclass=SendStreamItem):
-        # XXX add `data`
-        fields = ['offset', 'len']
+        fields = ['offset', 'data']
 
     class clone(metaclass=SendStreamItem):
-        fields = ['offset', 'len', 'from_path', 'clone_offset']
+        fields = [
+            'offset',
+            'len',
+            'from_uuid',  # `btrfs receive --dump` does NOT display this :/
+            'from_transid',  # ... nor this.
+            'from_path',
+            'clone_offset',
+        ]
 
     class set_xattr(metaclass=SendStreamItem):
         fields = ['name', 'data']

@@ -213,12 +213,7 @@ class SendStreamItemParsers:
     class rmdir(RegexItemParser):
         pass
 
-    class write(RegexItemParser):
-        # NB: `btrfs receive --dump` omits the `data` field here (because it
-        # can be huge, and not very illuminating to the user).
-        regex = re.compile(br'offset=(?P<offset>[0-9]+) len=(?P<len>[0-9]+)')
-        conv_offset = staticmethod(int)
-        conv_len = staticmethod(int)
+    # NB: `write` is not here because below we map it to `update_extent`.
 
     class clone(RegexItemParser):
         # The path `from` is not quoted in `send-dump.c`, but a greedy
@@ -228,6 +223,7 @@ class SendStreamItemParsers:
             br'len=(?P<len>[0-9]+) '
             br'from=(?P<from_path>.+) '  # the field is `from_path`, not `from`
             br'clone_offset=(?P<clone_offset>[0-9]+)'
+            br'(?P<from_uuid>)(?P<from_transid>)'
         )
         conv_offset = staticmethod(int)
         conv_len = staticmethod(int)
@@ -316,9 +312,11 @@ class SendStreamItemParsers:
         conv_mtime = conv_atime
         conv_ctime = conv_atime
 
-    # This is literally the same thing as `write`, but emitted when `btrfs
-    # send --no-data` is used.  Identify the two for test coverage's sake.
-    update_extent = write
+    # This is used instead of `write` when `btrfs send --no-data` is used.
+    class update_extent(RegexItemParser):
+        regex = re.compile(br'offset=(?P<offset>[0-9]+) len=(?P<len>[0-9]+)')
+        conv_offset = staticmethod(int)
+        conv_len = staticmethod(int)
 
 
 # The inner classes of SendStreamItems, omitting internals like __doc__.
@@ -328,7 +326,9 @@ NAME_TO_PARSER_TYPE = {
         for k, v in SendStreamItemParsers.__dict__.items() if k[0] != '_'
 }
 NAME_TO_ITEM_TYPE = {
-    k.encode(): v for k, v in SendStreamItems.__dict__.items() if k[0] != '_'
+    k.encode(): v
+        for k, v in SendStreamItems.__dict__.items()
+            if k[0] != '_' and k != 'write'
 }
 assert set(NAME_TO_PARSER_TYPE.keys()) == set(NAME_TO_ITEM_TYPE.keys())
 
@@ -340,6 +340,13 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
         if not m:
             raise RuntimeError(f'line has unexpected format: {repr(l)}')
         item_name, path, _, details = m.groups()
+
+        # This parser maps `write` to `update_extent` regardless of whether
+        # the send-stream used `--no-data` or not.  The reason is that
+        # `btrfs receive --dump` never displays the `data` field (because it
+        # can be huge, and not very illuminating to the user).
+        if item_name == b'write':
+            item_name = b'update_extent'
 
         item_class = NAME_TO_ITEM_TYPE.get(item_name)
         if not item_class:

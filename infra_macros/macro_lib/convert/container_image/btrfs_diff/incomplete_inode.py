@@ -90,9 +90,11 @@ class IncompleteFile(IncompleteInode):
             raise NotImplementedError  # pragma: no cover
         elif isinstance(item, SendStreamItems.truncate):
             self.extent = self.extent.truncate(length=item.size)
-        elif isinstance(
-            item, (SendStreamItems.write, SendStreamItems.update_extent),
-        ):
+        elif isinstance(item, SendStreamItems.write):
+            self.extent = self.extent.write(
+                offset=item.offset, length=len(item.data),
+            )
+        elif isinstance(item, SendStreamItems.update_extent):
             self.extent = self.extent.write(
                 offset=item.offset, length=item.len,
             )

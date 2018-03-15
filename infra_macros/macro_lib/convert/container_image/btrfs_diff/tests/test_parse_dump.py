@@ -9,7 +9,7 @@ from artifacts_dir import get_per_repo_artifacts_dir
 from volume_for_repo import get_volume_for_current_repo
 
 from ..parse_dump import (
-    SendStreamItems, NAME_TO_ITEM_TYPE, parse_btrfs_dump,
+    SendStreamItems, NAME_TO_PARSER_TYPE, parse_btrfs_dump,
     unquote_btrfs_progs_path,
 )
 from ..send_stream import get_frequency_of_selinux_xattrs, ItemFilters
@@ -74,15 +74,15 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             'unlink',
             'update_extent',
             'utimes',
-            'write',
+            # Omitted since `--dump` never prints data: 'write',
         }
         self.assertEqual(
-            {n.decode() for n in NAME_TO_ITEM_TYPE.keys()},
+            {n.decode() for n in NAME_TO_PARSER_TYPE.keys()},
             expected_ops,
         )
         self.assertEqual(
             expected_ops,
-            {l.split(b' ', 1)[0].decode() for l in out_lines if l},
+            {l.split(b' ', 1)[0].decode() for l in out_lines if l} - {'write'},
         )
         items = _parse_bytes_to_list(out_bytes)
         # We an item per line, and the items cover the expected operations.
@@ -243,6 +243,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             ),
             di.clone(
                 path=p('create_ops/1MB_nuls_clone'), offset=0, len=2**20,
+                from_uuid=b'', from_transid=b'',
                 from_path=p('create_ops/1MB_nuls'), clone_offset=0,
             ),
             di.truncate(path=p('create_ops/1MB_nuls_clone'), size=2**20),
@@ -296,7 +297,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             *and_rename(
                 di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
             ),
-            di.write(path=p('mutate_ops/hello_renamed/een'), offset=0, len=5),
+            di.update_extent(
+                path=p('mutate_ops/hello_renamed/een'), offset=0, len=5,
+            ),
             di.truncate(path=p('mutate_ops/hello_renamed/een'), size=5),
             *base_metadata('mutate_ops/hello_renamed/een'),
         ], items)
