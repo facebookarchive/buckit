@@ -1571,7 +1571,7 @@ class Converter(object):
             else:
                 options = default_options
 
-            s = 'const char* {name} = "{options}";'.format(
+            s = 'const char* const {name} = "{options}";'.format(
                 name=name,
                 options=':'.join([
                     '{}={}'.format(k, v)
@@ -1582,18 +1582,18 @@ class Converter(object):
 
         if sanitizer.startswith('address'):
             configuration_src.append(gen_options_var(
-                'AsanDefaultOptions',
+                'kAsanDefaultOptions',
                 ASAN_DEFAULT_OPTIONS,
                 build_mode.asan_options if build_mode else None,
             ))
             configuration_src.append(gen_options_var(
-                'UbsanDefaultOptions',
+                'kUbsanDefaultOptions',
                 UBSAN_DEFAULT_OPTIONS,
                 build_mode.ubsan_options if build_mode else None,
             ))
         if sanitizer == 'thread':
             configuration_src.append(gen_options_var(
-                'TsanDefaultOptions',
+                'kTsanDefaultOptions',
                 TSAN_DEFAULT_OPTIONS,
                 build_mode.tsan_options if build_mode else None,
             ))
