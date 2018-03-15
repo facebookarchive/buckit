@@ -438,16 +438,23 @@ class PythonConverter(base.Converter):
         """
         Return whether we should generate the interp helpers.
         """
+        # We can only work in @mode/dev
+        if not self._context.mode.startswith('dev'):
+            return False
 
         # Our current implementation of the interp helpers is costly when using
         # omnibus linking, only generate these if explicitly set via config or TARGETS
-        config_setting = self.read_bool('python', 'helpers', False)
-        # Prefer true in config else fallback to TARGETS setting (Default = False)
-        if config_setting:
-            return config_setting
+        try:
+            config_setting = self.read_bool('python', 'helpers', None)
+        except KeyError:
+            config_setting = None
 
-        # Only allow TARGETS to ONLY enable for @mode/dev
-        return helper_deps if self._context.mode.startswith('dev') else False
+        if config_setting is None:
+            # No CLI option is set, respect the TARGETS file option.
+            return helper_deps
+
+        return config_setting
+
 
     def convert_interp_rules(
             self,
