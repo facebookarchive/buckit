@@ -287,8 +287,6 @@ class CppThriftConverter(ThriftLangConverter):
         ('AsyncClient.h', CLIENTS_HEADER),
         ('_client.cpp', CLIENTS_SOURCE),
         ('_custom_protocol.h', SERVICES_HEADER),
-        ('_processmap_binary.cpp', SERVICES_SOURCE),
-        ('_processmap_compact.cpp', SERVICES_SOURCE),
         ('.tcc', SERVICES_HEADER),
         ('.h', SERVICES_HEADER),
         ('.cpp', SERVICES_SOURCE),
@@ -380,9 +378,6 @@ class CppThriftConverter(ThriftLangConverter):
                 genfiles.append('%s_client.cpp' % (service,))
                 genfiles.append('%s_custom_protocol.h' % (service,))
                 genfiles.append('%sAsyncClient.h' % (service,))
-            if self._is_cpp2 and 'separate_processmap' in options:
-                genfiles.append('%s_processmap_binary.cpp' % (service,))
-                genfiles.append('%s_processmap_compact.cpp' % (service,))
             if gen_templates:
                 genfiles.append('%s.tcc' % (service,))
 
