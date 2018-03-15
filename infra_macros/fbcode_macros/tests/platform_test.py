@@ -141,6 +141,8 @@ class PlatformTest(tests.utils.TestCase):
     def test_get_default_platform_returns_fbcode_platform_when_platform_required(
         self, root
     ):
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
         statements = [
             'platform.get_default_platform()',
         ]
@@ -155,6 +157,8 @@ class PlatformTest(tests.utils.TestCase):
     def test_get_default_platform_returns_cxx_default_platform_if_platform_not_required(
         self, root
     ):
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
         statements = [
             'platform.get_default_platform()',
         ]
@@ -169,6 +173,8 @@ class PlatformTest(tests.utils.TestCase):
     def test_get_default_platform_returns_default_if_platform_not_required(
         self, root
     ):
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
         statements = [
             'platform.get_default_platform()',
         ]
@@ -279,6 +285,8 @@ class PlatformTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_parses_default_overrides_file(self, root):
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
         results = root.run_unittests(
             self.includes, ["platform.get_default_platform()"]
         )
@@ -286,6 +294,8 @@ class PlatformTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_helper_util_runs_properly(self, root):
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyBuildModeOverrides(root)
         platform_overrides = dedent(
             """\
             platform_overrides = {"fbcode": {
@@ -295,9 +305,6 @@ class PlatformTest(tests.utils.TestCase):
                 "": ["gcc7"],
             }}
         """
-        )
-        root.project.cells["fbcode_macros"].add_file(
-            "build_defs/third_party_config.bzl", self.third_party_config
         )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/platform_overrides.bzl", platform_overrides

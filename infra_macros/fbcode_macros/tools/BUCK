@@ -1,4 +1,10 @@
+load("@fbcode_macros//build_defs:build_mode.bzl", "build_mode")
 load("@fbcode_macros//build_defs:platform.bzl", "platform")
+
+export_file(
+    name = "get_build_mode.py",
+    visibility = ["PUBLIC"],
+)
 
 export_file(
     name = "get_platform.py",
@@ -16,6 +22,19 @@ genrule(
     cmd = "cat > $OUT <<EOF\nplatforms = %r\nEOF" % platform.get_platform_overrides(),
 )
 
+genrule(
+    name = "parsed_build_modes",
+    out = "parsed_build_modes.py",
+    cmd = (
+        "cat > $OUT <<EOF\n" +
+        "from collections import namedtuple\n" +
+        "def struct(**kwargs):\n" +
+        "    return namedtuple('struct', sorted(kwargs.keys()))(**kwargs)\n" +
+        "build_modes = %r\n" +
+        "EOF"
+    ) % build_mode.get_build_mode_overrides(),
+)
+
 python_library(
     name = "get_platform-lib",
     srcs = ["get_platform.py"],
@@ -27,6 +46,17 @@ python_binary(
     deps = [":get_platform-lib"],
 )
 
+python_library(
+    name = "get_build_mode-lib",
+    srcs = ["get_build_mode.py"],
+)
+
+python_binary(
+    name = "get_build_mode-bin",
+    main_module = "tools.get_build_mode",
+    deps = [":get_build_mode-lib"],
+)
+
 command_alias(
     name = "get_platform",
     args = [
@@ -34,4 +64,13 @@ command_alias(
         "$(location :parsed_platforms)",
     ],
     exe = ":get_platform-bin",
+)
+
+command_alias(
+    name = "get_build_mode",
+    args = [
+        "--build-modes-file",
+        "$(location :parsed_build_modes)",
+    ],
+    exe = ":get_build_mode-bin",
 )

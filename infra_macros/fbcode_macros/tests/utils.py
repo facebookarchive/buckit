@@ -19,6 +19,7 @@ import os
 import tempfile
 import shutil
 import logging
+import platform
 import re
 import StringIO
 import textwrap
@@ -599,6 +600,75 @@ class TestMethodRenamer(type):
 @six.add_metaclass(TestMethodRenamer)
 class TestCase(unittest.TestCase):
     maxDiff = None
+
+    def addDummyThirdPartyConfig(self, root):
+        current_arch = platform.machine()
+        other_arch = "x86_64" if current_arch == "aarch64" else "aarch64"
+        third_party_config = dedent(
+        """\
+            third_party_config = {{
+                "platforms": {{
+                    "gcc5": {{
+                        "architecture": "{current_arch}",
+                    }},
+                    "gcc6": {{
+                        "architecture": "{current_arch}",
+                    }},
+                    "gcc7": {{
+                        "architecture": "{current_arch}",
+                    }},
+                    "gcc5-other": {{
+                        "architecture": "{other_arch}",
+                    }},
+                }},
+            }}
+        """.format(current_arch=current_arch, other_arch=other_arch))
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/third_party_config.bzl", third_party_config
+        )
+
+    def addDummyPlatformOverrides(self, root):
+        platform_overrides = dedent(
+            """\
+            platform_overrides = {
+                "fbcode": {
+                    "foo/bar": ["gcc5", "gcc5-other"],
+                    "foo": ["gcc7"],
+                },
+            }
+            """
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/platform_overrides.bzl", platform_overrides
+        )
+
+    def addDummyBuildModeOverrides(self, root):
+        build_mode_overrides = dedent("""
+            load(
+                "@fbcode_macros//build_defs:create_build_mode.bzl",
+                "create_build_mode",
+            )
+            def dev():
+                return {
+                    "dev": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def dbg():
+                return {
+                    "dbg": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def opt():
+                return {
+                    "opt": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            build_mode_overrides = {"fbcode": {
+                "foo/bar": dev,
+                "foo/bar-other": dbg,
+                "foo": opt,
+            }}
+        """)
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/build_mode_overrides.bzl",
+            build_mode_overrides)
 
     def assertSuccess(self, result, *expected_results):
         """ Make sure that the command ran successfully """

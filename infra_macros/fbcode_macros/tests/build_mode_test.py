@@ -10,11 +10,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
+
 import tests.utils
 from tests.utils import dedent
 
 
-class PlatformTest(tests.utils.TestCase):
+class BuildModeTest(tests.utils.TestCase):
     includes = [
         ("@fbcode_macros//build_defs:build_mode.bzl", "build_mode"),
         ("@fbcode_macros//build_defs:create_build_mode.bzl", "create_build_mode"),
@@ -258,3 +260,133 @@ class PlatformTest(tests.utils.TestCase):
             {'opt': expected},
             {},
         )
+
+    @tests.utils.with_project()
+    def test_get_build_mode_overrides(self, root):
+        build_mode_override = dedent("""
+            load(
+                "@fbcode_macros//build_defs:create_build_mode.bzl",
+                "create_build_mode",
+            )
+            def dev():
+                return {
+                    "dev": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def dbg():
+                return {
+                    "dbg": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def opt():
+                return {
+                    "opt": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            build_mode_overrides = {"fbcode": {
+                "foo/bar": dev,
+                "foo/bar-other": dbg,
+                "foo": opt,
+            }}
+        """)
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/build_mode_overrides.bzl",
+            build_mode_override)
+
+        expected = {
+            "fbcode": {
+                "foo/bar": {
+                    "dev": self._create_mode_struct(c_flags=["-DDEBUG"]),
+                },
+                "foo/bar-other": {
+                    "dbg": self._create_mode_struct(c_flags=["-DDEBUG"]),
+                },
+                "foo": {
+                    "opt": self._create_mode_struct(c_flags=["-DDEBUG"]),
+                },
+            }
+        }
+
+        result = root.run_unittests(
+            self.includes,
+            ["build_mode.get_build_mode_overrides()"],
+        )
+
+        self.assertSuccess(result, expected)
+
+    @tests.utils.with_project()
+    def test_helper_util_runs_properly(self, root):
+        self.addDummyPlatformOverrides(root)
+        self.addDummyThirdPartyConfig(root)
+        build_mode_override = dedent("""
+            load(
+                "@fbcode_macros//build_defs:create_build_mode.bzl",
+                "create_build_mode",
+            )
+            def dev():
+                return {
+                    "dev": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def dbg():
+                return {
+                    "dbg": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            def opt():
+                return {
+                    "opt": create_build_mode(c_flags=["-DDEBUG"]),
+                }
+            build_mode_overrides = {"fbcode": {
+                "foo/bar": dev,
+                "foo/bar-other": dbg,
+                "foo": opt,
+            }}
+        """)
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/build_mode_overrides.bzl",
+            build_mode_override)
+
+        result = root.run([
+            'buck',
+            'run',
+            'fbcode_macros//tools:get_build_mode',
+            'foo/bar/baz',
+            'foo/bar',
+            'foo/bar-other',
+            'foo/baz',
+            'foo',
+            'foobar',
+        ], {}, {})
+
+        expected_mode = {
+            "aspp_flags": [],
+            "cpp_flags": [],
+            "cxxpp_flags": [],
+            "c_flags": ["-DDEBUG"],
+            "cxx_flags": [],
+            "ld_flags": [],
+            "clang_flags": [],
+            "gcc_flags": [],
+            "java_flags": [],
+            "dmd_flags": [],
+            "gdc_flags": [],
+            "ldc_flags": [],
+            "par_flags": [],
+            "ghc_flags": [],
+            "asan_options": [],
+            "tsan_options": [],
+            "ubsan_options": [],
+        }
+        expected = [
+            ('foo/bar/baz', {'dev': expected_mode}),
+            ('foo/bar', {'dev': expected_mode}),
+            ('foo/bar-other', {'dbg': expected_mode}),
+            ('foo/baz', {'opt': expected_mode}),
+            ('foo', {'opt': expected_mode}),
+            ('foobar', {}),
+        ]
+
+        self.assertSuccess(result)
+        print(result.stdout)
+        actual = [
+            (line.split(':', 1)[0], json.loads(line.split(':', 1)[1]))
+            for line in result.stdout.split('\n')
+            if line
+        ]
+        self.assertEqual(expected, actual)

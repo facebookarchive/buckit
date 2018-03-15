@@ -56,8 +56,19 @@ def _get_build_modes_for_cell_and_base_path(cell, path):
             path = paths.dirname(path)
     return {}
 
+def _get_build_mode_overrides():
+    """ Materializes all build modes for the current context """
+    return {
+        cell: {
+          path: get_build_mode()
+          for path, get_build_mode in cell_values.items()
+        }
+        for cell, cell_values in build_mode_overrides.items()
+    }
+
 build_mode = struct(
     get_build_modes_for_base_path = _get_build_modes_for_base_path,
     get_build_modes_for_current_buildfile = _get_build_modes_for_current_buildfile,
     get_build_modes_for_cell_and_base_path = _get_build_modes_for_cell_and_base_path,
+    get_build_mode_overrides = _get_build_mode_overrides,
 )
