@@ -396,7 +396,6 @@ class CppThriftConverter(ThriftLangConverter):
         non_mstch_flags = [
             'py_generator',
             'compatibility',
-            'modulemap',
         ]
         return set(options.keys()).isdisjoint(non_mstch_flags)
 
