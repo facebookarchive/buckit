@@ -50,6 +50,7 @@ class DConverter(base.Converter):
                 external_deps=(),
                 visibility=None,
                 **kwargs):
+        rules = []
 
         platform = self.get_default_platform()
 
@@ -89,7 +90,12 @@ class DConverter(base.Converter):
             self.get_dep_target(ThirdPartyRuleTarget('dlang', 'phobos')))
         # Add in binary-specific link deps.
         if self.is_binary():
-            dependencies.extend(self.format_deps(self.get_binary_link_deps()))
+            d, r = self.get_binary_link_deps(
+                base_path,
+                name,
+                attributes['linker_flags'])
+            dependencies.extend(self.format_deps(d))
+            rules.extend(r)
         attributes['deps'] = dependencies
 
-        return [Rule(self.get_buck_rule_type(), attributes)]
+        return [Rule(self.get_buck_rule_type(), attributes)] + rules

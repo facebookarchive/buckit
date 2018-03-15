@@ -86,12 +86,20 @@ class RustConverter(base.Converter):
 
         return ok
 
-    def get_rust_binary_deps(self, allocator):
+    def get_rust_binary_deps(self, base_path, name, linker_flags, allocator):
         deps = []
+        rules = []
 
         allocator = self.get_allocator(allocator)
 
-        deps.extend(self.format_deps(self.get_binary_link_deps(allocator)))
+        d, r = self.get_binary_link_deps(
+            base_path,
+            name,
+            linker_flags,
+            allocator,
+        )
+        deps.extend(self.format_deps(d))
+        rules.extend(r)
 
         # Always explicitly add libc - except for sanitizer modes, since
         # they already add them
@@ -104,7 +112,7 @@ class RustConverter(base.Converter):
         libgcc = self.get_dep_target(ThirdPartyRuleTarget('libgcc', 'stdc++'))
         if libgcc not in deps:
             deps.append(libgcc)
-        return deps
+        return deps, rules
 
     def convert(self,
                 base_path,
@@ -237,7 +245,7 @@ class RustConverter(base.Converter):
         # test_features and test_rustc_flags override the base rule keys,
         # if present.
         if not self.is_test() and unittests:
-            test = self.create_rust_test_rule(
+            test, r = self.create_rust_test_rule(
                 base_path,
                 attributes,
                 test_srcs,
@@ -252,6 +260,7 @@ class RustConverter(base.Converter):
             )
             tests.append(':' + test.attributes['name'])
             extra_rules.append(test)
+            extra_rules.extend(r)
             attributes['tests'] = tests
 
         if self.is_test():
@@ -261,7 +270,14 @@ class RustConverter(base.Converter):
         # Do this after creating the test rule, so that it doesn't pick this
         # up as well (it will add its own binary deps as needed)
         if self.is_binary():
-            dependencies.extend(self.get_rust_binary_deps(allocator))
+            d, r = self.get_rust_binary_deps(
+                base_path,
+                name,
+                linker_flags,
+                allocator,
+            )
+            dependencies.extend(d)
+            extra_rules.extend(r)
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
 
@@ -282,6 +298,7 @@ class RustConverter(base.Converter):
         Construct a rust_test rule corresponding to a rust_library or
         rust_binary rule so that internal unit tests can be run.
         """
+        rules = []
         test_attributes = collections.OrderedDict()
 
         name = '%s-unittest' % attributes['name']
@@ -337,11 +354,18 @@ class RustConverter(base.Converter):
         for target in test_external_deps or []:
             deps.append(self.convert_external_build_target(target))
 
-        deps.extend(self.get_rust_binary_deps(allocator))
+        d, r = self.get_rust_binary_deps(
+            base_path,
+            name,
+            test_attributes['linker_flags'],
+            allocator,
+        )
+        deps.extend(d)
+        rules.extend(r)
 
         test_attributes['deps'] = deps
 
-        return Rule('rust_test', test_attributes)
+        return Rule('rust_test', test_attributes), rules
 
     def create_rust_build_info_rule(
             self,

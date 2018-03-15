@@ -1387,13 +1387,14 @@ class Converter(object):
             # all coverage deps are included in the santizer deps
             return []
 
-    def get_binary_link_deps(self, allocator='malloc'):
+    def get_binary_link_deps(self, base_path, name, linker_flags=(), allocator='malloc'):
         """
         Return a list of dependencies that should apply to *all* binary rules
         that link C/C++ code.
         """
 
         deps = []
+        rules = []
 
         # If we're not using a sanitizer add allocator deps.
         if self.get_sanitizer() is None:
@@ -1401,6 +1402,13 @@ class Converter(object):
 
         # Add in any dependencies required for sanitizers.
         deps.extend(self.get_sanitizer_binary_deps())
+        d, r = self.create_sanitizer_configuration(
+            base_path,
+            name,
+            linker_flags,
+        )
+        deps.extend(d)
+        rules.extend(r)
 
         # Add in any dependencies required for code coverage
         if self._context.coverage:
@@ -1409,7 +1417,7 @@ class Converter(object):
         # We link in our own implementation of `kill` to binaries (S110576).
         deps.append(RootRuleTarget('common/init', 'kill'))
 
-        return deps
+        return deps, rules
 
     def get_allocator_deps(self, allocator):
         return [

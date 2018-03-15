@@ -103,7 +103,9 @@ class OCamlConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if self.is_binary():
-            dependencies.extend(self.format_deps(self.get_binary_link_deps()))
+            d, r = self.get_binary_link_deps(base_path, name)
+            dependencies.extend(self.format_deps(d))
+            extra_rules.extend(r)
 
         # If any deps were specified, add them to the output attrs.
         if dependencies:

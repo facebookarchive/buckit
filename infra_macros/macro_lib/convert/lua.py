@@ -284,7 +284,14 @@ class LuaConverter(base.Converter):
             out_deps.append(DEFAULT_CPP_MAIN)
 
         # Add in binary-specific link deps.
-        out_deps.extend(self.get_binary_link_deps(allocator=allocator))
+        d, r = self.get_binary_link_deps(
+            base_path,
+            name,
+            cpp_main_attrs['linker_flags'],
+            allocator=allocator,
+        )
+        out_deps.extend(d)
+        rules.extend(r)
 
         # Set the deps attr.
         cpp_main_attrs['deps'], cpp_main_attrs['platform_deps'] = (

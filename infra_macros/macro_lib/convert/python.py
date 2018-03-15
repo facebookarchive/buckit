@@ -541,6 +541,9 @@ class PythonConverter(base.Converter):
                 RootRuleTarget(
                     'tools/build/sanitizers',
                     '{}-py'.format(sanitizer)))
+            d, r = self.create_sanitizer_configuration(base_path, name)
+            deps.extend(d)
+            rules.extend(r)
 
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.

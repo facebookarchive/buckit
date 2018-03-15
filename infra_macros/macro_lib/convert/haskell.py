@@ -472,7 +472,7 @@ class HaskellConverter(base.Converter):
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
         return Rule('cxx_library', attrs)
 
-    def convert_c2hs(self, name, platform, source, deps, visibility):
+    def convert_c2hs(self, base_path, name, platform, source, deps, visibility):
         """
         Construct the rules to generate a haskell source from the given `c2hs`
         source.
@@ -484,8 +484,9 @@ class HaskellConverter(base.Converter):
         # parameter that we rely on to support multi-platform builds.  So use
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
-        all_deps = deps + self.get_binary_link_deps()
-        rules.append(self._get_dep_rule(deps_name, all_deps, visibility))
+        d, r = self.get_binary_link_deps(base_path, deps_name)
+        rules.append(self._get_dep_rule(deps_name, deps + d, visibility))
+        rules.extend(r)
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
@@ -505,7 +506,14 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def convert_hsc2hs(self, name, platform, source, deps, visibility):
+    def convert_hsc2hs(
+            self,
+            base_path,
+            name,
+            platform,
+            source,
+            deps,
+            visibility):
         """
         Construct the rules to generate a haskell source from the given
         `hsc2hs` source.
@@ -517,8 +525,9 @@ class HaskellConverter(base.Converter):
         # parameter that we rely on to support multi-platform builds.  So use
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
-        all_deps = deps + self.get_binary_link_deps()
-        rules.append(self._get_dep_rule(deps_name, all_deps, visibility))
+        d, r = self.get_binary_link_deps(base_path, deps_name)
+        rules.append(self._get_dep_rule(deps_name, deps + d, visibility))
+        rules.extend(r)
 
         out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
 
@@ -596,9 +605,10 @@ class HaskellConverter(base.Converter):
         if self.get_fbconfig_rule_type() == 'haskell_ghci':
             out_compiler_flags.append('-fexternal-interpreter')
             # Mark binary_link_deps to be preloaded
+            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['preload_deps'], attributes['platform_preload_deps'] = \
-                self.format_all_deps(
-                    self.get_binary_link_deps(allocator=allocator))
+                self.format_all_deps(d)
+            rules.extend(r)
 
         if ghci_bin_dep is not None:
             bin_dep_target = self.convert_build_target(base_path, ghci_bin_dep)
@@ -696,12 +706,24 @@ class HaskellConverter(base.Converter):
                     self.get_deps_for_packages(ALEX_PACKAGES))
             elif ext == '.hsc':
                 src, extra_rules = (
-                    self.convert_hsc2hs(name, platform, src, user_deps, visibility))
+                    self.convert_hsc2hs(
+                        base_path,
+                        name,
+                        platform,
+                        src,
+                        user_deps,
+                        visibility))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             elif ext == '.chs':
                 src, extra_rules = (
-                    self.convert_c2hs(name, platform, src, user_deps, visibility))
+                    self.convert_c2hs(
+                        base_path,
+                        name,
+                        platform,
+                        src,
+                        user_deps,
+                        visibility))
                 out_srcs.append(src)
                 rules.extend(extra_rules)
             else:
@@ -755,7 +777,9 @@ class HaskellConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if self.is_binary():
-            dependencies.extend(self.get_binary_link_deps(allocator=allocator))
+            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
+            dependencies.extend(d)
+            rules.extend(r)
         if self.is_test():
             dependencies.append(self.get_dep_for_package('HUnit'))
             dependencies.append(RootRuleTarget('tools/test/stubs', 'fbhsunit'))
@@ -763,9 +787,11 @@ class HaskellConverter(base.Converter):
 
         if self.get_fbconfig_rule_type() in ['haskell_library', 'haskell_binary']:
             # Mark binary_link_deps to be preloaded
+            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
-                self.format_all_deps(
-                    self.get_binary_link_deps(allocator=allocator))
+                self.format_all_deps(d)
+            if self.get_fbconfig_rule_type() == 'haskell_library':
+                rules.extend(r)
 
         attributes['deps'], attributes['platform_deps'] = (
             self.format_all_deps(dependencies))

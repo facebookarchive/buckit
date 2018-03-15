@@ -1446,7 +1446,14 @@ class CppConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if self.is_binary(dlopen_info):
-            dependencies.extend(self.get_binary_link_deps(allocator=allocator))
+            d, r = self.get_binary_link_deps(
+                base_path,
+                name,
+                attributes['linker_flags'],
+                allocator=allocator,
+            )
+            dependencies.extend(d)
+            extra_rules.extend(r)
 
         if self.get_fbconfig_rule_type() == 'cpp_python_extension':
             dependencies.append(ThirdPartyRuleTarget('python', 'python'))
