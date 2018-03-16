@@ -1559,9 +1559,6 @@ class Converter(object):
         sanitizer = self.get_sanitizer()
         build_mode = self.get_build_mode()
 
-        if not sanitizer:
-            return deps, rules
-
         configuration_src = []
 
         def gen_options_var(name, default_options, extra_options):
@@ -1580,7 +1577,7 @@ class Converter(object):
             )
             return s
 
-        if sanitizer.startswith('address'):
+        if sanitizer and sanitizer.startswith('address'):
             configuration_src.append(gen_options_var(
                 'kAsanDefaultOptions',
                 ASAN_DEFAULT_OPTIONS,
@@ -1591,7 +1588,7 @@ class Converter(object):
                 UBSAN_DEFAULT_OPTIONS,
                 build_mode.ubsan_options if build_mode else None,
             ))
-        if sanitizer == 'thread':
+        if sanitizer and sanitizer == 'thread':
             configuration_src.append(gen_options_var(
                 'kTsanDefaultOptions',
                 TSAN_DEFAULT_OPTIONS,
