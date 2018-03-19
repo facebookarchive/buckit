@@ -82,7 +82,6 @@ class Converter(base.Converter):
     LIB_SUFFIX = '__cython-lib'
     INCLUDES_SUFFIX = '__cython-includes'
     CONVERT_SUFFIX = '__cython'
-    STUB_SUFFIX = '__stubs'
     TYPING_SUFFIX = '__typing'
 
     SOURCE_EXTS = (
@@ -239,67 +238,6 @@ class Converter(base.Converter):
         )
         return ':' + name, rule
 
-    def gen_stub_rule(
-        self,
-        parent,
-        pyx_src,
-        pyx_dst
-    ):
-        attrs = collections.OrderedDict()
-        pyi_path = os.path.splitext(pyx_dst)[0] + '.pyi'
-        attrs['name'] = '{}={}'.format(parent, pyi_path)
-        attrs['out'] = os.path.basename(pyi_path)
-
-        if pyx_src[0] in '@/:':
-            # TODO: In this case the pyi file should have been generated in the
-            # rule. Just reference it.
-            pyx_src = '$(location {})'.format(pyx_src)
-        else:
-            attrs['srcs'] = [pyx_src]
-
-        # Although we have only one command to issue here, we still use a list
-        # to collect the command to make it convenient for inserting new ones.
-        cmds = []
-        cmds.append(
-            '$(exe //python/stubgency:stubgency) {pyx_file} $OUT'
-            .format(
-                pyx_file=pyx_src,
-            )
-        )
-        attrs['cmd'] = ' && '.join(cmds)
-
-        return ':' + attrs['name'], Rule('genrule', attrs)
-
-    def convert_stub_pylib(
-        self,
-        parent,
-        base_path,
-        package,
-        pyx_srcs
-    ):
-        rules = []
-        stub_targets = []
-
-        # Generate stub file for each pyx source
-        for pyx_src, pyx_dst in pyx_srcs.items():
-            target, stub_rule = self.gen_stub_rule(
-                parent, pyx_src, pyx_dst
-            )
-            stub_targets.append(target)
-            rules.append(stub_rule)
-
-        # Wrap the generated stub files in a python_library
-        stub_pylib_name = parent + self.STUB_SUFFIX
-        stub_pylib_rules = self.python_library.convert(
-            base_path=base_path,
-            name=stub_pylib_name,
-            base_module=package,
-            srcs=stub_targets
-        )
-        rules.extend(stub_pylib_rules)
-
-        return ':' + stub_pylib_name, rules
-
     def gen_typing_target(
         self,
         parent,
@@ -452,7 +390,6 @@ class Converter(base.Converter):
         generate_cpp=True,
         python_deps=(),
         python_external_deps=(),
-        gen_stub=False,
         types=(),
         typing_options='',
         tests=(),
@@ -562,20 +499,10 @@ class Converter(base.Converter):
                     yield set_visibility(api_rule)
                     api_headers.append(api_target)
 
-            stubs = []
-            if gen_stub:
-                stub_target, stub_rules = self.convert_stub_pylib(
-                    name, base_path, package, pyx_srcs
-                )
-                for rule in stub_rules:
-                    yield set_visibility(rule)
-                stubs.append(stub_target)
-
             # The first pyx will be the named target and it will depend on all
             # the other generated extensions
             first_pyx.attributes['name'] = name
             first_pyx.attributes['deps'].extend(extensions)
-            first_pyx.attributes['deps'].extend(stubs)
             # Don't forget to depend on the .so from our cython deps
             first_pyx.attributes['deps'].extend(deps)
             first_pyx.attributes['deps'].extend(external_deps)
@@ -642,7 +569,6 @@ class Converter(base.Converter):
             'deps',
             'external_deps',
             'flags',
-            'gen_stub',
             'generate_cpp',
             'headers',
             'header_namespace',
