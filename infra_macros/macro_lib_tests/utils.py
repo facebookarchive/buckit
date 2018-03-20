@@ -67,6 +67,7 @@ class ConverterTestCase(unittest.TestCase):
         configs = {
             ('repositories', 'bazel_skylib'): '../xplat/third-party/bazel-skylib',
             ('repositories', 'fbcode_macros'): 'tools/build/buck/infra_macros/fbcode_macros',
+            ('repositories', 'fbcode'): '.',
             ('repositories', 'xplat'): '../xplat',
             ('fbcode', 'platform'): 'gcc-4.9-glibc-2.20-fb',
             ('fbcode', 'macro_lib'): '//tools/build/buck/infra_macros/macro_lib',
