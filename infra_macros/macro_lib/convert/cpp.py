@@ -979,6 +979,12 @@ class CppConverter(base.Converter):
             autodeps_keep=False,
             undefined_symbols=False):
 
+        if not isinstance(compiler_flags, (list, tuple)):
+            raise TypeError(
+                "Expected compiler_flags to be a list or a tuple, got {0!r} instead.".
+                format(compiler_flags)
+            )
+
         # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
         extra_rules = []
         out_srcs = []  # type: List[SourceWithFlags]
