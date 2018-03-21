@@ -139,6 +139,7 @@ python_unittest(
     srcs = [
         "tests/btrfs_utils.py",
         "tests/demo_sendstreams.py",
+        "tests/demo_sendstreams_expected.py",
         "tests/test_parse_dump.py",
     ],
     base_module = "btrfs_diff",
