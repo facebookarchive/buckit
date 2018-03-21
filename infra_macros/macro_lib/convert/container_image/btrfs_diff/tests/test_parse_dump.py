@@ -2,29 +2,29 @@
 import io
 import logging
 import os
+import pickle
 import subprocess
 import unittest
 
-from artifacts_dir import get_per_repo_artifacts_dir
-from volume_for_repo import get_volume_for_current_repo
+from typing import List, Sequence
 
 from ..parse_dump import (
-    SendStreamItems, NAME_TO_PARSER_TYPE, parse_btrfs_dump,
-    unquote_btrfs_progs_path,
+    NAME_TO_PARSER_TYPE, parse_btrfs_dump, unquote_btrfs_progs_path,
 )
-from ..send_stream import get_frequency_of_selinux_xattrs, ItemFilters
+from ..send_stream import (
+    get_frequency_of_selinux_xattrs, ItemFilters, SendStreamItem,
+    SendStreamItems,
+)
 from ..subvol_path import SubvolPath
+
+from .demo_sendstreams import sudo_demo_sendstreams, sibling_path
 
 # `unittest`'s output shortening makes tests much harder to debug.
 unittest.util._MAX_LENGTH = 10e4
 
 
-def _sibling_path(rel_path):
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
-
-
-def _parse_bytes_to_list(s):
-    return list(parse_btrfs_dump(io.BytesIO(s)))
+def _parse_lines_to_list(s: Sequence[bytes]) -> List[SendStreamItem]:
+    return list(parse_btrfs_dump(io.BytesIO(b'\n'.join(s) + b'\n')))
 
 
 class ParseBtrfsDumpTestCase(unittest.TestCase):
@@ -44,14 +44,8 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             )
         )
 
-    def test_ensure_print_demo_dump_covers_all_operations(self):
-        print_demo_dump_sh = _sibling_path('print_demo_dump.sh')
-        out_bytes = subprocess.check_output(
-            ['sudo', print_demo_dump_sh],
-            cwd=get_volume_for_current_repo(1e8, get_per_repo_artifacts_dir()),
-        )
-        out_lines = out_bytes.rstrip(b'\n').split(b'\n')
-        # Ensure we have exercised all the implemented operations:
+    def test_ensure_demo_sendstreams_cover_all_operations(self):
+        # Ensure we have implemented all the operations from here:
         # https://github.com/kdave/btrfs-progs/blob/master/send-dump.c#L319
         expected_ops = {
             'chmod',
@@ -80,11 +74,18 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             {n.decode() for n in NAME_TO_PARSER_TYPE.keys()},
             expected_ops,
         )
+
+        # Now check that `demo_sendstream.py` also exercises those operations.
+        stream_dict = sudo_demo_sendstreams()
+        out_lines = [
+            *stream_dict['create_ops']['dump'],
+            *stream_dict['mutate_ops']['dump'],
+        ]
         self.assertEqual(
             expected_ops,
             {l.split(b' ', 1)[0].decode() for l in out_lines if l} - {'write'},
         )
-        items = _parse_bytes_to_list(out_bytes)
+        items = _parse_lines_to_list(out_lines)
         # We an item per line, and the items cover the expected operations.
         self.assertEqual(len(items), len(out_lines))
         self.assertEqual(
@@ -95,12 +96,15 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
     # The reason we want to parse a gold file instead of, as above, running
     # `print_demo_dump.sh` is explained in `update_gold_print_demo_dump.sh`.
     def test_verify_gold_parse(self):
-        with open(_sibling_path('gold_print_demo_dump.out'), 'rb') as infile:
-            lines = infile.readlines()
-        build_start_time, build_end_time = (
-            float(l) for l in [lines[0], lines[-1]]
-        )
-        orig_items = _parse_bytes_to_list(b''.join(lines[1:-1]))
+        with open(sibling_path('gold_demo_sendstreams.pickle'), 'rb') as f:
+            stream_dict = pickle.load(f)
+        # `--dump` does not show fractional seconds at present.
+        build_start_time = int(stream_dict['create_ops']['build_start_time'])
+        build_end_time = int(stream_dict['mutate_ops']['build_end_time'])
+        orig_items = _parse_lines_to_list([
+            *stream_dict['create_ops']['dump'],
+            *stream_dict['mutate_ops']['dump'],
+        ])
         items = orig_items
 
         # Our test program does not touch the SELinux context, so if it's
@@ -161,11 +165,11 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
 
         # These make it quite easy to update the test after you run
         # `update_gold_print_demo_dump.sh`.
-        uuid_create = b'c065a6aa-c53c-624e-8f10-a2b080b9e580'
-        transid_create = 2797
-        uuid_mutate = b'32f71a40-1253-da49-81fe-0c182ed6cb79'
-        transid_mutate = 2800
-        temp_path_middles = {'create_ops': 2795, 'mutate_ops': 2799}
+        uuid_create = b'2e178b7b-b005-b545-9de3-8c9f0c7881fd'
+        transid_create = 3850
+        uuid_mutate = b'9849f057-eb81-304d-a50d-76997da610f5'
+        transid_mutate = 3853
+        temp_path_middles = {'create_ops': 3848, 'mutate_ops': 3852}
         temp_path_counter = 256  # I have never seen this initial value change.
 
         def temp_path(prefix):
@@ -225,9 +229,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
 
             *and_rename(di.symlink(
                 path=temp_path('create_ops'), dest=b'hello/world',
-            ), b'goodbye_symbolic'),
-            chown('create_ops/goodbye_symbolic'),
-            utimes('create_ops/goodbye_symbolic'),
+            ), b'bye_symlink'),
+            chown('create_ops/bye_symlink'),
+            utimes('create_ops/bye_symlink'),
 
             *and_rename(
                 di.mkfile(path=temp_path('create_ops')), b'1MB_nuls',
@@ -305,24 +309,24 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         ], items)
 
     def test_common_errors(self):
-        ok_line = b'mkfile ./cat\\ and\\ dog\n'  # Drive-by test of unquoting
+        ok_line = b'mkfile ./cat\\ and\\ dog'  # Drive-by test of unquoting
         self.assertEqual(
             [SendStreamItems.mkfile(path=SubvolPath._new(b'cat and dog'))],
-            _parse_bytes_to_list(ok_line),
+            _parse_lines_to_list([ok_line]),
         )
 
         with self.assertRaisesRegex(RuntimeError, 'has unexpected format:'):
-            _parse_bytes_to_list(b' ' + ok_line)
+            _parse_lines_to_list([b' ' + ok_line])
 
         with self.assertRaisesRegex(RuntimeError, "unknown item type b'Xmkfi"):
-            _parse_bytes_to_list(b'X' + ok_line)
+            _parse_lines_to_list([b'X' + ok_line])
 
     def test_set_xattr_errors(self):
 
         def make_line(len_k='len', len_v=7, name_k='name', data_k='data'):
             return (
                 'set_xattr       ./subvol/file                   '
-                f'{name_k}=MY_ATTR {data_k}=MY_DATA {len_k}={len_v}\n'
+                f'{name_k}=MY_ATTR {data_k}=MY_DATA {len_k}={len_v}'
             ).encode('ascii')
 
         # Before breaking it, ensure that `make_line` actually works
@@ -334,7 +338,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
                     data=data,
                 )],
                 # The `--dump` line does NOT show the \0, the parser infers it.
-                _parse_bytes_to_list(make_line(len_v=len(data))),
+                _parse_lines_to_list([make_line(len_v=len(data))]),
             )
 
         for bad_line in [
@@ -344,7 +348,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             make_line(data_k='name', name_k='data'), make_line(name_k='nom'),
         ]:
             with self.assertRaisesRegex(RuntimeError, 'in line details:'):
-                _parse_bytes_to_list(bad_line)
+                _parse_lines_to_list([bad_line])
 
 
 if __name__ == '__main__':

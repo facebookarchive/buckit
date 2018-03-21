@@ -114,11 +114,6 @@ python_unittest(
     deps = [":extents_to_chunks"],
 )
 
-export_file(
-    name = "print_demo_dump.sh",
-    src = "tests/print_demo_dump.sh",
-)
-
 python_library(
     name = "parse_send_stream",
     srcs = [
@@ -133,29 +128,33 @@ python_library(
     ],
 )
 
+# The reason we need the gold data is explained in `demo_sendtreams.py`.
 export_file(
-    # The reason we need this is explained in `update_gold_print_demo_dump.sh`.
-    name = "gold_print_demo_dump.out",
-    src = "tests/gold_print_demo_dump.out",
+    name = "gold_demo_sendstreams.pickle",
+    src = "tests/gold_demo_sendstreams.pickle",
 )
 
 python_unittest(
     name = "test-send-stream",
-    srcs = ["tests/test_parse_dump.py"],
+    srcs = [
+        "tests/btrfs_utils.py",
+        "tests/demo_sendstreams.py",
+        "tests/test_parse_dump.py",
+    ],
     base_module = "btrfs_diff",
     gen_srcs = {
-        ":print_demo_dump.sh": "tests/print_demo_dump.sh",
-        ":gold_print_demo_dump.out": "tests/gold_print_demo_dump.out",
+        ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
     needed_coverage = [(
         1.0,
         ":parse_send_stream",
     )],
-    par_style = "zip",  # our 'export_file' deps won't work with "fastzip"
+    # "fastzip" won't work for two reasons: (i) we re-execute
+    # "demo_sendstreams.py", (ii) we have an 'export_file' dep.
+    par_style = "zip",
     deps = [
-        ":gold_print_demo_dump.out",
+        ":gold_demo_sendstreams.pickle",
         ":parse_send_stream",
-        ":print_demo_dump.sh",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":artifacts_dir",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
