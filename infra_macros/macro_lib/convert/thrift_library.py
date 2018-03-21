@@ -965,11 +965,6 @@ class HaskellThriftConverter(ThriftLangConverter):
             args.append('--required-symbols')
             args.append(hs_required_symbols)
 
-        # Ensure we have scoped enums turned on
-        scopedEnumFlag = "--scoped-enums"
-        if scopedEnumFlag not in args:
-            args.append(scopedEnumFlag)
-
         return args
 
     def get_generated_sources(
