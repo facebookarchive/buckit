@@ -172,6 +172,11 @@ def sudo_demo_sendstreams():
     ).stdout)
 
 
+def gold_demo_sendstreams():
+    with open(sibling_path('gold_demo_sendstreams.pickle'), 'rb') as f:
+        return pickle.load(f)
+
+
 if __name__ == '__main__':
     # Replace stdout by stderr to prevent random `btrfs-progs` utilities
     # from rendering our pickled stdout unreadable.

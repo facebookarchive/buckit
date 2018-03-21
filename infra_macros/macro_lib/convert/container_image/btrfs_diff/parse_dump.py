@@ -113,7 +113,7 @@ class RegexItemParser:
 
     @classmethod
     def parse_details(
-        cls, path: SubvolPath, details: bytes
+        cls, subvol_name: bytes, path: SubvolPath, details: bytes
     ) -> Optional[Dict[str, Any]]:
         m = cls.regex.fullmatch(details)
         return {
@@ -122,12 +122,12 @@ class RegexItemParser:
             # cases.
             #
             # We currently only use `context_conv_FIELD_NAME` when a detail
-            # field needs to know the path to process correctly, see `link`.
+            # field needs to know the subvolume name, see `link`.
             k: getattr(
-                cls, f'context_conv_{k}', lambda value, path: value
+                cls, f'context_conv_{k}', lambda value, subvol_name: value
             )(
                 getattr(cls, f'conv_{k}', lambda x: x)(v),
-                path=path,
+                subvol_name=subvol_name,
             )
                 for k, v in m.groupdict().items()
         } if m else None
@@ -201,9 +201,9 @@ class SendStreamItemParsers:
         # `btrfs receive` is inconsistent -- unlike other paths, its `dest`
         # does not start with the subvolume path.
         @staticmethod
-        def context_conv_dest(dest: bytes, path: SubvolPath) -> SubvolPath:
+        def context_conv_dest(dest: bytes, subvol_name: bytes) -> SubvolPath:
             return SubvolPath(
-                subvol=path.subvol,
+                subvol=subvol_name,
                 path=os.path.normpath(dest),
             )
 
@@ -242,7 +242,7 @@ class SendStreamItemParsers:
 
         @classmethod
         def parse_details(
-            cls, path: SubvolPath, details: bytes,
+            cls, subvol_name: bytes, path: SubvolPath, details: bytes,
         ) -> Optional[Dict[str, Any]]:
             m = cls.first_regex.fullmatch(details)
             if not m:
@@ -335,6 +335,7 @@ assert set(NAME_TO_PARSER_TYPE.keys()) == set(NAME_TO_ITEM_TYPE.keys())
 
 def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
     reg = re.compile(br'([^ ]+) +((\\ |[^ ])+) *(.*)\n')
+    subvol_name = None
     for l in binary_infile:
         m = reg.fullmatch(l)
         if not m:
@@ -358,7 +359,23 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
         # `ItemFilters.rename` compares such paths.
         path = SubvolPath._new(unquote_btrfs_progs_path(path))
 
-        fields = item_parser.parse_details(path, details)
+        if subvol_name is None:
+            if item_class.sets_subvol_name:
+                assert path.path is None
+                subvol_name = path.subvol
+            else:
+                raise RuntimeError(
+                    f'First stream item did not set subvolume name: {l}'
+                )
+        elif item_class.sets_subvol_name:
+            raise RuntimeError(
+                f'Second name {path.subvol} for subvolume {subvol_name}.'
+            )
+        else:
+            # Soon: eliminate SubvolPath as a thing, strip prefix here
+            assert path.subvol == subvol_name
+
+        fields = item_parser.parse_details(subvol_name, path, details)
         if fields is None:
             raise RuntimeError(f'unexpected format in line details: {repr(l)}')
 

@@ -20,8 +20,11 @@ class SendStreamItem(type):
     def __new__(metacls, classname, bases, dct):
         return metaclass_new_enriched_namedtuple(
             __class__,
+            # This is relative to the subvolume directory, except for the
+            # subvolume-making commands `subvol` and `snapshot`, where it
+            # **is** the name of the subvolume directory.
             ['path'],
-            metacls, classname, bases, dct
+            metacls, classname, bases, {'sets_subvol_name': False, **dct},
         )
 
 
@@ -44,9 +47,11 @@ class SendStreamItems:
 
     class subvol(metaclass=SendStreamItem):
         fields = ['uuid', 'transid']
+        sets_subvol_name = True
 
     class snapshot(metaclass=SendStreamItem):
         fields = ['uuid', 'transid', 'parent_uuid', 'parent_transid']
+        sets_subvol_name = True
 
     #
     # operations making new inodes
