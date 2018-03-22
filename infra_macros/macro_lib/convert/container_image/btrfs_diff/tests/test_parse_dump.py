@@ -14,7 +14,6 @@ from ..send_stream import (
     get_frequency_of_selinux_xattrs, ItemFilters, SendStreamItem,
     SendStreamItems,
 )
-from ..subvol_path import SubvolPath
 
 from .demo_sendstreams import sudo_demo_sendstreams, gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items
@@ -117,10 +116,8 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         subvol_line = f'subvol ./s uuid={uuid} transid=12'.encode()
         ok_line = b'mkfile ./s/cat\\ and\\ dog'  # Drive-by test of unquoting
         self.assertEqual([
-            SendStreamItems.subvol(
-                path=SubvolPath._new(b's'), uuid=uuid.encode(), transid=12,
-            ),
-            SendStreamItems.mkfile(path=SubvolPath._new(b's/cat and dog')),
+            SendStreamItems.subvol(path=b's', uuid=uuid.encode(), transid=12),
+            SendStreamItems.mkfile(path=b'cat and dog'),
         ], _parse_lines_to_list([subvol_line, ok_line]))
 
         with self.assertRaisesRegex(RuntimeError, 'has unexpected format:'):
@@ -132,8 +129,16 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'did not set subvolume'):
             _parse_lines_to_list([ok_line])
 
-        with self.assertRaisesRegex(RuntimeError, 'Second name .* for subvol'):
+        with self.assertRaisesRegex(RuntimeError, 'created more than once'):
             _parse_lines_to_list([subvol_line, subvol_line])
+
+        with self.assertRaisesRegex(RuntimeError, 'did not start with'):
+            _parse_lines_to_list(
+                [subvol_line, ok_line.replace(b'/s/', b'/x/')]
+            )
+
+        with self.assertRaisesRegex(RuntimeError, "s/t' contains /"):
+            _parse_lines_to_list([subvol_line.replace(b'./s', b'./s/t')])
 
     def test_set_xattr_errors(self):
         uuid = '01234567-0123-0123-0123-012345678901'
@@ -149,12 +154,10 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         for data in (b'MY_DATA', b'MY_DATA\0'):
             self.assertEqual([
                 SendStreamItems.subvol(
-                    path=SubvolPath._new(b's'), uuid=uuid.encode(), transid=7,
+                    path=b's', uuid=uuid.encode(), transid=7,
                 ),
                 SendStreamItems.set_xattr(
-                    path=SubvolPath._new(b's/file'),
-                    name=b'MY_ATTR',
-                    data=data,
+                    path=b'file', name=b'MY_ATTR', data=data,
                 ),
                 # The `--dump` line does NOT show the \0, the parser infers it.
             ], _parse_lines_to_list(make_lines(len_v=len(data))))

@@ -32,9 +32,7 @@ class InodeIDMap:
     'Path -> Inode mapping, aka the directory structure of a filesystem'
     # Future: the paths are currently marked as `bytes` (and `str` is
     # quietly tolerated for tests), but the actual semantics need to be
-    # clarified.  Maybe I'll end up extending SubvolPath to have 3
-    # components like `(parent_of_subvol_in_volume, subvol_dir, rel_path)`,
-    # and store those...  or maybe these will just be the 3rd component.
+    # clarified.  It'll likely be "path relative to EITHER(subvol or vol)".
     id_to_paths: Mapping[int, Set[bytes]]
     path_to_id: Mapping[bytes, InodeID]
 

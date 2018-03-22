@@ -59,7 +59,6 @@ import re
 from collections import OrderedDict
 from typing import Any, BinaryIO, Callable, Dict, Iterable, Optional, Pattern
 
-from .subvol_path import SubvolPath
 from .send_stream import SendStreamItem, SendStreamItems
 
 
@@ -113,7 +112,7 @@ class RegexItemParser:
 
     @classmethod
     def parse_details(
-        cls, subvol_name: bytes, path: SubvolPath, details: bytes
+        cls, subvol_name: bytes, details: bytes,
     ) -> Optional[Dict[str, Any]]:
         m = cls.regex.fullmatch(details)
         return {
@@ -122,7 +121,7 @@ class RegexItemParser:
             # cases.
             #
             # We currently only use `context_conv_FIELD_NAME` when a detail
-            # field needs to know the subvolume name, see `link`.
+            # field needs to know the subvolume name, see e.g. `clone`.
             k: getattr(
                 cls, f'context_conv_{k}', lambda value, subvol_name: value
             )(
@@ -131,6 +130,15 @@ class RegexItemParser:
             )
                 for k, v in m.groupdict().items()
         } if m else None
+
+
+def _normalize_subvolume_path(s: bytes, *, subvol_name: bytes) -> bytes:
+    # `normpath` is needed since `btrfs receive --dump` is inconsistent
+    # about trailing slashes on directory paths.
+    stripped = os.path.relpath(s, subvol_name)
+    if len(stripped) >= len(s) or stripped.startswith(b'..'):
+        raise RuntimeError(f'{s} did not start with {subvol_name}')
+    return stripped
 
 
 def _from_octal(s: bytes) -> int:
@@ -192,7 +200,7 @@ class SendStreamItemParsers:
     class rename(RegexItemParser):
         # This path is not quoted in `send-dump.c`
         regex = re.compile(br'dest=(?P<dest>.*)')
-        conv_dest = staticmethod(SubvolPath._new)  # Normalize like .path
+        context_conv_dest = _normalize_subvolume_path
 
     class link(RegexItemParser):
         # This path is not quoted in `send-dump.c`
@@ -200,12 +208,7 @@ class SendStreamItemParsers:
 
         # `btrfs receive` is inconsistent -- unlike other paths, its `dest`
         # does not start with the subvolume path.
-        @staticmethod
-        def context_conv_dest(dest: bytes, subvol_name: bytes) -> SubvolPath:
-            return SubvolPath(
-                subvol=subvol_name,
-                path=os.path.normpath(dest),
-            )
+        conv_dest = os.path.normpath
 
     class unlink(RegexItemParser):
         pass
@@ -227,7 +230,7 @@ class SendStreamItemParsers:
         )
         conv_offset = staticmethod(int)
         conv_len = staticmethod(int)
-        conv_from_path = staticmethod(SubvolPath._new)  # Normalize like .path
+        context_conv_from_path = _normalize_subvolume_path
         conv_clone_offset = staticmethod(int)
 
     class set_xattr:
@@ -242,7 +245,7 @@ class SendStreamItemParsers:
 
         @classmethod
         def parse_details(
-            cls, subvol_name: bytes, path: SubvolPath, details: bytes,
+            cls, subvol_name: bytes, details: bytes,
         ) -> Optional[Dict[str, Any]]:
             m = cls.first_regex.fullmatch(details)
             if not m:
@@ -357,25 +360,27 @@ def parse_btrfs_dump(binary_infile: BinaryIO) -> Iterable[SendStreamItem]:
         # We MUST unquote here, or paths in field 1 will not be comparable
         # with as-of-now unquoted paths in the other fields.  For example,
         # `ItemFilters.rename` compares such paths.
-        path = SubvolPath._new(unquote_btrfs_progs_path(path))
+        unnormalized_path = unquote_btrfs_progs_path(path)
 
         if subvol_name is None:
-            if item_class.sets_subvol_name:
-                assert path.path is None
-                subvol_name = path.subvol
-            else:
+            if not item_class.sets_subvol_name:
                 raise RuntimeError(
                     f'First stream item did not set subvolume name: {l}'
                 )
+            path = os.path.normpath(unnormalized_path)
+            subvol_name = path
+            if b'/' in path:
+                raise RuntimeError(f'subvol path {path} contains /')
         elif item_class.sets_subvol_name:
             raise RuntimeError(
-                f'Second name {path.subvol} for subvolume {subvol_name}.'
+                f'Subvolume {subvol_name} created more than once.'
             )
         else:
-            # Soon: eliminate SubvolPath as a thing, strip prefix here
-            assert path.subvol == subvol_name
+            path = _normalize_subvolume_path(
+                unnormalized_path, subvol_name=subvol_name,
+            )
 
-        fields = item_parser.parse_details(subvol_name, path, details)
+        fields = item_parser.parse_details(subvol_name, details)
         if fields is None:
             raise RuntimeError(f'unexpected format in line details: {repr(l)}')
 
