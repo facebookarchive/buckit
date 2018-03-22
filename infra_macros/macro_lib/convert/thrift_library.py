@@ -1089,6 +1089,8 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             sources_map,
             deps,
             java_thrift_maven_coords=None,
+            java_thrift_maven_publisher_enabled=False,
+            java_thrift_maven_publisher_version_prefix='1.0',
             visibility=None,
             **kwargs):
 
@@ -1121,6 +1123,9 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             srcs=out_srcs,
             exported_deps=out_deps,
             maven_coords=java_thrift_maven_coords,
+            maven_publisher_enabled=java_thrift_maven_publisher_enabled,
+            maven_publisher_version_prefix=(
+                java_thrift_maven_publisher_version_prefix),
             visibility=visibility))
 
         return rules
@@ -2822,6 +2827,8 @@ class ThriftLibraryConverter(base.Converter):
             'hs2_deps',
             'java_deps',
             'java_thrift_maven_coords',
+            'java_thrift_maven_publisher_enabled',
+            'java_thrift_maven_publisher_version_prefix',
             'java_swift_maven_coords',
             'languages',
             'name',
