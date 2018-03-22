@@ -75,7 +75,13 @@ def make_create_ops_subvolume(subvols: TempSubvolumes, path: RelativePath):
     run('mknod', 'unbuffered', 'c', 1337, 31415)
     run('mkfifo', 'fifo')                           # mkfifo
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.bind(path('unix_sock'))                # mksock
+        # Hack to avoid "AF_UNIX path too long"
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(path())
+            sock.bind('unix_sock')                  # mksock
+        finally:
+            os.chdir(old_cwd)
     run('ln', 'hello/world', 'goodbye')             # link
     run('ln', '-s', 'hello/world', 'bye_symlink')   # symlink
     run(                                            # update_extent
