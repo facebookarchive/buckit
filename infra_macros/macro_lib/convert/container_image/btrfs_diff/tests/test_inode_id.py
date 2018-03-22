@@ -78,6 +78,11 @@ class InodeIDTestCase(unittest.TestCase):
         # OK to remove since it's now empty
         id_map.remove_path(b'a')
 
+    def test_description(self):
+        self.assertEqual(
+            'cat@.', repr(InodeIDMap(description='cat').get_id(b'.')),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

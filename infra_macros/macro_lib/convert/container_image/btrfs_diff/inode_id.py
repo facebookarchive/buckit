@@ -11,7 +11,7 @@ import os
 
 from collections import defaultdict
 
-from typing import Mapping, NamedTuple, Optional, Set
+from typing import Any, Mapping, NamedTuple, Optional, Set
 
 
 class InodeID(NamedTuple):
@@ -20,9 +20,10 @@ class InodeID(NamedTuple):
 
     def __repr__(self):
         paths = self.id_map.get_paths(self)
+        desc = f'{self.id_map.description}@' if self.id_map.description else ''
         if not paths:
-            return f'ANON_INODE#{self.id}'
-        return ','.join(
+            return f'{desc}ANON_INODE#{self.id}'
+        return desc + ','.join(
             p.decode(errors='surrogateescape') for p in sorted(paths)
         )
 
@@ -44,6 +45,7 @@ class InodeIDMap:
       - ban hardlinks to directories, or linking a dir inside itself
       - resolve symlinks
     '''
+    description: Any  # repr()able, to be used for repr()ing InodeIDs
     # Future: the paths are currently marked as `bytes` (and `str` is
     # quietly tolerated for tests), but the actual semantics need to be
     # clarified.  It'll likely be "path relative to EITHER(subvol or vol)".
@@ -51,10 +53,11 @@ class InodeIDMap:
     path_to_id: Mapping[bytes, InodeID]
     id_to_children: Mapping[int, Set[bytes]]  # dir/path -> dir/path/child
 
-    def __init__(self):
+    def __init__(self, *, description: Any=''):
         self.inode_id_counter = itertools.count()
         # We want our own mutable storage so that paths can be added or deleted
         root_id = InodeID(id=next(self.inode_id_counter), id_map=self)
+        self.description = description
         self.id_to_paths = defaultdict(set, {root_id.id: {b'.'}})
         self.path_to_id = {b'.': root_id}
         self.id_to_children = defaultdict(set)
