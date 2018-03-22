@@ -82,7 +82,7 @@ class CheckedRunTemplate:
 
 def byteme(s: Union[str, bytes]) -> bytes:
     'Byte literals are tiring, just promote strings as needed.'
-    return s if isinstance(s, bytes) else s.encode()
+    return s.encode() if isinstance(s, str) else s
 
 
 class RelativePath:
