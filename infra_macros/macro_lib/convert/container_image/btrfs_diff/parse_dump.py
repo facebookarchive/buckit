@@ -271,11 +271,11 @@ class SendStreamItemParsers:
             # either fix `btrfs receive --dump` to do quoting, or just parse
             # the binary send-stream.
             length = m.group(2)
-            for has_trailing_nul in [False, True]:
-                end_of_data = len(rest) - int(length) + has_trailing_nul
+            for has_trailing_null in [False, True]:
+                end_of_data = len(rest) - int(length) + has_trailing_null
                 m = cls.second_regex.fullmatch(rest[:end_of_data])
                 data = rest[end_of_data:]
-                if has_trailing_nul:
+                if has_trailing_null:
                     data += b'\0'
                 assert len(data) == int(length)  # We don't need to store `len`
                 if m:

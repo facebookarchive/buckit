@@ -107,6 +107,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
                 stream_dict['create_ops']['build_start_time']
             ),
             build_end_time=int(stream_dict['mutate_ops']['build_end_time']),
+            dump_mode=True,
         )
         self.assertEqual(filtered_items, expected_items)
 

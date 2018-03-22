@@ -101,6 +101,7 @@ python_library(
     name = "parse_send_stream",
     srcs = [
         "parse_dump.py",
+        "parse_send_stream.py",
         "send_stream.py",
     ],
     base_module = "btrfs_diff",
@@ -123,6 +124,7 @@ python_unittest(
         "tests/demo_sendstreams.py",
         "tests/demo_sendstreams_expected.py",
         "tests/test_parse_dump.py",
+        "tests/test_parse_send_stream.py",
     ],
     base_module = "btrfs_diff",
     gen_srcs = {

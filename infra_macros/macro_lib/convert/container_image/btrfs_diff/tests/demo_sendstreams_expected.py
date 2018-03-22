@@ -33,6 +33,10 @@ TEMP_PATH_COUNTER = 256
 def get_filtered_and_expected_items(
     items: Sequence[SendStreamItem],
     build_start_time: float, build_end_time: float,
+    # A toggle for the couple of small differences between the ground truth
+    # in the binary send-stream, and the output of `btrfs receive --dump`,
+    # which `parse_dump` cannot correct.
+    *, dump_mode: bool
 ) -> Tuple[List[SendStreamItem], List[SendStreamItem]]:
 
     # Our test program does not touch the SELinux context, so if it's
@@ -157,7 +161,8 @@ def get_filtered_and_expected_items(
         ),
         di.clone(
             path=p('1MB_nuls_clone'), offset=0, len=2**20,
-            from_uuid=b'', from_transid=b'',
+            from_uuid=b'' if dump_mode else UUID_CREATE,
+            from_transid=b'' if dump_mode else TRANSID_CREATE,
             from_path=p('1MB_nuls'), clone_offset=0,
         ),
         di.truncate(path=p('1MB_nuls_clone'), size=2**20),
@@ -201,7 +206,13 @@ def get_filtered_and_expected_items(
         *and_rename(
             di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
         ),
-        di.update_extent(path=p('hello_renamed/een'), offset=0, len=5),
+        (
+            di.update_extent(
+                path=p('hello_renamed/een'), offset=0, len=5,
+            ) if dump_mode else di.write(
+                path=p('hello_renamed/een'), offset=0, data=b'push\n',
+            )
+        ),
         di.truncate(path=p('hello_renamed/een'), size=5),
         *base_metadata('hello_renamed/een'),
     ]
