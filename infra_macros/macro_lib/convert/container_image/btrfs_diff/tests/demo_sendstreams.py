@@ -99,6 +99,13 @@ def make_create_ops_subvolume(subvols: TempSubvolumes, path: RelativePath):
     with open(path('zeros_hole_zeros'), 'ab') as f:
         f.write(b'\0' * (16 * 1024))
 
+    # This just serves to show that `btrfs send` ignores nested subvolumes.
+    # There is no mention of `nested_subvol` in the send-stream.
+    subvols.create(path('nested_subvol'))
+    run2 = CheckedRunTemplate(cwd=path('nested_subvol'))
+    run2('touch', 'borf')
+    run2('mkdir', 'beep')
+
 
 def make_mutate_ops_subvolume(
     subvols: TempSubvolumes, create_ops_rel: RelativePath, path: RelativePath,

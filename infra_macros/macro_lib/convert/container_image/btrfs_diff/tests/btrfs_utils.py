@@ -7,12 +7,17 @@ import subprocess
 from typing import List, Union
 
 
+def subvolume_set_readonly(subvol_path: bytes, *, readonly):
+    subprocess.run([
+        'btrfs', 'property', 'set', '-ts', subvol_path, 'ro',
+        'true' if readonly else 'false',
+    ], check=True)
+
+
 def mark_subvolume_readonly_and_get_sendstream(
     subvol_path: bytes, *, send_args: List[Union[bytes, str]],
 ):
-    subprocess.run([
-        'btrfs', 'property', 'set', '-ts', subvol_path, 'ro', 'true'
-    ], check=True)
+    subvolume_set_readonly(subvol_path, readonly=True)
 
     # Btrfs bug #25329702: in some cases, a `send` without a sync will violate
     # read-after-write consistency and send a "past" view of the filesystem.
@@ -54,6 +59,10 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         self.paths.append(dest)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # If any of subvolumes are nested, and the parents were made
+        # read-only, we won't be able to delete them.
+        for path in self.paths:
+            subvolume_set_readonly(path, readonly=False)
         for path in reversed(self.paths):
             try:
                 subprocess.run([
