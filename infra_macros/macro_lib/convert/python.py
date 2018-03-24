@@ -105,10 +105,13 @@ class PythonConverter(base.Converter):
         return self.RULE_TYPE_MAP[self._rule_type]
 
     def is_binary(self):
-        return self.get_fbconfig_rule_type() in (
-            'python_binary',
-            'python_unittest',
-        )
+        return self.get_fbconfig_rule_type() == 'python_binary'
+
+    def is_test(self):
+        return self.get_fbconfig_rule_type() == 'python_unittest'
+
+    def is_library(self):
+        return self.get_fbconfig_rule_type() == 'python_library'
 
     def parse_srcs(self, base_path, param, srcs):  # type: (str, str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
         """
@@ -709,7 +712,7 @@ class PythonConverter(base.Converter):
         if parsed_srcs:
             # Need to split the srcs into srcs & resources as Buck
             # expects all test srcs to be python modules.
-            if self.is_test(self.get_buck_rule_type()):
+            if self.is_test():
                 attributes['srcs'], attributes['platform_srcs'] = (
                     self.format_sources(
                         {k: v
@@ -778,6 +781,9 @@ class PythonConverter(base.Converter):
                                 for dep in external_deps
                             ]))))
 
+        if self.is_test():
+            attributes['labels'] = ['unittest-library']
+
         return Rule('python_library', attributes)
 
     def create_binary(
@@ -806,7 +812,6 @@ class PythonConverter(base.Converter):
         preload_deps=(),
         jemalloc_conf=None,
         typing_options='',
-        runtime_deps=(),
         helper_deps=False,
         visibility=None,
     ):
@@ -833,12 +838,9 @@ class PythonConverter(base.Converter):
         if not rule_type:
             rule_type = self.get_buck_rule_type()
 
-        # Add the library to our exported rules.
-        rules.append(library)
-
         # If this is a test, we need to merge the library rule into this
         # one and inherit its deps.
-        if self.is_test(rule_type):
+        if self.is_test():
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
                 val = library.attributes.get(param)
                 if val is not None:
@@ -862,7 +864,7 @@ class PythonConverter(base.Converter):
             if main_module.endswith('.py'):
                 main_module = main_module[:-3]
             attributes['main_module'] = main_module
-        elif self.is_test(rule_type):
+        elif self.is_test():
             main_module = '__fb_test_main__'
             attributes['main_module'] = main_module
 
@@ -940,7 +942,7 @@ class PythonConverter(base.Converter):
         attributes['linker_flags'] = (
             self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
 
-        if self.is_test(rule_type):
+        if self.is_test():
             attributes['labels'] = (
                 self.convert_labels(platform, 'python', *tags))
 
@@ -969,7 +971,7 @@ class PythonConverter(base.Converter):
         # the main binary which we've built up to this point.
         if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
-            if self.is_test(rule_type):
+            if self.is_test():
                 rules.extend(self.gen_test_modules(base_path, library, visibility))
                 interp_deps.append(
                     ':{}-testmodules-lib'.format(library.attributes['name'])
@@ -1011,15 +1013,10 @@ class PythonConverter(base.Converter):
                 list(attributes['tests']) + [':{}-typecheck'.format(name)]
             )
 
-        if self.is_test(rule_type):
+        if self.is_test():
             if not dependencies:
                 dependencies = []
             dependencies.append('//python:fbtestmain')
-
-        if runtime_deps:
-            rule = self.gen_associated_targets(name, runtime_deps, visibility)
-            dependencies.append(rule.target_name)
-            rules.append(rule)
 
         if dependencies:
             attributes['deps'] = dependencies
@@ -1076,44 +1073,55 @@ class PythonConverter(base.Converter):
         cpp_deps=(),  # ctypes targets
         helper_deps=False,
     ):
-        # For libraries, create the library and return it.
-        if not self.is_binary():
-            if get_typing_config_target():
+        # for binary we need a separate library
+        if self.is_library():
+            library_name = name
+        else:
+            library_name = name + '-library'
 
-                yield self.gen_typing_config(
-                    name,
-                    base_module if base_module is not None else base_path,
-                    srcs,
-                    [self.convert_build_target(base_path, dep) for dep in deps],
-                    typing,
-                    typing_options,
-                    visibility,
-                )
-
-            if runtime_deps:
-                rule = self.gen_associated_targets(name, runtime_deps, visibility)
-                deps = list(deps) + [rule.target_name]
-                yield rule
-
-            yield self.create_library(
-                base_path,
-                name,
-                base_module=base_module,
-                srcs=srcs,
-                versioned_srcs=versioned_srcs,
-                gen_srcs=gen_srcs,
-                deps=deps,
-                tests=tests,
-                external_deps=external_deps,
-                visibility=visibility,
-                cpp_deps=cpp_deps,
+        if get_typing_config_target():
+            yield self.gen_typing_config(
+                library_name,
+                base_module if base_module is not None else base_path,
+                srcs,
+                [self.convert_build_target(base_path, dep) for dep in deps],
+                typing,
+                typing_options,
+                visibility,
             )
 
+        if runtime_deps:
+            rule = self.gen_associated_targets(library_name, runtime_deps, visibility)
+            deps = list(deps) + [rule.target_name]
+            yield rule
+
+        library = self.create_library(
+            base_path,
+            library_name,
+            base_module=base_module,
+            srcs=srcs,
+            versioned_srcs=versioned_srcs,
+            gen_srcs=gen_srcs,
+            deps=deps,
+            tests=tests,
+            external_deps=external_deps,
+            visibility=visibility,
+            cpp_deps=cpp_deps,
+        )
+
+        # People use -library of unittests
+        yield library
+
+        if self.is_library():
+            # If we are a library then we are done now
             return
 
         # For binary rules, create a separate library containing the sources.
         # This will be added as a dep for python binaries and merged in for
         # python tests.
+        if isinstance(py_version, list) and len(py_version) == 1:
+            py_version = py_version[0]
+
         if not isinstance(py_version, list):
             versions = {py_version: name}
         else:
@@ -1122,32 +1130,10 @@ class PythonConverter(base.Converter):
                 python_version = self.get_python_version(py_ver)
                 new_name = name + '-' + python_version
                 versions[py_ver] = new_name
-        rule_names = []
+        tests = []
+        rule_names = set()
         for py_ver, py_name in sorted(versions.items()):
-            library = self.create_library(
-                base_path,
-                py_name + '-library',
-                base_module=base_module,
-                srcs=srcs,
-                versioned_srcs=versioned_srcs,
-                gen_srcs=gen_srcs,
-                deps=deps,
-                tests=tests,
-                external_deps=external_deps,
-                cpp_deps=cpp_deps,
-                visibility=visibility,
-            )
-            if get_typing_config_target():
-                yield self.gen_typing_config(
-                    py_name + '-library',
-                    base_module if base_module is not None else base_path,
-                    srcs,
-                    [self.convert_build_target(base_path, dep) for dep in deps],
-                    typing or check_types,
-                    typing_options,
-                    visibility=visibility,
-                )
-            one_set_rules = self.create_binary(
+            rules = self.create_binary(
                 base_path,
                 py_name,
                 library,
@@ -1171,19 +1157,18 @@ class PythonConverter(base.Converter):
                 preload_deps=preload_deps,
                 jemalloc_conf=jemalloc_conf,
                 typing_options=check_types_options,
-                runtime_deps=runtime_deps,
                 helper_deps=helper_deps,
                 visibility=visibility,
             )
-            for rule in one_set_rules:
-                yield rule
-            rule_names.append(':' + py_name)
-
-        # If we only have one then we don't need the genrule
-        genrule = len(rule_names) > 1
+            if self.is_test():
+                tests.append(':' + py_name)
+            for rule in rules:
+                if rule.target_name not in rule_names:
+                    yield rule
+                    rule_names.add(rule.target_name)
 
         # Create a genrule to wrap all the tests for easy running
-        if genrule and self.get_fbconfig_rule_type() == 'python_unittest':
+        if len(tests) > 1:
             attrs = collections.OrderedDict()
             attrs['name'] = name
             if visibility is not None:
