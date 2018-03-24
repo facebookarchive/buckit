@@ -1174,10 +1174,10 @@ class PythonConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['out'] = os.curdir
-            attrs['tests'] = rule_names
+            attrs['tests'] = tests
             # With this we are telling buck we depend on the test targets
             cmds = []
-            for test in rule_names:
+            for test in tests:
                 cmds.append('echo $(location {})'.format(test))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
