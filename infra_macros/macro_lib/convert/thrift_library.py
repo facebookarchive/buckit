@@ -523,10 +523,6 @@ class CppThriftConverter(ThriftLangConverter):
             clients_deps.append(
                 self.get_thrift_dep_target(
                     'thrift/lib/cpp2/transport/core', 'thrift_client'))
-            clients_deps.append(
-                self.get_thrift_dep_target(
-                    'thrift/lib/cpp2/transport/rsocket/client',
-                    'stream_thrift_client'))
             services_deps.append(
                 self.get_thrift_dep_target(
                     'thrift/lib/cpp2/transport/core',
