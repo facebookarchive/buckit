@@ -353,7 +353,7 @@ class Converter(object):
 
         out_platform_flags = []
 
-        for arch, flags in arch_flags.items():
+        for arch, flags in sorted(arch_flags.items()):
             platforms = self.get_platforms_for_arch(arch)
             if platforms:
                 out_platform_flags.append(
