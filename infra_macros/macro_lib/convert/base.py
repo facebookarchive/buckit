@@ -1596,16 +1596,16 @@ class Converter(object):
                 build_mode.tsan_options if build_mode else None,
             ))
 
-        lib_name = name + '-cxx-sanitizer-configuration-' + GENERATED_LIB_SUFFIX
+        lib_name = name + '-san-conf-' + GENERATED_LIB_SUFFIX
         # Setup a rule to generate the sanitizer configuration C file.
-        source_name = name + '-cxx-sanitizer-configuration'
+        source_gen_name = name + '-san-conf'
         source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_name
+        source_attrs['name'] = source_gen_name
         source_attrs['visibility'] = [
             '//{base_path}:{lib_name}'
             .format(base_path=base_path, lib_name=lib_name)
         ]
-        source_attrs['out'] = source_name + '.c'
+        source_attrs['out'] = 'san-conf.c'
         source_attrs['cmd'] = (
             'mkdir -p `dirname $OUT` && echo {0} > $OUT'
             .format(pipes.quote('\n'.join(configuration_src))))
@@ -1619,7 +1619,7 @@ class Converter(object):
             '//{base_path}:{name}'
             .format(base_path=base_path, name=name)
         ]
-        lib_attrs['srcs'] = [':' + source_name]
+        lib_attrs['srcs'] = [':' + source_gen_name]
         lib_attrs['compiler_flags'] = self.get_extra_cflags()
 
         lib_linker_flags = []
