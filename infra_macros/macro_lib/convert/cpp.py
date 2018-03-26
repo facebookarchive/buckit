@@ -273,9 +273,17 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir, visibility=None):
         # Match any third-party deps for the current platform.
         '//third-party-buck/{0}/.*'.format(platform),
     ]
+
+    # Form a sub-query to exclude all of the generated-lib deps, in particular
+    # sanitizer-configuration libraries
+    generated_lib = r'(?<!{})'.format(base.GENERATED_LIB_SUFFIX)
     first_order_deps = (
-        'filter("^({0})$", first_order_deps())'
-        .format('|'.join('(' + r + ')' for r in first_order_dep_res)))
+        'filter("^({prefix}){exclude_generated}$", first_order_deps())'
+        .format(
+            prefix='|'.join('(' + r + ')' for r in first_order_dep_res),
+            exclude_generated=generated_lib,
+        )
+    )
 
     # Form a query which resolve to all the first-order deps of all DLLs.
     # These form roots which need to be linked into the top-level binary.

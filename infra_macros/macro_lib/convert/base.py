@@ -189,6 +189,7 @@ const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
   {upstream_revision_epochtime};
 """
 
+GENERATED_LIB_SUFFIX = '__generated-lib__'
 
 def is_collection(obj):
     """
@@ -1595,7 +1596,7 @@ class Converter(object):
                 build_mode.tsan_options if build_mode else None,
             ))
 
-        lib_name = name + '-cxx-sanitizer-configuration-lib'
+        lib_name = name + '-cxx-sanitizer-configuration-' + GENERATED_LIB_SUFFIX
         # Setup a rule to generate the sanitizer configuration C file.
         source_name = name + '-cxx-sanitizer-configuration'
         source_attrs = collections.OrderedDict()
