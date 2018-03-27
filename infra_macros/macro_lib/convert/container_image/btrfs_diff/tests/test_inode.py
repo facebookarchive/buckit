@@ -3,7 +3,10 @@ import stat
 import unittest
 
 from ..extent import Extent
-from ..inode import Chunk, ChunkClone, Clone, Inode, InodeOwner, InodeUtimes
+from ..inode import (
+    _time_delta, _repr_time, _repr_time_delta,
+    Chunk, ChunkClone, Clone, Inode, InodeOwner, InodeUtimes,
+)
 from ..inode_id import InodeIDMap
 
 
@@ -75,6 +78,38 @@ class InodeTestCase(unittest.TestCase):
         self.assertIn(
             repr(chunk),  # The set can be in one of two orders
             ('(DATA/12: a:7+2@3, a:5+6@4)', '(DATA/12: a:5+6@4, a:7+2@3)'),
+        )
+
+    def test_repr_owner(self):
+        self.assertEqual('12:345', repr(InodeOwner(uid=12, gid=345)))
+
+    def test_time_delta(self):
+        self.assertEqual((-1, 999999999), _time_delta((0, 0), (0, 1)))
+        self.assertEqual((0, 1), _time_delta((0, 1), (0, 0)))
+        self.assertEqual((-4, 999999999), _time_delta((3, 0), (6, 1)))
+        self.assertEqual((3, 2), _time_delta((5, 4), (2, 2)))
+
+    def test_repr_time_delta(self):
+        self.assertEqual('-3', _repr_time_delta(-3, 0))
+        self.assertEqual('-3', _repr_time_delta(-4, 999999999))
+        self.assertEqual('-3.001', _repr_time_delta(-4, 999000000))
+        self.assertEqual('+3', _repr_time_delta(3, 0))
+        self.assertEqual('+3', _repr_time_delta(3, 1))
+        self.assertEqual('+3.001', _repr_time_delta(3, 1000000))
+
+    def test_repr_time(self):
+        self.assertEqual(
+            '70/05/23.21:21:18.91', _repr_time(12345678, 910111213),
+        )
+
+    def test_repr_utimes(self):
+        self.assertEqual(
+            '70/05/23.21:21:18.001+7230.01-3610.6',
+            repr(InodeUtimes(
+                ctime=(12345678, 1000000),
+                mtime=(12345678 + 7230, 11000000),
+                atime=(12345678 + 7230 - 3611, 411000000),
+            )),
         )
 
 

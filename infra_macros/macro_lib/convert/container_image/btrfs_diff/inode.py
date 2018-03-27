@@ -3,10 +3,16 @@
 Inode, and the structures it contains, represent the final, constructed
 state of the filesystem. They are immutable, designed to be easy to
 construct, and easy to compare in tests.
+
+## Note on `__repr__`
+
+These are used for tests, so they must be compact & reasonably lossless.
+Avoid whitespace when possible, since IncompleteInode uses space separators.
 '''
 import stat
 
-from typing import NamedTuple, Optional, Set, Sequence
+from datetime import datetime
+from typing import NamedTuple, Optional, Set, Sequence, Tuple
 
 from .extent import Extent
 from .inode_id import InodeID
@@ -16,11 +22,62 @@ class InodeOwner(NamedTuple):
     uid: int
     gid: int
 
+    def __repr__(self):
+        return f'{self.uid}:{self.gid}'
+
+
+MSEC_TO_NSEC = 10 ** 6
+SEC_TO_NSEC = 1000 * MSEC_TO_NSEC
+MIN_TO_SEC = 60
+HOUR_TO_SEC = 60 * MIN_TO_SEC
+DAY_TO_SEC = 24 * HOUR_TO_SEC
+
+
+def _time_delta(a: Tuple[int, int], b: Tuple[int, int]) -> Tuple[int, int]:
+    'returns (sec, nsec) -- sec may be negative, nsec is always positive'
+    sec_diff = a[0] - b[0]
+    nsec_diff = a[1] - b[1]
+    nsec = nsec_diff % SEC_TO_NSEC
+    nsec_excess = nsec_diff - nsec
+    assert nsec_excess % SEC_TO_NSEC == 0, f'{a} - {b}'
+    return (sec_diff + nsec_excess // SEC_TO_NSEC, nsec)
+
+
+def _add_nsec_to_repr(prev: str, nsec: int) -> str:
+    '''
+    Truncate to milliseconds for compactness, our tests should not care.
+    We do NOT round up (too much code), so 999999000 renders as 999.
+    '''
+    return f'{prev}.{nsec // MSEC_TO_NSEC:03}'.rstrip('0').rstrip('.')
+
+
+def _repr_time_delta(sec: int, nsec: int) -> str:
+    'sec may be negative, nsec is always positive'
+    if sec < 0:
+        sign = '-'
+        sec = -sec
+        if nsec > 0:
+            sec -= 1
+            nsec = SEC_TO_NSEC - nsec
+    else:
+        sign = '+'
+    return _add_nsec_to_repr(f'{sign}{sec}', nsec)
+
+
+def _repr_time(sec: int, nsec: int) -> str:
+    sec_str = datetime.utcfromtimestamp(sec).strftime('%y/%m/%d.%H:%M:%S')
+    return _add_nsec_to_repr(sec_str, nsec)
+
 
 class InodeUtimes(NamedTuple):
-    ctime: float
-    mtime: float
-    atime: float
+    ctime: Tuple[int, int]  # sec, nsec
+    mtime: Tuple[int, int]
+    atime: Tuple[int, int]
+
+    def __repr__(self):
+        c_to_m = _repr_time_delta(*_time_delta(self.mtime, self.ctime))
+        m_to_a = _repr_time_delta(*_time_delta(self.atime, self.mtime))
+        return f'{_repr_time(*self.ctime)}{c_to_m}{m_to_a}'
 
 
 _S_IFMT_TO_FILE_TYPE_NAME = {
@@ -30,7 +87,7 @@ _S_IFMT_TO_FILE_TYPE_NAME = {
     stat.S_IFIFO: 'FIFO',
     stat.S_IFLNK: 'Symlink',
     stat.S_IFREG: 'File',
-    stat.S_IFSOCK: 'Socket',
+    stat.S_IFSOCK: 'Sock',
 }
 
 # Future: `frozentype` should let us mirror the `Incomplete*` hierarchy,
