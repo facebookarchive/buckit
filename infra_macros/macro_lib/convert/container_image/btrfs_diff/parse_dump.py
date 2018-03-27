@@ -308,9 +308,9 @@ class SendStreamItemParsers:
 
         @classmethod
         def conv_atime(cls, t: bytes) -> float:
-            return datetime.datetime.strptime(
+            return (int(datetime.datetime.strptime(
                 t.decode(), '%Y-%m-%dT%H:%M:%S%z'
-            ).timestamp()
+            ).timestamp()), 0)  # --dump discards nanoseconds
 
         conv_mtime = conv_atime
         conv_ctime = conv_atime

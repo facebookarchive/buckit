@@ -7,6 +7,8 @@ import io
 import struct
 import unittest
 
+from typing import Tuple
+
 from .demo_sendstreams import gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items
 
@@ -23,6 +25,11 @@ def _parse_stream_bytes(s: bytes) -> io.BytesIO:
     return parse_send_stream(io.BytesIO(s))
 
 
+def float_to_sec_nsec_tuple(t: float) -> Tuple[int, int]:
+    sec = int(t)
+    return (sec, int(1e9 * (t - sec)))
+
+
 class ParseSendStreamTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -35,8 +42,12 @@ class ParseSendStreamTestCase(unittest.TestCase):
                 *_parse_stream_bytes(stream_dict['create_ops']['sendstream']),
                 *_parse_stream_bytes(stream_dict['mutate_ops']['sendstream']),
             ],
-            build_start_time=stream_dict['create_ops']['build_start_time'],
-            build_end_time=stream_dict['mutate_ops']['build_end_time'],
+            build_start_time=float_to_sec_nsec_tuple(
+                stream_dict['create_ops']['build_start_time'],
+            ),
+            build_end_time=float_to_sec_nsec_tuple(
+                stream_dict['mutate_ops']['build_end_time'],
+            ),
             dump_mode=False,
         )
         self.assertEqual(filtered_items, expected_items)

@@ -133,8 +133,7 @@ def conv_uint64(s: bytes) -> int:
 
 
 def conv_time(s: bytes) -> float:
-    sec, nsec = struct.unpack('<QI', s)
-    return sec + nsec / 1e9
+    return struct.unpack('<QI', s)
 
 
 def read_attribute(infile):
