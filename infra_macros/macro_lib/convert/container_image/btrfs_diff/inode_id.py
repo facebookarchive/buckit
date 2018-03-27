@@ -11,7 +11,7 @@ import os
 
 from collections import defaultdict
 
-from typing import Any, Mapping, NamedTuple, Optional, Set
+from typing import Any, Iterator, Mapping, NamedTuple, Optional, Set
 
 
 class InodeID(NamedTuple):
@@ -44,8 +44,13 @@ class InodeIDMap:
     Unlike a real filesystem, this does not:
       - ban hardlinks to directories, or linking a dir inside itself
       - resolve symlinks
+
+    IMPORTANT: Keep this object `deepcopy`able for the purpose of
+    snapshotting subvolumes -- it currently has a test to check this, but
+    the test may not catch every kind of copy-related problem.
     '''
     description: Any  # repr()able, to be used for repr()ing InodeIDs
+    inode_id_counter: Iterator[int]
     # Future: the paths are currently marked as `bytes` (and `str` is
     # quietly tolerated for tests), but the actual semantics need to be
     # clarified.  It'll likely be "path relative to EITHER(subvol or vol)".

@@ -46,7 +46,10 @@ python_unittest(
         1.0,
         ":inode_id",
     )],
-    deps = [":inode_id"],
+    deps = [
+        ":coroutine_utils",
+        ":inode_id",
+    ],
 )
 
 python_library(
