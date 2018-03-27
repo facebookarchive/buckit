@@ -1,4 +1,21 @@
 python_library(
+    name = "coroutine_utils",
+    srcs = ["coroutine_utils.py"],
+    base_module = "btrfs_diff",
+)
+
+python_unittest(
+    name = "test-coroutine-utils",
+    srcs = ["tests/test_coroutine_utils.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":coroutine_utils",
+    )],
+    deps = [":coroutine_utils"],
+)
+
+python_library(
     name = "extent",
     srcs = ["extent.py"],
     base_module = "btrfs_diff",
