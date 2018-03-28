@@ -15,7 +15,20 @@ from typing import Any, Iterator, Mapping, NamedTuple, Optional, Set
 
 
 class InodeID(NamedTuple):
+    '''
+    IMPORTANT: To support `Subvolume` snapshots, this must be correctly
+    `deepcopy`able in a copy operation that directly includes its `.id_map`.
+    I mean "directly" in the sense that we must also copy the ground-truth
+    reference to our `InodeIDMap`, i.e.  via the field of `Subvolume`.  In
+    contrast, `deepcopy`ing `InodeID`s without copying the whole map would
+    result in decoupling between those objects, which is incorrect.
+    '''
     id: int
+    # While this field creates some aliasing issues with `deepcopy` (see
+    # the doblock), it is still worthwhile to have it:
+    #  - We check `id_map` identity at runtime (below) to ensure at
+    #    runtime that `InodeID`s are used only with their maps.
+    #  - an identifiable repr is nice for ease of testing/debugging
     id_map: 'InodeIDMap'
 
     def __repr__(self):
@@ -47,7 +60,10 @@ class InodeIDMap:
 
     IMPORTANT: Keep this object `deepcopy`able for the purpose of
     snapshotting subvolumes -- it currently has a test to check this, but
-    the test may not catch every kind of copy-related problem.
+    the test may not catch every kind of copy-related problem.  In
+    particular, because `description` has type `Any`, it can bring
+    `deepcopy` issues -- see the notes on the `deepcopy`ability
+    # of `SubvolumeDescription` in `volume.py` to understand the risks.
     '''
     description: Any  # repr()able, to be used for repr()ing InodeIDs
     inode_id_counter: Iterator[int]
@@ -67,6 +83,12 @@ class InodeIDMap:
         self.path_to_id = {b'.': root_id}
         self.id_to_children = defaultdict(set)
 
+    def _assert_mine(self, inode_id: InodeID) -> InodeID:
+        if inode_id.id_map is not self:
+            # Avoid InodeID.__repr__ since that would recurse infinitely.
+            raise RuntimeError(f'Wrong map for InodeID #{inode_id.id}')
+        return inode_id
+
     def next(self, path: Optional[bytes]=None) -> InodeID:
         inode_id = InodeID(id=next(self.inode_id_counter), id_map=self)
         if path is not None:
@@ -80,6 +102,7 @@ class InodeIDMap:
         return None if parent_id is None else parent_id.id
 
     def add_path(self, inode_id: InodeID, path: bytes) -> None:
+        self._assert_mine(inode_id)
         path = _normpath(path)
         if os.path.isabs(path):
             raise RuntimeError(f'Need relative path, got {path}')
@@ -121,10 +144,7 @@ class InodeIDMap:
         return self.path_to_id.get(_normpath(path))
 
     def get_paths(self, inode_id: InodeID) -> Set[bytes]:
-        if inode_id.id_map is not self:
-            # Avoid InodeID.__repr__ since that would recurse infinitely.
-            raise RuntimeError(f'Wrong map for InodeID #{inode_id.id}')
-        return self.id_to_paths.get(inode_id.id, set())
+        return self.id_to_paths.get(self._assert_mine(inode_id).id, set())
 
     def get_children(self, inode_id: InodeID) -> Set[bytes]:
-        return self.id_to_children.get(inode_id.id, set())
+        return self.id_to_children.get(self._assert_mine(inode_id).id, set())

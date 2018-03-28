@@ -28,7 +28,8 @@ class InodeIDTestCase(DeepCopyTestCase):
         def maybe_replace_map(id_map, step_name):
             new_map = yield step_name, id_map
             if new_map is not id_map:
-                # If the map was replaced, we must fix up the inode objects.
+                # If the map was replaced, we must fix up our inode objects.
+                ns.ino_root = new_map.get_id(b'.')
                 if hasattr(ns, 'ino1'):
                     ns.ino1 = new_map.get_id(b'a')
                 if hasattr(ns, 'ino2'):
@@ -42,10 +43,10 @@ class InodeIDTestCase(DeepCopyTestCase):
         id_map = yield from maybe_replace_map(InodeIDMap(), 'empty')
 
         # Check the root inode
-        ino_root = id_map.get_id(b'.')
-        self.assertEqual({b'.'}, id_map.get_paths(ino_root))
-        self.assertEqual('.', repr(ino_root))
-        self.assertEqual(set(), id_map.get_children(ino_root))
+        ns.ino_root = id_map.get_id(b'.')
+        self.assertEqual({b'.'}, id_map.get_paths(ns.ino_root))
+        self.assertEqual('.', repr(ns.ino_root))
+        self.assertEqual(set(), id_map.get_children(ns.ino_root))
 
         # Make a new ID with a path
         ns.ino1 = id_map.next(b'./a/')
@@ -53,7 +54,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         self.assertEqual(INO1_ID, ns.ino1.id)
         self.assertIs(id_map, ns.ino1.id_map)
         self.assertEqual('a', repr(ns.ino1))
-        self.assertEqual({b'a'}, id_map.get_children(ino_root))
+        self.assertEqual({b'a'}, id_map.get_children(ns.ino_root))
         self.assertEqual(set(), id_map.get_children(ns.ino1))
 
         # Anonymous inode, then add multiple paths
@@ -77,7 +78,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         self.assertEqual({b'a/d'}, id_map.get_paths(ns.ino2))
         self.assertEqual('a/d', repr(ns.ino2))
 
-        self.assertEqual({b'a'}, id_map.get_children(ino_root))
+        self.assertEqual({b'a'}, id_map.get_children(ns.ino_root))
 
         # Look-up by ID
         self.assertIs(ns.ino1, id_map.get_id(b'a'))
@@ -109,9 +110,9 @@ class InodeIDTestCase(DeepCopyTestCase):
         ):
             id_map.next(b'a')
         with self.assertRaisesRegex(RuntimeError, "Need relative path"):
-            id_map.add_path(ns.ino2, b'/a/e')
+            id_map.add_path(ns.ino1, b'/a/e')
         with self.assertRaisesRegex(RuntimeError, "parent does not exist"):
-            id_map.add_path(ns.ino2, b'b/c')
+            id_map.add_path(ns.ino1, b'b/c')
 
         # OK to remove since it's now empty
         id_map.remove_path(b'a')
