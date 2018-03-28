@@ -203,3 +203,25 @@ python_unittest(
         ":subvolume",
     ],
 )
+
+python_library(
+    name = "subvolume_set",
+    srcs = ["subvolume_set.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":inode_id",
+        ":parse_send_stream",
+        ":subvolume",
+    ],
+)
+
+python_unittest(
+    name = "test-subvolume-set",
+    srcs = ["tests/test_subvolume_set.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":subvolume_set",
+    )],
+    deps = [":subvolume_set"],
+)
