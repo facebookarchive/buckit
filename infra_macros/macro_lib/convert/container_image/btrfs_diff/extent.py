@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import enum
+import itertools
 
 from typing import NamedTuple, Optional, Tuple, Union
 
@@ -217,3 +218,21 @@ class Extent(NamedTuple):
                 if length <= 0:
                     break
             offset -= min(offset, e.length)
+
+    def _gen_leaf_reprs(self):
+        for _, length, leaf in self.gen_trimmed_leaves():
+            if leaf.content == Extent.Kind.HOLE:
+                yield 'h', length
+            elif leaf.content == Extent.Kind.DATA:
+                yield 'd', length
+            else:
+                raise AssertionError(leaf.content)  # pragma: no cover
+
+    def __repr__(self):
+        return ''.join(
+            # merge adjacent leaves of the same type
+            f'{k}{sum(l for _, l in leaves)}'
+                for k, leaves in itertools.groupby(
+                    self._gen_leaf_reprs(), lambda kl: kl[0],
+                )
+        )

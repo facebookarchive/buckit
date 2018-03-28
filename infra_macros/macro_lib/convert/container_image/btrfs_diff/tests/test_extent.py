@@ -35,6 +35,7 @@ class ExtentTestCase(unittest.TestCase):
         four = (Extent.empty()
             .write(offset=3, length=4)
             .write(offset=12, length=6))
+        self.assertEqual('h3d4h5d6', repr(four))
         _, _, (a, b, c, d) = zip(*four.gen_trimmed_leaves())
         # The "Control run" below will check that we preserved object identity.
         self.assertEqual([
@@ -53,6 +54,7 @@ class ExtentTestCase(unittest.TestCase):
         clone = (Extent.empty()
             .write(offset=7, length=5)
             .write(offset=5, length=4))
+        self.assertEqual('h5d7', repr(clone))  # repr merged two DATA leaves
         _, _, (ca, cb, cc) = zip(*clone.gen_trimmed_leaves())
         self.assertEqual([
             Extent(Extent.Kind.HOLE, 0, 7),
@@ -389,6 +391,7 @@ class ExtentTestCase(unittest.TestCase):
         clone = (Extent.empty()
             .write(offset=0, length=2)
             .write(offset=3, length=1))
+        self.assertEqual('d2h1d1', repr(clone))
         # If we treat as identical holes of different provenance but the
         # same length, these operations should commute since they write data
         # to nonoverlapping regions.
@@ -439,6 +442,7 @@ class ExtentTestCase(unittest.TestCase):
     # explicitly check that the whole nested object is cloned.
     def test_clone_preserves_identity(self):
         clone = Extent.empty().truncate(length=5)
+        self.assertEqual('h5', repr(clone))
         result = (Extent.empty()
             .write(offset=0, length=30)
             .clone(to_offset=10, from_extent=clone, from_offset=1, length=3))
@@ -447,7 +451,8 @@ class ExtentTestCase(unittest.TestCase):
     def test_repr_kind(self):
         self.assertEqual('Extent.Kind.DATA', repr(Extent.Kind.DATA))
 
-    def test_gen_trimmed_leaves_empty(self):
+    def test_empty(self):
+        self.assertEqual('', repr(Extent.empty()))
         self.assertEqual([], list(Extent.empty().gen_trimmed_leaves()))
 
 
