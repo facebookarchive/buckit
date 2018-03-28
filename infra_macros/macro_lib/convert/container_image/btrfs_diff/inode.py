@@ -80,7 +80,7 @@ class InodeUtimes(NamedTuple):
         return f'{_repr_time(*self.ctime)}{c_to_m}{m_to_a}'
 
 
-_S_IFMT_TO_FILE_TYPE_NAME = {
+S_IFMT_TO_FILE_TYPE_NAME = {
     stat.S_IFBLK: 'Block',
     stat.S_IFCHR: 'Char',
     stat.S_IFDIR: 'Dir',
@@ -128,7 +128,7 @@ class Inode(NamedTuple):
 
     def __repr__(self):
         file_type = stat.S_IFMT(self.st_mode)
-        name = _S_IFMT_TO_FILE_TYPE_NAME.get(file_type, file_type)
+        name = S_IFMT_TO_FILE_TYPE_NAME.get(file_type, file_type)
         return f'({name}: {self.id})'
 
 

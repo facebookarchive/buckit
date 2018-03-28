@@ -13,7 +13,7 @@ from typing import Dict, Optional
 
 from .extent import Extent
 from .inode_id import InodeID, InodeIDMap
-from .inode import InodeOwner, InodeUtimes
+from .inode import InodeOwner, InodeUtimes, S_IFMT_TO_FILE_TYPE_NAME
 from .parse_dump import SendStreamItem, SendStreamItems
 
 
@@ -65,8 +65,20 @@ class IncompleteInode:
         else:
             raise RuntimeError(f'{self} cannot apply {item}')
 
+    def _repr_fields(self):
+        if self.owner is not None:
+            yield f'o{self.owner}'
+        if self.mode is not None:
+            yield f'm{self.mode:o}'
+        if self.utimes is not None:
+            yield f't{self.utimes}'
+
     def __repr__(self):
-        return f'({type(self).__name__}: {self.id})'
+        return '(' + ' '.join([
+            S_IFMT_TO_FILE_TYPE_NAME.get(self.FILE_TYPE, self.FILE_TYPE),
+            repr(self.id),
+            *self._repr_fields(),
+        ]) + ')'
 
 
 class IncompleteDir(IncompleteInode):
@@ -101,9 +113,10 @@ class IncompleteFile(IncompleteInode):
         else:
             super().apply_item(item=item)
 
-    def __repr__(self):
-        # clone-finding tests use the length as an extra sanity check.
-        return f'({type(self).__name__}: {self.id}/{self.extent.length})'
+    def _repr_fields(self):
+        yield from super()._repr_fields()
+        if self.extent.length:
+            yield f'{self.extent}'
 
 
 class IncompleteSocket(IncompleteInode):
@@ -131,6 +144,10 @@ class IncompleteDevice(IncompleteInode):
         self.mode = item.mode & ~self.FILE_TYPE
         self.dev = item.dev
 
+    def _repr_fields(self):
+        yield from super()._repr_fields()
+        yield f'{hex(self.dev)[2:]}'
+
 
 class IncompleteSymlink(IncompleteInode):
     dest: bytes
@@ -147,3 +164,7 @@ class IncompleteSymlink(IncompleteInode):
             raise RuntimeError(f'{item} cannot chmod symlink {self}')
         else:
             super().apply_item(item=item)
+
+    def _repr_fields(self):
+        yield from super()._repr_fields()
+        yield f'{self.dest.decode(errors="surrogateescape")}'
