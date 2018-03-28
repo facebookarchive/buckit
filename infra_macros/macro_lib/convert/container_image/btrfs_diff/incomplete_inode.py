@@ -13,6 +13,13 @@ the time of writing because:
    return the original object -- this lets us correctly track clones.
  - All other attributes store plain-old-data, or POD immutable classes that
    do not care about object identity.
+ - We omit InodeID -- i.e. these objects are **just** the inode's data.
+   This is important because InodeID contains an InodeIDMap reference, which
+   means that correctly copying IncompleteInodes that contain InodeIDs would
+   require one to copy **only** at a high enough scope of the hierarchy that
+   both the InodeIDMap and all the relevant IncompleteInodes are included.
+   This extra risk doesn't seem worth the debuggability reward of having
+   IncompleteInodes know their identity.
 
 Future: with `deepfrozen` done, it would be simplest to merge
 `IncompleteInode` with `Inode`, and just have `apply_item` return a
@@ -23,7 +30,6 @@ import stat
 from typing import Dict, Optional
 
 from .extent import Extent
-from .inode_id import InodeID, InodeIDMap
 from .inode import InodeOwner, InodeUtimes, S_IFMT_TO_FILE_TYPE_NAME
 from .parse_dump import SendStreamItem, SendStreamItems
 
@@ -34,7 +40,6 @@ class IncompleteInode:
     different inode types have different data, different construction logic,
     and finalization logic.
     '''
-    id: InodeID  # The final `Inode` object inherits this ID.
     xattrs: Dict[bytes, bytes]
     # If any of these are None, the filesystem was created badly.
     # Exception: symlinks don't have permissions.
@@ -43,9 +48,8 @@ class IncompleteInode:
     file_type: int  # Upper bits of `st_mode` matching `S_IFMT`
     utimes: Optional[InodeUtimes]
 
-    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem):
         assert isinstance(item, self.INITIAL_ITEM)
-        self.id = id_map.next(item.path)
         self.xattrs = {}
         self.owner = None
         self.mode = None
@@ -85,7 +89,6 @@ class IncompleteInode:
     def __repr__(self):
         return '(' + ' '.join([
             S_IFMT_TO_FILE_TYPE_NAME.get(self.FILE_TYPE, self.FILE_TYPE),
-            repr(self.id),
             *self._repr_fields(),
         ]) + ')'
 
@@ -101,8 +104,8 @@ class IncompleteFile(IncompleteInode):
     FILE_TYPE = stat.S_IFREG
     INITIAL_ITEM = SendStreamItems.mkfile
 
-    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
-        super().__init__(item=item, id_map=id_map)
+    def __init__(self, *, item: SendStreamItem):
+        super().__init__(item=item)
         self.extent = Extent.empty()
 
     def apply_item(self, item: SendStreamItem) -> None:
@@ -143,11 +146,11 @@ class IncompleteDevice(IncompleteInode):
 
     INITIAL_ITEM = SendStreamItems.mknod
 
-    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
+    def __init__(self, *, item: SendStreamItem):
         self.FILE_TYPE = stat.S_IFMT(item.mode)
         if self.FILE_TYPE not in (stat.S_IFBLK, stat.S_IFCHR):
             raise RuntimeError(f'unexpected device mode in {item}')
-        super().__init__(item=item, id_map=id_map)
+        super().__init__(item=item)
         # NB: At present, `btrfs send` redundantly sends a `chmod` after
         # device creation, but we've already saved the file type.
         self.mode = item.mode & ~self.FILE_TYPE
@@ -164,8 +167,8 @@ class IncompleteSymlink(IncompleteInode):
     FILE_TYPE = stat.S_IFLNK
     INITIAL_ITEM = SendStreamItems.symlink
 
-    def __init__(self, *, item: SendStreamItem, id_map: InodeIDMap):
-        super().__init__(item=item, id_map=id_map)
+    def __init__(self, *, item: SendStreamItem):
+        super().__init__(item=item)
         self.dest = item.dest
 
     def apply_item(self, item: SendStreamItem) -> None:

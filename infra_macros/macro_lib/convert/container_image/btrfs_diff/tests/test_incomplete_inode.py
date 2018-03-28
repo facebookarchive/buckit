@@ -2,7 +2,6 @@
 import stat
 import unittest
 
-from ..inode_id import InodeIDMap
 from ..inode import InodeOwner, InodeUtimes
 from ..incomplete_inode import (
     IncompleteDevice, IncompleteDir, IncompleteFifo, IncompleteFile,
@@ -14,9 +13,9 @@ from ..parse_dump import SendStreamItem, SendStreamItems as SSI
 class IncompleteInodeTestCase(unittest.TestCase):
 
     def test_incomplete_file_including_common_attributes(self):
-        ino = IncompleteFile(item=SSI.mkfile(path=b'a'), id_map=InodeIDMap())
+        ino = IncompleteFile(item=SSI.mkfile(path=b'a'))
 
-        self.assertEqual('(File a)', repr(ino))
+        self.assertEqual('(File)', repr(ino))
 
         self.assertEqual({}, ino.xattrs)
         self.assertIs(None, ino.owner)
@@ -25,13 +24,13 @@ class IncompleteInodeTestCase(unittest.TestCase):
         self.assertEqual(stat.S_IFREG, ino.file_type)
 
         ino.apply_item(SSI.truncate(path=b'a', size=17))
-        self.assertEqual('(File a h17)', repr(ino))
+        self.assertEqual('(File h17)', repr(ino))
 
         ino.apply_item(SSI.write(path=b'a', offset=10, data=b'x' * 15))
-        self.assertEqual('(File a h10d15)', repr(ino))
+        self.assertEqual('(File h10d15)', repr(ino))
 
         ino.apply_item(SSI.update_extent(path=b'a', offset=40, len=5))
-        self.assertEqual('(File a h10d15h15d5)', repr(ino))
+        self.assertEqual('(File h10d15h15d5)', repr(ino))
 
         ino.apply_item(SSI.set_xattr(path=b'a', name=b'cat', data=b'nip'))
         self.assertEqual({b'cat': b'nip'}, ino.xattrs)
@@ -62,7 +61,7 @@ class IncompleteInodeTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            '(File a o10:20 m4733 t70/01/01.00:00:01.9+0.9-1.1 h10d15h15d5)',
+            '(File o10:20 m4733 t70/01/01.00:00:01.9+0.9-1.1 h10d15h15d5)',
             repr(ino)
         )
 
@@ -76,29 +75,27 @@ class IncompleteInodeTestCase(unittest.TestCase):
     # but hey, unexecuted Python is a dead, smelly, broken Python.
     def test_simple_file_types(self):
         for item_type, file_type, inode_type, ino_repr in (
-            (SSI.mkdir, stat.S_IFDIR, IncompleteDir, '(Dir a)'),
-            (SSI.mkfifo, stat.S_IFIFO, IncompleteFifo, '(FIFO a)'),
-            (SSI.mksock, stat.S_IFSOCK, IncompleteSocket, '(Sock a)'),
+            (SSI.mkdir, stat.S_IFDIR, IncompleteDir, '(Dir)'),
+            (SSI.mkfifo, stat.S_IFIFO, IncompleteFifo, '(FIFO)'),
+            (SSI.mksock, stat.S_IFSOCK, IncompleteSocket, '(Sock)'),
         ):
-            ino = inode_type(item=item_type(path=b'a'), id_map=InodeIDMap())
+            ino = inode_type(item=item_type(path=b'a'))
             self.assertEqual(ino_repr, repr(ino))
             self.assertEqual(file_type, ino.file_type)
 
     def test_devices(self):
         ino_chr = IncompleteDevice(
             item=SSI.mknod(path=b'chr', mode=0o20711, dev=0x123),
-            id_map=InodeIDMap(),
         )
-        self.assertEqual('(Char chr m711 123)', repr(ino_chr))
+        self.assertEqual('(Char m711 123)', repr(ino_chr))
         self.assertEqual(stat.S_IFCHR, ino_chr.file_type)
         self.assertEqual(0x123, ino_chr.dev)
         self.assertEqual(0o711, ino_chr.mode)
 
         ino_blk = IncompleteDevice(
             item=SSI.mknod(path=b'blk', mode=0o60544, dev=0x345),
-            id_map=InodeIDMap(),
         )
-        self.assertEqual('(Block blk m544 345)', repr(ino_blk))
+        self.assertEqual('(Block m544 345)', repr(ino_blk))
         self.assertEqual(stat.S_IFBLK, ino_blk.file_type)
         self.assertEqual(0x345, ino_blk.dev)
         self.assertEqual(0o544, ino_blk.mode)
@@ -106,14 +103,10 @@ class IncompleteInodeTestCase(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'unexpected device mode'):
             IncompleteDevice(
                 item=SSI.mknod(path=b'e', mode=0o10644, dev=3),
-                id_map=InodeIDMap(),
             )
 
     def test_symlink(self):
-        ino = IncompleteSymlink(
-            item=SSI.symlink(path=b'l', dest=b'cat'),
-            id_map=InodeIDMap(),
-        )
+        ino = IncompleteSymlink(item=SSI.symlink(path=b'l', dest=b'cat'))
 
         self.assertEqual(stat.S_IFLNK, ino.file_type)
         self.assertEqual(b'cat', ino.dest)
@@ -126,7 +119,7 @@ class IncompleteInodeTestCase(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'cannot chmod symlink'):
             ino.apply_item(SSI.chmod(path=b'l', mode=0o644))
 
-        self.assertEqual('(Symlink l o1:2 cat)', repr(ino))
+        self.assertEqual('(Symlink o1:2 cat)', repr(ino))
 
 
 if __name__ == '__main__':
