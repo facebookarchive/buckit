@@ -6,6 +6,17 @@ state, and knows how to apply parsed `SendStreamItems` to mutate the state.
 
 Once the filesystem is done, we will "freeze" it into immutable, hashable,
 easily comparable `Inode` objects, making it a "breeze" to validate it.
+
+IMPORTANT: Keep these objects correctly `deepcopy`able. That is the case at
+the time of writing because:
+ - `Extent` is recursively immutable and customizes copy operations to
+   return the original object -- this lets us correctly track clones.
+ - All other attributes store plain-old-data, or POD immutable classes that
+   do not care about object identity.
+
+Future: with `deepfrozen` done, it would be simplest to merge
+`IncompleteInode` with `Inode`, and just have `apply_item` return a
+partly-modified copy, in the style of `NamedTuple._replace`.
 '''
 import stat
 
@@ -17,8 +28,6 @@ from .inode import InodeOwner, InodeUtimes, S_IFMT_TO_FILE_TYPE_NAME
 from .parse_dump import SendStreamItem, SendStreamItems
 
 
-# Future: with `deepfrozen` done, it'd be interesting to see if using a
-# "freezabletype" idiom makes the Inode/IncompleteInode split clearer.
 class IncompleteInode:
     '''
     Base class for all inode types. Inheritance is appropriate because
