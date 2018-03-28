@@ -37,6 +37,7 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+compiled_wheel = re.compile('-cp[0-9]{2}-')
 
 
 def get_url_basename(url):
@@ -142,9 +143,12 @@ class PyWheel(base.Converter):
         urls = set(platform_urls.values())
         wheel_targets = {}  # Dict[str, str]      # url -> prebuilt_target_name
 
+        compiled = False
         # Setup all the remote_file and prebuilt_python_library targets
         # urls have #sha1=<sha1> at the end.
         for url in urls:
+            if compiled_wheel.search(url):
+                compiled = True
             orig_url, _, sha1 = url.rpartition('#sha1=')
             assert sha1, "There is no #sha1= tag on the end of URL: " + url
             # Opensource usage of this may have #md5 tags from pypi
@@ -170,6 +174,8 @@ class PyWheel(base.Converter):
             attrs['deps'] = deps
 
         if external_deps:
+            if compiled:
+                attrs['exclude_deps_from_merged_linking'] = True
             attrs['platform_deps'].extend(
                 self.format_platform_deps(
                     self.to_platform_param(
