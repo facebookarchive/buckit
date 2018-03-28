@@ -2,24 +2,21 @@
 import copy
 import unittest
 
-from collections import Counter
 from types import SimpleNamespace
 
-from ..coroutine_utils import while_not_exited
 from ..inode_id import InodeID, InodeIDMap
 
-class InodeIDTestCase(unittest.TestCase):
+from .deepcopy_test import DeepCopyTestCase
+
+
+class InodeIDTestCase(DeepCopyTestCase):
 
     def _check_id_and_map(self):
         '''
-        The `yield` statements in this generator are an opportunity for our
-        test driver to replace `ns.id_map` with a different object.  The
-        goal is to verify that `deepcopy`ing the map at any of the
-        yield-points does not break the test.
-
-        The first string in the yielded pair must be unique at each
-        callsite.  It is used for sanity-checks (i.e.  that the overall
-        control-flow does not change from run to run) and for debugging.
+        The `yield` statements in this generator allow `DeepCopyTestCase`
+        to replace `ns.id_map` with a different object (either a `deepcopy`
+        or a pre-`deepcopy` original from a prior run). See the docblock of
+        `DeepCopyTestCase` for the details.
         '''
         INO1_ID = 1
         INO2_ID = 2
@@ -27,12 +24,10 @@ class InodeIDTestCase(unittest.TestCase):
 
         # Shared scope between the outer function and `maybe_replace_map`
         ns = SimpleNamespace()
-        ns.replaced_at_step_name = None
 
         def maybe_replace_map(id_map, step_name):
             new_map = yield step_name, id_map
             if new_map is not id_map:
-                ns.replaced_at_step_name = step_name
                 # If the map was replaced, we must fix up the inode objects.
                 if hasattr(ns, 'ino1'):
                     ns.ino1 = new_map.get_id(b'a')
@@ -127,54 +122,9 @@ class InodeIDTestCase(unittest.TestCase):
             InodeID(id=0, id_map=id_map), id_map.path_to_id[b'.'],
         )
         self.assertEqual(0, len(id_map.id_to_children))
-        return ns.replaced_at_step_name  # noqa: B901
-
-    def _drive_check_id_and_map(
-        self, replace_step=None, expected_name=None, *, _replace_by=None,
-    ):
-        '''
-        Steps through `deepcopy_original`, optionally replacing the ID map
-        by deepcopy at a specific step of the test.
-        '''
-        id_map = None
-        steps = []
-        deepcopy_original = None
-
-        with while_not_exited(self._check_id_and_map()) as ctx:
-            while True:
-                step, id_map = ctx.send(id_map)
-                if len(steps) == replace_step:
-                    if _replace_by is None:
-                        deepcopy_original = id_map
-                        id_map = copy.deepcopy(id_map)
-                    else:
-                        id_map = _replace_by
-                steps.append(step)
-
-        self.assertEqual(expected_name, ctx.result)
-        # Don't repeat step names
-        self.assertEqual([], [s for s, n in Counter(steps).items() if n > 1])
-
-        # We just replaced the map with a deepcopy at a specific step.  Now,
-        # we run the test one more time up to the same step, and replace the
-        # map with the pre-deepcopy original to ensure it has not changed.
-        if replace_step is not None and _replace_by is None:
-            self.assertIsNotNone(deepcopy_original)
-            with self.subTest(deepcopy_original=True):
-                self.assertEqual(steps, self._drive_check_id_and_map(
-                    replace_step, expected_name, _replace_by=deepcopy_original,
-                ))
-
-        return steps
 
     def test_inode_id_and_map(self):
-        steps = self._drive_check_id_and_map()
-        for deepcopy_step, expected_name in enumerate(steps):
-            with self.subTest(deepcopy_step=expected_name):
-                self.assertEqual(
-                    steps,
-                    self._drive_check_id_and_map(deepcopy_step, expected_name),
-                )
+        self.check_deepcopy_at_each_step(self._check_id_and_map)
 
     def test_description(self):
         cat_map = InodeIDMap(description='cat')
