@@ -97,9 +97,6 @@ class JsConverter(base.Converter):
             files[dst] = src
         cmds.append('mkdir -p ' + ' '.join(dirs))
         for dst, src in files.items():
-            # Buck currently copies input sources into the sandbox "srcs" dir
-            # using the basename.
-            src = os.path.basename(src)
             cmds.append('cp {} {}'.format(src, dst))
 
         attrs = collections.OrderedDict()
@@ -189,19 +186,14 @@ class JsConverter(base.Converter):
 
         rules = []
 
-        # Normalize input sources into a map of names to paths.
-        out_srcs = collections.OrderedDict()
-        for src in sorted(srcs):
-            src_name = self.get_source_name(src)
-            out_srcs[os.path.join(base_path, src_name)] = src
-
         # Setup the modules tree formed by this rule's sources and the sources
         # of it's transitive deps.
         modules_tree = (
             self.generate_modules_tree(
                 base_path,
                 name + '-modules',
-                out_srcs,
+                collections.OrderedDict(
+                    [(os.path.join(base_path, s), s) for s in srcs]),
                 self.convert_deps(base_path, deps, external_deps),
                 visibility))
         rules.append(modules_tree)
