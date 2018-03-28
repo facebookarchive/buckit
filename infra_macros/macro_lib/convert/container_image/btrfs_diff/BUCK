@@ -110,6 +110,7 @@ python_library(
     deps = [
         ":extent",
         ":inode",
+        ":inode_id",
     ],
 )
 
@@ -171,5 +172,34 @@ python_unittest(
         ":artifacts_dir",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":volume_for_repo",
+    ],
+)
+
+python_library(
+    name = "subvolume",
+    srcs = ["subvolume.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":coroutine_utils",
+        ":incomplete_inode",
+        ":inode_id",
+        ":parse_send_stream",
+    ],
+)
+
+python_unittest(
+    name = "test-subvolume",
+    srcs = [
+        "tests/subvolume_utils.py",
+        "tests/test_subvolume.py",
+    ],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":subvolume",
+    )],
+    deps = [
+        ":deepcopy_test",
+        ":subvolume",
     ],
 )
