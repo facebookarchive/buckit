@@ -16,9 +16,16 @@ class Extent(NamedTuple):
     A file always has one Extent object, and it is placed at file offset 0.
     Holes are modeled explicitly via subextents.
 
-    To properly support cloning, extents must be logically immutable.  To
-    modify a file, simply replace its extent object with whatever the
-    mutator returned.
+    `Extent`s are recursively immutable. This lets us identify cloned parts
+    of files by simply checking `Extent` object identity (via `is` or `id`).
+
+    To modify a file, just replace its `Extent` with whatever the mutator
+    method returned.
+
+    `copy` / `deepcopy` alert: clone identification relies on object
+    identity, so copying `Extent`s would be a great way to subtly discard
+    clone information.  Luckily, our objects are recursively immutable,
+    making it safe to have both copy mechanisms return simply `self`.
 
     Users should NOT directly create extents. Also, the fields of `offset`
     and `content` cannot be usefully introspected.
@@ -236,3 +243,9 @@ class Extent(NamedTuple):
                     self._gen_leaf_reprs(), lambda kl: kl[0],
                 )
         )
+
+    def __copy__(self):
+        return self  # See the docstring
+
+    def __deepcopy__(self, memo):
+        return self  # See the docstring

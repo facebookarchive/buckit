@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 import functools
 import itertools
 import math
@@ -454,6 +455,11 @@ class ExtentTestCase(unittest.TestCase):
     def test_empty(self):
         self.assertEqual('', repr(Extent.empty()))
         self.assertEqual([], list(Extent.empty().gen_trimmed_leaves()))
+
+    def test_copy(self):
+        e = Extent.empty().write(offset=5, length=5)
+        self.assertIs(e, copy.deepcopy(e))
+        self.assertIs(e, copy.copy(e))
 
 
 if __name__ == '__main__':
