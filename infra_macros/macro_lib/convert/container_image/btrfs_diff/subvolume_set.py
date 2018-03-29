@@ -57,7 +57,7 @@ class SubvolumeDescription(NamedTuple):
     IMPORTANT: Because of our `.subvolume_set` member, this object would
     ONLY be safely `deepcopy`able if we were to copy the `SubvolumeSet` in
     one call -- but we never do that.  When we make snapshots in
-    `apply_first_sendstream_item`, we have to work around this problem,
+    `SubvolumeSetMutator`, we have to work around this problem,
     since a naive implementation would `deepcopy` this object via
     `Subvolume.id_map.description`.
     '''
@@ -95,15 +95,25 @@ class SubvolumeSet(NamedTuple):
         kwargs.setdefault('name_uuid_prefix_counts', Counter())
         return cls(**kwargs)
 
-    def apply_first_sendstream_item(
-        self, subvol_item: SendStreamItem,
-    ) -> Subvolume:
-        '''
-        A send-stream always starts with a command defining the subvolume,
-        to which the remaining stream commands will be applied.  Since
-        `SubvolumeSet` is only responsible for managing `Subvolume`s, this
-        will return the `Subvolume` for the caller to `apply_item` at will.
-        '''
+
+class SubvolumeSetMutator(NamedTuple):
+    '''
+    A send-stream always starts with a command defining the subvolume,
+    to which the remaining stream commands will be applied.  Since
+    `SubvolumeSet` is only responsible for managing `Subvolume`s, this
+    is essentially a proxy for `Subvolume.apply_item`.
+
+    The reason we don't just return `Subvolume` to the caller after
+    the first item is that we need some logic as the `SubvolumeSet` and
+    `Subvolume` layers to resolve `clone` commands.
+    '''
+    subvolume: Subvolume
+    subvolume_set: SubvolumeSet
+
+    @classmethod
+    def new(
+        cls, subvol_set: SubvolumeSet, subvol_item: SendStreamItem,
+    ) -> 'SubvolumeSetMutator':
         if not isinstance(subvol_item, (
             SendStreamItems.subvol, SendStreamItems.snapshot,
         )):
@@ -116,10 +126,10 @@ class SubvolumeSet(NamedTuple):
         ) if isinstance(subvol_item, SendStreamItems.snapshot) else None
         description = SubvolumeDescription(
             name=subvol_item.path, id=my_id, parent_id=parent_id,
-            subvolume_set=self,
+            subvolume_set=subvol_set,
         )
         if isinstance(subvol_item, SendStreamItems.snapshot):
-            parent_subvol = self.uuid_to_subvolume[parent_id.uuid]
+            parent_subvol = subvol_set.uuid_to_subvolume[parent_id.uuid]
             # `SubvolumeDescription` contains `SubvolumeSet`, so it is not
             # correctly `deepcopy`able.  And since we immediately overwrite
             # the `description`, it would be quite wasteful to copy its
@@ -134,12 +144,24 @@ class SubvolumeSet(NamedTuple):
         else:
             subvol = Subvolume.new(id_map=InodeIDMap(description=description))
 
-        dup_subvol = self.uuid_to_subvolume.get(my_id.uuid)
+        dup_subvol = subvol_set.uuid_to_subvolume.get(my_id.uuid)
         if dup_subvol is not None:
             raise RuntimeError(f'{my_id} is already in use: {dup_subvol}')
-        self.uuid_to_subvolume[my_id.uuid] = subvol
+        subvol_set.uuid_to_subvolume[my_id.uuid] = subvol
 
         # insertion can fail, so update the description disambiguator last.
-        self.name_uuid_prefix_counts.update(description.name_uuid_prefixes())
+        subvol_set.name_uuid_prefix_counts.update(
+            description.name_uuid_prefixes()
+        )
 
-        return subvol
+        return cls(subvolume=subvol, subvolume_set=subvol_set)
+
+    def apply_item(self, item: SendStreamItem):
+        if isinstance(item, SendStreamItems.clone):
+            from_subvol = self.subvolume_set.uuid_to_subvolume.get(
+                item.from_uuid
+            )
+            if not from_subvol:
+                raise RuntimeError(f'Unknown from_uuid for {item}')
+            return self.subvolume.apply_clone(item, from_subvol)
+        return self.subvolume.apply_item(item)
