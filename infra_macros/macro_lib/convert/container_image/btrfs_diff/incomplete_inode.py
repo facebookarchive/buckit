@@ -57,6 +57,7 @@ class IncompleteInode:
         self.file_type = self.FILE_TYPE
 
     def apply_item(self, item: SendStreamItem) -> None:
+        assert not isinstance(item, SendStreamItems.clone), 'Do .apply_clone()'
         if isinstance(item, SendStreamItems.remove_xattr):
             del self.xattrs[item.name]
         elif isinstance(item, SendStreamItems.set_xattr):
@@ -77,6 +78,11 @@ class IncompleteInode:
             )
         else:
             raise RuntimeError(f'{self} cannot apply {item}')
+
+    def apply_clone(
+        self, item: SendStreamItem, from_ino: 'IncompleteInode'
+    ) -> None:
+        raise RuntimeError(f'{self} cannot clone via {item} from {from_ino}')
 
     def _repr_fields(self):
         if self.owner is not None:
@@ -109,10 +115,7 @@ class IncompleteFile(IncompleteInode):
         self.extent = Extent.empty()
 
     def apply_item(self, item: SendStreamItem) -> None:
-        if isinstance(item, SendStreamItems.clone):
-            # Temporary: added in the stack after the Subvolume diff.
-            raise NotImplementedError  # pragma: no cover
-        elif isinstance(item, SendStreamItems.truncate):
+        if isinstance(item, SendStreamItems.truncate):
             self.extent = self.extent.truncate(length=item.size)
         elif isinstance(item, SendStreamItems.write):
             self.extent = self.extent.write(
@@ -124,6 +127,27 @@ class IncompleteFile(IncompleteInode):
             )
         else:
             super().apply_item(item=item)
+
+    def apply_clone(
+        self, item: SendStreamItems.clone, from_ino: IncompleteInode,
+    ) -> None:
+        assert isinstance(item, SendStreamItems.clone)
+        if not isinstance(from_ino, IncompleteFile):
+            raise RuntimeError(f'Cannot {item} from {from_ino}')
+        # The validation isn't required in the sense that `Extent.clone` is
+        # meant to handle any input appropriately, but it's probably a
+        # symptom of incorrect usage, so let's report a more useful error.
+        if not (
+            0 <= item.clone_offset < from_ino.extent.length and
+            0 < (item.clone_offset + item.len) <= from_ino.extent.length
+        ):
+            raise RuntimeError(f'Bad offset/len {item} to clone {from_ino}')
+        self.extent = self.extent.clone(
+            to_offset=item.offset,
+            from_extent=from_ino.extent,
+            from_offset=item.clone_offset,
+            length=item.len,
+        )
 
     def _repr_fields(self):
         yield from super()._repr_fields()

@@ -121,6 +121,38 @@ class IncompleteInodeTestCase(unittest.TestCase):
 
         self.assertEqual('(Symlink o1:2 cat)', repr(ino))
 
+    def test_apply_clone(self):
+        f1 = IncompleteFile(item=SSI.mkfile(path=b'unused'))
+        f1.apply_item(SSI.write(path=b'unused', offset=10, data=b'a' * 10))
+        self.assertEqual('(File h10d10)', repr(f1))
+
+        clone_5_10 = SSI.clone(
+            path=b'unused',
+            offset=5, len=10, from_uuid='', from_transid=0, from_path=b'',
+            clone_offset=5,
+        )
+
+        d = IncompleteDir(item=SSI.mkdir(path=b'unused'))
+
+        with self.assertRaisesRegex(RuntimeError, r'\(Dir\) cannot clone '):
+            d.apply_clone(clone_5_10, f1)
+
+        with self.assertRaisesRegex(
+            RuntimeError, r'Cannot clone.* from \(Dir\)'
+        ):
+            f1.apply_clone(clone_5_10, d)
+
+        f2 = IncompleteFile(item=SSI.mkfile(path=b'unused'))
+        f2.apply_item(SSI.write(path=b'unused', offset=0, data=b'b' * 3))
+        self.assertEqual('(File d3)', repr(f2))
+
+        with self.assertRaisesRegex(RuntimeError, 'Bad offset/len .* clone'):
+            f1.apply_clone(clone_5_10, f2)
+
+        f2.apply_clone(clone_5_10, f1)
+        self.assertEqual('(File h10d10)', repr(f1))
+        self.assertEqual('(File d3h7d5)', repr(f2))
+
 
 if __name__ == '__main__':
     unittest.main()
