@@ -39,6 +39,8 @@ class OCamlLibraryExternalConverter(base.Converter):
             native=True,
             visibility=None):
 
+        platform = self.get_tp2_build_dat(base_path)['platform']
+
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
@@ -66,11 +68,19 @@ class OCamlLibraryExternalConverter(base.Converter):
             attributes['bytecode_only'] = True
 
         dependencies = []
+
+        # Add the implicit dep to our own project rule.
+        project_dep = self.get_tp2_project_dep(base_path)
+        if project_dep is not None:
+            dependencies.append(project_dep)
+
         for target in deps:
             dependencies.append(self.convert_build_target(base_path, target))
 
         for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
+            edep = self.normalize_external_dep(target)
+            dependencies.append(
+                self.get_dep_target(edep, source=target, platform=platform))
 
         if dependencies:
             attributes['deps'] = dependencies

@@ -16,6 +16,7 @@ import collections
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 
 
@@ -52,6 +53,7 @@ class OCamlConverter(base.Converter):
 
         extra_rules = []
         dependencies = []
+        platform = self.get_platform(base_path)
 
         attributes = collections.OrderedDict()
 
@@ -68,7 +70,7 @@ class OCamlConverter(base.Converter):
                 self.convert_args_with_macros(
                     base_path,
                     compiler_flags,
-                    platform=self.get_default_platform()))
+                    platform=platform))
 
         attributes['ocamldep_flags'] = []
         if ocamldep_flags:
@@ -81,6 +83,9 @@ class OCamlConverter(base.Converter):
         if not native:
             attributes['bytecode_only'] = True
 
+        if self.get_fbconfig_rule_type() == 'ocaml_binary':
+            attributes['platform'] = platform
+
         # Add the C/C++ build info lib to deps.
         if self.get_fbconfig_rule_type() == 'ocaml_binary':
             cxx_build_info, cxx_build_info_rules = (
@@ -90,26 +95,27 @@ class OCamlConverter(base.Converter):
                     self.get_fbconfig_rule_type(),
                     self.get_default_platform(),
                     visibility=visibility))
-            dependencies.append(self.get_dep_target(cxx_build_info))
+            dependencies.append(cxx_build_info)
             extra_rules.extend(cxx_build_info_rules)
 
         # Translate dependencies.
-        for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+        for dep in deps:
+            dependencies.append(target.parse_target(dep, base_path=base_path))
 
         # Translate external dependencies.
-        for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
+        for dep in external_deps:
+            dependencies.append(self.normalize_external_dep(dep))
 
         # Add in binary-specific link deps.
         if self.is_binary():
             d, r = self.get_binary_link_deps(base_path, name)
-            dependencies.extend(self.format_deps(d))
+            dependencies.extend(d)
             extra_rules.extend(r)
 
         # If any deps were specified, add them to the output attrs.
         if dependencies:
-            attributes['deps'] = dependencies
+            attributes['deps'], attributes['platform_deps'] = (
+                self.format_all_deps(dependencies))
 
         # Translate visibility
         if visibility is not None:
