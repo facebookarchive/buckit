@@ -50,15 +50,19 @@ class SubvolumeTestCase(DeepCopyTestCase):
         cat = yield 'cat with chmodded dog', cat
         self._check_path(('(Dir)', {'dog': '(File m755)'}), cat)
 
+        cat.apply_item(si.write(path=b'dog', offset=0, data='bbb'))
+        cat = yield 'cat with dog with data', cat
+        self._check_path(('(Dir)', {'dog': '(File m755 d3)'}), cat)
+
         cat.apply_item(si.chmod(path=b'dog', mode=0o744))
-        self._check_path(('(Dir)', {'dog': '(File m744)'}), cat)
+        self._check_path(('(Dir)', {'dog': '(File m744 d3)'}), cat)
         with self.assertRaisesRegex(RuntimeError, 'parent does not exist'):
             cat.apply_item(si.mkfifo(path=b'dir_to_del/fifo_to_del'))
 
         cat.apply_item(si.mkdir(path=b'dir_to_del'))
         cat.apply_item(si.mkfifo(path=b'dir_to_del/fifo_to_del'))
         cat_final_repr = ('(Dir)', {
-            'dog': '(File m744)',
+            'dog': '(File m744 d3)',
             'dir_to_del': ('(Dir)', {'fifo_to_del': '(FIFO)'}),
         })
         cat = yield 'final cat', cat
@@ -113,19 +117,19 @@ class SubvolumeTestCase(DeepCopyTestCase):
         tiger = yield 'tiger after rmdir/unlink errors', tiger
         tiger.apply_item(si.rmdir(path=b'dir_to_del'))
         tiger = yield 'tiger after rmdir', tiger
-        self._check_path(('(Dir)', {'dog': '(File m744)'}), tiger)
+        self._check_path(('(Dir)', {'dog': '(File m744 d3)'}), tiger)
 
         # Rename where the target does not exist
         tiger.apply_item(si.rename(path=b'dog', dest=b'wolf'))
         tiger = yield 'tiger after rename', tiger
-        self._check_path(('(Dir)', {'wolf': '(File m744)'}), tiger)
+        self._check_path(('(Dir)', {'wolf': '(File m744 d3)'}), tiger)
 
         # Hardlinks, and modifyin the root directory
         tiger.apply_item(si.chown(path=b'.', uid=123, gid=456))
         tiger.apply_item(si.link(path=b'wolf', dest=b'tamaskan'))
         tiger.apply_item(si.chmod(path=b'tamaskan', mode=0o700))
         tiger = yield 'tiger after hardlink', tiger
-        wolf = InodeRepr('(File m700)')
+        wolf = InodeRepr('(File m700 d3)')
         tiger_penultimate_repr = ('(Dir o123:456)', {
             'wolf': wolf, 'tamaskan': wolf,
         })
@@ -146,7 +150,50 @@ class SubvolumeTestCase(DeepCopyTestCase):
         tiger.apply_item(si.rename(path=b'somedev', dest=b'wolf'))
         tiger = yield 'tiger after overwriting rename', tiger
         self._check_path(('(Dir o123:456)', {
-            'wolf': '(Char m444 4321)', 'tamaskan': '(File m700)',
+            'wolf': '(Char m444 4321)', 'tamaskan': '(File m700 d3)',
+        }), tiger)
+
+        # Graceful error on paths that cannot be resolved
+        for fail_fn in [
+            lambda: tiger.apply_item(si.truncate(path=b'not there', size=15)),
+            lambda: tiger.apply_clone(si.clone(
+                path=b'not there', offset=0, len=1, from_uuid='',
+                from_transid=0, from_path=b'tamaskan', clone_offset=0
+            ), tiger),
+            lambda: tiger.apply_clone(si.clone(
+                path=b'tamaskan', offset=0, len=1, from_uuid='',
+                from_transid=0, from_path=b'tamaskan', clone_offset=0
+            ), cat),  # `cat` lacks `tamaskan`
+        ]:
+            with self.assertRaisesRegex(RuntimeError, r' does not exist'):
+                fail_fn()
+
+        # Clones
+        tiger.apply_item(si.write(path=b'tamaskan', offset=10, data=b'a' * 10))
+        tiger.apply_item(si.mkfile(path=b'dolly'))
+        tiger.apply_clone(si.clone(
+            path=b'dolly', offset=0, len=10, from_uuid='', from_transid=0,
+            from_path=b'tamaskan', clone_offset=5,
+        ), tiger)
+        tiger = yield 'tiger cloned from tiger', tiger
+        self._check_path(('(Dir o123:456)', {
+            'wolf': '(Char m444 4321)',
+            'tamaskan': '(File m700 d3h7d10)',
+            'dolly': '(File h5d5)',
+        }), tiger)
+        # We're about to clone from `cat`, so allow it do be `deepcopy`d here.
+        cat = yield 'tiger clones from cat', cat
+        self._check_path(cat_final_repr, cat)
+
+        tiger.apply_clone(si.clone(
+            path=b'dolly', offset=2, len=2, from_uuid='', from_transid=0,
+            from_path=b'dog', clone_offset=1,
+        ), cat)
+        tiger = yield 'tiger cloned from cat', tiger
+        self._check_path(('(Dir o123:456)', {
+            'wolf': '(Char m444 4321)',
+            'tamaskan': '(File m700 d3h7d10)',
+            'dolly': '(File h2d2h1d5)',
         }), tiger)
 
         # Mutating the snapshot leaves the parent subvol intact

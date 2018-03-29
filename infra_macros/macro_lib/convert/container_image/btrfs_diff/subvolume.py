@@ -87,11 +87,19 @@ class Subvolume(NamedTuple):
         )
         return cls(id_map=id_map, **kwargs)
 
-    def inode_at_path(self, path) -> Optional[IncompleteInode]:
+    def inode_at_path(self, path: bytes) -> Optional[IncompleteInode]:
         id = self.id_map.get_id(path)
         # Using `[]` instead of `.get()` to assert that `id_to_inode`
         # remains a superset of `id_map`.  The converse is harder to check.
         return None if id is None else self.id_to_inode[id]
+
+    def _require_inode_at_path(
+        self, item: SendStreamItem, path: bytes,
+    ) -> IncompleteInode:
+        ino = self.inode_at_path(path)
+        if ino is None:
+            raise RuntimeError(f'Cannot apply {item}, {path} does not exist')
+        return ino
 
     def _delete(self, path):
         ino_id = self.id_map.remove_path(path)
@@ -164,4 +172,12 @@ class Subvolume(NamedTuple):
             ino = self.inode_at_path(item.path)
             if ino is None:
                 raise RuntimeError(f'Cannot apply {item}, path does not exist')
-            ino.apply_item(item=item)
+            self._require_inode_at_path(item, item.path).apply_item(item=item)
+
+    def apply_clone(
+        self, item: SendStreamItems.clone, from_subvol: 'Subvolume',
+    ):
+        assert isinstance(item, SendStreamItems.clone)
+        return self._require_inode_at_path(item, item.path).apply_clone(
+            item, from_subvol._require_inode_at_path(item, item.from_path),
+        )
