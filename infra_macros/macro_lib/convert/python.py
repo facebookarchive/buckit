@@ -1130,7 +1130,7 @@ class PythonConverter(base.Converter):
                 python_version = self.get_python_version(py_ver)
                 new_name = name + '-' + python_version
                 versions[py_ver] = new_name
-        tests = []
+        py_tests = []
         rule_names = set()
         for py_ver, py_name in sorted(versions.items()):
             rules = self.create_binary(
@@ -1161,23 +1161,23 @@ class PythonConverter(base.Converter):
                 visibility=visibility,
             )
             if self.is_test():
-                tests.append(':' + py_name)
+                py_tests.append(':' + py_name)
             for rule in rules:
                 if rule.target_name not in rule_names:
                     yield rule
                     rule_names.add(rule.target_name)
 
         # Create a genrule to wrap all the tests for easy running
-        if len(tests) > 1:
+        if len(py_tests) > 1:
             attrs = collections.OrderedDict()
             attrs['name'] = name
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['out'] = os.curdir
-            attrs['tests'] = tests
+            attrs['tests'] = py_tests
             # With this we are telling buck we depend on the test targets
             cmds = []
-            for test in tests:
+            for test in py_tests:
                 cmds.append('echo $(location {})'.format(test))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
