@@ -54,17 +54,18 @@ class SubvolumeDescription(NamedTuple):
     We give store this as `InodeIDMap.description` to make it easy to
     distinguish between `InodeID`s from different `Subvolume`s.
 
-    IMPORTANT: Because of our `.subvolume_set` member, this object would
-    ONLY be safely `deepcopy`able if we were to copy the `SubvolumeSet` in
-    one call -- but we never do that.  When we make snapshots in
-    `SubvolumeSetMutator`, we have to work around this problem,
-    since a naive implementation would `deepcopy` this object via
-    `Subvolume.id_map.description`.
+    IMPORTANT: Because of our `.name_uuid_prefix_counts` member, which is
+    owned by a `SubvolumeSet`, this object would ONLY be safely
+    `deepcopy`able if we were to copy the `SubvolumeSet` in one call -- but
+    we never do that.  When we make snapshots in `SubvolumeSetMutator`, we
+    have to work around this problem, since a naive implementation would
+    `deepcopy` this object via `Subvolume.id_map.description`.
     '''
     name: bytes
     id: SubvolumeID
     parent_id: Optional[SubvolumeID]
-    subvolume_set: 'SubvolumeSet'  # See the IMPORTANT note in the docblock
+    # See the IMPORTANT note in the docblock about this member:
+    name_uuid_prefix_counts: Mapping[str, int]
 
     def name_uuid_prefixes(self):
         name = self.name.decode(errors='surrogateescape')
@@ -73,7 +74,7 @@ class SubvolumeDescription(NamedTuple):
 
     def __repr__(self):
         for prefix in self.name_uuid_prefixes():
-            if self.subvolume_set.name_uuid_prefix_counts.get(prefix, 0) < 2:
+            if self.name_uuid_prefix_counts.get(prefix, 0) < 2:
                 return prefix
         # Happens when one uuid is a prefix of another, i.e. in tests.
         return f'{prefix}-ERROR'
@@ -126,7 +127,7 @@ class SubvolumeSetMutator(NamedTuple):
         ) if isinstance(subvol_item, SendStreamItems.snapshot) else None
         description = SubvolumeDescription(
             name=subvol_item.path, id=my_id, parent_id=parent_id,
-            subvolume_set=subvol_set,
+            name_uuid_prefix_counts=subvol_set.name_uuid_prefix_counts,
         )
         if isinstance(subvol_item, SendStreamItems.snapshot):
             parent_subvol = subvol_set.uuid_to_subvolume[parent_id.uuid]
