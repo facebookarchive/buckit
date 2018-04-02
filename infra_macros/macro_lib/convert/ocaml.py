@@ -64,7 +64,7 @@ class OCamlConverter(base.Converter):
         if warnings_flags:
             attributes['warnings_flags'] = warnings_flags
 
-        attributes['compiler_flags'] = ['-warn-error', '+a']
+        attributes['compiler_flags'] = ['-warn-error', '+a', '-safe-string']
         if compiler_flags:
             attributes['compiler_flags'].extend(
                 self.convert_args_with_macros(
