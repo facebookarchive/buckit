@@ -177,20 +177,20 @@ class BtrfsVolumePropsTestCase(unittest.TestCase):
         parent = '/subvols/dir/parent'
         check_output.return_value = b'''\
 dir/parent
-        Name:                   parent
-        UUID:                   f96b940f-10d3-fc4e-8b2d-9362af0ee8df
-        Parent UUID:            -
-        Received UUID:          -
-        Creation time:          2017-12-29 21:55:54 -0800
-        Subvolume ID:           277
-        Generation:             123
-        Gen at creation:        103
-        Parent ID:              5
-        Top level ID:           5
-        Flags:                  readonly
-        Snapshot(s):
-                                dir/foo
-                                dir/bar
+\tName: \t\t\tparent
+\tUUID: \t\t\tf96b940f-10d3-fc4e-8b2d-9362af0ee8df
+\tParent UUID: \t\t-
+\tReceived UUID: \t\t-
+\tCreation time: \t\t2017-12-29 21:55:54 -0800
+\tSubvolume ID:  \t\t277
+\tGeneration: \t\t123
+\tGen at creation: \t103
+\tParent ID: \t\t5
+\tTop level ID: \t\t5
+\tFlags: \t\t\treadonly
+\tSnapshot(s):
+\t\t\t\tdir/foo
+\t\t\t\tdir/bar
 '''
         self.assertEquals(
             subvolume_on_disk._btrfs_get_volume_props(parent),
@@ -218,18 +218,18 @@ dir/parent
         check_output.reset_mock()
         check_output.return_value = b'''\
 dir/child
-        Name:                   child
-        UUID:                   a1a3eb3e-eb89-7743-8335-9cd5219248e7
-        Parent UUID:            f96b940f-10d3-fc4e-8b2d-9362af0ee8df
-        Received UUID:          -
-        Creation time:          2017-12-29 21:56:32 -0800
-        Subvolume ID:           278
-        Generation:             121
-        Gen at creation:        107
-        Parent ID:              5
-        Top level ID:           5
-        Flags:                  -
-        Snapshot(s):
+\tName: \t\t\tchild
+\tUUID: \t\t\ta1a3eb3e-eb89-7743-8335-9cd5219248e7
+\tParent UUID: \t\tf96b940f-10d3-fc4e-8b2d-9362af0ee8df
+\tReceived UUID: \t\t-
+\tCreation time: \t\t2017-12-29 21:56:32 -0800
+\tSubvolume ID: \t\t278
+\tGeneration: \t\t121
+\tGen at creation: \t\t107
+\tParent ID: \t\t5
+\tTop level ID: \t\t5
+\tFlags: \t\t\t-
+\tSnapshot(s):
 '''
         self.assertEquals(
             subvolume_on_disk._btrfs_get_volume_props(child),

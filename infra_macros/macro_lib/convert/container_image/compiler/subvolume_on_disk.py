@@ -54,9 +54,9 @@ def _btrfs_get_volume_props(subvolume_path):
     ]).decode('utf-8').split('\n')[1:]:  # Skip the header line
         if SNAPSHOTS in props:
             if l:  # Ignore the trailing empty line
-                SPACES = 32
-                assert l[:SPACES] == ' ' * SPACES, f'Not a snapshot line: {l}'
-                props[SNAPSHOTS].append(l[SPACES:])
+                TABS = 4
+                assert l[:TABS] == '\t' * TABS, 'Not a snapshot line' + repr(l)
+                props[SNAPSHOTS].append(l[TABS:])
         else:
             k, v = l.strip().split(':', 1)
             k = k.rstrip(':')
