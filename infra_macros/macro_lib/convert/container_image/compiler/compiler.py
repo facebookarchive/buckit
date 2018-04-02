@@ -94,7 +94,9 @@ def build_image(args):
         # root.  Future: look into using more granular capabilities here.
         'sudo',
         args.image_build_command,
-        'image', 'build', '--no-pkg', '--no-export', '--print-buck-plumbing',
+        'image', 'build',
+        '--no-pkg', '--no-export', '--no-clean-built-layer',
+        '--print-buck-plumbing',
         '--tmp-volume', args.subvolumes_dir,
         '--name', args.subvolume_name,
         '--version', args.subvolume_version,
@@ -132,5 +134,6 @@ def build_image(args):
         raise RuntimeError(f'While parsing output {output} of {cmd}') from ex
 
 
-if __name__ == '__main__':  # pragma: no cover
+def main():  # pragma: no cover
+    'Invoked by ../compiler.py'
     build_image(parse_args(sys.argv[1:])).to_json_file(sys.stdout)

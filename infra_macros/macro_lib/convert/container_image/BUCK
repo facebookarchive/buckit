@@ -2,7 +2,7 @@
 
 export_file(name = "artifacts_dir.py")
 
-export_file(name = "compiler")
+export_file(name = "compiler.py")
 
 export_file(name = "volume_for_repo.py")
 

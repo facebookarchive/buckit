@@ -82,7 +82,8 @@ class CompilerTestCase(unittest.TestCase):
         # After stripping all the items, we should be left with the preamble.
         self.assertEqual([
             'sudo', 'FAKE_BUILD', 'image', 'build',
-            '--no-pkg', '--no-export', '--print-buck-plumbing',
+            '--no-pkg', '--no-export', '--no-clean-built-layer',
+            '--print-buck-plumbing',
             '--tmp-volume', FAKE_SUBVOLS_DIR,
             '--name', 'NAME',
             '--version', 'VERSION',
