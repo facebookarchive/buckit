@@ -131,19 +131,22 @@ class SubvolumeSetMutator(NamedTuple):
         )
         if isinstance(subvol_item, SendStreamItems.snapshot):
             parent_subvol = subvol_set.uuid_to_subvolume[parent_id.uuid]
-            # `SubvolumeDescription` contains `SubvolumeSet`, so it is not
-            # correctly `deepcopy`able.  And since we immediately overwrite
-            # the `description`, it would be quite wasteful to copy its
-            # entire `SubvolumeSet` just to throw it away.
-            old_description = parent_subvol.id_map.description
-            try:
-                parent_subvol.id_map.description = None
-                subvol = copy.deepcopy(parent_subvol)
-                subvol.id_map.description = description
-            finally:
-                parent_subvol.id_map.description = old_description
+            # `SubvolumeDescription` references a part `SubvolumeSet`, so it
+            # is not correctly `deepcopy`able as part of a `Subvolume`.  And
+            # we want to modify the `InodeIDMap`'s `description` in any
+            # case, so let's just bulk-replace the old description instance.
+            # This would not be sane if the old instance were of a type that
+            # may be interned by the runtime, like `int`, hence the assert.
+            assert isinstance(
+                parent_subvol.id_map.inner.description, SubvolumeDescription
+            )
+            subvol = copy.deepcopy(parent_subvol, memo={
+                id(parent_subvol.id_map.inner.description): description,
+            })
         else:
-            subvol = Subvolume.new(id_map=InodeIDMap(description=description))
+            subvol = Subvolume.new(
+                id_map=InodeIDMap.new(description=description),
+            )
 
         dup_subvol = subvol_set.uuid_to_subvolume.get(my_id.uuid)
         if dup_subvol is not None:

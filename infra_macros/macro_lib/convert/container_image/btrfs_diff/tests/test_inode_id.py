@@ -34,13 +34,13 @@ class InodeIDTestCase(DeepCopyTestCase):
                     ns.ino1 = new_map.get_id(b'a')
                 if hasattr(ns, 'ino2'):
                     if step_name == STEP_MADE_ANON_INODE:
-                        ns.ino2 = InodeID(id=2, id_map=new_map)
+                        ns.ino2 = InodeID(id=2, inner_id_map=new_map.inner)
                     else:
                         # we add a/c later, remove a/c earlier, this is enough
                         ns.ino2 = new_map.get_id(b'a/d')
             return new_map  # noqa: B901
 
-        id_map = yield from maybe_replace_map(InodeIDMap(), 'empty')
+        id_map = yield from maybe_replace_map(InodeIDMap.new(), 'empty')
 
         # Check the root inode
         ns.ino_root = id_map.get_id(b'.')
@@ -52,7 +52,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         ns.ino1 = id_map.next(b'./a/')
         id_map = yield from maybe_replace_map(id_map, 'made a')
         self.assertEqual(INO1_ID, ns.ino1.id)
-        self.assertIs(id_map, ns.ino1.id_map)
+        self.assertIs(id_map.inner, ns.ino1.inner_id_map)
         self.assertEqual('a', repr(ns.ino1))
         self.assertEqual({b'a'}, id_map.get_children(ns.ino_root))
         self.assertEqual(set(), id_map.get_children(ns.ino1))
@@ -61,7 +61,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         ns.ino2 = id_map.next()  # initially anonymous
         id_map = yield from maybe_replace_map(id_map, STEP_MADE_ANON_INODE)
         self.assertEqual(INO2_ID, ns.ino2.id)
-        self.assertIs(id_map, ns.ino2.id_map)
+        self.assertIs(id_map.inner, ns.ino2.inner_id_map)
         self.assertEqual('ANON_INODE#2', repr(ns.ino2))
         id_map.add_path(ns.ino2, b'a/d')
         id_map = yield from maybe_replace_map(id_map, 'added a/d name')
@@ -89,10 +89,10 @@ class InodeIDTestCase(DeepCopyTestCase):
             id_map.remove_path(b'a')
 
         # Check that we clean up empty path sets
-        self.assertIn(ns.ino2.id, id_map.id_to_paths)
+        self.assertIn(ns.ino2.id, id_map.inner.id_to_paths)
         self.assertIs(ns.ino2, id_map.remove_path(b'a/d'))
         id_map = yield from maybe_replace_map(id_map, 'removed a/d name')
-        self.assertNotIn(INO2_ID, id_map.id_to_paths)
+        self.assertNotIn(INO2_ID, id_map.inner.id_to_paths)
 
         # Catch str/byte mixups
         with self.assertRaises(TypeError):
@@ -104,7 +104,9 @@ class InodeIDTestCase(DeepCopyTestCase):
 
         # Other errors
         with self.assertRaisesRegex(RuntimeError, 'Wrong map for InodeID #17'):
-            id_map.get_paths(InodeID(id=17, id_map=InodeIDMap()))
+            id_map.get_paths(
+                InodeID(id=17, inner_id_map=InodeIDMap.new().inner)
+            )
         with self.assertRaisesRegex(
             RuntimeError, "Path b'a' has 2 inodes: 3 and 1"
         ):
@@ -117,10 +119,10 @@ class InodeIDTestCase(DeepCopyTestCase):
         # OK to remove since it's now empty
         id_map.remove_path(b'a')
         id_map = yield from maybe_replace_map(id_map, 'removed a')
-        self.assertEqual({0: {b'.'}}, id_map.id_to_paths)
+        self.assertEqual({0: {b'.'}}, id_map.inner.id_to_paths)
         self.assertEqual([b'.'], list(id_map.path_to_id.keys()))
         self.assertEqual(
-            InodeID(id=0, id_map=id_map), id_map.path_to_id[b'.'],
+            InodeID(id=0, inner_id_map=id_map.inner), id_map.path_to_id[b'.'],
         )
         self.assertEqual(0, len(id_map.id_to_children))
 
@@ -128,8 +130,21 @@ class InodeIDTestCase(DeepCopyTestCase):
         self.check_deepcopy_at_each_step(self._check_id_and_map)
 
     def test_description(self):
-        cat_map = InodeIDMap(description='cat')
+        cat_map = InodeIDMap.new(description='cat')
         self.assertEqual('cat@food', repr(cat_map.next(b'food')))
+
+    def test_hashing_and_equality(self):
+        maps = [InodeIDMap.new() for i in range(100)]
+        hashes = {hash(m.get_id(b'.')) for m in maps}
+        self.assertNotEqual({next(iter(hashes))}, hashes)
+        # Even 5 collisions out of 100 is too many, but the goal is to avoid
+        # flaky tests at all costs.
+        self.assertGreater(len(hashes), 95)
+
+        id1 = InodeIDMap.new().get_id(b'.')
+        id2 = InodeID(id=0, inner_id_map=id1.inner_id_map)
+        self.assertEqual(id1, id2)
+        self.assertEqual(hash(id1), hash(id2))
 
 
 if __name__ == '__main__':

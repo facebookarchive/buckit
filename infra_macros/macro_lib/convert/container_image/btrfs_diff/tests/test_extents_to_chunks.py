@@ -122,7 +122,7 @@ class ExtentsToChunksTestCase(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = 10e4
-        self.inode_map = InodeIDMap()
+        self.inode_map = InodeIDMap.new()
 
     def _gen_ids_and_extents_from_figure(
         self, s, extent_left=0, extent_right=0, slice_spacing=0,

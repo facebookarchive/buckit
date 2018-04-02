@@ -54,7 +54,7 @@ class Subvolume(NamedTuple):
       - `InodeIDMap` opaquely holds a `description`, which in practice
         is a `SubvolumeDescription` that is **NOT** safely `deepcopy`able
         unless the whole `Volume` is being copied in one call.  For
-        single-volume snapshots, `ApplySendStreamToVolume` has an icky
+        single-volume snapshots, `SubvolumeSetMutator` has an icky
         workaround :)
 
       - The tests for `InodeIDMap` try to ensure that it is safely

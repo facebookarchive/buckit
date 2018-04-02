@@ -30,8 +30,8 @@ class SubvolumeSetTestCase(unittest.TestCase):
             cat_mutator.apply_item(bad_clone)
         cat_mutator.apply_item(bad_clone._replace(from_uuid='abe'))
         cat = cat_mutator.subvolume
-        self.assertEqual('cat', repr(cat.id_map.description))
-        self.assertEqual('cat', repr(cat.id_map.description))
+        self.assertEqual('cat', repr(cat.id_map.inner.description))
+        self.assertEqual('cat', repr(cat.id_map.inner.description))
 
         # Make a snapshot
         tiger = SubvolumeSetMutator.new(subvols, si.snapshot(
@@ -39,22 +39,28 @@ class SubvolumeSetTestCase(unittest.TestCase):
             uuid='ee', transid=7,
             parent_uuid='abe', parent_transid=3,
         )).subvolume
-        self.assertEqual('cat', repr(cat.id_map.description))
-        self.assertEqual('tiger', repr(tiger.id_map.description))
+        self.assertIs(
+            subvols.name_uuid_prefix_counts,
+            tiger.id_map.inner.description.name_uuid_prefix_counts,
+        )
+        self.assertEqual('cat', repr(cat.id_map.inner.description))
+        self.assertEqual('tiger', repr(tiger.id_map.inner.description))
 
         # Get `repr` to show some disambiguation
         cat2 = SubvolumeSetMutator.new(subvols, si.subvol(
             path=b'cat', uuid='app', transid=3,
         )).subvolume
-        self.assertEqual('cat@ab', repr(cat.id_map.description))
-        self.assertEqual('cat@ap', repr(cat2.id_map.description))
+        self.assertEqual('cat@ab', repr(cat.id_map.inner.description))
+        self.assertEqual('cat@ap', repr(cat2.id_map.inner.description))
 
         # Now create an ambiguous repr.
         tiger2 = SubvolumeSetMutator.new(subvols, si.subvol(
             path=b'tiger', uuid='eep', transid=3,
         )).subvolume
-        self.assertEqual('tiger@ee-ERROR', repr(tiger.id_map.description))
-        self.assertEqual('tiger@eep', repr(tiger2.id_map.description))
+        self.assertEqual(
+            'tiger@ee-ERROR', repr(tiger.id_map.inner.description),
+        )
+        self.assertEqual('tiger@eep', repr(tiger2.id_map.inner.description))
 
     def test_errors(self):
         si = SendStreamItems

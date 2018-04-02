@@ -39,7 +39,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
         si = SendStreamItems
 
         # Make a tiny subvolume
-        cat = Subvolume.new(id_map=InodeIDMap(description='cat'))
+        cat = Subvolume.new(id_map=InodeIDMap.new(description='cat'))
         cat = yield 'empty cat', cat
         self._check_path('(Dir)', cat)
 
@@ -100,9 +100,10 @@ class SubvolumeTestCase(DeepCopyTestCase):
         cat = yield 'cat after error testing', cat
         self._check_path(cat_final_repr, cat)
 
-        # Make a snapshot
-        tiger = copy.deepcopy(cat)
-        tiger.id_map.description = 'tiger'
+        # Make a snapshot using the hack from `SubvolumeSetMutator`
+        tiger = copy.deepcopy(cat, memo={
+            id(cat.id_map.inner.description): 'tiger',
+        })
         tiger = yield 'freshly copied tiger', tiger
         self._check_path(cat_final_repr, tiger)
 
