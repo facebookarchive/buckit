@@ -1174,7 +1174,7 @@ class PythonConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['out'] = os.curdir
-            attrs['tests'] = py_tests
+            attrs['tests'] = py_tests + list(tests)
             # With this we are telling buck we depend on the test targets
             cmds = []
             for test in py_tests:
