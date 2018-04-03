@@ -11,6 +11,7 @@ import os
 
 from collections import defaultdict
 
+from types import MappingProxyType
 from typing import Any, Iterator, Mapping, NamedTuple, Optional, Set
 
 
@@ -27,13 +28,15 @@ class InodeID(NamedTuple):
     id: int
     # While this field creates some aliasing issues with `deepcopy` (see
     # the doblock), it is still worthwhile to have it:
+    #  - It makes it trivial to aggregate cloned extents across subvolumes
+    #    in `SubvolumeSet.freeze`.
     #  - We check `inner_id_map` identity at runtime (below) to ensure at
     #    runtime that `InodeID`s are used only with their maps.
-    #  - an identifiable repr is nice for ease of testing/debugging
+    #  - An identifiable repr is nice for ease of testing/debugging.
     inner_id_map: 'InnerInodeIDMap'
 
     def __repr__(self):
-        paths = self.inner_id_map.get_paths(self)
+        paths = self.inner_id_map.get_mutable_paths(self)
         desc = ''
         if self.inner_id_map.description:
             desc = f'{self.inner_id_map.description}@'
@@ -82,7 +85,7 @@ class _InnerInodeIDMap(NamedTuple):
             raise RuntimeError(f'Wrong map for InodeID #{inode_id.id}')
         return inode_id
 
-    def get_paths(self, inode_id: InodeID) -> Set[bytes]:
+    def get_mutable_paths(self, inode_id: InodeID) -> Set[bytes]:
         return self.id_to_paths.get(self._assert_mine(inode_id).id, set())
 
 
@@ -101,14 +104,14 @@ class InodeIDMap(NamedTuple):
     the test may not catch every kind of copy-related problem.  In
     particular, because `description` has type `Any`, it can bring
     `deepcopy` issues -- see the notes on the `deepcopy`ability
-    # of `SubvolumeDescription` in `volume.py` to understand the risks.
+    of `SubvolumeDescription` in `volume.py` to understand the risks.
     '''
     inode_id_counter: Iterator[int]
     # These contain references to `self.inner`.
     path_to_id: Mapping[bytes, InodeID]
     # This structure is separated from `self` so that `InodeID`s do NOT have
     # a circular dependency on `InodeIDMap`.  This dependency-factoring is
-    # necessary so that our `finalize()` can make a recursively-immutable
+    # necessary so that our `freeze()` can make a recursively-immutable
     # variant of `InodeIDMap`.
     inner: _InnerInodeIDMap
     id_to_children: Mapping[int, Set[bytes]]  # dir/path -> dir/path/child
@@ -117,17 +120,39 @@ class InodeIDMap(NamedTuple):
     def new(cls, *, description: Any=''):
         self = cls(
             inode_id_counter=itertools.count(),
+            path_to_id={},
             inner=_InnerInodeIDMap(
                 description=description,
                 id_to_paths=defaultdict(set),
             ),
-            path_to_id={},
             id_to_children=defaultdict(set),
         )
         root_id = self.next()
         self.inner.id_to_paths[root_id.id].add(b'.')
         self.path_to_id[b'.'] = root_id
         return self
+
+    def freeze(self, final_description: Any):
+        'Returns a recursively immutable copy of `self`.'
+        # Future: assert `final_description` is recursively immutable,
+        # or better yet, just use `deepfrozen` throughout.
+        frozen_inner = _InnerInodeIDMap(
+            description=final_description,
+            id_to_paths=MappingProxyType({
+                i: frozenset(p) for i, p in self.inner.id_to_paths.items()
+            }),
+        )
+        return type(self)(
+            inode_id_counter=None,  # can't add IDs to a frozen map
+            path_to_id=MappingProxyType({
+                path: InodeID(id=ino_id.id, inner_id_map=frozen_inner)
+                    for path, ino_id in self.path_to_id.items()
+            }),
+            inner=frozen_inner,
+            id_to_children=MappingProxyType({
+                i: frozenset(c) for i, c in self.id_to_children.items()
+            }),
+        )
 
     def next(self, path: Optional[bytes]=None) -> InodeID:
         inode_id = InodeID(
@@ -186,7 +211,8 @@ class InodeIDMap(NamedTuple):
         return self.path_to_id.get(_normpath(path))
 
     def get_paths(self, inode_id: InodeID) -> Set[bytes]:
-        return self.inner.get_paths(inode_id)
+        # Prevent `.get_paths(ino_id).pop()` from affecting our innards.
+        return set(self.inner.get_mutable_paths(inode_id))
 
     def get_children(self, inode_id: InodeID) -> Set[bytes]:
         return self.id_to_children.get(
