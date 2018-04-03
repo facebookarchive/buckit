@@ -61,7 +61,7 @@ class IncompleteInodeTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            '(File o10:20 m4733 t70/01/01.00:00:01.9+0.9-1.1 h10d15h15d5)',
+            '(File m4733 o10:20 t70/01/01.00:00:01.9+0.9-1.1 h10d15h15d5)',
             repr(ino)
         )
 

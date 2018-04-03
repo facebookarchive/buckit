@@ -12,7 +12,7 @@ Avoid whitespace when possible, since IncompleteInode uses space separators.
 import stat
 
 from datetime import datetime
-from typing import NamedTuple, Optional, Set, Sequence, Tuple
+from typing import NamedTuple, Mapping, Optional, Set, Sequence, Tuple
 
 from .extent import Extent
 from .inode_id import InodeID
@@ -90,15 +90,27 @@ S_IFMT_TO_FILE_TYPE_NAME = {
     stat.S_IFSOCK: 'Sock',
 }
 
+EXTENT_KIND_TO_ABBREV = {
+    Extent.Kind.HOLE: 'h',
+    Extent.Kind.DATA: 'd',
+}
+
+
+def _repr_decode(b: bytes) -> str:
+    return b.decode(errors="surrogateescape")
+
 # Future: `frozentype` should let us mirror the `Incomplete*` hierarchy,
 # instead of making this enum + union type hack.
 class Inode(NamedTuple):
-    id: InodeID
+    # All inode types have these first 5 fields
 
-    # All inode types
-    st_mode: int  # file_type | mode
-    owner: InodeOwner
-    utimes: InodeUtimes
+    file_type: int  # Upper bits of `st_mode` matching `S_IFMT`
+    # The next 3 fields are not actually optional, but they may be `None` if
+    # the `Inode` was made from a partly-populated `IncompleteInode`.
+    mode: Optional[int]  # Bottom 12 bits of `st_mode`
+    owner: Optional[InodeOwner]
+    utimes: Optional[InodeUtimes]
+    xattrs: Mapping[bytes, bytes]
 
     # The subsequent fields are specific to particular file_types.  `_new`
     # will assert that they are not None iff they are relevant.
@@ -109,27 +121,60 @@ class Inode(NamedTuple):
     # set of `Extent`s by `extents_to_chunks_with_clones`.
     chunks: Optional[Sequence['Chunk']] = None
 
-    # DEVICE -- block vs character is encoded as `S_IFMT(st_mode)`
+    # DEVICE -- block vs character is encoded in `file_type`
     dev: Optional[int] = None
 
     # SYMLINK
     dest: Optional[bytes] = None
 
-    @staticmethod
-    def _new(*, st_mode, chunks=None, dev=None, dest=None, **kwargs):
-        assert (stat.S_ISCHR(st_mode) or stat.S_ISBLK(st_mode)) ^ (dev is None)
-        assert stat.S_ISREG(st_mode) ^ (chunks is None)
-        assert stat.S_ISLNK(st_mode) ^ (dest is None)
-        # Symlink permissions are ignored, so ensure they're canonical.
-        assert not stat.S_ISLNK(st_mode) or stat.S_IMODE(st_mode) == 0
-        return Inode(
-            st_mode=st_mode, chunks=chunks, dev=dev, dest=dest, **kwargs,
-        )
+    def assert_valid_and_complete(self):
+        if None in (self.file_type, self.mode, self.owner, self.utimes):
+            raise RuntimeError(f'{self} is incomplete')
+        if self.file_type & ~stat.S_IFMT(self.file_type):
+            raise RuntimeError(f'bad .file_type bits in {self}')
+        if self.mode & stat.S_IFMT(self.mode):
+            raise RuntimeError(f'bad .mode bits in {self}')
+        if (self.chunks is not None) ^ stat.S_ISREG(self.file_type):
+            raise RuntimeError(f'{self} must have .chunks iff it is a file')
+        is_dev = stat.S_ISBLK(self.file_type) or stat.S_ISCHR(self.file_type)
+        if (self.dev is not None) ^ is_dev:
+            raise RuntimeError(f'{self} must have .dev iff it is a device')
+        if (self.dest is not None) ^ stat.S_ISLNK(self.file_type):
+            raise RuntimeError(f'{self} must have .dest iff it is a symlink')
+        if stat.S_ISLNK(self.file_type) and self.mode != 0:
+            # Symlink permissions are ignored, so ensure they're canonical.
+            raise RuntimeError(f'{self} must have mode == 0')
+
+    def _repr_fields(self):
+        yield S_IFMT_TO_FILE_TYPE_NAME.get(self.file_type, str(self.file_type))
+        if self.mode is not None:
+            yield f'm{self.mode:o}'
+        if self.owner is not None:
+            yield f'o{self.owner}'
+        if self.utimes is not None:
+            yield f't{self.utimes}'
+        if self.xattrs:
+            yield 'x' + ','.join(
+                f'{repr(_repr_decode(k))}={repr(_repr_decode(v))}'
+                    for k, v in self.xattrs.items()
+            )
+        # The next 3 fields are unmarked because they belong to different
+        # file-types, and would normally come last.  A pathological `Inode`
+        # could emit ambiguous output because of this, but I'm not worried.
+        if self.chunks:  # This won't distinguish between `None` and `()`
+            yield ''.join(
+                f'{EXTENT_KIND_TO_ABBREV[c.kind]}{c.length}' + (
+                    ('(' + '/'.join(repr(cc) for cc in c.chunk_clones) + ')')
+                        if c.chunk_clones else ''
+                ) for c in self.chunks
+            )
+        if self.dev is not None:
+            yield f'{hex(self.dev)[2:]}'
+        if self.dest is not None:
+            yield f'{_repr_decode(self.dest)}'
 
     def __repr__(self):
-        file_type = stat.S_IFMT(self.st_mode)
-        name = S_IFMT_TO_FILE_TYPE_NAME.get(file_type, file_type)
-        return f'({name}: {self.id})'
+        return '(' + ' '.join(self._repr_fields()) + ')'
 
 
 class Clone(NamedTuple):

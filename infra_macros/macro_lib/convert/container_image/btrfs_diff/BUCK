@@ -77,7 +77,10 @@ python_unittest(
         1.0,
         ":inode",
     )],
-    deps = [":inode"],
+    deps = [
+        ":extents_to_chunks",
+        ":inode",
+    ],
 )
 
 python_library(

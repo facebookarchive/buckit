@@ -25,12 +25,14 @@ Future: with `deepfrozen` done, it would be simplest to merge
 `IncompleteInode` with `Inode`, and just have `apply_item` return a
 partly-modified copy, in the style of `NamedTuple._replace`.
 '''
+import itertools
 import stat
 
-from typing import Dict, Optional
+from types import MappingProxyType
+from typing import Dict, Optional, Sequence
 
 from .extent import Extent
-from .inode import InodeOwner, InodeUtimes, S_IFMT_TO_FILE_TYPE_NAME
+from .inode import Chunk, Inode, InodeOwner, InodeUtimes
 from .parse_dump import SendStreamItem, SendStreamItems
 
 
@@ -38,23 +40,39 @@ class IncompleteInode:
     '''
     Base class for all inode types. Inheritance is appropriate because
     different inode types have different data, different construction logic,
-    and finalization logic.
+    and freezing logic.
     '''
+    file_type: int  # Upper bits of `st_mode` matching `S_IFMT`
+    mode: Optional[int]  # Bottom 12 bits of `st_mode`
+    owner: Optional[InodeOwner]
+    utimes: Optional[InodeUtimes]
     xattrs: Dict[bytes, bytes]
     # If any of these are None, the filesystem was created badly.
     # Exception: symlinks don't have permissions.
-    owner: Optional[InodeOwner]
-    mode: Optional[int]  # Bottom 12 bits of `st_mode`
-    file_type: int  # Upper bits of `st_mode` matching `S_IFMT`
-    utimes: Optional[InodeUtimes]
 
     def __init__(self, *, item: SendStreamItem):
         assert isinstance(item, self.INITIAL_ITEM)
-        self.xattrs = {}
-        self.owner = None
-        self.mode = None
-        self.utimes = None
         self.file_type = self.FILE_TYPE
+        self.mode = None
+        self.owner = None
+        self.utimes = None
+        self.xattrs = {}
+
+    def freeze(self, chunks: Sequence[Chunk]) -> Inode:
+        'Returns a recursively immutable `Inode` based on `self`.'
+        ino = Inode(**self._freeze_kwargs(chunks))
+        assert (ino.chunks is not None) ^ (chunks is None)
+        return ino
+
+    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+        return {
+            'file_type': self.file_type,
+            'mode': self.mode,
+            # No need to copy owner/utimes, they're recursively immutable.
+            'owner': self.owner,
+            'utimes': self.utimes,
+            'xattrs': MappingProxyType(self.xattrs.copy()),
+        }
 
     def apply_item(self, item: SendStreamItem) -> None:
         assert not isinstance(item, SendStreamItems.clone), 'Do .apply_clone()'
@@ -84,19 +102,8 @@ class IncompleteInode:
     ) -> None:
         raise RuntimeError(f'{self} cannot clone via {item} from {from_ino}')
 
-    def _repr_fields(self):
-        if self.owner is not None:
-            yield f'o{self.owner}'
-        if self.mode is not None:
-            yield f'm{self.mode:o}'
-        if self.utimes is not None:
-            yield f't{self.utimes}'
-
     def __repr__(self):
-        return '(' + ' '.join([
-            S_IFMT_TO_FILE_TYPE_NAME.get(self.FILE_TYPE, self.FILE_TYPE),
-            *self._repr_fields(),
-        ]) + ')'
+        return repr(self.freeze(chunks=None))
 
 
 class IncompleteDir(IncompleteInode):
@@ -113,6 +120,10 @@ class IncompleteFile(IncompleteInode):
     def __init__(self, *, item: SendStreamItem):
         super().__init__(item=item)
         self.extent = Extent.empty()
+
+    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+        assert (chunks is None) ^ (self.extent is not None)
+        return {'chunks': chunks, **super()._freeze_kwargs(chunks)}
 
     def apply_item(self, item: SendStreamItem) -> None:
         if isinstance(item, SendStreamItems.truncate):
@@ -149,10 +160,18 @@ class IncompleteFile(IncompleteInode):
             length=item.len,
         )
 
-    def _repr_fields(self):
-        yield from super()._repr_fields()
-        if self.extent.length:
-            yield f'{self.extent}'
+    def __repr__(self):
+        return repr(self.freeze(tuple(
+            Chunk(
+                kind=kind,
+                length=sum(length for _, length in chunks),
+                chunk_clones=(),
+            ) for kind, chunks in itertools.groupby(
+                ((extent.content, length)
+                    for _, length, extent in self.extent.gen_trimmed_leaves()),
+                lambda c: c[0],
+            )
+        )))
 
 
 class IncompleteSocket(IncompleteInode):
@@ -180,9 +199,8 @@ class IncompleteDevice(IncompleteInode):
         self.mode = item.mode & ~self.FILE_TYPE
         self.dev = item.dev
 
-    def _repr_fields(self):
-        yield from super()._repr_fields()
-        yield f'{hex(self.dev)[2:]}'
+    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+        return {'dev': self.dev, **super()._freeze_kwargs(chunks)}
 
 
 class IncompleteSymlink(IncompleteInode):
@@ -195,12 +213,11 @@ class IncompleteSymlink(IncompleteInode):
         super().__init__(item=item)
         self.dest = item.dest
 
+    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+        return {'dest': self.dest, **super()._freeze_kwargs(chunks)}
+
     def apply_item(self, item: SendStreamItem) -> None:
         if isinstance(item, SendStreamItems.chmod):
             raise RuntimeError(f'{item} cannot chmod symlink {self}')
         else:
             super().apply_item(item=item)
-
-    def _repr_fields(self):
-        yield from super()._repr_fields()
-        yield f'{self.dest.decode(errors="surrogateescape")}'
