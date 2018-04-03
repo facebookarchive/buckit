@@ -74,6 +74,7 @@ try:
 except ImportError:
     use_internal_java_converters = False
 image_feature = import_macro_lib('convert/container_image/image_feature')
+image_layer = import_macro_lib('convert/container_image/image_layer')
 js = import_macro_lib('convert/js')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
@@ -161,6 +162,7 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_haddock'),
         haskell_external_library.HaskellExternalLibraryConverter(context),
         image_feature.ImageFeatureConverter(context),
+        image_layer.ImageLayerConverter(context),
         lua.LuaConverter(context, 'lua_library'),
         lua.LuaConverter(context, 'lua_binary'),
         lua.LuaConverter(context, 'lua_unittest'),

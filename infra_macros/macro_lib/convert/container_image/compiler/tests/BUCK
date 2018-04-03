@@ -12,14 +12,22 @@ buck_genrule(
            "tar --owner=root --group=root -C \"$d\" -cf \"$OUT\" .",
 )
 
-# Exercises:
+# The next two targets exercise:
 #  - all forms of constructing a make_dirs request
 #  - specifying `stat` options, like user/group/mode
+
 image_feature(
     name = "feature_dirs",
     make_dirs = [
         "/foo/bar",
         ("/foo/bar", "baz"),
+    ],
+)
+
+# The permissions are bad, so any attempt to add this into a layer will fail.
+image_feature(
+    name = "feature_bad_dir",
+    make_dirs = [
         {
             "path_to_make": "borf/beep",
             "into_dir": "/foo",
@@ -58,7 +66,57 @@ image_feature(
         },
     ],
     features = [
+        ":feature_bad_dir",
         ":feature_dirs",
         ":feature_tar",
+    ],
+)
+
+##
+## The following layers are the basis of an integration test for
+## `image_layer`.  Unlike the `image_feature`s above, they must be actually
+## be buildable, not just amenable to dependency analysis -- for this
+## reason, we cannot e.g. depend on the broken `:feature_bad_dir` target.
+##
+
+image_layer(
+    name = "hello_world_base",
+    tarballs = [(":hello_world.tar", "//")],
+)
+
+image_layer(
+    name = "parent_layer",
+    copy_deps = [
+        (":hello_world.tar", "/foo/bar/"),
+        {
+            "source": ":hello_world.tar",
+            "dest": "/foo/bar/even_more_hello_world.tar",
+        },
+    ],
+    features = [":feature_dirs"],
+    parent_layer = ":hello_world_base",
+)
+
+image_layer(
+    name = "child_layer",
+    features = [":feature_tar"],
+    make_dirs = [
+        ("/foo", "borf"),  # for :feature_tar
+        ("/foo", "extracted_hello"),
+        {
+            "path_to_make": "more_extracted_hello",
+            "into_dir": "/foo",
+            "user": "nobody",
+            "group": "nobody",
+            "mode": "0711",
+        },
+    ],
+    parent_layer = ":parent_layer",
+    tarballs = [
+        (":hello_world.tar", "/foo/extracted_hello"),
+        {
+            "tarball": ":hello_world.tar",
+            "into_dir": "/foo/more_extracted_hello",
+        },
     ],
 )

@@ -137,6 +137,7 @@ def READ_MY_DOC_image_feature_target(name):
 
 TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_dirs"),
+    READ_MY_DOC_image_feature_target("feature_bad_dir"),
     READ_MY_DOC_image_feature_target("feature_tar"),
     READ_MY_DOC_image_feature_target("feature_copy_dirs_tar"),
     "hello_world.tar",
@@ -202,5 +203,38 @@ image_feature_python_unittest(
     deps = [
         ":compiler",
         ":mock_subvolume_from_json_file",
+    ],
+)
+
+IMAGE_LAYER_DEPS = [
+    "child_layer",
+    "parent_layer",
+    "hello_world_base",
+]
+
+python_unittest(
+    name = "test-image-layer",
+    srcs = ["tests/test_image_layer.py"],
+    base_module = "compiler",
+    # Python `deps` don't work as you'd expect in fbcode -- they have to be
+    # other `python_*` rules.  `cpp_deps` is the kitchen sink?
+    cpp_deps = [
+        # Buck bug: `env` does not create a dependency; do it explicitly.
+        TEST_TARGET_PREFIX + t
+        for t in IMAGE_LAYER_DEPS
+    ],
+    env = {
+        "test_image_layer_path_to_" + t: "$(location {})".format(
+            TEST_TARGET_PREFIX + t,
+        )
+        for t in IMAGE_LAYER_DEPS
+    },
+    # As with `test-image-feature`, we cannot get `image_layer.py` coverage.
+    deps = [
+        ":subvolume_on_disk",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":artifacts_dir",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":volume_for_repo",
     ],
 )

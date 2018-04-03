@@ -12,6 +12,7 @@ T_BASE = (
 # Use the "debug", human-readable forms of the image_feature targets here,
 # since that's what we are testing.
 T_DIRS = f'{T_BASE}:feature_dirs'
+T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
 T_TAR = f'{T_BASE}:feature_tar'
 T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
@@ -44,7 +45,7 @@ ID_TO_ITEM = {
         from_target=T_DIRS, into_dir='/foo/bar', path_to_make='baz'
     ),
     'foo/borf/beep': MakeDirsItem(
-        from_target=T_DIRS,
+        from_target=T_BAD_DIR,
         into_dir='/foo',
         path_to_make='borf/beep',
         user='uuu',

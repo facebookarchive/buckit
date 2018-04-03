@@ -1,18 +1,3 @@
-# The implementation of `image_layer` uses these for path resolution.
-
-export_file(name = "artifacts_dir.py")
-
-export_file(name = "compiler.py")
-
-export_file(name = "volume_for_repo.py")
-
-export_file(name = "subvolume_garbage_collector.py")
-
-export_file(name = "subvolume_version.py")
-
-# The rest of this file only exist to enable automatic continuous builds and
-# integration tests for the Buck image-building toolchain.
-
 # For `test_volume_for_repo.py`. At build time, we find use `dirname(__file__)`
 export_file(name = "set_up_volume.sh")
 
@@ -81,4 +66,46 @@ python_unittest(
         ":fake_sudo",
         ":subvolume_garbage_collector",
     ],
+)
+
+# No unit-test since this is simple, its output is random, and we are
+# unlikely to need to change it.  Be sure to test your changes manually!
+python_library(
+    name = "subvolume_version",
+    srcs = ["subvolume_version.py"],
+    base_module = "",
+)
+
+# These binaries are used by `image_layer.py` as build-time helpers.
+
+python_binary(
+    name = "artifacts-dir",
+    main_module = "artifacts_dir",
+    deps = [":artifacts_dir"],
+)
+
+python_binary(
+    name = "compiler",
+    main_module = "compiler.compiler",
+    deps = [
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image/compiler:compiler",
+    ],
+)
+
+python_binary(
+    name = "subvolume-garbage-collector",
+    main_module = "subvolume_garbage_collector",
+    deps = [":subvolume_garbage_collector"],
+)
+
+python_binary(
+    name = "subvolume-version",
+    main_module = "subvolume_version",
+    deps = [":subvolume_version"],
+)
+
+python_binary(
+    name = "volume-for-repo",
+    main_module = "volume_for_repo",
+    deps = [":volume_for_repo"],
 )

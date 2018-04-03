@@ -84,6 +84,8 @@ class CompilerTestCase(unittest.TestCase):
             'sudo', 'FAKE_BUILD', 'image', 'build',
             '--no-pkg', '--no-export', '--no-clean-built-layer',
             '--print-buck-plumbing',
+            '--image-volume', FAKE_SUBVOLS_DIR,
+            '--prepare-volume', FAKE_SUBVOLS_DIR,
             '--tmp-volume', FAKE_SUBVOLS_DIR,
             '--name', 'NAME',
             '--version', 'VERSION',

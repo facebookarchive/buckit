@@ -97,6 +97,9 @@ def build_image(args):
         'image', 'build',
         '--no-pkg', '--no-export', '--no-clean-built-layer',
         '--print-buck-plumbing',
+        # '--image-volume' or `--prepare-volume` are unused but required :/
+        '--image-volume', args.subvolumes_dir,
+        '--prepare-volume', args.subvolumes_dir,
         '--tmp-volume', args.subvolumes_dir,
         '--name', args.subvolume_name,
         '--version', args.subvolume_version,
@@ -134,6 +137,5 @@ def build_image(args):
         raise RuntimeError(f'While parsing output {output} of {cmd}') from ex
 
 
-def main():  # pragma: no cover
-    'Invoked by ../compiler.py'
+if __name__ == '__main__':  # pragma: no cover
     build_image(parse_args(sys.argv[1:])).to_json_file(sys.stdout)
