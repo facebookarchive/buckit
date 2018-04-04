@@ -22,7 +22,8 @@ mutate its state.
 
 - Maximum path lengths are not checked.
 '''
-from typing import Mapping, NamedTuple, Optional
+from types import MappingProxyType
+from typing import Mapping, NamedTuple, Optional, Sequence, Union
 
 from .inode_id import InodeID, InodeIDMap
 from .incomplete_inode import (
@@ -77,7 +78,7 @@ class Subvolume(NamedTuple):
     # where a subvolume is mounted within a volume, but this does not
     # require us to share inodes across subvolumes.
     id_map: InodeIDMap
-    id_to_inode: Mapping[InodeID, IncompleteInode]
+    id_to_inode: Mapping[InodeID, Union[IncompleteInode, 'Inode']]
 
     @classmethod
     def new(cls, *, id_map, **kwargs) -> 'Subvolume':
@@ -180,4 +181,33 @@ class Subvolume(NamedTuple):
         assert isinstance(item, SendStreamItems.clone)
         return self._require_inode_at_path(item, item.path).apply_clone(
             item, from_subvol._require_inode_at_path(item, item.from_path),
+        )
+
+    def freeze(
+        self,
+        id_to_chunks: Mapping[InodeID, Sequence['Chunk']],
+        description: 'SubvolumeDescription',
+    ):
+        '''
+        Returns a recursively immutable copy of `self`, replacing
+        `IncompleteInode`s by `Inode`s, using the provided `id_to_chunks` to
+        populate them with `Chunk`s instead of `Extent`s.  We rely on the
+        frozen `SubvolumeSet` that contains this subvolume to pass us the
+        appropriate recursively immutable `description`.
+        '''
+        final_map = self.id_map.freeze(description)
+
+        def corresponding_id(id: InodeID) -> InodeID:
+            'Given an id from `self.id_map`, find its match in `final_map`'
+            new_id = final_map.get_id(next(iter(self.id_map.get_paths(id))))
+            assert new_id.id == id.id
+            assert new_id.inner_id_map is final_map.inner
+            return new_id
+
+        return type(self)(
+            id_map=final_map,
+            id_to_inode=MappingProxyType({
+                corresponding_id(id): ino.freeze(id_to_chunks.get(id))
+                    for id, ino in self.id_to_inode.items()
+            }),
         )
