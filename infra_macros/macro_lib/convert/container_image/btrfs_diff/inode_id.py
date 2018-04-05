@@ -14,6 +14,7 @@ from collections import defaultdict
 from types import MappingProxyType
 from typing import Any, Iterator, Mapping, NamedTuple, Optional, Set
 
+from .freeze import freeze
 
 class InodeID(NamedTuple):
     '''
@@ -132,26 +133,11 @@ class InodeIDMap(NamedTuple):
         self.path_to_id[b'.'] = root_id
         return self
 
-    def freeze(self, final_description: Any):
+    def freeze(self, *, _memo):
         'Returns a recursively immutable copy of `self`.'
-        # Future: assert `final_description` is recursively immutable,
-        # or better yet, just use `deepfrozen` throughout.
-        frozen_inner = _InnerInodeIDMap(
-            description=final_description,
-            id_to_paths=MappingProxyType({
-                i: frozenset(p) for i, p in self.inner.id_to_paths.items()
-            }),
-        )
-        return type(self)(
-            inode_id_counter=None,  # can't add IDs to a frozen map
-            path_to_id=MappingProxyType({
-                path: InodeID(id=ino_id.id, inner_id_map=frozen_inner)
-                    for path, ino_id in self.path_to_id.items()
-            }),
-            inner=frozen_inner,
-            id_to_children=MappingProxyType({
-                i: frozenset(c) for i, c in self.id_to_children.items()
-            }),
+        return self._make(
+            freeze(i, _memo=_memo)  # can't add IDs once frozen
+                for i in self._replace(inode_id_counter=None)
         )
 
     def next(self, path: Optional[bytes]=None) -> InodeID:

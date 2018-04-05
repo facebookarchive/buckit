@@ -28,10 +28,10 @@ partly-modified copy, in the style of `NamedTuple._replace`.
 import itertools
 import stat
 
-from types import MappingProxyType
 from typing import Dict, Optional, Sequence
 
 from .extent import Extent
+from .freeze import freeze
 from .inode import Chunk, Inode, InodeOwner, InodeUtimes
 from .parse_dump import SendStreamItem, SendStreamItems
 
@@ -58,20 +58,23 @@ class IncompleteInode:
         self.utimes = None
         self.xattrs = {}
 
-    def freeze(self, chunks: Sequence[Chunk]) -> Inode:
+    def freeze(self, *, _memo, chunks: Sequence[Chunk]) -> Inode:
         'Returns a recursively immutable `Inode` based on `self`.'
-        ino = Inode(**self._freeze_kwargs(chunks))
+        # NB: If any freezing bugs turn up in this implementation, consider
+        # wrapping a single `freeze` around the `freeze_kwargs` call to
+        # ensure that everything gets processed.
+        ino = Inode(**self._freeze_kwargs(_memo=_memo, chunks=chunks))
         assert (ino.chunks is not None) ^ (chunks is None)
         return ino
 
-    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+    def _freeze_kwargs(self, *, _memo, chunks: Sequence[Chunk]):
         return {
             'file_type': self.file_type,
             'mode': self.mode,
-            # No need to copy owner/utimes, they're recursively immutable.
+            # No need to freeze owner/utimes, they're recursively immutable.
             'owner': self.owner,
             'utimes': self.utimes,
-            'xattrs': MappingProxyType(self.xattrs.copy()),
+            'xattrs': freeze(self.xattrs, _memo=_memo),
         }
 
     def apply_item(self, item: SendStreamItem) -> None:
@@ -103,7 +106,7 @@ class IncompleteInode:
         raise RuntimeError(f'{self} cannot clone via {item} from {from_ino}')
 
     def __repr__(self):
-        return repr(self.freeze(chunks=None))
+        return repr(freeze(self, chunks=None))
 
 
 class IncompleteDir(IncompleteInode):
@@ -121,9 +124,14 @@ class IncompleteFile(IncompleteInode):
         super().__init__(item=item)
         self.extent = Extent.empty()
 
-    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
+    def _freeze_kwargs(self, *, _memo, chunks: Sequence[Chunk]):
         assert (chunks is None) ^ (self.extent is not None)
-        return {'chunks': chunks, **super()._freeze_kwargs(chunks)}
+        # Future: we could make some assertions to check that the chunks
+        # correspond to the extent.
+        return {
+            'chunks': freeze(chunks, _memo=_memo),
+            **super()._freeze_kwargs(_memo=_memo, chunks=chunks),
+        }
 
     def apply_item(self, item: SendStreamItem) -> None:
         if isinstance(item, SendStreamItems.truncate):
@@ -161,7 +169,7 @@ class IncompleteFile(IncompleteInode):
         )
 
     def __repr__(self):
-        return repr(self.freeze(tuple(
+        return repr(freeze(self, chunks=tuple(
             Chunk(
                 kind=kind,
                 length=sum(length for _, length in chunks),
@@ -199,8 +207,11 @@ class IncompleteDevice(IncompleteInode):
         self.mode = item.mode & ~self.FILE_TYPE
         self.dev = item.dev
 
-    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
-        return {'dev': self.dev, **super()._freeze_kwargs(chunks)}
+    def _freeze_kwargs(self, *, _memo, chunks: Sequence[Chunk]):
+        return {
+            'dev': self.dev,
+            **super()._freeze_kwargs(_memo=_memo, chunks=chunks),
+        }
 
 
 class IncompleteSymlink(IncompleteInode):
@@ -213,8 +224,11 @@ class IncompleteSymlink(IncompleteInode):
         super().__init__(item=item)
         self.dest = item.dest
 
-    def _freeze_kwargs(self, chunks: Sequence[Chunk]):
-        return {'dest': self.dest, **super()._freeze_kwargs(chunks)}
+    def _freeze_kwargs(self, *, _memo, chunks: Sequence[Chunk]):
+        return {
+            'dest': self.dest,
+            **super()._freeze_kwargs(_memo=_memo, chunks=chunks),
+        }
 
     def apply_item(self, item: SendStreamItem) -> None:
         if isinstance(item, SendStreamItems.chmod):

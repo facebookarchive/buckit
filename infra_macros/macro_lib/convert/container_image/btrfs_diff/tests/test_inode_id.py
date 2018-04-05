@@ -4,6 +4,7 @@ import unittest
 
 from types import SimpleNamespace
 
+from ..freeze import freeze
 from ..inode_id import InodeID, InodeIDMap
 
 from .deepcopy_test import DeepCopyTestCase
@@ -44,7 +45,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         def unfrozen_and_frozen_impl(id_map, mut_ns):
             'Run all checks on the mutable map and on its frozen counterpart'
             yield id_map, mut_ns
-            frozen_map = id_map.freeze('')
+            frozen_map = freeze(id_map)
             yield frozen_map, SimpleNamespace(**{
                 # Avoiding `frozen_map.get_id(...id_map.get_paths(v))`
                 # since that won't work with an anonymous inode.
@@ -99,9 +100,9 @@ class InodeIDTestCase(DeepCopyTestCase):
             self.assertEqual('a/c,a/d', repr(ns.ino2))
         # Try removing from the frozen map before changing the original one.
         with self.assertRaisesRegex(AttributeError, "mappingproxy.* no .*pop"):
-            id_map.freeze('frozen').remove_path(b'a/c')
+            freeze(id_map).remove_path(b'a/c')
         self.assertIs(mut_ns.ino2, id_map.remove_path(b'a/c'))
-        saved_frozen_map = id_map.freeze('frozen')  # We'll check this later
+        saved_frozen_map = freeze(id_map)  # We'll check this later
         id_map = yield from maybe_replace_map(id_map, 'removed a/c name')
         for im, ns in unfrozen_and_frozen(id_map, mut_ns):
             self.assertEqual({b'a/d'}, im.get_children(ns.ino1))
@@ -159,7 +160,7 @@ class InodeIDTestCase(DeepCopyTestCase):
         with self.assertRaisesRegex(
             TypeError, "'NoneType' object is not an iterator",
         ):
-            id_map.freeze('frozen').next(b'a')
+            freeze(id_map).next(b'a')
 
         # OK to remove since it's now empty
         id_map.remove_path(b'a')
@@ -180,7 +181,7 @@ class InodeIDTestCase(DeepCopyTestCase):
             b'a': InodeID(id=INO1_ID, inner_id_map=saved_frozen_map.inner),
             b'a/d': InodeID(id=INO2_ID, inner_id_map=saved_frozen_map.inner),
         }, saved_frozen_map.path_to_id)
-        self.assertEqual('frozen', saved_frozen_map.inner.description)
+        self.assertEqual('', saved_frozen_map.inner.description)
         self.assertEqual(
             {0: {b'.'}, INO1_ID: {b'a'}, INO2_ID: {b'a/d'}},
             saved_frozen_map.inner.id_to_paths,

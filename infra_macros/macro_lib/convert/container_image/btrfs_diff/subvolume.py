@@ -25,6 +25,7 @@ mutate its state.
 from types import MappingProxyType
 from typing import Mapping, NamedTuple, Optional, Sequence, Union
 
+from .freeze import freeze
 from .inode_id import InodeID, InodeIDMap
 from .incomplete_inode import (
     IncompleteDevice, IncompleteDir, IncompleteFifo, IncompleteFile,
@@ -185,29 +186,23 @@ class Subvolume(NamedTuple):
 
     def freeze(
         self,
+        *,
+        _memo,
         id_to_chunks: Mapping[InodeID, Sequence['Chunk']],
-        description: 'SubvolumeDescription',
     ):
         '''
         Returns a recursively immutable copy of `self`, replacing
         `IncompleteInode`s by `Inode`s, using the provided `id_to_chunks` to
-        populate them with `Chunk`s instead of `Extent`s.  We rely on the
-        frozen `SubvolumeSet` that contains this subvolume to pass us the
-        appropriate recursively immutable `description`.
+        populate them with `Chunk`s instead of `Extent`s.
+
+        IMPORTANT: Our lookups assume that the `id_to_chunks` has the
+        pre-`freeze` variants of the `InodeID`s.
         '''
-        final_map = self.id_map.freeze(description)
-
-        def corresponding_id(id: InodeID) -> InodeID:
-            'Given an id from `self.id_map`, find its match in `final_map`'
-            new_id = final_map.get_id(next(iter(self.id_map.get_paths(id))))
-            assert new_id.id == id.id
-            assert new_id.inner_id_map is final_map.inner
-            return new_id
-
         return type(self)(
-            id_map=final_map,
+            id_map=freeze(self.id_map, _memo=_memo),
             id_to_inode=MappingProxyType({
-                corresponding_id(id): ino.freeze(id_to_chunks.get(id))
+                freeze(id, _memo=_memo):
+                        freeze(ino, _memo=_memo, chunks=id_to_chunks.get(id))
                     for id, ino in self.id_to_inode.items()
             }),
         )

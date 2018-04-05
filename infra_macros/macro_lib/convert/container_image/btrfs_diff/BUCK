@@ -33,6 +33,23 @@ python_unittest(
 )
 
 python_library(
+    name = "freeze",
+    srcs = ["freeze.py"],
+    base_module = "btrfs_diff",
+)
+
+python_unittest(
+    name = "test-freeze",
+    srcs = ["tests/test_freeze.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":freeze",
+    )],
+    deps = [":freeze"],
+)
+
+python_library(
     name = "deepcopy_test",
     srcs = ["tests/deepcopy_test.py"],
     base_module = "btrfs_diff",
@@ -42,6 +59,7 @@ python_library(
     name = "inode_id",
     srcs = ["inode_id.py"],
     base_module = "btrfs_diff",
+    deps = [":freeze"],
 )
 
 python_unittest(
@@ -89,6 +107,7 @@ python_library(
     base_module = "btrfs_diff",
     deps = [
         ":extent",
+        ":freeze",
         ":inode",
         ":inode_id",
         ":parse_send_stream",
@@ -184,6 +203,7 @@ python_library(
     base_module = "btrfs_diff",
     deps = [
         ":coroutine_utils",
+        ":freeze",
         ":incomplete_inode",
         ":inode_id",
         ":parse_send_stream",

@@ -3,6 +3,7 @@ import copy
 import unittest
 
 from ..coroutine_utils import while_not_exited
+from ..freeze import freeze
 from ..inode import Chunk
 from ..inode_id import InodeIDMap
 from ..parse_dump import SendStreamItems
@@ -27,31 +28,28 @@ class SubvolumeTestCase(DeepCopyTestCase):
             serialize_subvol(subvol, path.encode()),
         )
 
-    def _freeze(self, subvol, description):
-        return subvol.freeze(
-            id_to_chunks={
-                ino_id: tuple(
-                    Chunk(
-                        kind=ext.content,
-                        length=length,
-                        # This test doesn't bother with simulating a nonempty
-                        # `chunk_clones` because it opaque to the `Subvolume`
-                        # level, and we have tests for it via `IncompleteInode`
-                        # and `SubvolumeSet`.
-                        chunk_clones=frozenset(),
-                    ) for _, length, ext in ino.extent.gen_trimmed_leaves()
-                ) for ino_id, ino in subvol.id_to_inode.items()
-                    if getattr(ino, 'extent', None) is not None
-            },
-            description=description,
-        )
+    def _freeze(self, subvol):
+        return freeze(subvol, id_to_chunks={
+            ino_id: tuple(
+                Chunk(
+                    kind=ext.content,
+                    length=length,
+                    # This test doesn't bother with simulating a nonempty
+                    # `chunk_clones` because it opaque to the `Subvolume`
+                    # level, and we have tests for it via `IncompleteInode`
+                    # and `SubvolumeSet`.
+                    chunk_clones=frozenset(),
+                ) for _, length, ext in ino.extent.gen_trimmed_leaves()
+            ) for ino_id, ino in subvol.id_to_inode.items()
+                if getattr(ino, 'extent', None) is not None
+        })
 
     def _check_path(self, expected, subvol: Subvolume, path: str='.'):
         self._check_path_impl(expected, subvol, path)
         # Always check the frozen variant, too.
         self._check_path_impl(
             expected,
-            self._freeze(subvol, 'frozen'),
+            self._freeze(subvol),
             path,
         )
 
@@ -175,7 +173,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
         tiger.apply_item(si.mknod(path=b'somedev', mode=0o20444, dev=0x4321))
         # Freeze this 3-file filesystem to make sure that the frozen
         # `Subvolume` does not change as we evolve its parent.
-        frozen_tiger = self._freeze(tiger, 'frozen tiger')
+        frozen_tiger = self._freeze(tiger)
         frozen_repr = ('(Dir o123:456)', {
             'somedev': '(Char m444 4321)',
             'tamaskan': wolf,
@@ -266,7 +264,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
         with while_not_exited(self._check_subvolume()) as ctx:
             while True:
                 step, subvol = ctx.send(subvol)
-                frozen_subvol = self._freeze(subvol, 'frozen')
+                frozen_subvol = self._freeze(subvol)
                 step_subvol_repr.append((
                     step,
                     frozen_subvol,
