@@ -164,7 +164,9 @@ class Inode(NamedTuple):
         if self.chunks:  # This won't distinguish between `None` and `()`
             yield ''.join(
                 f'{EXTENT_KIND_TO_ABBREV[c.kind]}{c.length}' + (
-                    ('(' + '/'.join(repr(cc) for cc in c.chunk_clones) + ')')
+                    ('(' + '/'.join(sorted(
+                        repr(cc) for cc in c.chunk_clones
+                    )) + ')')
                         if c.chunk_clones else ''
                 ) for c in self.chunks
             )

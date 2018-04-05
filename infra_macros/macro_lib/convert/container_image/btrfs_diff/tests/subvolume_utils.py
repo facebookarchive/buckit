@@ -64,3 +64,18 @@ def serialized_subvol_add_fake_inode_ids(ser, gen: FakeInodeIds=None):
     elif isinstance(ser, str):
         return (ser, gen.next_unique())
     raise AssertionError(f'Unknown {ser}')
+
+
+def serialize_frozen_subvolume_set(subvol_set):
+    return {
+        repr(subvol.id_map.inner.description): serialize_subvol(subvol)
+            for subvol in subvol_set.uuid_to_subvolume.values()
+    }
+
+
+def serialized_subvolume_set_add_fake_inode_ids(ser):
+    # We don't share inode IDs across subvolumes, so this is just a `map`.
+    return {
+        desc: serialized_subvol_add_fake_inode_ids(subvol)
+            for desc, subvol in ser.items()
+    }

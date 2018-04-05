@@ -395,5 +395,11 @@ def extents_to_chunks_with_clones(
                     offset=clone_offset + prev_length - offset
                 ) for clone_offset, clone in chunk_clones
             )
-        # Future: `deepfrozen`, or manually `frozenset` the clones?
-        yield ino_id, tuple(new_chunks)
+        # Future: `deepfrozen` was made for this:
+        yield ino_id, tuple(
+            Chunk(
+                kind=c.kind,
+                length=c.length,
+                chunk_clones=frozenset(c.chunk_clones),
+            ) for c in new_chunks
+        )

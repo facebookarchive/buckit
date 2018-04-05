@@ -210,12 +210,15 @@ python_library(
     ],
 )
 
+python_library(
+    name = "test_subvolume_utils",
+    srcs = ["tests/subvolume_utils.py"],
+    base_module = "btrfs_diff",
+)
+
 python_unittest(
     name = "test-subvolume",
-    srcs = [
-        "tests/subvolume_utils.py",
-        "tests/test_subvolume.py",
-    ],
+    srcs = ["tests/test_subvolume.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
         1.0,
@@ -224,6 +227,7 @@ python_unittest(
     deps = [
         ":deepcopy_test",
         ":subvolume",
+        ":test_subvolume_utils",
     ],
 )
 
@@ -232,6 +236,8 @@ python_library(
     srcs = ["subvolume_set.py"],
     base_module = "btrfs_diff",
     deps = [
+        ":extents_to_chunks",
+        ":freeze",
         ":inode_id",
         ":parse_send_stream",
         ":subvolume",
@@ -246,5 +252,8 @@ python_unittest(
         1.0,
         ":subvolume_set",
     )],
-    deps = [":subvolume_set"],
+    deps = [
+        ":subvolume_set",
+        ":test_subvolume_utils",
+    ],
 )

@@ -12,10 +12,13 @@ easily imagine a path-aware `Volume` abstraction on top of this.
 import copy
 
 from collections import Counter
+from types import MappingProxyType
 # Future: `deepfrozen` would let us lose the `new` methods on NamedTuples,
 # and avoid `deepcopy`.
 from typing import Mapping, NamedTuple, Optional
 
+from .extents_to_chunks import extents_to_chunks_with_clones
+from .freeze import freeze
 from .inode_id import InodeIDMap
 from .send_stream import SendStreamItem, SendStreamItems
 from .subvolume import Subvolume
@@ -95,6 +98,29 @@ class SubvolumeSet(NamedTuple):
         kwargs.setdefault('uuid_to_subvolume', {})
         kwargs.setdefault('name_uuid_prefix_counts', Counter())
         return cls(**kwargs)
+
+    def freeze(self, *, _memo) -> 'SubvolumeSet':
+        '''
+        Return a recursively immutable copy of `self`, replacing all
+        `IncompleteInode`s by `Inode`s, and checking that all inode metadata
+        are populated.  Correctly resolving cloned extents has to happen at
+        the level of the `SubvolumeSet`.
+        '''
+        id_to_chunks = dict(extents_to_chunks_with_clones([
+            (id, ino.extent)
+                for subvol in self.uuid_to_subvolume.values()
+                    for id, ino in subvol.id_to_inode.items()
+                        if hasattr(ino, 'extent')
+        ]))
+        return type(self)(
+            uuid_to_subvolume=MappingProxyType({
+                uuid: freeze(subvol, _memo=_memo, id_to_chunks=id_to_chunks)
+                    for uuid, subvol in self.uuid_to_subvolume.items()
+            }),
+            name_uuid_prefix_counts=freeze(
+                self.name_uuid_prefix_counts, _memo=_memo,
+            ),
+        )
 
 
 class SubvolumeSetMutator(NamedTuple):
