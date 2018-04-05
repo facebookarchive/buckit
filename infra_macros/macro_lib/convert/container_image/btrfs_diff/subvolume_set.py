@@ -146,9 +146,11 @@ class SubvolumeSetMutator(NamedTuple):
         )):
             raise RuntimeError(f'{subvol_item} must specify subvolume')
 
-        my_id = SubvolumeID(uuid=subvol_item.uuid, transid=subvol_item.transid)
+        my_id = SubvolumeID(
+            uuid=subvol_item.uuid.decode(), transid=subvol_item.transid
+        )
         parent_id = SubvolumeID(
-            uuid=subvol_item.parent_uuid,
+            uuid=subvol_item.parent_uuid.decode(),
             transid=subvol_item.parent_transid,
         ) if isinstance(subvol_item, SendStreamItems.snapshot) else None
         description = SubvolumeDescription(
@@ -189,7 +191,7 @@ class SubvolumeSetMutator(NamedTuple):
     def apply_item(self, item: SendStreamItem):
         if isinstance(item, SendStreamItems.clone):
             from_subvol = self.subvolume_set.uuid_to_subvolume.get(
-                item.from_uuid
+                item.from_uuid.decode()
             )
             if not from_subvol:
                 raise RuntimeError(f'Unknown from_uuid for {item}')
