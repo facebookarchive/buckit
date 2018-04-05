@@ -115,14 +115,14 @@ class SubvolumeTestCase(DeepCopyTestCase):
 
         # Cannot hardlink directories
         with self.assertRaisesRegex(RuntimeError, 'Cannot .* a directory'):
-            cat.apply_item(si.link(path=b'temp_dir', dest=b'another_temp'))
+            cat.apply_item(si.link(path=b'another_temp', dest=b'temp_dir'))
         cat.apply_item(si.rmdir(path=b'temp_dir'))
 
         # Cannot act on nonexistent paths
         with self.assertRaisesRegex(RuntimeError, 'path does not exist'):
             cat.apply_item(si.chmod(path=b'temp_dir', mode=0o321))
         with self.assertRaisesRegex(RuntimeError, 'source does not exist'):
-            cat.apply_item(si.link(path=b'temp_dir', dest=b'another_temp'))
+            cat.apply_item(si.link(path=b'another_temp', dest=b'temp_dir'))
 
         # Testing the above errors caused no changes
         cat = yield 'cat after error testing', cat
@@ -155,7 +155,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
 
         # Hardlinks, and modifying the root directory
         tiger.apply_item(si.chown(path=b'.', uid=123, gid=456))
-        tiger.apply_item(si.link(path=b'wolf', dest=b'tamaskan'))
+        tiger.apply_item(si.link(path=b'tamaskan', dest=b'wolf'))
         tiger.apply_item(si.chmod(path=b'tamaskan', mode=0o700))
         tiger = yield 'tiger after hardlink', tiger
         wolf = InodeRepr('(File m700 d3)')
@@ -184,7 +184,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
         # and my code currently does not handle that.
         self._check_path_impl(frozen_repr, frozen_tiger)
         with self.assertRaisesRegex(RuntimeError, 'Destination .* exists'):
-            tiger.apply_item(si.link(path=b'somedev', dest=b'wolf'))
+            tiger.apply_item(si.link(path=b'wolf', dest=b'somedev'))
         tiger = yield 'tiger after mkdev etc', tiger
 
         # A rename that overwrites an existing file.

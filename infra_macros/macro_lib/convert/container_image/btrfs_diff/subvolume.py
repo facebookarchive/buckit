@@ -162,14 +162,14 @@ class Subvolume(NamedTuple):
                 raise RuntimeError(f'Can only {item} a directory')
             self._delete(item.path)
         elif isinstance(item, SendStreamItems.link):
-            if self.id_map.get_id(item.dest) is not None:
+            if self.id_map.get_id(item.path) is not None:
                 raise RuntimeError(f'Destination of {item} already exists')
-            old_id = self.id_map.get_id(item.path)
+            old_id = self.id_map.get_id(item.dest)
             if old_id is None:
                 raise RuntimeError(f'{item} source does not exist')
             if isinstance(self.id_to_inode[old_id], IncompleteDir):
                 raise RuntimeError(f'Cannot {item} a directory')
-            self.id_map.add_path(old_id, item.dest)
+            self.id_map.add_path(old_id, item.path)
         else:  # Any other operation must be handled at inode scope.
             ino = self.inode_at_path(item.path)
             if ino is None:

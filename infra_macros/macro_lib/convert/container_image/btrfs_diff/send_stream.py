@@ -83,6 +83,10 @@ class SendStreamItems:
         fields = ['dest']
 
     class link(metaclass=SendStreamItem):
+        # WATCH OUT: This `dest` does not mean what you think it means.  We
+        # will create a hardlink from `dest` to `path`.  So the `dest` the
+        # destination of the new link being created.  Awkward!  This
+        # unfortunate naming was borrowed from `btrfs receive --dump`.
         fields = ['dest']
 
     class unlink(metaclass=SendStreamItem):
