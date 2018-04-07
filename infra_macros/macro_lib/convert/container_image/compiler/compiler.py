@@ -94,7 +94,7 @@ def build_image(args):
         # root.  Future: look into using more granular capabilities here.
         'sudo',
         args.image_build_command,
-        'image', 'build',
+        'build',
         '--no-pkg', '--no-export', '--no-clean-built-layer',
         '--print-buck-plumbing',
         # '--image-volume' or `--prepare-volume` are unused but required :/
