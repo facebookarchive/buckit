@@ -216,6 +216,9 @@ class PythonConverter(base.Converter):
         return lambda other: op(other, LooseVersion(constraint))
 
     def matches_py2(self, constraint):
+        # We don't match py2 by default anymore. only py3
+        if constraint is None:
+            return False
         matches = self.parse_constraint(constraint)
         return matches(LooseVersion(self.get_py2_version()))
 
@@ -1085,7 +1088,7 @@ class PythonConverter(base.Converter):
                 base_module if base_module is not None else base_path,
                 srcs,
                 [self.convert_build_target(base_path, dep) for dep in deps],
-                typing,
+                typing or (check_types and not self.is_library()),
                 typing_options,
                 visibility,
             )
@@ -1133,6 +1136,21 @@ class PythonConverter(base.Converter):
         py_tests = []
         rule_names = set()
         for py_ver, py_name in sorted(versions.items()):
+            # Turn off check types for py2 targets when py3 is in versions
+            # so we can have the py3 parts type check without a separate target
+            if (
+                check_types
+                and self.matches_py2(py_ver)
+                and any(self.matches_py3(v) for v in versions)
+            ):
+                _check_types = False
+                print(
+                    base_path + ':' + py_name,
+                    'will not be typechecked because its the python 2 part',
+                )
+            else:
+                _check_types = check_types
+
             rules = self.create_binary(
                 base_path,
                 py_name,
@@ -1153,7 +1171,7 @@ class PythonConverter(base.Converter):
                 env=env,
                 python=python,
                 allocator=allocator,
-                check_types=check_types,
+                check_types=_check_types,
                 preload_deps=preload_deps,
                 jemalloc_conf=jemalloc_conf,
                 typing_options=check_types_options,
@@ -1161,7 +1179,7 @@ class PythonConverter(base.Converter):
                 visibility=visibility,
             )
             if self.is_test():
-                py_tests.append(':' + py_name)
+                py_tests.append(rules[0])
             for rule in rules:
                 if rule.target_name not in rule_names:
                     yield rule
@@ -1174,11 +1192,17 @@ class PythonConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['out'] = os.curdir
-            attrs['tests'] = py_tests + list(tests)
+            # We are propogating tests from sub targets to this target
+            gen_tests = set()
+            for r in py_tests:
+                gen_tests.add(r.target_name)
+                if 'tests' in r.attributes:
+                    gen_tests.update(r.attributes['tests'])
+            attrs['tests'] = sorted(list(gen_tests))
             # With this we are telling buck we depend on the test targets
             cmds = []
             for test in py_tests:
-                cmds.append('echo $(location {})'.format(test))
+                cmds.append('echo $(location {})'.format(test.target_name))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
 
