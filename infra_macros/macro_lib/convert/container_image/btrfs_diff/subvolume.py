@@ -111,7 +111,11 @@ class Subvolume(NamedTuple):
     def apply_item(self, item: SendStreamItem) -> None:
         for item_type, inode_class in _DUMP_ITEM_TO_INCOMPLETE_INODE.items():
             if isinstance(item, item_type):
-                ino_id = self.id_map.next(item.path)
+                ino_id = self.id_map.next()
+                if isinstance(item, SendStreamItems.mkdir):
+                    self.id_map.add_dir(ino_id, item.path)
+                else:
+                    self.id_map.add_file(ino_id, item.path)
                 assert ino_id not in self.id_to_inode
                 self.id_to_inode[ino_id] = inode_class(item=item)
                 return  # Done applying item
@@ -131,9 +135,7 @@ class Subvolume(NamedTuple):
 
             # No destination path? Easy.
             if new_id is None:
-                self.id_map.add_path(
-                    self.id_map.remove_path(item.path), item.dest,
-                )
+                self.id_map.rename_path(item.path, item.dest)
                 return
 
             # Overwrite an existing path.
@@ -150,7 +152,7 @@ class Subvolume(NamedTuple):
                     f'{item} cannot overwrite a directory with a non-directory'
                 )
             self._delete(item.dest)
-            self.id_map.add_path(self.id_map.remove_path(item.path), item.dest)
+            self.id_map.rename_path(item.path, item.dest)
             # NB: Per `rename (2)`, if either the new or the old inode is a
             # symbolic link, they get treated just as regular files.
         elif isinstance(item, SendStreamItems.unlink):
@@ -169,7 +171,7 @@ class Subvolume(NamedTuple):
                 raise RuntimeError(f'{item} source does not exist')
             if isinstance(self.id_to_inode[old_id], IncompleteDir):
                 raise RuntimeError(f'Cannot {item} a directory')
-            self.id_map.add_path(old_id, item.path)
+            self.id_map.add_file(old_id, item.path)
         else:  # Any other operation must be handled at inode scope.
             ino = self.inode_at_path(item.path)
             if ino is None:

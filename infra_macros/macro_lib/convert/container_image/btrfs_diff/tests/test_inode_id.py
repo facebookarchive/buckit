@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 import copy
+import random
 import unittest
 
 from types import SimpleNamespace
 
 from ..freeze import freeze
-from ..inode_id import InodeID, InodeIDMap
+from ..inode_id import (
+    InodeID, InodeIDMap, _PathEntry, _ReversePathEntry, _ROOT_REVERSE_ENTRY,
+)
 
 from .deepcopy_test import DeepCopyTestCase
 
 
 class InodeIDTestCase(DeepCopyTestCase):
+
+    def setUp(self):
+        self.maxDiff = 10e4
+        unittest.util._MAX_LENGTH = 10e4
 
     def _check_id_and_map(self):
         '''
@@ -71,7 +78,7 @@ class InodeIDTestCase(DeepCopyTestCase):
             self.assertEqual(set(), im.get_children(ns.ino_root))
 
         # Make a new ID with a path
-        mut_ns.ino1 = id_map.next(b'./a/')
+        mut_ns.ino1 = id_map.add_dir(id_map.next(), b'./a/')
         id_map = yield from maybe_replace_map(id_map, 'made a')
         for im, ns in unfrozen_and_frozen(id_map, mut_ns):
             self.assertEqual(INO1_ID, ns.ino1.id)
@@ -87,19 +94,21 @@ class InodeIDTestCase(DeepCopyTestCase):
             self.assertEqual(INO2_ID, ns.ino2.id)
             self.assertIs(im.inner, ns.ino2.inner_id_map)
             self.assertEqual('ANON_INODE#2', repr(ns.ino2))
-        id_map.add_path(mut_ns.ino2, b'a/d')
+        id_map.add_file(mut_ns.ino2, b'a/d')
         id_map = yield from maybe_replace_map(id_map, 'added a/d name')
         for im, ns in unfrozen_and_frozen(id_map, mut_ns):
             self.assertEqual({b'a/d'}, im.get_children(ns.ino1))
             self.assertEqual({b'a/d'}, im.get_paths(ns.ino2))
-        id_map.add_path(mut_ns.ino2, b'a/c')
+        id_map.add_file(mut_ns.ino2, b'a/c')
         id_map = yield from maybe_replace_map(id_map, 'added a/c name')
         for im, ns in unfrozen_and_frozen(id_map, mut_ns):
             self.assertEqual({b'a/c', b'a/d'}, im.get_children(ns.ino1))
             self.assertEqual({b'a/c', b'a/d'}, im.get_paths(ns.ino2))
             self.assertEqual('a/c,a/d', repr(ns.ino2))
         # Try removing from the frozen map before changing the original one.
-        with self.assertRaisesRegex(AttributeError, "mappingproxy.* no .*pop"):
+        with self.assertRaisesRegex(
+            TypeError, 'mappingproxy.* does not support item deletion',
+        ):
             freeze(id_map).remove_path(b'a/c')
         self.assertIs(mut_ns.ino2, id_map.remove_path(b'a/c'))
         saved_frozen_map = freeze(id_map)  # We'll check this later
@@ -125,78 +134,179 @@ class InodeIDTestCase(DeepCopyTestCase):
         with self.assertRaisesRegex(RuntimeError, "remove b'a'.*has children"):
             id_map.remove_path(b'a')
 
+        # Test a rename that fails on the add after the remove. Note that
+        # this does not affect any subsequent tests -- a/d still exists.
+        with self.assertRaisesRegex(RuntimeError, 'Adding #2 to .* has #1'):
+            id_map.rename_path(b'a/d', b'a')
+
         # Check that we clean up empty path sets
         for im, ns in unfrozen_and_frozen(id_map, mut_ns):
-            self.assertIn(ns.ino2.id, im.inner.id_to_paths)
+            self.assertIn(ns.ino2.id, im.inner.id_to_reverse_entries)
         self.assertIs(mut_ns.ino2, id_map.remove_path(b'a/d'))
         id_map = yield from maybe_replace_map(id_map, 'removed a/d name')
         for im, _ns in unfrozen_and_frozen(id_map, mut_ns):
-            self.assertNotIn(INO2_ID, im.inner.id_to_paths)
+            self.assertNotIn(INO2_ID, im.inner.id_to_reverse_entries)
 
-        for im, ns in unfrozen_and_frozen(id_map, mut_ns):
+        for im, _ns in unfrozen_and_frozen(id_map, mut_ns):
             # Catch str/byte mixups
             with self.assertRaises(TypeError):
                 im.get_id('a')
             with self.assertRaises(TypeError):
                 im.remove_path('a')
             with self.assertRaises(TypeError):
-                im.add_path('b')
+                im.add_file('b')
 
             # Other errors
             with self.assertRaisesRegex(RuntimeError, 'Wrong map for .* #17'):
                 im.get_paths(
                     InodeID(id=17, inner_id_map=InodeIDMap.new().inner)
                 )
-            with self.assertRaisesRegex(RuntimeError, "Need relative path"):
-                im.add_path(ns.ino1, b'/a/e')
-            with self.assertRaisesRegex(RuntimeError, "parent does not exist"):
-                im.add_path(ns.ino1, b'b/c')
+            # Since `im` may be frozen, we can't actually count from it
+            fake_ino_id = InodeID(id=1337, inner_id_map=im.inner)
+            with self.assertRaisesRegex(ValueError, 'Need relative path'):
+                im.add_dir(fake_ino_id, b'/a/e')
+            with self.assertRaisesRegex(RuntimeError, 'Missing ancestor '):
+                im.add_file(fake_ino_id, b'b/c')
 
         # This error differs between unfrozen & frozen:
         with self.assertRaisesRegex(
-            RuntimeError, "Path b'a' has 2 inodes: 3 and 1",
+            RuntimeError, "Adding #3 to b'a' which has #1",
         ):
-            id_map.next(b'a')
+            id_map.add_dir(id_map.next(), b'a')
         with self.assertRaisesRegex(
             TypeError, "'NoneType' object is not an iterator",
         ):
-            freeze(id_map).next(b'a')
+            freeze(id_map).next()
 
         # OK to remove since it's now empty
         id_map.remove_path(b'a')
         id_map = yield from maybe_replace_map(id_map, 'removed a')
         for im, _ns in unfrozen_and_frozen(id_map, mut_ns):
-            self.assertEqual({0: {b'.'}}, im.inner.id_to_paths)
-            self.assertEqual([b'.'], list(im.path_to_id.keys()))
             self.assertEqual(
-                InodeID(id=0, inner_id_map=im.inner), im.path_to_id[b'.'],
+                {0: {_ROOT_REVERSE_ENTRY}}, im.inner.id_to_reverse_entries,
             )
-            self.assertEqual(0, len(im.id_to_children))
+            self.assertEqual(_PathEntry(
+                id=InodeID(id=0, inner_id_map=im.inner), name_to_child={},
+            ), im.root)
+
+        # Test renaming directories
+        id_map.add_dir(id_map.next(), b'x')
+        id_map.add_dir(id_map.next(), b'x/y')
+        id_map.add_file(id_map.next(), b'x/y/z')
+        id_map.add_dir(id_map.next(), b'u')
+        id_map.add_dir(id_map.next(), b'u/v')
+        id_map.add_file(id_map.get_id(b'x/y/z'), b'u/v/w')  # hardlink to z
+        id_map = yield from maybe_replace_map(id_map, 'created x/y/z, u/v/w')
+        for im, _ns in unfrozen_and_frozen(id_map, mut_ns):
+            self.assertEqual(
+                {b'x/y/z', b'u/v/w'}, im.get_paths(im.get_id(b'x/y/z')),
+            )
+            self.assertEqual({b'x/y/z'}, im.get_children(im.get_id(b'x/y')))
+        id_map.rename_path(b'u/v', b'x/y/v')
+        id_map.rename_path(b'x', b'x1')
+        id_map = yield from maybe_replace_map(id_map, 'renamed x & v')
+        for im, _ns in unfrozen_and_frozen(id_map, mut_ns):
+            self.assertEqual(
+                {b'x1/y/z', b'x1/y/v/w'}, im.get_paths(im.get_id(b'x1/y/z')),
+            )
+            self.assertEqual(
+                {b'x1/y/z', b'x1/y/v'}, im.get_children(im.get_id(b'x1/y')),
+            )
+            # `get_children` promises to return None for files.
+            self.assertIsNone(im.get_children(im.get_id(b'x1/y/z')))
+
+        # Tests for `_reverse_entry_matches_path_parts`: Given an InodeID,
+        # look up the `ReversePathEntry` that corresponds to a given path.
+        #
+        # (1) Let us specifically aims to cover the cases when, of the path
+        # and the `ReversePathEntry`, one is a suffix of the other.  For
+        # example: `e/d/c/b/a` and `c/b/a`.
+        mut_ns.ino_id = id_map.next()
+        # To see such suffixes we must get lucky with iteration order of the
+        # reverse entries `set`.  The solution is to have many entries,
+        # randomly inserted into the `set`, ensuring that we hit both cases.
+        depths = list(range(20))  # Raise this until our coverage isn't flaky.
+        random.shuffle(depths)
+        for depth in depths:
+            path = b''
+            for i in range(depth + 1, 0, -1):
+                if path:
+                    path += b'/'
+                path += str(i).encode()
+                id_map.add_dir(id_map.next(), path)
+            id_map.add_file(mut_ns.ino_id, path + b'/0')
+        id_map = yield from maybe_replace_map(id_map, 'made suffixy hardlinks')
+        # Each `remove` has a chance of hitting either "suffix" relationship
+        # before finding the right `reverse_entry`.  Randomize the order to
+        # make sure our odds are "as expected", untained by systematic bias.
+        random.shuffle(depths)
+        for depth in depths:
+            id_map.remove_path(
+                b'/'.join(str(i).encode() for i in range(depth + 1, -1, -1))
+            )
+        id_map = yield from maybe_replace_map(id_map, 'removed hardlinks')
+        mut_ns.ino_id = InodeID(id=mut_ns.ino_id.id, inner_id_map=id_map.inner)
+        self.assertEqual(set(), id_map.get_paths(mut_ns.ino_id))
+        # (2) Let's try a few hardlinks, neither a suffix of the other, to
+        # make sure we hit the "different paths" branch.
+        num_diff_paths = 20  # Raise this until our coverage isn't flaky.
+        for i in range(num_diff_paths):
+            id_map.add_file(mut_ns.ino_id, f'lala{i}'.encode())
+        for im, ns in unfrozen_and_frozen(id_map, mut_ns):
+            self.assertEqual(
+                {f'lala{i}'.encode() for i in range(num_diff_paths)},
+                im.get_paths(ns.ino_id),
+            )
+        for i in range(num_diff_paths):
+            id_map.remove_path(f'lala{i}'.encode())
+        self.assertEqual(set(), id_map.get_paths(mut_ns.ino_id))
+
+        # Test some more errors
+        with self.assertRaisesRegex(RuntimeError, f"foo''s parent.*is a file"):
+            id_map.get_id(b'x1/y/z/foo/bar')
+        with self.assertRaisesRegex(RuntimeError, f'Cannot remove the root'):
+            id_map.remove_path(b'.')
+        with self.assertRaisesRegex(RuntimeError, f'Cannot remove non-exist'):
+            id_map.remove_path(b'potato')
+        with self.assertRaisesRegex(RuntimeError, f'Cannot remove non-exist'):
+            id_map.remove_path(b'potato')
+        with self.assertRaisesRegex(RuntimeError, f'non-file hardlink'):
+            id_map.add_dir(id_map.get_id(b'x1/y/z'), 'x1/y/z2')
+        with self.assertRaisesRegex(RuntimeError, f'non-file hardlink'):
+            id_map.add_file(id_map.get_id(b'x1/y/v'), 'x1/y/v2')
+        with self.assertRaisesRegex(RuntimeError, f'parent .* is a file'):
+            id_map.add_file(id_map.next(), b'x1/y/z/foo')
 
         # Even though we changed `id_map` a lot, `saved_frozen` is still
         # in the same state where we took the snapshot.
         self.assertIsNone(saved_frozen_map.inode_id_counter)
-        self.assertEqual({
-            b'.': InodeID(id=0, inner_id_map=saved_frozen_map.inner),
-            b'a': InodeID(id=INO1_ID, inner_id_map=saved_frozen_map.inner),
-            b'a/d': InodeID(id=INO2_ID, inner_id_map=saved_frozen_map.inner),
-        }, saved_frozen_map.path_to_id)
+        self.assertEqual(_PathEntry(
+            id=InodeID(id=0, inner_id_map=saved_frozen_map.inner),
+            name_to_child={
+                b'a': _PathEntry(id=InodeID(
+                    id=INO1_ID, inner_id_map=saved_frozen_map.inner,
+                ), name_to_child={
+                    b'd': _PathEntry(id=InodeID(
+                        id=INO2_ID, inner_id_map=saved_frozen_map.inner,
+                    ), name_to_child=None)
+                }),
+            },
+        ), saved_frozen_map.root)
         self.assertEqual('', saved_frozen_map.inner.description)
-        self.assertEqual(
-            {0: {b'.'}, INO1_ID: {b'a'}, INO2_ID: {b'a/d'}},
-            saved_frozen_map.inner.id_to_paths,
-        )
-        self.assertEqual(
-            {0: {b'a'}, INO1_ID: {b'a/d'}},
-            saved_frozen_map.id_to_children,
-        )
+        self.assertEqual({
+            0: {_ROOT_REVERSE_ENTRY},
+            INO1_ID: {_ReversePathEntry(name=b'a', parent_int_id=0)},
+            INO2_ID: {_ReversePathEntry(name=b'd', parent_int_id=INO1_ID)},
+        }, saved_frozen_map.inner.id_to_reverse_entries)
 
     def test_inode_id_and_map(self):
         self.check_deepcopy_at_each_step(self._check_id_and_map)
 
     def test_description(self):
         cat_map = InodeIDMap.new(description='cat')
-        self.assertEqual('cat@food', repr(cat_map.next(b'food')))
+        self.assertEqual(
+            'cat@food', repr(cat_map.add_file(cat_map.next(), b'food')),
+        )
 
     def test_hashing_and_equality(self):
         maps = [InodeIDMap.new() for i in range(100)]

@@ -84,7 +84,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
 
         cat.apply_item(si.chmod(path=b'dog', mode=0o744))
         self._check_path(('(Dir)', {'dog': '(File m744 d3)'}), cat)
-        with self.assertRaisesRegex(RuntimeError, 'parent does not exist'):
+        with self.assertRaisesRegex(RuntimeError, 'Missing ancestor '):
             cat.apply_item(si.mkfifo(path=b'dir_to_del/fifo_to_del'))
 
         cat.apply_item(si.mkdir(path=b'dir_to_del'))
@@ -245,9 +245,9 @@ class SubvolumeTestCase(DeepCopyTestCase):
         # Basic checks to ensure it's immutable.
         with self.assertRaisesRegex(TypeError, 'NoneType.* not an iterator'):
             frozen_tiger.apply_item(si.mkfile(path=b'soup'))
-        with self.assertRaisesRegex(AttributeError, "no attribute 'pop"):
+        with self.assertRaisesRegex(TypeError, 'no.* item deletion'):
             frozen_tiger.apply_item(si.unlink(path=b'somedev'))
-        with self.assertRaisesRegex(AttributeError, "no attribute 'pop"):
+        with self.assertRaisesRegex(TypeError, 'no.* item deletion'):
             frozen_tiger.apply_item(si.rename(path=b'wolf', dest=b'cat'))
         with self.assertRaisesRegex(AttributeError, "no .* 'apply_item'"):
             frozen_tiger.apply_item(si.chmod(path=b'tamaskan', mode=0o644))

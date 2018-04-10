@@ -13,6 +13,9 @@ from ..inode_id import InodeIDMap
 
 class InodeTestCase(unittest.TestCase):
 
+    def setUp(self):
+        self.id_map = InodeIDMap.new()
+
     def _complete_inode(self, file_type, **kwargs):
         kwargs.setdefault('mode', 0o644)
         kwargs.setdefault('xattrs', {})
@@ -39,7 +42,7 @@ class InodeTestCase(unittest.TestCase):
             to_offset=0, from_extent=extent, from_offset=10, length=10,
         )
         chunks_repr = 'h5(me:10+5@0)d5(me:15+5@0)h5(me:0+5@0)d5(me:5+5@0)'
-        my_id = InodeIDMap.new().next(b'me')
+        my_id = self.id_map.add_file(self.id_map.next(), b'me')
         ((got_id, chunks),) = extents_to_chunks_with_clones([(my_id, extent)])
         self.assertIs(got_id, my_id)
         self.assertEqual(
@@ -115,16 +118,16 @@ class InodeTestCase(unittest.TestCase):
 
     def test_chunk_clone(self):
         clone = Clone(
-            inode_id=InodeIDMap.new().next(b'a'), offset=17, length=3,
+            inode_id=self.id_map.add_file(self.id_map.next(), b'a'),
+            offset=17, length=3,
         )
         self.assertEqual('a:17+3', repr(clone))
         self.assertEqual('a:17+3@22', repr(ChunkClone(offset=22, clone=clone)))
 
     def test_chunk(self):
-        id_map = InodeIDMap.new()
         chunk = Chunk(kind=Extent.Kind.DATA, length=12, chunk_clones=set())
         self.assertEqual('(DATA/12)', repr(chunk))
-        ino_id = id_map.next(b'a')
+        ino_id = self.id_map.add_file(self.id_map.next(), b'a')
         chunk.chunk_clones.add(ChunkClone(
             offset=3, clone=Clone(inode_id=ino_id, offset=7, length=2),
         ))
