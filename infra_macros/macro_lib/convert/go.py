@@ -137,6 +137,9 @@ class GoConverter(base.Converter):
         if library:
             attributes['library'] = self.convert_build_target(base_path, library)
 
+        if self.is_binary():
+            attributes['platform'] = self.get_platform(base_path)
+
         dependencies = []
         for target in deps:
             dependencies.append(self.convert_build_target(base_path, target))
