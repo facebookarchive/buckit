@@ -45,7 +45,7 @@ def gen_typing_config_attrs(
 
     Returns:
         Returns a dictionary of attributes -> values that can be passed to a
-        genrule(), or to a 'Rule' object. 'Rule' logic will eventually be
+        native.genrule(), or to a 'Rule' object. 'Rule' logic will eventually be
         deprecated, at which point this method will go away
     """
 
