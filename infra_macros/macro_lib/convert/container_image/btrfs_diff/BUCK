@@ -167,29 +167,22 @@ export_file(
     src = "tests/gold_demo_sendstreams.pickle",
 )
 
-python_unittest(
-    name = "test-send-stream",
+# If you depend on this, you must set `par_style = "zip"`.  "fastzip" won't
+# work for two reasons: (i) we re-execute "demo_sendstreams.py", (ii) we
+# have an 'export_file' dep.
+python_library(
+    name = "test_demo_sendstreams",
     srcs = [
         "tests/btrfs_utils.py",
         "tests/demo_sendstreams.py",
         "tests/demo_sendstreams_expected.py",
-        "tests/test_parse_dump.py",
-        "tests/test_parse_send_stream.py",
     ],
     base_module = "btrfs_diff",
     gen_srcs = {
         ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
-    needed_coverage = [(
-        1.0,
-        ":parse_send_stream",
-    )],
-    # "fastzip" won't work for two reasons: (i) we re-execute
-    # "demo_sendstreams.py", (ii) we have an 'export_file' dep.
-    par_style = "zip",
     deps = [
         ":gold_demo_sendstreams.pickle",
-        ":parse_send_stream",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":artifacts_dir",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
@@ -197,12 +190,34 @@ python_unittest(
     ],
 )
 
+python_unittest(
+    name = "test-send-stream",
+    srcs = [
+        "tests/test_parse_dump.py",
+        "tests/test_parse_send_stream.py",
+    ],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":parse_send_stream",
+    )],
+    par_style = "zip",  # required by :test_demo_sendstreams
+    deps = [
+        ":parse_send_stream",
+        ":test_demo_sendstreams",  # requires `par_style = "zip"`
+    ],
+)
+
 python_library(
     name = "subvolume",
-    srcs = ["subvolume.py"],
+    srcs = [
+        "rendered_tree.py",
+        "subvolume.py",
+    ],
     base_module = "btrfs_diff",
     deps = [
         ":coroutine_utils",
+        ":extents_to_chunks",
         ":freeze",
         ":incomplete_inode",
         ":inode_id",
@@ -254,6 +269,35 @@ python_unittest(
     )],
     deps = [
         ":subvolume_set",
+        ":test_subvolume_utils",
+    ],
+)
+
+# Future: this should have its own small, simple, explicit test.
+python_library(
+    name = "inode_utils",
+    srcs = ["inode_utils.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":incomplete_inode",
+        ":inode",
+    ],
+)
+
+python_unittest(
+    name = "test-sendstream-to-subvolume-set-integration",
+    srcs = ["tests/test_sendstream_to_subvolume_set_integration.py"],
+    base_module = "btrfs_diff",
+    needed_coverage = [(
+        1.0,
+        ":inode_utils",
+    )],
+    par_style = "zip",  # required by :test_demo_sendstreams
+    deps = [
+        ":freeze",
+        ":parse_send_stream",
+        ":subvolume_set",
+        ":test_demo_sendstreams",  # requires `par_style = "zip"`
         ":test_subvolume_utils",
     ],
 )

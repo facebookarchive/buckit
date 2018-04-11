@@ -3,11 +3,10 @@ import unittest
 
 from ..freeze import freeze
 from ..parse_dump import SendStreamItems
+from ..rendered_tree import emit_all_traversal_ids
 from ..subvolume_set import SubvolumeSet, SubvolumeSetMutator
 
-from .subvolume_utils import (
-    serialize_frozen_subvolume_set, serialized_subvolume_set_add_fake_inode_ids
-)
+from .subvolume_utils import expected_subvol_add_traversal_ids
 
 
 class SubvolumeSetTestCase(unittest.TestCase):
@@ -22,10 +21,17 @@ class SubvolumeSetTestCase(unittest.TestCase):
         unittest.util._MAX_LENGTH = 10e4
 
     def _check_repr(self, expected, subvol_set: SubvolumeSet):
-        self.assertEqual(
-            serialized_subvolume_set_add_fake_inode_ids(expected),
-            serialize_frozen_subvolume_set(subvol_set),
-        )
+        self.assertEqual(*[
+            {desc: emit_all_traversal_ids(sv) for desc, sv in ser.items()}
+                for ser in (
+                    # Subvolumes are independent, they don't share inode IDs.
+                    {
+                        desc: expected_subvol_add_traversal_ids(ser_subvol)
+                            for desc, ser_subvol in expected.items()
+                    },
+                    subvol_set.map(lambda subvol: subvol.render()),
+                )
+        ])
 
     def test_subvolume_set(self):
         si = SendStreamItems
@@ -55,11 +61,11 @@ class SubvolumeSetTestCase(unittest.TestCase):
         self.assertEqual('cat', repr(cat.id_map.inner.description))
 
         reprs_and_frozens.append(({
-            'cat': ('(Dir)', {
-                'from': '(File d2(cat@to:0+2@0))',
-                'to': '(File d2(cat@from:0+2@0))',
-                'hole': '(File h5)',
-            }),
+            'cat': ['(Dir)', {
+                'from': ['(File d2(cat@to:0+2@0))'],
+                'to': ['(File d2(cat@from:0+2@0))'],
+                'hole': ['(File h5)'],
+            }],
         }, freeze(subvols)))
         self._check_repr(*reprs_and_frozens[-1])
 
@@ -81,16 +87,37 @@ class SubvolumeSetTestCase(unittest.TestCase):
         tiger_mutator.apply_item(si.unlink(path=b'from'))
         tiger_mutator.apply_item(si.unlink(path=b'hole'))
         reprs_and_frozens.append(({
-            'cat': ('(Dir)', {
-                'from': '(File d2(cat@to:0+2@0/tiger@to:0+2@0))',
-                'to': '(File d2(cat@from:0+2@0/tiger@to:0+2@0))',
-                'hole': '(File h5)',
-            }),
-            'tiger': ('(Dir)', {
-                'to': '(File d2(cat@from:0+2@0/cat@to:0+2@0))',
-            }),
+            'cat': ['(Dir)', {
+                'from': ['(File d2(cat@to:0+2@0/tiger@to:0+2@0))'],
+                'to': ['(File d2(cat@from:0+2@0/tiger@to:0+2@0))'],
+                'hole': ['(File h5)'],
+            }],
+            'tiger': ['(Dir)', {
+                'to': ['(File d2(cat@from:0+2@0/cat@to:0+2@0))'],
+            }],
         }, freeze(subvols)))
         self._check_repr(*reprs_and_frozens[-1])
+
+        # Check our accessors
+        self.assertEqual(
+            [
+                '(Dir)',
+                '(Dir)',
+                '(File d2)',
+                '(File d2)',
+                '(File d2)',
+                '(File h5)',
+            ],
+            sorted(repr(ino) for ino in subvols.inodes()),
+        )
+        self.assertEqual(
+            {'cat': '(File h5)', 'tiger': 'None'},
+            subvols.map(lambda sv: repr(sv.inode_at_path(b'hole'))),
+        )
+        self.assertEqual(
+            '(File h5)',
+            repr(subvols.get_by_rendered_id('cat').inode_at_path(b'hole')),
+        )
 
         # Clone some data from `cat@hole` into `tiger@to`.
         tiger_mutator.apply_item(si.clone(
@@ -99,15 +126,15 @@ class SubvolumeSetTestCase(unittest.TestCase):
         ))
         # Note that the tiger@to references shrink to 1 bytes.
         reprs_and_frozens.append(({
-            'cat': ('(Dir)', {
-                'from': '(File d2(cat@to:0+2@0/tiger@to:0+1@0))',
-                'to': '(File d2(cat@from:0+2@0/tiger@to:0+1@0))',
-                'hole': '(File h5(tiger@to:1+2@2))',
-            }),
-            'tiger': ('(Dir)', {
-                'to': '(File d1(cat@from:0+1@0/cat@to:0+1@0)'
-                      'h2(cat@hole:2+2@0))',
-            }),
+            'cat': ['(Dir)', {
+                'from': ['(File d2(cat@to:0+2@0/tiger@to:0+1@0))'],
+                'to': ['(File d2(cat@from:0+2@0/tiger@to:0+1@0))'],
+                'hole': ['(File h5(tiger@to:1+2@2))'],
+            }],
+            'tiger': ['(Dir)', {
+                'to': ['(File d1(cat@from:0+1@0/cat@to:0+1@0)'
+                       'h2(cat@hole:2+2@0))'],
+            }],
         }, freeze(subvols)))
         self._check_repr(*reprs_and_frozens[-1])
 
@@ -118,18 +145,29 @@ class SubvolumeSetTestCase(unittest.TestCase):
         self.assertEqual('cat@ab', repr(cat.id_map.inner.description))
         self.assertEqual('cat@ap', repr(cat2.id_map.inner.description))
         reprs_and_frozens.append(({
-            'cat@ap': '(Dir)',
+            'cat@ap': ['(Dir)', {}],
             # Difference from the previous: `s/cat/cat@ab/`
-            'cat@ab': ('(Dir)', {
-                'from': '(File d2(cat@ab@to:0+2@0/tiger@to:0+1@0))',
-                'to': '(File d2(cat@ab@from:0+2@0/tiger@to:0+1@0))',
-                'hole': '(File h5(tiger@to:1+2@2))',
-            }),
-            'tiger': ('(Dir)', {
-                'to': '(File d1(cat@ab@from:0+1@0/cat@ab@to:0+1@0)'
-                      'h2(cat@ab@hole:2+2@0))',
-            }),
+            'cat@ab': ['(Dir)', {
+                'from': ['(File d2(cat@ab@to:0+2@0/tiger@to:0+1@0))'],
+                'to': ['(File d2(cat@ab@from:0+2@0/tiger@to:0+1@0))'],
+                'hole': ['(File h5(tiger@to:1+2@2))'],
+            }],
+            'tiger': ['(Dir)', {
+                'to': ['(File d1(cat@ab@from:0+1@0/cat@ab@to:0+1@0)'
+                       'h2(cat@ab@hole:2+2@0))'],
+            }],
         }, freeze(subvols)))
+
+        # The keys of `get_by_rendered_id` follow the disambiguation.
+        self.assertEqual(None, subvols.get_by_rendered_id('cat'))
+        self.assertEqual(
+            None,
+            subvols.get_by_rendered_id('cat@ap').inode_at_path(b'hole'),
+        )
+        self.assertEqual(
+            '(File h5)',
+            repr(subvols.get_by_rendered_id('cat@ab').inode_at_path(b'hole')),
+        )
 
         # Now create an ambiguous repr.
         tiger2 = SubvolumeSetMutator.new(subvols, si.subvol(

@@ -22,9 +22,16 @@ mutate its state.
 
 - Maximum path lengths are not checked.
 '''
-from types import MappingProxyType
-from typing import Mapping, NamedTuple, Optional, Sequence, Union
+import os
 
+from types import MappingProxyType
+from typing import (
+    Any, Coroutine, Iterator, Mapping, NamedTuple, Optional, Sequence,
+    Tuple, Union,
+)
+
+from .coroutine_utils import while_not_exited
+from .extents_to_chunks import extents_to_chunks_with_clones
 from .freeze import freeze
 from .inode_id import InodeID, InodeIDMap
 from .incomplete_inode import (
@@ -32,6 +39,7 @@ from .incomplete_inode import (
     IncompleteInode, IncompleteSocket, IncompleteSymlink,
 )
 from .send_stream import SendStreamItem, SendStreamItems
+from .rendered_tree import RenderedTree, TraversalIDMaker
 
 _DUMP_ITEM_TO_INCOMPLETE_INODE = {
     SendStreamItems.mkdir: IncompleteDir,
@@ -186,20 +194,32 @@ class Subvolume(NamedTuple):
             item, from_subvol._require_inode_at_path(item, item.from_path),
         )
 
+    # Exposed as a method for the benefit of `SubvolumeSet`.
+    def _inode_ids_and_extents(self):
+        for id, ino in self.id_to_inode.items():
+            if hasattr(ino, 'extent'):
+                yield (id, ino.extent)
+
     def freeze(
         self,
         *,
         _memo,
-        id_to_chunks: Mapping[InodeID, Sequence['Chunk']],
+        id_to_chunks: Optional[Mapping[InodeID, Sequence['Chunk']]]=None,
     ):
         '''
         Returns a recursively immutable copy of `self`, replacing
         `IncompleteInode`s by `Inode`s, using the provided `id_to_chunks` to
         populate them with `Chunk`s instead of `Extent`s.
 
+        If `id_to_chunks` is omitted, we'll detect clones only within `self`.
+
         IMPORTANT: Our lookups assume that the `id_to_chunks` has the
         pre-`freeze` variants of the `InodeID`s.
         '''
+        if id_to_chunks is None:
+            id_to_chunks = dict(extents_to_chunks_with_clones(
+                list(self._inode_ids_and_extents()),
+            ))
         return type(self)(
             id_map=freeze(self.id_map, _memo=_memo),
             id_to_inode=MappingProxyType({
@@ -207,4 +227,109 @@ class Subvolume(NamedTuple):
                         freeze(ino, _memo=_memo, chunks=id_to_chunks.get(id))
                     for id, ino in self.id_to_inode.items()
             }),
+        )
+
+    def inodes(self) -> Iterator[Union['Inode', 'IncompleteInode']]:
+        return self.id_to_inode.values()
+
+    def gather_bottom_up(self, top_path=b'.') -> Coroutine[
+        Tuple[
+            bytes,  # full path to current inode
+            Union['Inode', 'IncompleteInode'],  # the current inode
+            # None for files. For directories, maps the names of the child
+            # inodes to whatever result type they had sent us.
+            Optional[Mapping[bytes, Any]],
+        ],  # yield
+        Any,  # send -- whatever result type we are aggregating.
+        Any,  # return -- the final result, whatever you sent for `top_path`
+    ]:
+        '''
+        A deterministic bottom-up traversal for aggregating results from the
+        leaves of a filesystem up to a root.  Used by `render()`, but also
+        good for content hashing, disk usage statistics, search, etc.
+
+        Works on both frozen and unfrozen `Subvolume`s, you will
+        correspondingly get the `Inode` or the `IncompleteInode`.
+
+        Hardlinked files will get visited multiple times. The client can
+        alway keep a map keyed on `id(ino)` to handle this.  We purposely do
+        not expose `InodeID`.  A big reason to hide it is that `InodeID`s
+        depend on the sequence of send-stream items that constructed the
+        filesystem.  This is a problem, because one would expect a
+        deterministic traversal to produce the same IDs whenever the
+        underlying filesystem is the same, no matter how it was created.
+        Call `.next_with_nonce(id(ino))` on a `TraversalIDMaker` to
+        synthesize some filesystem-deterministic IDs for your inodes.
+
+        Advantages over each client implementing the recursive traversal:
+         - Iterative client code has simpler data flow.
+         - Less likelihood that different clients traverse in different
+           orders by accident.  Concretely: with manual recursion, our
+           automatic `TraversalID` numbering can be either "0 at a leaf, max
+           at the root", or "max at the root, 0 at a leaf", and this
+           decision is implicit in the ordering of the client code.
+           `gather_bottom_up` forces an explicit data flow.
+         - Makes it easy to interrupt the traversal early, if appropriate.
+           Note that `ctx.result` will be `None` in that case.
+         - Hides our internal APIs, making it easier to later improve them.
+
+        Usage:
+
+            with while_not_exited(subvol.gather_bottom_up(path)) as ctx:
+                result = None
+                while True:
+                    path, ino, child_path_to_result = ctx.send(result)
+                    result = ...  # your code here
+            # NB `ctx.result` will contain the result at `top_path`, which is
+            # the same as `result` in this case.
+
+        See also: `rendered_tree.gather_bottom_up()`
+        '''
+        ino_id = self.id_map.get_id(top_path)
+        child_paths = self.id_map.get_children(ino_id)
+        # While I'd love the next code to be a single expression using a
+        # dictionary comprehension, Python does not allow `yield` inside
+        # comprehensions.  See https://stackoverflow.com/questions/32139885
+        if child_paths is None:
+            child_results = None
+        else:
+            child_results = {}
+            for child_path in sorted(child_paths):
+                child_results[os.path.relpath(child_path, top_path)] = (
+                    yield from self.gather_bottom_up(child_path)
+                )
+        return (  # noqa: B901
+            yield (top_path, self.id_to_inode[ino_id], child_results)
+        )
+
+    def map_bottom_up(self, fn, top_path=b'.') -> RenderedTree:
+        '''
+        Applies `fn` to each inode from `top_path` down, in the
+        deterministic order of `gather_bottom_up`.  Returns the results
+        assembled into `RenderedTree`.
+        '''
+        with while_not_exited(self.gather_bottom_up(top_path)) as ctx:
+            result = None
+            while True:
+                path, ino, child_results = ctx.send(result)
+                ret = fn(ino)
+                # Observe that this emits `[ret, {}]` for empty dirs to
+                # structurally distinguish them from files.
+                result = [ret] if child_results is None else [ret, {
+                    child_name.decode(errors='surrogateescape'): child_result
+                        for child_name, child_result in child_results.items()
+                }]
+        return ctx.result
+
+    def render(self, top_path=b'.') -> RenderedTree:
+        '''
+        Produces a JSON-friendly plain-old-data view of the Subvolume.
+        Before this is actually JSON-ready, you will need to call one of the
+        `emit_*_traversal_ids` functions.  Read the docblock of
+        `rendered_tree.py` for more details.
+        '''
+        id_maker = TraversalIDMaker()
+        return self.map_bottom_up(
+            lambda ino: id_maker.next_with_nonce(id(ino)).wrap(repr(ino)),
+            top_path=top_path,
         )

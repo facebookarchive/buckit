@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 '''
-These utilities let us to concisely representation subtrees of a `Subvolume`
-in tests.  Refer to `test_subvolume.py` for usage examples.  Use `InodeRepr`
-for hardlinks.
+When writing tests, it is counterproductive to manually add traversal IDs to
+subvolume inodes.  Instead, we add them automatically, using `InodeRepr` as
+needed to flag the fact that two occurrences of an inode are the same inode
+instance (i.e. hardlinks).  Refer to `test_subvolume.py` for usage examples.
 '''
-import os
-
-from itertools import count
 from typing import NamedTuple
+
+from ..rendered_tree import map_bottom_up, RenderedTree, TraversalIDMaker
 
 
 class InodeRepr(NamedTuple):
@@ -18,64 +18,10 @@ class InodeRepr(NamedTuple):
     ino_repr: str
 
 
-class FakeInodeIds:
-    def __init__(self):
-        self.counter = count()
-        self.nonce_to_id = {}
-
-    def next_unique(self):
-        return next(self.counter)
-
-    def next_with_nonce(self, nonce: object):
-        if nonce not in self.nonce_to_id:
-            self.nonce_to_id[nonce] = next(self.counter)
-        return self.nonce_to_id[nonce]
-
-
-def serialize_subvol(subvol, path=b'.', gen=None):
-    if gen is None:
-        gen = FakeInodeIds()
-    ino_id = subvol.id_map.get_id(path)
-    ino_repr = (repr(subvol.id_to_inode[ino_id]), gen.next_with_nonce(ino_id))
-    children = subvol.id_map.get_children(ino_id)
-    if not children:
-        return ino_repr
-    return (ino_repr, {
-        os.path.relpath(child_path, path).decode(errors='surrogateescape'):
-            serialize_subvol(subvol, child_path, gen)
-                # The order must match `serialized_subvol_add_fake_inode_ids`
-                for child_path in sorted(children)
-    })
-
-
-def serialized_subvol_add_fake_inode_ids(ser, gen: FakeInodeIds=None):
-    if gen is None:
-        gen = FakeInodeIds()
-    if isinstance(ser, InodeRepr):  # precedes `tuple` since it's a NamedTuple
-        return (ser.ino_repr, gen.next_with_nonce(ser))
-    elif isinstance(ser, tuple):
-        ino_repr, children = ser
-        return (serialized_subvol_add_fake_inode_ids(ino_repr, gen), {
-            path: serialized_subvol_add_fake_inode_ids(child_repr, gen)
-                # Traverse children in the same order as `serialize_subvol`
-                # so that fake inode IDs are guaranteed to agree.
-                for path, child_repr in sorted(children.items())
-        })
-    elif isinstance(ser, str):
-        return (ser, gen.next_unique())
-    raise AssertionError(f'Unknown {ser}')
-
-
-def serialize_frozen_subvolume_set(subvol_set):
-    return {
-        repr(subvol.id_map.inner.description): serialize_subvol(subvol)
-            for subvol in subvol_set.uuid_to_subvolume.values()
-    }
-
-
-def serialized_subvolume_set_add_fake_inode_ids(ser):
-    # We don't share inode IDs across subvolumes, so this is just a `map`.
-    return {
-        desc: serialized_subvol_add_fake_inode_ids(subvol)
-            for desc, subvol in ser.items()
-    }
+def expected_subvol_add_traversal_ids(ser: RenderedTree):
+    id_maker = TraversalIDMaker()
+    return map_bottom_up(ser, lambda ino_repr: (
+        id_maker.next_with_nonce(ino_repr).wrap(ino_repr.ino_repr)
+            if isinstance(ino_repr, InodeRepr)
+                else id_maker.next_unique().wrap(ino_repr)
+    ))

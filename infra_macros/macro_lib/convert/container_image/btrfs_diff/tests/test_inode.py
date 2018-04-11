@@ -58,7 +58,9 @@ class InodeTestCase(unittest.TestCase):
             mode=None, owner=None, utimes=None, xattrs={},
         )
         self.assertEqual('(File)', repr(ino_not_complete))
-        with self.assertRaisesRegex(RuntimeError, 'is incomplete'):
+        with self.assertRaisesRegex(
+            RuntimeError, 'must have file_type, owner & utimes'
+        ):
             ino_not_complete.assert_valid_and_complete()
 
         # Trip the remaining `assert_valid_and_complete` checks, while also
@@ -84,12 +86,12 @@ class InodeTestCase(unittest.TestCase):
             (1, f'(Block {R} 123)', {'file_type': stat.S_IFBLK, 'dev': 0x123}),
             (0, f'(Block {R})', {'file_type': stat.S_IFBLK}),  # lacks `.dev`
 
-            (1, f'(Symlink m0 {O} {T} foo)',
-             {'file_type': stat.S_IFLNK, 'mode': 0, 'dest': b'foo'}),
-            (0, f'(Symlink m0 {O} {T})',
-             {'file_type': stat.S_IFLNK, 'mode': 0}),  # lacks `.dest`
+            (1, f'(Symlink {O} {T} foo)',
+             {'file_type': stat.S_IFLNK, 'mode': None, 'dest': b'foo'}),
+            (0, f'(Symlink {O} {T})',
+             {'file_type': stat.S_IFLNK, 'mode': None}),  # lacks `.dest`
             (0, f'(Symlink {R} foo)',
-             {'file_type': stat.S_IFLNK, 'dest': b'foo'}),  # non-0 `.mode`
+             {'file_type': stat.S_IFLNK, 'dest': b'foo'}),  # `.mode` was set
 
             # Add extra fields that don't belong to the file-type.
             # The "success" cases for these are already shown above.
@@ -102,8 +104,8 @@ class InodeTestCase(unittest.TestCase):
              {'file_type': stat.S_IFCHR, 'dev': 0x123, 'dest': b'ohai'}),
             (0, f'(Block {R} 123 ohai)',
              {'file_type': stat.S_IFBLK, 'dev': 0x123, 'dest': b'ohai'}),
-            (0, f'(Symlink m0 {O} {T} d11 foo)', {
-                'file_type': stat.S_IFLNK, 'mode': 0, 'dest': b'foo',
+            (0, f'(Symlink {O} {T} d11 foo)', {
+                'file_type': stat.S_IFLNK, 'mode': None, 'dest': b'foo',
                 'chunks': (chunk_d11,),
             }),
         ]:

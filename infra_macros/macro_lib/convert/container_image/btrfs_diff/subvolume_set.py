@@ -10,18 +10,20 @@ not done here simply because we don't have a need to model it, but you can
 easily imagine a path-aware `Volume` abstraction on top of this.
 '''
 import copy
+import itertools
 
 from collections import Counter
 from types import MappingProxyType
 # Future: `deepfrozen` would let us lose the `new` methods on NamedTuples,
 # and avoid `deepcopy`.
-from typing import Mapping, NamedTuple, Optional
+from typing import Iterator, Mapping, NamedTuple, Optional, Union
 
 from .extents_to_chunks import extents_to_chunks_with_clones
 from .freeze import freeze
 from .inode_id import InodeIDMap
 from .send_stream import SendStreamItem, SendStreamItems
 from .subvolume import Subvolume
+from .rendered_tree import RenderedTree
 
 
 class SubvolumeID(NamedTuple):
@@ -84,6 +86,7 @@ class SubvolumeDescription(NamedTuple):
 
 
 class SubvolumeSet(NamedTuple):
+    'IMPORTANT: Keep this `deepcopy`able for the sake of tests.'
     uuid_to_subvolume: Mapping[str, Subvolume]
     # `SubvolumeDescription` wants to represent itself as `name@abc`, where
     # `abc` is the shortest prefix of its UUID that uniquely identifies it
@@ -99,6 +102,12 @@ class SubvolumeSet(NamedTuple):
         kwargs.setdefault('name_uuid_prefix_counts', Counter())
         return cls(**kwargs)
 
+    def get_by_rendered_id(self, rendered_id: str) -> Subvolume:
+        for subvol in self.uuid_to_subvolume.values():
+            if repr(subvol.id_map.inner.description) == rendered_id:
+                return subvol
+        return None
+
     def freeze(self, *, _memo) -> 'SubvolumeSet':
         '''
         Return a recursively immutable copy of `self`, replacing all
@@ -106,12 +115,12 @@ class SubvolumeSet(NamedTuple):
         are populated.  Correctly resolving cloned extents has to happen at
         the level of the `SubvolumeSet`.
         '''
-        id_to_chunks = dict(extents_to_chunks_with_clones([
-            (id, ino.extent)
-                for subvol in self.uuid_to_subvolume.values()
-                    for id, ino in subvol.id_to_inode.items()
-                        if hasattr(ino, 'extent')
-        ]))
+        id_to_chunks = dict(extents_to_chunks_with_clones(
+            list(itertools.chain.from_iterable(
+                subvol._inode_ids_and_extents()
+                    for subvol in self.uuid_to_subvolume.values()
+            ))
+        ))
         return type(self)(
             uuid_to_subvolume=MappingProxyType({
                 uuid: freeze(subvol, _memo=_memo, id_to_chunks=id_to_chunks)
@@ -121,6 +130,25 @@ class SubvolumeSet(NamedTuple):
                 self.name_uuid_prefix_counts, _memo=_memo,
             ),
         )
+
+    def inodes(self) -> Iterator[Union['Inode', 'IncompleteInode']]:
+        return itertools.chain.from_iterable(
+            sv.inodes() for sv in self.uuid_to_subvolume.values()
+        )
+
+    def map(self, fn) -> Mapping[str, RenderedTree]:
+        '''
+        Applies `fn` to each subvolume. Returns results indexed by a string
+        containign the subvolume name and the minimal unambiguous prefix of
+        its UUID (in the style of `git` or `hg`).
+
+        NB: If you map over an un-frozen SubvolumeSet, you will get
+        `IncompleteInode`s, which are not aware of cloned extents.
+        '''
+        return {
+            repr(subvol.id_map.inner.description): fn(subvol)
+                for subvol in self.uuid_to_subvolume.values()
+        }
 
 
 class SubvolumeSetMutator(NamedTuple):

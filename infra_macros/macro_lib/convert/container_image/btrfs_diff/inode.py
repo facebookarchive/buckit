@@ -128,11 +128,13 @@ class Inode(NamedTuple):
     dest: Optional[bytes] = None
 
     def assert_valid_and_complete(self):
-        if None in (self.file_type, self.mode, self.owner, self.utimes):
-            raise RuntimeError(f'{self} is incomplete')
+        if None in (self.file_type, self.owner, self.utimes):
+            raise RuntimeError(f'{self} must have file_type, owner & utimes')
+        if stat.S_ISLNK(self.file_type) ^ (self.mode is None):
+            raise RuntimeError(f'only symlinks must omit mode, got {self}')
         if self.file_type & ~stat.S_IFMT(self.file_type):
             raise RuntimeError(f'bad .file_type bits in {self}')
-        if self.mode & stat.S_IFMT(self.mode):
+        if self.mode is not None and (self.mode & stat.S_IFMT(self.mode)):
             raise RuntimeError(f'bad .mode bits in {self}')
         if (self.chunks is not None) ^ stat.S_ISREG(self.file_type):
             raise RuntimeError(f'{self} must have .chunks iff it is a file')
@@ -141,9 +143,6 @@ class Inode(NamedTuple):
             raise RuntimeError(f'{self} must have .dev iff it is a device')
         if (self.dest is not None) ^ stat.S_ISLNK(self.file_type):
             raise RuntimeError(f'{self} must have .dest iff it is a symlink')
-        if stat.S_ISLNK(self.file_type) and self.mode != 0:
-            # Symlink permissions are ignored, so ensure they're canonical.
-            raise RuntimeError(f'{self} must have mode == 0')
 
     def _repr_fields(self):
         yield S_IFMT_TO_FILE_TYPE_NAME.get(self.file_type, str(self.file_type))

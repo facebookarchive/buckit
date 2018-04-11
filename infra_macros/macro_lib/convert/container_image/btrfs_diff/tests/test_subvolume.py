@@ -3,16 +3,19 @@ import copy
 import unittest
 
 from ..coroutine_utils import while_not_exited
+from ..extent import Extent
 from ..freeze import freeze
 from ..inode import Chunk
 from ..inode_id import InodeIDMap
 from ..parse_dump import SendStreamItems
+from ..rendered_tree import (
+    emit_all_traversal_ids, emit_non_unique_traversal_ids, map_bottom_up,
+    TraversalID,
+)
 from ..subvolume import Subvolume
 
 from .deepcopy_test import DeepCopyTestCase
-from .subvolume_utils import (
-    InodeRepr, serialize_subvol, serialized_subvol_add_fake_inode_ids,
-)
+from .subvolume_utils import InodeRepr, expected_subvol_add_traversal_ids
 
 # `unittest`'s output shortening makes tests much harder to debug.
 unittest.util._MAX_LENGTH = 10e4
@@ -22,36 +25,18 @@ class SubvolumeTestCase(DeepCopyTestCase):
     def setUp(self):
         self.maxDiff = 10e4
 
-    def _check_path_impl(self, expected, subvol: Subvolume, path: str='.'):
-        self.assertEqual(
-            serialized_subvol_add_fake_inode_ids(expected),
-            serialize_subvol(subvol, path.encode()),
-        )
+    def _check_render(self, expected_ser, subvol: Subvolume, path: str='.'):
+        self.assertEqual(*[emit_all_traversal_ids(ser) for ser in (
+            expected_subvol_add_traversal_ids(expected_ser),
+            subvol.render(path.encode()),
+        )])
 
-    def _freeze(self, subvol):
-        return freeze(subvol, id_to_chunks={
-            ino_id: tuple(
-                Chunk(
-                    kind=ext.content,
-                    length=length,
-                    # This test doesn't bother with simulating a nonempty
-                    # `chunk_clones` because it opaque to the `Subvolume`
-                    # level, and we have tests for it via `IncompleteInode`
-                    # and `SubvolumeSet`.
-                    chunk_clones=frozenset(),
-                ) for _, length, ext in ino.extent.gen_trimmed_leaves()
-            ) for ino_id, ino in subvol.id_to_inode.items()
-                if getattr(ino, 'extent', None) is not None
-        })
-
-    def _check_path(self, expected, subvol: Subvolume, path: str='.'):
-        self._check_path_impl(expected, subvol, path)
+    def _check_both_renders(
+        self, expected_ser, subvol: Subvolume, path: str='.',
+    ):
+        self._check_render(expected_ser, subvol, path)
         # Always check the frozen variant, too.
-        self._check_path_impl(
-            expected,
-            self._freeze(subvol),
-            path,
-        )
+        self._check_render(expected_ser, freeze(subvol), path)
 
     def _check_subvolume(self):
         '''
@@ -69,32 +54,32 @@ class SubvolumeTestCase(DeepCopyTestCase):
         # Make a tiny subvolume
         cat = Subvolume.new(id_map=InodeIDMap.new(description='cat'))
         cat = yield 'empty cat', cat
-        self._check_path('(Dir)', cat)
+        self._check_both_renders(['(Dir)', {}], cat)
 
         cat.apply_item(si.mkfile(path=b'dog'))
-        self._check_path(('(Dir)', {'dog': '(File)'}), cat)
+        self._check_both_renders(['(Dir)', {'dog': ['(File)']}], cat)
 
         cat.apply_item(si.chmod(path=b'dog', mode=0o755))
         cat = yield 'cat with chmodded dog', cat
-        self._check_path(('(Dir)', {'dog': '(File m755)'}), cat)
+        self._check_both_renders(['(Dir)', {'dog': ['(File m755)']}], cat)
 
         cat.apply_item(si.write(path=b'dog', offset=0, data='bbb'))
         cat = yield 'cat with dog with data', cat
-        self._check_path(('(Dir)', {'dog': '(File m755 d3)'}), cat)
+        self._check_both_renders(['(Dir)', {'dog': ['(File m755 d3)']}], cat)
 
         cat.apply_item(si.chmod(path=b'dog', mode=0o744))
-        self._check_path(('(Dir)', {'dog': '(File m744 d3)'}), cat)
+        self._check_both_renders(['(Dir)', {'dog': ['(File m744 d3)']}], cat)
         with self.assertRaisesRegex(RuntimeError, 'Missing ancestor '):
             cat.apply_item(si.mkfifo(path=b'dir_to_del/fifo_to_del'))
 
         cat.apply_item(si.mkdir(path=b'dir_to_del'))
         cat.apply_item(si.mkfifo(path=b'dir_to_del/fifo_to_del'))
-        cat_final_repr = ('(Dir)', {
-            'dog': '(File m744 d3)',
-            'dir_to_del': ('(Dir)', {'fifo_to_del': '(FIFO)'}),
-        })
+        cat_final_repr = ['(Dir)', {
+            'dog': ['(File m744 d3)'],
+            'dir_to_del': ['(Dir)', {'fifo_to_del': ['(FIFO)']}],
+        }]
         cat = yield 'final cat', cat
-        self._check_path(cat_final_repr, cat)
+        self._check_both_renders(cat_final_repr, cat)
 
         # Check some rename errors
         with self.assertRaisesRegex(RuntimeError, 'makes path its own subdir'):
@@ -126,14 +111,14 @@ class SubvolumeTestCase(DeepCopyTestCase):
 
         # Testing the above errors caused no changes
         cat = yield 'cat after error testing', cat
-        self._check_path(cat_final_repr, cat)
+        self._check_both_renders(cat_final_repr, cat)
 
         # Make a snapshot using the hack from `SubvolumeSetMutator`
         tiger = copy.deepcopy(cat, memo={
             id(cat.id_map.inner.description): 'tiger',
         })
         tiger = yield 'freshly copied tiger', tiger
-        self._check_path(cat_final_repr, tiger)
+        self._check_both_renders(cat_final_repr, tiger)
 
         # rmdir/unlink errors, followed by successful removal
         with self.assertRaisesRegex(RuntimeError, 'since it has children'):
@@ -146,12 +131,14 @@ class SubvolumeTestCase(DeepCopyTestCase):
         tiger = yield 'tiger after rmdir/unlink errors', tiger
         tiger.apply_item(si.rmdir(path=b'dir_to_del'))
         tiger = yield 'tiger after rmdir', tiger
-        self._check_path(('(Dir)', {'dog': '(File m744 d3)'}), tiger)
+        self._check_both_renders(['(Dir)', {'dog': ['(File m744 d3)']}], tiger)
 
         # Rename where the target does not exist
         tiger.apply_item(si.rename(path=b'dog', dest=b'wolf'))
         tiger = yield 'tiger after rename', tiger
-        self._check_path(('(Dir)', {'wolf': '(File m744 d3)'}), tiger)
+        self._check_both_renders(
+            ['(Dir)', {'wolf': ['(File m744 d3)']}], tiger,
+        )
 
         # Hardlinks, and modifying the root directory
         tiger.apply_item(si.chown(path=b'.', uid=123, gid=456))
@@ -159,30 +146,40 @@ class SubvolumeTestCase(DeepCopyTestCase):
         tiger.apply_item(si.chmod(path=b'tamaskan', mode=0o700))
         tiger = yield 'tiger after hardlink', tiger
         wolf = InodeRepr('(File m700 d3)')
-        tiger_penultimate_repr = ('(Dir o123:456)', {
-            'wolf': wolf, 'tamaskan': wolf,
-        })
-        self._check_path(tiger_penultimate_repr, tiger)
+        tiger_penultimate_repr = ['(Dir o123:456)', {
+            'wolf': [wolf], 'tamaskan': [wolf],
+        }]
+        self._check_both_renders(tiger_penultimate_repr, tiger)
 
         # Renaming the same inode is a no-op
         tiger.apply_item(si.rename(path=b'tamaskan', dest=b'wolf'))
         tiger = yield 'tiger after same-inode rename', tiger
-        self._check_path(tiger_penultimate_repr, tiger)
+        self._check_both_renders(tiger_penultimate_repr, tiger)
 
         # Hardlinks do not overwrite targets
         tiger.apply_item(si.mknod(path=b'somedev', mode=0o20444, dev=0x4321))
         # Freeze this 3-file filesystem to make sure that the frozen
         # `Subvolume` does not change as we evolve its parent.
-        frozen_tiger = self._freeze(tiger)
-        frozen_repr = ('(Dir o123:456)', {
-            'somedev': '(Char m444 4321)',
-            'tamaskan': wolf,
-            'wolf': wolf,
-        })
-        self._check_path(frozen_repr, tiger)
+        frozen_tiger = freeze(tiger)
+        frozen_repr = ['(Dir o123:456)', {
+            'somedev': ['(Char m444 4321)'],
+            'tamaskan': [wolf],
+            'wolf': [wolf],
+        }]
+        self._check_both_renders(frozen_repr, tiger)
+        # Also ensure that `emit_non_unique_traversal_ids` does what it says
+        # on the tin.
+        self.assertEqual(
+            ['(Dir o123:456)', {
+                'somedev': ['(Char m444 4321)'],
+                'tamaskan': [[wolf.ino_repr, 0]],
+                'wolf': [[wolf.ino_repr, 0]],
+            }],
+            emit_non_unique_traversal_ids(frozen_tiger.render()),
+        )
         # *impl because otherwise we'd try to freeze a frozen `Subvolume`,
         # and my code currently does not handle that.
-        self._check_path_impl(frozen_repr, frozen_tiger)
+        self._check_render(frozen_repr, frozen_tiger)
         with self.assertRaisesRegex(RuntimeError, 'Destination .* exists'):
             tiger.apply_item(si.link(path=b'wolf', dest=b'somedev'))
         tiger = yield 'tiger after mkdev etc', tiger
@@ -190,10 +187,10 @@ class SubvolumeTestCase(DeepCopyTestCase):
         # A rename that overwrites an existing file.
         tiger.apply_item(si.rename(path=b'somedev', dest=b'wolf'))
         tiger = yield 'tiger after overwriting rename', tiger
-        self._check_path(
-            ('(Dir o123:456)', {'wolf': '(Char m444 4321)', 'tamaskan': wolf}),
-            tiger
-        )
+        self._check_both_renders(['(Dir o123:456)', {
+            'wolf': ['(Char m444 4321)'],
+            'tamaskan': [wolf],
+        }], tiger)
 
         # Graceful error on paths that cannot be resolved
         for fail_fn in [
@@ -218,29 +215,87 @@ class SubvolumeTestCase(DeepCopyTestCase):
             from_path=b'tamaskan', clone_offset=5,
         ), tiger)
         tiger = yield 'tiger cloned from tiger', tiger
-        self._check_path(('(Dir o123:456)', {
-            'wolf': '(Char m444 4321)',
-            'tamaskan': '(File m700 d3h7d10)',
-            'dolly': '(File h5d5)',
-        }), tiger)
+        self._check_render(['(Dir o123:456)', {
+            'wolf': ['(Char m444 4321)'],
+            'tamaskan': ['(File m700 d3h7d10)'],
+            'dolly': ['(File h5d5)'],
+        }], tiger)
+        self._check_render(['(Dir o123:456)', {
+            'wolf': ['(Char m444 4321)'],
+            'tamaskan': [
+                '(File m700 d3h7(tiger@dolly:0+5@2)d10(tiger@dolly:5+5@0))'
+            ],
+            'dolly': [
+                '(File h5(tiger@tamaskan:5+5@0)d5(tiger@tamaskan:10+5@0))'
+            ],
+        }], freeze(tiger))
         # We're about to clone from `cat`, so allow it do be `deepcopy`d here.
         cat = yield 'tiger clones from cat', cat
-        self._check_path(cat_final_repr, cat)
+        self._check_both_renders(cat_final_repr, cat)
 
         tiger.apply_clone(si.clone(
             path=b'dolly', offset=2, len=2, from_uuid='', from_transid=0,
             from_path=b'dog', clone_offset=1,
         ), cat)
+
+        # The big comment below explains why we need `deepcopy_shenanigan`.
+        dog_extent = cat.inode_at_path(b'dog').extent
+        first_tamaskan_leaf = next(
+            tiger.inode_at_path(b'tamaskan').extent.gen_trimmed_leaves(),
+        )[2]
+        self.assertEqual(
+            {Extent(content=Extent.Kind.DATA, offset=0, length=3)},
+            {dog_extent, first_tamaskan_leaf},
+        )
+        deepcopy_shenanigan = dog_extent is not first_tamaskan_leaf
+
         tiger = yield 'tiger cloned from cat', tiger
-        self._check_path(('(Dir o123:456)', {
-            'wolf': '(Char m444 4321)',
-            'tamaskan': '(File m700 d3h7d10)',
-            'dolly': '(File h2d2h1d5)',
-        }), tiger)
+        self._check_render(['(Dir o123:456)', {
+            'wolf': ['(Char m444 4321)'],
+            'tamaskan': ['(File m700 d3h7d10)'],
+            'dolly': ['(File h2d2h1d5)'],
+        }], tiger)
+        # We do not see the `cat` clone -- that requires `SubvolumeSet`.
+        # However, the first 3 bytes of `tamaskan` are actually backed by
+        # the same extent as `cat@dog`.  The events leading up to this
+        # coincidence are:
+        #  - mkfile cat@dog
+        #  - write 3 bytes to offset 0 of cat@dog
+        #  - snapshot cat to tiger
+        #  - rename tiger@dog to tiger@wolf
+        #  - hardlink tiger@wolf to tiger@tamaskan
+        # Good thing you knew that a tamaskan is a breed of dog, or you'd be
+        # very confused by now ;)
+        #
+        # The final twist is that `DeepCopyTestCase` can actually break this
+        # clone connection.  The `deepcopy_original=True` subtest takes a
+        # `tiger` snapshot midway from one rune, and inserts it into the
+        # same position on the second run.  Of course, there is no clone
+        # relationship between the `cat` of the second run, and the `tiger`
+        # of the first. That's what `deepcopy_shenanigan` detects.
+        self._check_render(['(Dir o123:456)', {
+            'wolf': ['(Char m444 4321)'],
+            'tamaskan': [
+                '(File m700 d3' + (
+                    '' if deepcopy_shenanigan else '(tiger@dolly:2+2@1)'
+                ) + 'h7(tiger@dolly:0+2@2/tiger@dolly:4+1@6)'
+                    'd10(tiger@dolly:5+5@0))'
+            ],
+            'dolly': [
+                '(File h2(tiger@tamaskan:5+2@0)d2' + (
+                    '' if deepcopy_shenanigan else '(tiger@tamaskan:1+2@0)'
+                ) + 'h1(tiger@tamaskan:9+1@0)d5(tiger@tamaskan:10+5@0))'
+            ],
+        }], freeze(tiger))
 
         # Mutating the snapshot leaves the parent subvol intact
         cat = yield 'cat after tiger mutations', cat
-        self._check_path(cat_final_repr, cat)
+        self._check_both_renders(cat_final_repr, cat)
+        # Test the inode iterator
+        self.assertEqual(
+            ['(Dir)', '(Dir)', '(FIFO)', '(File m744 d3)'],
+            sorted(repr(ino) for ino in cat.inodes())
+        )
 
         # Basic checks to ensure it's immutable.
         with self.assertRaisesRegex(TypeError, 'NoneType.* not an iterator'):
@@ -252,7 +307,7 @@ class SubvolumeTestCase(DeepCopyTestCase):
         with self.assertRaisesRegex(AttributeError, "no .* 'apply_item'"):
             frozen_tiger.apply_item(si.chmod(path=b'tamaskan', mode=0o644))
         # Neither the error-testing, nor changing the parent changed us.
-        self._check_path_impl(frozen_repr, frozen_tiger)
+        self._check_render(frozen_repr, frozen_tiger)
 
     def test_stays_frozen(self):
         '''
@@ -264,21 +319,41 @@ class SubvolumeTestCase(DeepCopyTestCase):
         with while_not_exited(self._check_subvolume()) as ctx:
             while True:
                 step, subvol = ctx.send(subvol)
-                frozen_subvol = self._freeze(subvol)
+                frozen_subvol = freeze(subvol)
                 step_subvol_repr.append((
                     step,
                     frozen_subvol,
-                    serialize_subvol(frozen_subvol),
+                    frozen_subvol.render(),
                 ))
         for step, frozen_subvol, frozen_repr in step_subvol_repr:
-            with self.subTest(f'frozen did not change after {step}'):
-                self.assertEqual(
-                    frozen_repr,
-                    serialize_subvol(frozen_subvol),
-                )
+            # Sneak in some test coverage for both variants of `emit_`:
+            for emit_fn in (
+                emit_all_traversal_ids,
+                emit_non_unique_traversal_ids,
+            ):
+                with self.subTest(f'frozen did not change after {step}'):
+                    self.assertEqual(
+                        emit_fn(frozen_repr),
+                        emit_fn(frozen_subvol.render()),
+                    )
 
     def test_subvolume(self):
         self.check_deepcopy_at_each_step(self._check_subvolume)
+
+    def test_rendered_tree(self):
+        'Miscellaneous coverage over `rendered_tree.py`.'
+        with self.assertRaisesRegex(RuntimeError, 'Unknown type in rendered'):
+            map_bottom_up('not a list', lambda x: x)
+        with self.assertRaisesRegex(RuntimeError, 'inode list length != 1, 2'):
+            map_bottom_up([], lambda x: x)
+        # Ensure 'if children is None:' is equivalent to `list(ser) == 1`.
+        all_equal = {tuple(l) for l in (
+            map_bottom_up(['ino'], lambda x: x),
+            map_bottom_up(['ino', None], lambda x: x),
+            ['ino'],
+        )}
+        self.assertEqual({('ino',)}, all_equal)
+        self.assertEqual('TraversalID(11/0)', repr(TraversalID(11)))
 
 
 if __name__ == '__main__':
