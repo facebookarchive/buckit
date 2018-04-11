@@ -104,11 +104,9 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
                 _parse_lines_to_list(stream_dict['mutate_ops']['dump']),
             # `--dump` does not show fractional seconds at present.
             build_start_time=(
-                int(stream_dict['create_ops']['build_start_time']), 0
+                stream_dict['create_ops']['build_start_time'][0], 0
             ),
-            build_end_time=(
-                int(stream_dict['mutate_ops']['build_end_time']) + 1, 0
-            ),
+            build_end_time=(stream_dict['mutate_ops']['build_end_time'][0], 0),
             dump_mode=True,
         )
         self.assertEqual(filtered_items, expected_items)

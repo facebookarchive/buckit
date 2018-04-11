@@ -47,6 +47,9 @@ import sys
 import tempfile
 import time
 
+from typing import Tuple
+
+
 from .btrfs_utils import (
     CheckedRunTemplate, mark_subvolume_readonly_and_get_sendstream,
     TempSubvolumes, RelativePath,
@@ -133,16 +136,21 @@ def make_mutate_ops_subvolume(
     run('/usr/bin/chattr', '+a', 'hello_renamed/een')
 
 
+def float_to_sec_nsec_tuple(t: float) -> Tuple[int, int]:
+    sec = int(t)
+    return (sec, int(1e9 * (t - sec)))
+
+
 @contextlib.contextmanager
 def populate_sendstream_dict(d):
-    d['build_start_time'] = time.time()
+    d['build_start_time'] = float_to_sec_nsec_tuple(time.time())
     yield d
     d['dump'] = subprocess.run(
         ['btrfs', 'receive', '--dump'],
         input=d['sendstream'], stdout=subprocess.PIPE, check=True,
         # split into lines to make the `pretty` output prettier
     ).stdout.rstrip(b'\n').split(b'\n')
-    d['build_end_time'] = time.time()
+    d['build_end_time'] = float_to_sec_nsec_tuple(time.time())
 
 
 def demo_sendstreams(temp_dir: bytes):
