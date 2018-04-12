@@ -1261,29 +1261,51 @@ class PythonConverter(base.Converter):
             # python_typecheck know where to start type checking the program.
             attrs['env'] = {"PYTHON_TYPECHECK_ENTRY_POINT": main_module}
 
+        typing_options_list = [
+            option.strip() for option in typing_options.split(',')
+        ] if typing_options else []
+        use_pyre = typing_options and 'pyre' in typing_options_list
+
+        if use_pyre:
+            typing_options_list.remove('pyre')
+            typing_options = ','.join(typing_options_list)
+            if 'env' in attrs.keys():
+                attrs['env']["PYRE_ENABLED"] = "1"
+            else:
+                attrs['env'] = {"PYRE_ENABLED": "1"}
+
         if typing_config:
             conf = collections.OrderedDict()
-            conf['name'] = name + '-typing=mypy.ini'
             if visibility is not None:
                 conf['visibility'] = visibility
             conf['out'] = os.curdir
             cmd = '$(exe {}) gather '.format(typing_config)
+            if use_pyre:
+                conf['name'] = name + "-typing=pyre.json"
+                conf['out'] = 'pyre.json'
+                cmd += '--pyre=True '
+            else:
+                conf['name'] = name + '-typing=mypy.ini'
+                conf['out'] = 'mypy.ini'
             if typing_options:
                 cmd += '--options="{}" '.format(typing_options)
             cmd += '$(location {}-typing) $OUT'.format(library.target_name)
             conf['cmd'] = cmd
-            conf['out'] = 'mypy.ini'
             gen_rule = Rule('genrule', conf)
             yield gen_rule
+
             conf = collections.OrderedDict()
-            conf['name'] = name + '-mypy_ini'
+            if use_pyre:
+                conf['name'] = name + '-pyre_json'
+            else:
+                conf['name'] = name + '-mypy_ini'
             if visibility is not None:
                 conf['visibility'] = visibility
             conf['base_module'] = ''
             conf['srcs'] = [gen_rule.target_name]
-            mypy_ini = Rule('python_library', conf)
-            yield mypy_ini
-            typecheck_deps.append(mypy_ini.target_name)
+            configuration = Rule('python_library', conf)
+            yield configuration
+            typecheck_deps.append(configuration.target_name)
 
         yield Rule('python_test', attrs)
 
