@@ -1464,6 +1464,7 @@ class CppConverter(base.Converter):
                 base_path,
                 name,
                 attributes['linker_flags'],
+                default_deps=not nodefaultlibs,
                 allocator=allocator,
             )
             dependencies.extend(d)

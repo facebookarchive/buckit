@@ -1388,7 +1388,13 @@ class Converter(object):
             # all coverage deps are included in the santizer deps
             return []
 
-    def get_binary_link_deps(self, base_path, name, linker_flags=(), allocator='malloc'):
+    def get_binary_link_deps(
+            self,
+            base_path,
+            name,
+            linker_flags=(),
+            allocator='malloc',
+            default_deps=True):
         """
         Return a list of dependencies that should apply to *all* binary rules
         that link C/C++ code.
@@ -1416,7 +1422,8 @@ class Converter(object):
             deps.extend(self.get_coverage_binary_deps())
 
         # We link in our own implementation of `kill` to binaries (S110576).
-        deps.append(RootRuleTarget('common/init', 'kill'))
+        if default_deps:
+            deps.append(RootRuleTarget('common/init', 'kill'))
 
         return deps, rules
 
