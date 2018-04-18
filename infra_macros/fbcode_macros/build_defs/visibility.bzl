@@ -16,6 +16,7 @@ Functions that handle correcting 'visiblity' arguments
 # simulating with dict per https://docs.bazel.build/versions/master/skylark/lib/depset.html
 EXPERIMENTAL_WHITELIST = {
     ('experimental/deeplearning', 'all_lua'): None,
+    ('experimental/deeplearning', 'fair_video_understanding'): None,
     ('experimental/deeplearning/mobile-vision/segmentation/tools/create_coco_format_dataset/tests', 'analyze_json_lib'): None,
     ('experimental/deeplearning/ntt/detection_caffe2/lib', 'lib'): None,
     ('experimental/deeplearning/vajdap/xray', 'xray_lib'): None,
