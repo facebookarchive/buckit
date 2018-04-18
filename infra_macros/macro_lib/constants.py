@@ -121,6 +121,7 @@ FBCODE_RULES = [
     'rust_bindgen_library',
     'rust_external_library',
     'scala_library',
+    'scala_test',
     'swig_library',
     'thrift_library',
     'versioned_alias',
