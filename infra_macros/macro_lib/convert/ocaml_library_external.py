@@ -34,6 +34,8 @@ class OCamlLibraryExternalConverter(base.Converter):
             native_libs=None,
             bytecode_libs=None,
             c_libs=None,
+            native_c_libs=None,
+            bytecode_c_libs=None,
             deps=(),
             external_deps=(),
             native=True,
@@ -63,6 +65,12 @@ class OCamlLibraryExternalConverter(base.Converter):
 
         if c_libs:
             attributes['c_libs'] = c_libs
+
+        if native_c_libs:
+            attributes['native_c_libs'] = native_c_libs
+
+        if bytecode_c_libs:
+            attributes['bytecode_c_libs'] = bytecode_c_libs
 
         if not native:
             attributes['bytecode_only'] = True
