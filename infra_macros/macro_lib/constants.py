@@ -27,6 +27,7 @@ BUCK_RULES = [
     'cxx_precompiled_header',
     'cxx_test',
     'export_file',
+    'filegroup',
     'gen_aidl',
     'genrule',
     'go_binary',

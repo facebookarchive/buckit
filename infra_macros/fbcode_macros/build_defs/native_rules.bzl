@@ -108,3 +108,7 @@ def buck_cxx_test(name, **kwargs):
     """ Wrapper to access Buck's native cxx_test rule """
     _verify_whitelisted_rule('cxx_test', native.package_name(), name)
     native.cxx_test(name=name, **kwargs)
+
+def buck_filegroup(*args, **kwargs):
+    """ Wrapper to access Buck's native filegroup rule """
+    native.filegroup(*args, **kwargs)

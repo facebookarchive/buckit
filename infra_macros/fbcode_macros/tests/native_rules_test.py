@@ -19,6 +19,7 @@ class NativeRulesTest(tests.utils.TestCase):
     import_lines = dedent("""
         load("@fbcode_macros//build_defs:native_rules.bzl",
             "buck_command_alias",
+            "buck_filegroup",
             "cxx_genrule",
             "buck_genrule",
             "buck_python_binary",
@@ -37,6 +38,7 @@ class NativeRulesTest(tests.utils.TestCase):
     def test_ungated_rules_propagate_properly(self, root):
         root.add_file("BUCK", self.import_lines + "\n" + dedent("""
             buck_command_alias(name="command_alias", exe=":sh_binary")
+            buck_filegroup(name="filegroup", srcs=["python_library.py"])
             cxx_genrule(name="cxx_genrule", out="out.h", cmd="echo > $OUT")
             buck_genrule(name="genrule", out="out", cmd="echo > $OUT")
             buck_python_binary(name="python_binary", deps=[":python_library"], main_module="python_binary")
@@ -61,6 +63,13 @@ class NativeRulesTest(tests.utils.TestCase):
             command_alias(
               name = "command_alias",
               exe = ":sh_binary",
+            )
+
+            filegroup(
+              name = "filegroup",
+              srcs = [
+                "python_library.py",
+              ],
             )
 
             cxx_genrule(
