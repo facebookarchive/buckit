@@ -167,6 +167,11 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         src = 'lib.rs'
         gen_name = name + '-bindgen'
 
+        # TODO(T27678070): The Rust bindgen rule should inherit it's platform
+        # from top-level rules, not look it up via a PLATFORM file.  We should
+        # cleanup all references to this in the code below.
+        platform = self.get_platform(base_path)
+
         attrs['name'] = gen_name
         attrs['out'] = os.path.join(os.curdir, src)
         attrs['srcs'] = [header]
@@ -204,8 +209,8 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # here, and also filter out inappropriate ones we get from the
         # $(cxxppflags) macro in the cxxgenrule.
         base_clang_flags = '%s %s' % (
-            self._context.buck_ops.read_config('cxx', 'clang_cxxppflags'),
-            self._context.buck_ops.read_config('cxx', 'clang_cxxflags'))
+            self._context.buck_ops.read_config('rust#' + platform, 'bindgen_cxxppflags'),
+            self._context.buck_ops.read_config('rust#' + platform, 'bindgen_cxxflags'))
         base_clang_flags = base_clang_flags.split(' ')
 
         def formatter(fmt):
@@ -213,7 +218,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
                 fbcode=os.path.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
                 bindgen=self.get_tool_target(
                     ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
-                    self.get_default_platform()),
+                    platform),
                 bindgen_flags=' '.join(map(pipes.quote, bindgen_flags)),
                 base_clang_flags=' '.join(map(pipes.quote, base_clang_flags)),
                 clang_flags=' '.join(map(pipes.quote, clang_flags)),
@@ -230,7 +235,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
                 generate=generate,
                 deps=''.join(' ' + d for d in cpp_deps),
                 includes=self.get_exported_include_tree(':' + name),
-                platform=self.get_default_platform(),
+                platform=platform,
             )
 
         # Actual bindgen rule
