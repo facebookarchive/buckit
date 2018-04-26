@@ -98,18 +98,18 @@ class RustConverter(base.Converter):
             linker_flags,
             allocator,
         )
-        deps.extend(self.format_deps(d))
+        deps.extend(d)
         rules.extend(r)
 
         # Always explicitly add libc - except for sanitizer modes, since
         # they already add them
-        libc = self.get_dep_target(ThirdPartyRuleTarget('glibc', 'c'))
+        libc = ThirdPartyRuleTarget('glibc', 'c')
         if libc not in deps:
             deps.append(libc)
 
         # Always explicitly add libstdc++ - except for sanitizer modes, since
         # they already add them
-        libgcc = self.get_dep_target(ThirdPartyRuleTarget('libgcc', 'stdc++'))
+        libgcc = ThirdPartyRuleTarget('libgcc', 'stdc++')
         if libgcc not in deps:
             deps.append(libgcc)
         return deps, rules
@@ -225,16 +225,12 @@ class RustConverter(base.Converter):
             extra_rules.extend(rust_build_info_rules)
 
         # Translate dependencies.
-        for target in deps or []:
-            dependencies.append(self.convert_build_target(base_path, target))
+        for dep in deps or []:
+            dependencies.append(target.parse_target(dep, base_path=base_path))
 
         # Translate external dependencies.
-        for target in external_deps or []:
-            dependencies.append(self.convert_external_build_target(target))
-
-        # If any deps were specified, add them to the output attrs.
-        if dependencies:
-            attributes['deps'] = dependencies
+        for dep in external_deps or []:
+            dependencies.append(self.normalize_external_dep(dep))
 
         if not tests:
             tests = []
@@ -247,6 +243,7 @@ class RustConverter(base.Converter):
         if not self.is_test() and unittests:
             test, r = self.create_rust_test_rule(
                 base_path,
+                dependencies,
                 attributes,
                 test_srcs,
                 test_deps,
@@ -279,11 +276,17 @@ class RustConverter(base.Converter):
             dependencies.extend(d)
             extra_rules.extend(r)
 
+        # If any deps were specified, add them to the output attrs.
+        if dependencies:
+            attributes['deps'], attributes['platform_deps'] = (
+                self.format_all_deps(dependencies))
+
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
 
     def create_rust_test_rule(
             self,
             base_path,
+            dependencies,
             attributes,
             test_srcs,
             test_deps,
@@ -348,11 +351,12 @@ class RustConverter(base.Converter):
             test_attributes['srcs'] += (
                 self.convert_source_list(base_path, test_srcs))
 
-        deps = list(attributes.get('deps', []))
-        for target in test_deps or []:
-            deps.append(self.convert_build_target(base_path, target))
-        for target in test_external_deps or []:
-            deps.append(self.convert_external_build_target(target))
+        deps = []
+        deps.extend(dependencies)
+        for dep in test_deps or []:
+            deps.append(target.parse_target(dep, base_path=base_path))
+        for dep in test_external_deps or []:
+            deps.append(self.normalize_external_dep(dep))
 
         d, r = self.get_rust_binary_deps(
             base_path,
@@ -363,7 +367,8 @@ class RustConverter(base.Converter):
         deps.extend(d)
         rules.extend(r)
 
-        test_attributes['deps'] = deps
+        test_attributes['deps'], test_attributes['platform_deps'] = (
+            self.format_all_deps(deps))
 
         return Rule('rust_test', test_attributes), rules
 
@@ -433,4 +438,4 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         lib_attrs['srcs'] = [':' + source_name]
         rules.append(Rule('rust_library', lib_attrs))
 
-        return ':' + lib_name, rules
+        return RootRuleTarget(base_path, lib_name), rules
