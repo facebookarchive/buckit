@@ -31,16 +31,6 @@ load("{}:fbcode_target.py".format(macro_root),
 PYTHON = ThirdPartyRuleTarget('python', 'python')
 PYTHON3 = ThirdPartyRuleTarget('python3', 'python')
 
-# TODO: This logic will be removed once the applicable
-#       libraries have migrated to use read_config
-#       directly in their TARGETS files
-EXTERNAL_LIBRARY_OVERRIDE = collections.defaultdict(list)
-if read_config('tp2', 'override'):
-    for setting in read_config('tp2', 'override').split(','):
-        k, v = setting.split('=', 1)
-        EXTERNAL_LIBRARY_OVERRIDE[k].append(v)
-
-
 Inputs = (
     collections.namedtuple(
         'Inputs',
@@ -242,23 +232,6 @@ class CppLibraryExternalConverter(base.Converter):
         attributes['name'] = name
         if visibility is not None:
             attributes['visibility'] = visibility
-
-        # TODO: This logic will be removed once the applicable
-        #       libraries have migrated to use read_config
-        #       directly in their TARGETS files
-        if name in EXTERNAL_LIBRARY_OVERRIDE:
-            # Apply settings
-            new_kwargs = {}
-            for override in EXTERNAL_LIBRARY_OVERRIDE[name]:
-                k, v = override.split('=', 1)
-                simple_map = {
-                    'True': True,
-                    'False': False,
-                }
-                new_kwargs[k] = simple_map[v]
-            force_static = new_kwargs.get('force_static', force_static)
-            force_shared = new_kwargs.get('force_shared', force_shared)
-
 
         # If the `soname` parameter isn't set, try to guess it from inspecting
         # the DSO.
