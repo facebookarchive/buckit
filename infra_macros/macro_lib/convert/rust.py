@@ -186,6 +186,9 @@ class RustConverter(base.Converter):
 
             attributes['link_style'] = link_style
 
+            platform = self.get_platform(base_path)
+            attributes['default_platform'] = platform
+
             ldflags = self.get_ldflags(
                 base_path,
                 name,
@@ -196,9 +199,21 @@ class RustConverter(base.Converter):
                 # any adding unused linker flags affects rule keys up the tree.
                 strip_mode=None if self.is_deployable() else 'none',
                 build_info=self.is_deployable(),
-                platform=self.get_default_platform())
-
+                platform=platform)
             attributes['linker_flags'] = ldflags + (linker_flags or [])
+
+            # Add the Rust build info lib to deps.
+            rust_build_info, rust_build_info_rules = (
+                self.create_rust_build_info_rule(
+                    base_path,
+                    name,
+                    crate,
+                    self.get_fbconfig_rule_type(),
+                    platform,
+                    visibility))
+            dependencies.append(rust_build_info)
+            extra_rules.extend(rust_build_info_rules)
+
         else:
             if proc_macro:
                 attributes['proc_macro'] = proc_macro
@@ -211,18 +226,6 @@ class RustConverter(base.Converter):
 
         if visibility:
             attributes['visibility'] = visibility
-
-        # Add the Rust build info lib to deps.
-        if self.is_binary():
-            rust_build_info, rust_build_info_rules = (
-                self.create_rust_build_info_rule(
-                    base_path,
-                    name,
-                    crate,
-                    self.get_fbconfig_rule_type(),
-                    visibility))
-            dependencies.append(rust_build_info)
-            extra_rules.extend(rust_build_info_rules)
 
         # Translate dependencies.
         for dep in deps or []:
@@ -319,7 +322,7 @@ class RustConverter(base.Converter):
             binary=True,
             strip_mode=None,
             build_info=True,
-            platform=self.get_default_platform())
+            platform=self.get_platform(base_path))
 
         if 'crate' in attributes:
             test_attributes['crate'] = '%s_unittest' % attributes['crate']
@@ -378,6 +381,7 @@ class RustConverter(base.Converter):
             name,
             crate,
             rule_type,
+            platform,
             visibility):
         """
         Create rules to generate a Rust library with build info.
@@ -389,7 +393,7 @@ class RustConverter(base.Converter):
                 base_path,
                 name,
                 rule_type,
-                self.get_default_platform()))
+                platform))
 
         template = """
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
