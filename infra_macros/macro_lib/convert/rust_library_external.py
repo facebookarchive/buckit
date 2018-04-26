@@ -16,6 +16,7 @@ import collections
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
+include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 
 
@@ -37,6 +38,8 @@ class RustLibraryExternalConverter(base.Converter):
                 visibility=None,
                 external_deps=()):
 
+        platform = self.get_tp2_build_dat(base_path)['platform']
+
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
@@ -53,13 +56,12 @@ class RustLibraryExternalConverter(base.Converter):
             attributes['visibility'] = visibility
 
         dependencies = []
-        for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
-
-        for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
-
+        for dep in deps:
+            dependencies.append(target.parse_target(dep, base_path=base_path))
+        for dep in external_deps:
+            dependencies.append(self.normalize_external_dep(dep))
         if dependencies:
-            attributes['deps'] = dependencies
+            attributes['deps'] = (
+                self.format_deps(dependencies, platform=platform))
 
         return [Rule(self.get_buck_rule_type(), attributes)]
