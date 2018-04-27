@@ -212,9 +212,13 @@ cflags=()
 cflags+=("-fpermissive")
 cflags+=($(cxxflags))
 cflags+=($(cxxppflags{deps}))
+use_lto=0
 # Needed for `template-hsc.h`.
 cflags+=(-I{ghc}/lib/ghc-8.0.2)
 for cflag in "${{cflags[@]}}"; do
+  if [ "$cflag" == "-flto" ]; then
+    use_lto=1
+  fi
   args+=(--cflag="$cflag")
 done
 
@@ -223,6 +227,9 @@ args+=("--ld=$(ld)")
 
 # Add in the linker flags.
 ldflags=($(ldflags-{link_style}{deps}))
+if [ $use_lto -eq 1 ]; then
+    ldflags+=("-flto")
+fi
 ldflags+=("-o" "`dirname $OUT`/{out_obj}")
 for ldflag in "${{ldflags[@]}}"; do
   args+=(--lflag="$ldflag")
