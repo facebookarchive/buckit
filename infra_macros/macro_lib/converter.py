@@ -12,15 +12,15 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import os
-import re
 
 
 ALWAYS_ALLOWED_ARGS = {'visibility'}
 
-# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+
 def import_macro_lib(path):
+    # Hack to make internal Buck macros flake8-clean until we switch to
+    # buildozer.
     global _import_macro_lib__imported
     include_defs('{}/{}.py'.format(  # noqa: F821
         read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
@@ -29,9 +29,9 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
-load("@fbcode_macros//build_defs:export_files.bzl",
+load("@fbcode_macros//build_defs:export_files.bzl",  # noqa F821
         "export_file", "export_files", "buck_export_file")
-load(
+load(  # noqa F821
     "@fbcode_macros//build_defs:native_rules.bzl",
     "buck_command_alias",
     "buck_cxx_binary",
@@ -84,6 +84,7 @@ python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
 rust_library_external = import_macro_lib('convert/rust_library_external')
+sphinx = import_macro_lib('convert/sphinx')
 swig_library = import_macro_lib('convert/swig_library')
 thrift_library = import_macro_lib('convert/thrift_library')
 wheel = import_macro_lib('convert/wheel')
@@ -185,6 +186,8 @@ def convert(context, base_path, rule):
         rust.RustConverter(context, 'rust_unittest'),
         rust_bindgen_library.RustBindgenLibraryConverter(context),
         rust_library_external.RustLibraryExternalConverter(context),
+        sphinx.SphinxWikiConverter(context),
+        sphinx.SphinxManpageConverter(context),
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
     ]
@@ -205,22 +208,22 @@ def convert(context, base_path, rule):
 
     converter_map = {}
     new_converter_map = {
-        'buck_cxx_binary': buck_cxx_binary,
-        'cxx_genrule': cxx_genrule,
-        'buck_cxx_library': buck_cxx_library,
-        'buck_cxx_test': buck_cxx_test,
-        'buck_export_file': buck_export_file,
-        'buck_filegroup': buck_filegroup,
-        'buck_genrule': buck_genrule,
-        'buck_python_binary': buck_python_binary,
-        'buck_python_library': buck_python_library,
-        'buck_sh_binary': buck_sh_binary,
-        'buck_sh_test': buck_sh_test,
-        'export_file': export_file,
-        'export_files': export_files,
-        'versioned_alias': versioned_alias,
-        'remote_file': remote_file,
-        'buck_command_alias': buck_command_alias,
+        'buck_cxx_binary': buck_cxx_binary,  # noqa F821
+        'cxx_genrule': cxx_genrule,  # noqa F821
+        'buck_cxx_library': buck_cxx_library,  # noqa F821
+        'buck_cxx_test': buck_cxx_test,  # noqa F821
+        'buck_export_file': buck_export_file,  # noqa F821
+        'buck_filegroup': buck_filegroup,  # noqa F821
+        'buck_genrule': buck_genrule,  # noqa F821
+        'buck_python_binary': buck_python_binary,  # noqa F821
+        'buck_python_library': buck_python_library,  # noqa F821
+        'buck_sh_binary': buck_sh_binary,  # noqa F821
+        'buck_sh_test': buck_sh_test,  # noqa F821
+        'export_file': export_file,  # noqa F821
+        'export_files': export_files,  # noqa F821
+        'versioned_alias': versioned_alias,  # noqa F821
+        'remote_file': remote_file,  # noqa F821
+        'buck_command_alias': buck_command_alias,  # noqa F821
     }
 
     for converter in converters:

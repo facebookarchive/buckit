@@ -123,6 +123,8 @@ FBCODE_RULES = [
     'rust_external_library',
     'scala_library',
     'scala_test',
+    'sphinx_wiki',
+    'sphinx_manpage',
     'swig_library',
     'thrift_library',
     'versioned_alias',
