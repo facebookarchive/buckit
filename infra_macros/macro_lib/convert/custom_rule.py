@@ -67,7 +67,8 @@ class CustomRuleConverter(base.Converter):
             strict=True,
             output_subdir=None,
             env=None,
-            visibility=None):
+            visibility=None,
+            no_remote=False):
 
         if strict and build_script_path is not None:
             raise ValueError(
@@ -225,6 +226,8 @@ class CustomRuleConverter(base.Converter):
                 bin_refs += 1
 
         attributes['cmd'] = cmd
+
+        attributes['no_remote'] = no_remote
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
 
