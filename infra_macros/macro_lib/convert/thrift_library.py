@@ -1117,6 +1117,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             base_path,
             name=name,
             srcs=out_srcs,
+            duplicate_finder_enabled=False,
             exported_deps=out_deps,
             maven_coords=javadeprecated_maven_coords,
             maven_publisher_enabled=javadeprecated_maven_publisher_enabled,
@@ -1412,6 +1413,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             name=name,
             visibility=visibility,
             srcs=out_srcs,
+            duplicate_finder_enabled=False,
             exported_deps=out_deps,
             maven_coords=java_swift_maven_coords,
             maven_publisher_enabled=maven_publisher_enabled))
