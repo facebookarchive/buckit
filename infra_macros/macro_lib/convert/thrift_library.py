@@ -416,7 +416,6 @@ class CppThriftConverter(ThriftLangConverter):
             cpp2_srcs=(),
             cpp_headers=(),
             cpp2_headers=(),
-            cpp_deps=(),
             cpp2_deps=(),
             cpp_external_deps=(),
             cpp2_external_deps=(),
@@ -511,7 +510,7 @@ class CppThriftConverter(ThriftLangConverter):
 
         # Add in cpp-specific deps and external_deps
         common_deps = []
-        common_deps.extend(cpp2_deps if self._is_cpp2 else cpp_deps)
+        common_deps.extend(cpp2_deps if self._is_cpp2 else [])
         common_external_deps = []
         common_external_deps.extend(
             cpp2_external_deps if self._is_cpp2 else cpp_external_deps)
@@ -2809,7 +2808,6 @@ class ThriftLibraryConverter(base.Converter):
             'cpp2_headers',
             'cpp2_srcs',
             'cpp_compiler_flags',
-            'cpp_deps',
             'cpp_headers',
             'cpp_external_deps',
             'cpp_srcs',
