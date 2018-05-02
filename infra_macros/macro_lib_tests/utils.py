@@ -69,7 +69,7 @@ class ConverterTestCase(unittest.TestCase):
             ('repositories', 'fbcode_macros'): 'tools/build/buck/infra_macros/fbcode_macros',
             ('repositories', 'fbcode'): '.',
             ('repositories', 'xplat'): '../xplat',
-            ('fbcode', 'platform'): 'gcc-4.9-glibc-2.20-fb',
+            ('fbcode', 'platform'): 'platform007',
             ('fbcode', 'macro_lib'): '//tools/build/buck/infra_macros/macro_lib',
             ('fbcode', 'third_party_buck_directory'): 'third-party-buck',
             ('fbcode', 'third_party_config_path'): 'third-party-buck/config.py',
@@ -134,7 +134,7 @@ class ConverterTestCase(unittest.TestCase):
                 lto_type=None,
                 third_party_config={
                     'platforms': {
-                        'gcc-4.9-glibc-2.20-fb': {'architecture': platform.machine()},
+                        'platform007': {'architecture': platform.machine()},
                         'platform': {'architecture': platform.machine()},
                     },
                 },

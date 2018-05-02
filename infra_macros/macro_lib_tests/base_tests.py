@@ -12,6 +12,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import collections
+
 from . import utils
 
 
@@ -46,6 +48,8 @@ class BaseConverterTest(utils.ConverterTestCase):
                     'foo': '1.0',
                 }
             },
+            'dependencies': {},
+            'platform': 'platform007',
         }
         self.write_build_dat(base_path, build_dat)
         actual_build_dat = self._converter.get_tp2_build_dat(base_path)
@@ -59,18 +63,22 @@ class BaseConverterTest(utils.ConverterTestCase):
                     'foo': '1.0',
                 }
             },
+            'dependencies': {},
+            'platform': 'platform007',
         }
         self.write_build_dat(base_path, build_dat)
         actual_builds = self._converter.get_tp2_project_builds(base_path)
-        expected_builds = {
-            'build0': Tp2ProjectBuild(
+        expected_builds = collections.OrderedDict([(
+            'build0', self._base.Tp2ProjectBuild(
                 project_deps={
-                    self._converter.get_tp2_project_target('foo'): '1.0',
+                    self._converter.get_dep_target(
+                        self._converter.get_tp2_project_target('foo'),
+                        platform=build_dat['platform']): '1.0',
                 },
                 subdir='',
                 versions={'foo': '1.0'},
             ),
-        }
+        )])
         self.assertEqual(actual_builds, expected_builds)
 
     def test_get_tp2_project_builds_with_multiple_builds(self):
@@ -84,33 +92,39 @@ class BaseConverterTest(utils.ConverterTestCase):
                     'foo': '2.0',
                 }
             },
+            'dependencies': {},
+            'platform': 'platform007',
         }
         self.write_build_dat(base_path, build_dat)
         actual_builds = self._converter.get_tp2_project_builds(base_path)
-        expected_builds = {
-            'build0': Tp2ProjectBuild(
+        expected_builds = collections.OrderedDict([
+            ('build0', self._base.Tp2ProjectBuild(
                 project_deps={
-                    self._converter.get_tp2_project_target('foo'): '1.0',
+                    self._converter.get_dep_target(
+                        self._converter.get_tp2_project_target('foo'),
+                        platform=build_dat['platform']): '1.0',
                 },
                 subdir='build0',
                 versions={'foo': '1.0'},
-            ),
-            'build1': Tp2ProjectBuild(
+            ),),
+            ('build1', self._base.Tp2ProjectBuild(
                 project_deps={
-                    self._converter.get_tp2_project_target('foo'): '2.0',
+                    self._converter.get_dep_target(
+                        self._converter.get_tp2_project_target('foo'),
+                        platform=build_dat['platform']): '2.0',
                 },
                 subdir='build1',
                 versions={'foo': '2.0'},
-            ),
-        }
+            ),),
+        ])
         self.assertEqual(actual_builds, expected_builds)
 
     def test_get_tool_target(self):
         self.assertEquals(
             self._converter.get_tool_target(
                 self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'gcc-4.9-glibc-2.20-fb'),
-            '//third-party-buck/gcc-4.9-glibc-2.20-fb/tools/python:python3')
+                'platform007'),
+            '//third-party-buck/platform007/tools/python:python3')
 
         # Default OSS setup
         self.setup_with_config({}, {
@@ -138,8 +152,8 @@ class BaseConverterTest(utils.ConverterTestCase):
         self.assertEquals(
             self._converter.get_tool_target(
                 self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'gcc-4.9-glibc-2.20-fb'),
-            '//third-party-buck/gcc-4.9-glibc-2.20-fb/python:python3')
+                'platform007'),
+            '//third-party-buck/platform007/python:python3')
 
         self.setup_with_config({}, {
             ('fbcode', 'third_party_use_platform_subdir'),
@@ -155,8 +169,8 @@ class BaseConverterTest(utils.ConverterTestCase):
         self.assertEquals(
             self._converter.get_tool_target(
                 self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'gcc-4.9-glibc-2.20-fb'),
-            'python//third-party-buck/gcc-4.9-glibc-2.20-fb/tools/python:python3')
+                'platform007'),
+            'python//third-party-buck/platform007/tools/python:python3')
 
     def test_normalize_external_dep(self):
         self.assertEquals(
