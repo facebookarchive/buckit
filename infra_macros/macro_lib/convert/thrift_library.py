@@ -419,7 +419,6 @@ class CppThriftConverter(ThriftLangConverter):
             cpp2_deps=(),
             cpp_external_deps=(),
             cpp2_external_deps=(),
-            cpp_compiler_flags=(),
             cpp2_compiler_flags=(),
             visibility=None,
             **kwargs):
@@ -573,8 +572,7 @@ class CppThriftConverter(ThriftLangConverter):
         # Disable variable tracking for thrift generated C/C++ sources, as
         # it's pretty expensive and not necessarily useful (D2174972).
         common_compiler_flags = ['-fno-var-tracking']
-        common_compiler_flags.extend(
-            cpp2_compiler_flags if self._is_cpp2 else cpp_compiler_flags)
+        common_compiler_flags.extend(cpp2_compiler_flags if self._is_cpp2 else [])
 
         clients_and_services_rules = []
         if not has_separate_client:
@@ -2807,7 +2805,6 @@ class ThriftLibraryConverter(base.Converter):
             'cpp2_external_deps',
             'cpp2_headers',
             'cpp2_srcs',
-            'cpp_compiler_flags',
             'cpp_headers',
             'cpp_external_deps',
             'cpp_srcs',
