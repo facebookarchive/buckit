@@ -15,10 +15,19 @@ from __future__ import unicode_literals
 import collections
 import os
 
-macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/rule.py".format(macro_root))
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def import_macro_lib(path):
+    global _import_macro_lib__imported
+    include_defs('{}/{}.py'.format(  # noqa: F821
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ), '_import_macro_lib__imported')
+    ret = _import_macro_lib__imported
+    del _import_macro_lib__imported  # Keep the global namespace clean
+    return ret
 
+
+base = import_macro_lib('convert/base')
+Rule = import_macro_lib('rule').Rule
 
 VENDOR_PATH = 'third-party-source/go'
 
@@ -186,7 +195,7 @@ class GoConverter(base.Converter):
         if raw_headers:
             attributes['raw_headers'] = raw_headers
 
-        if self.is_test() and coverage_mode:
-            attributes['coverage_mode'] = coverage_mode
+        if self.is_test():
+            attributes['coverage_mode'] = "set"
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
