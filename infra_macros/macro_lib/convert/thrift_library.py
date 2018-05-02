@@ -293,33 +293,29 @@ class CppThriftConverter(ThriftLangConverter):
     ])
 
     def __init__(self, context, *args, **kwargs):
-        is_cpp2 = kwargs.pop('is_cpp2', False)
         super(CppThriftConverter, self).__init__(context, *args, **kwargs)
-        self._is_cpp2 = is_cpp2
         self._cpp_converter = cpp.CppConverter(context, 'cpp_library')
 
     def get_additional_compiler(self):
-        return self._context.config.get_thrift2_compiler() if self._is_cpp2 else None
+        return self._context.config.get_thrift2_compiler()
 
     def get_compiler(self):
         return self._context.config.get_thrift_compiler()
 
     def get_lang(self):
-        return 'cpp2' if self._is_cpp2 else 'cpp'
+        return 'cpp2'
 
     def get_compiler_lang(self):
-        return 'mstch_cpp2' if self._is_cpp2 else 'cpp'
+        return 'mstch_cpp2'
 
     def get_options(self, base_path, parsed_options):
         options = collections.OrderedDict()
         options['include_prefix'] = base_path
         options.update(parsed_options)
-        if self._is_cpp2:
-            options.pop('templates', None)
         return options
 
     def get_static_reflection(self, options):
-        return self._is_cpp2 and ('reflection' in options or 'fatal' in options)
+        return 'reflection' in options or 'fatal' in options
 
     def get_generated_sources(
             self,
@@ -336,16 +332,7 @@ class CppThriftConverter(ThriftLangConverter):
 
         genfiles = []
 
-        # The .tcc files will only be generated if the thrift C++ options
-        # includes "templates".
-        #
-        # Returning .tcc files here when they aren't actually generated doesn't
-        # cause build failures, but does cause make to rebuild files
-        # unnecessarily on rebuilds.  It thinks the .tcc files are always
-        # out-of-date, since they don't exist.
-        is_bootstrap = 'bootstrap' in options
         gen_layouts = 'frozen2' in options
-        gen_templates = self._is_cpp2 or 'templates' in options
 
         genfiles.append('%s_constants.h' % (thrift_base,))
         genfiles.append('%s_constants.cpp' % (thrift_base,))
@@ -353,8 +340,7 @@ class CppThriftConverter(ThriftLangConverter):
         genfiles.append('%s_types.cpp' % (thrift_base,))
         genfiles.append('%s_data.h' % (thrift_base,))
         genfiles.append('%s_data.cpp' % (thrift_base,))
-        if self._is_cpp2:
-            genfiles.append('%s_types_custom_protocol.h' % (thrift_base,))
+        genfiles.append('%s_types_custom_protocol.h' % (thrift_base,))
 
         if gen_layouts:
             genfiles.append('%s_layouts.h' % (thrift_base,))
@@ -364,24 +350,17 @@ class CppThriftConverter(ThriftLangConverter):
             for suffix in self.STATIC_REFLECTION_SUFFIXES:
                 genfiles.append('%s_fatal%s.h' % (thrift_base, suffix))
 
-        if gen_templates:
-            genfiles.append('%s_types.tcc' % (thrift_base,))
-
-        if not is_bootstrap and not self._is_cpp2:
-            genfiles.append('%s_reflection.h' % (thrift_base,))
-            genfiles.append('%s_reflection.cpp' % (thrift_base,))
+        genfiles.append('%s_types.tcc' % (thrift_base,))
 
         for service in services:
             genfiles.append('%s.h' % (service,))
             genfiles.append('%s.cpp' % (service,))
-            if self._is_cpp2:
-                genfiles.append('%s_client.cpp' % (service,))
-                genfiles.append('%s_custom_protocol.h' % (service,))
-                genfiles.append('%sAsyncClient.h' % (service,))
-            if gen_templates:
-                genfiles.append('%s.tcc' % (service,))
+            genfiles.append('%s_client.cpp' % (service,))
+            genfiles.append('%s_custom_protocol.h' % (service,))
+            genfiles.append('%sAsyncClient.h' % (service,))
+            genfiles.append('%s.tcc' % (service,))
 
-        # Everything is in the 'gen-cpp' directory
+        # Everything is in the 'gen-cpp2' directory
         lang = self.get_lang()
         return collections.OrderedDict(
             [(p, p) for p in
@@ -436,10 +415,8 @@ class CppThriftConverter(ThriftLangConverter):
         sources = self.merge_sources_map(sources_map)
 
         types_suffix = '-types'
-        types_sources = self.convert_source_list(
-            base_path, cpp2_srcs if self._is_cpp2 else [])
-        types_headers = self.convert_source_list(
-            base_path, cpp2_headers if self._is_cpp2 else [])
+        types_sources = self.convert_source_list(base_path, cpp2_srcs)
+        types_headers = self.convert_source_list(base_path, cpp2_headers)
         types_deps = [
             self.get_thrift_dep_target('folly', 'indestructible'),
             self.get_thrift_dep_target('folly', 'optional'),
@@ -506,9 +483,9 @@ class CppThriftConverter(ThriftLangConverter):
 
         # Add in cpp-specific deps and external_deps
         common_deps = []
-        common_deps.extend(cpp2_deps if self._is_cpp2 else [])
+        common_deps.extend(cpp2_deps)
         common_external_deps = []
-        common_external_deps.extend(cpp2_external_deps if self._is_cpp2 else [])
+        common_external_deps.extend(cpp2_external_deps)
 
         # Add required dependencies for Stream support
         if 'stream' in options:
@@ -537,29 +514,17 @@ class CppThriftConverter(ThriftLangConverter):
         # any c++ rule that generates thrift files must depend on the
         # thrift lib; add that dep now if it wasn't explicitly stated
         # already
-        if self._is_cpp2:
-            if 'bootstrap' not in options:
-                types_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
-                clients_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
-                services_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
-            # Make cpp2 depend on cpp for compatibility mode
-            if 'compatibility' in options:
-                common_deps.append(
-                    self.get_thrift_dep_target(base_path, name[:-1]))
-            if self.get_static_reflection(options):
-                common_deps.append(
-                    self.get_thrift_dep_target(
-                        'thrift/lib/cpp2/fatal', 'reflection'))
-        else:
-            if 'bootstrap' not in options:
-                common_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp', 'thrift'))
-            if 'cob_style' in options:
-                common_deps.append(
-                    self.get_thrift_dep_target('thrift/lib/cpp/async', 'async'))
+        if 'bootstrap' not in options:
+            types_deps.append(
+                self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
+            clients_deps.append(
+                self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+            services_deps.append(
+                self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+        if self.get_static_reflection(options):
+            common_deps.append(
+                self.get_thrift_dep_target(
+                    'thrift/lib/cpp2/fatal', 'reflection'))
 
         types_deps.extend(common_deps)
         services_deps.extend(common_deps)
@@ -568,7 +533,7 @@ class CppThriftConverter(ThriftLangConverter):
         # Disable variable tracking for thrift generated C/C++ sources, as
         # it's pretty expensive and not necessarily useful (D2174972).
         common_compiler_flags = ['-fno-var-tracking']
-        common_compiler_flags.extend(cpp2_compiler_flags if self._is_cpp2 else [])
+        common_compiler_flags.extend(cpp2_compiler_flags)
 
         clients_and_services_rules = []
         if not has_separate_client:
@@ -2417,8 +2382,7 @@ class ThriftLibraryConverter(base.Converter):
 
         # Setup the macro converters.
         converters = [
-            CppThriftConverter(context, is_cpp2=False),
-            CppThriftConverter(context, is_cpp2=True),
+            CppThriftConverter(context),
             DThriftConverter(context),
             GoThriftConverter(context),
             HaskellThriftConverter(context, is_hs2=False),
@@ -2700,15 +2664,11 @@ class ThriftLibraryConverter(base.Converter):
         if 'py3' in languages and 'cpp2' not in languages:
             languages.add('cpp2')
 
-        # cpp2 depends on cpp for compatibility mode
-        # also save cpp2_options for later use by 'py3'
+        # save cpp2_options for later use by 'py3'
         if 'cpp2' in languages:
             cpp2_options = (
                 self.parse_thrift_options(
                     kwargs.get('thrift_cpp2_options', ())))
-
-            if 'cpp' not in languages and 'compatibility' in cpp2_options:
-                languages.add('cpp')
 
         # Types are generated for all legacy Python Thrift
         if 'py' in languages:
