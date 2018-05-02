@@ -417,7 +417,6 @@ class CppThriftConverter(ThriftLangConverter):
             cpp_headers=(),
             cpp2_headers=(),
             cpp2_deps=(),
-            cpp_external_deps=(),
             cpp2_external_deps=(),
             cpp2_compiler_flags=(),
             visibility=None,
@@ -511,8 +510,7 @@ class CppThriftConverter(ThriftLangConverter):
         common_deps = []
         common_deps.extend(cpp2_deps if self._is_cpp2 else [])
         common_external_deps = []
-        common_external_deps.extend(
-            cpp2_external_deps if self._is_cpp2 else cpp_external_deps)
+        common_external_deps.extend(cpp2_external_deps if self._is_cpp2 else [])
 
         # Add required dependencies for Stream support
         if 'stream' in options:
@@ -2806,7 +2804,6 @@ class ThriftLibraryConverter(base.Converter):
             'cpp2_headers',
             'cpp2_srcs',
             'cpp_headers',
-            'cpp_external_deps',
             'cpp_srcs',
             'd_thrift_namespaces',
             'deps',
