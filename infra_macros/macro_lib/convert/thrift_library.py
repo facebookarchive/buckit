@@ -414,7 +414,6 @@ class CppThriftConverter(ThriftLangConverter):
             deps,
             cpp_srcs=(),
             cpp2_srcs=(),
-            cpp_headers=(),
             cpp2_headers=(),
             cpp2_deps=(),
             cpp2_external_deps=(),
@@ -441,7 +440,7 @@ class CppThriftConverter(ThriftLangConverter):
         types_sources = self.convert_source_list(
             base_path, cpp2_srcs if self._is_cpp2 else cpp_srcs)
         types_headers = self.convert_source_list(
-            base_path, cpp2_headers if self._is_cpp2 else cpp_headers)
+            base_path, cpp2_headers if self._is_cpp2 else [])
         types_deps = [
             self.get_thrift_dep_target('folly', 'indestructible'),
             self.get_thrift_dep_target('folly', 'optional'),
@@ -2803,7 +2802,6 @@ class ThriftLibraryConverter(base.Converter):
             'cpp2_external_deps',
             'cpp2_headers',
             'cpp2_srcs',
-            'cpp_headers',
             'cpp_srcs',
             'd_thrift_namespaces',
             'deps',
