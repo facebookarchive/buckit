@@ -514,13 +514,12 @@ class CppThriftConverter(ThriftLangConverter):
         # any c++ rule that generates thrift files must depend on the
         # thrift lib; add that dep now if it wasn't explicitly stated
         # already
-        if 'bootstrap' not in options:
-            types_deps.append(
-                self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
-            clients_deps.append(
-                self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
-            services_deps.append(
-                self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+        types_deps.append(
+            self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
+        clients_deps.append(
+            self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+        services_deps.append(
+            self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
         if self.get_static_reflection(options):
             common_deps.append(
                 self.get_thrift_dep_target(
