@@ -63,7 +63,7 @@ class ConfigTest(tests.utils.TestCase):
             "",  # get_thrift_hs2_compiler
             "",  # get_thrift_ocaml_compiler
             "",  # get_thrift_swift_compiler
-            "thrift//thrift/compiler/generate:templates",  # get_thrift_templates
+            "thrift//thrift/compiler/generate/templates:templates",  # get_thrift_templates
             False,  # get_unknown_cells_are_third_party
             False,  # get_use_build_info_linker_flags
             False,  # get_use_custom_par_args
@@ -192,7 +192,7 @@ class ConfigTest(tests.utils.TestCase):
                 "hs2_compiler": "//thrift/compiler:hs2",
                 "ocaml_compiler": "//thrift/compiler:ocaml",
                 "swift_compiler": "//thrift/compiler:swift",
-                "templates": "//thrift/compiler/generate:templates",
+                "templates": "//thrift/compiler/generate/templates:templates",
             },
         }
 
@@ -235,7 +235,7 @@ class ConfigTest(tests.utils.TestCase):
             "//thrift/compiler:hs2",  # get_thrift_hs2_compiler
             "//thrift/compiler:ocaml",  # get_thrift_ocaml_compiler
             "//thrift/compiler:swift",  # get_thrift_swift_compiler
-            "//thrift/compiler/generate:templates",  # get_thrift_templates
+            "//thrift/compiler/generate/templates:templates",  # get_thrift_templates
             True,  # get_unknown_cells_are_third_party
             True,  # get_use_build_info_linker_flags
             True,  # get_use_custom_par_args

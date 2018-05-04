@@ -391,7 +391,7 @@ def _get_thrift_templates():
     The target that generates thrift templates
     """
     return read_string(
-        "thrift", "templates", "thrift//thrift/compiler/generate:templates"
+        "thrift", "templates", "thrift//thrift/compiler/generate/templates:templates"
     )
 
 
