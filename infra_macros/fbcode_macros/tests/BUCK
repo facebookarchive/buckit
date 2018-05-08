@@ -12,9 +12,11 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
+    "fbcode_macros//build_defs:paths_config.bzl",
     "fbcode_macros//build_defs:platform.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:python_typing.bzl",
+    "fbcode_macros//build_defs:third_party.bzl",
     "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:visibility.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
@@ -89,6 +91,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "python_typing_test",
     srcs = ["python_typing_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "third_party_test",
+    srcs = ["third_party_test.py"],
     deps = [":utils"],
 )
 

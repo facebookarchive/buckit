@@ -422,7 +422,8 @@ class Cell:
         """
 
         def struct(**kwargs):
-            return collections.namedtuple("struct", sorted(kwargs.keys()))(**kwargs)
+            return collections.namedtuple("struct",
+                                          sorted(kwargs.keys()))(**kwargs)
 
         def function(name):
             return collections.namedtuple("function", ["name"])(name)
@@ -432,12 +433,13 @@ class Cell:
         # can do stricter type checking
         return eval(
             string, {
-                "__builtins__": {
-                    "struct": struct,
-                    "function": function,
-                    "True": True,
-                    "False": False,
-                }
+                "__builtins__":
+                    {
+                        "struct": struct,
+                        "function": function,
+                        "True": True,
+                        "False": False,
+                    }
             }, {}
         )
 
@@ -496,8 +498,9 @@ class Project:
                 shutil.rmtree(self.project_path)
             else:
                 logging.info(
-                    "Not deleting temporary files at {}".
-                    format(self.project_path)
+                    "Not deleting temporary files at {}".format(
+                        self.project_path
+                    )
                 )
 
     def kill_buckd(self):
@@ -605,7 +608,7 @@ class TestCase(unittest.TestCase):
         current_arch = platform.machine()
         other_arch = "x86_64" if current_arch == "aarch64" else "aarch64"
         third_party_config = dedent(
-        """\
+            """\
             third_party_config = {{
                 "platforms": {{
                     "gcc5": {{
@@ -622,7 +625,8 @@ class TestCase(unittest.TestCase):
                     }},
                 }},
             }}
-        """.format(current_arch=current_arch, other_arch=other_arch))
+        """.format(current_arch=current_arch, other_arch=other_arch)
+        )
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/third_party_config.bzl", third_party_config
         )
@@ -643,7 +647,8 @@ class TestCase(unittest.TestCase):
         )
 
     def addDummyBuildModeOverrides(self, root):
-        build_mode_overrides = dedent("""
+        build_mode_overrides = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
                 "create_build_mode",
@@ -665,10 +670,29 @@ class TestCase(unittest.TestCase):
                 "foo/bar-other": dbg,
                 "foo": opt,
             }}
-        """)
+        """
+        )
         root.project.cells["fbcode_macros"].add_file(
-            "build_defs/build_mode_overrides.bzl",
-            build_mode_overrides)
+            "build_defs/build_mode_overrides.bzl", build_mode_overrides
+        )
+
+    def addPathsConfig(
+        self,
+        root,
+        third_party_root="third-party-buck",
+        use_platforms_and_build_subdirs=True
+    ):
+        paths_config = dedent(
+            """
+            paths_config = struct(
+                third_party_root="%s",
+                use_platforms_and_build_subdirs=%r,
+            )
+            """ % (third_party_root, use_platforms_and_build_subdirs)
+        )
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/paths_config.bzl", paths_config
+        )
 
     def assertSuccess(self, result, *expected_results):
         """ Make sure that the command ran successfully """
@@ -681,7 +705,9 @@ class TestCase(unittest.TestCase):
         if expected_results:
             self.assertEqual(list(expected_results), result.debug_lines)
 
-    def assertFailureWithMessage(self, result, expected_message, *other_messages):
+    def assertFailureWithMessage(
+        self, result, expected_message, *other_messages
+    ):
         """ Make sure that we failed with a substring in stderr """
         self.assertNotEqual(0, result.returncode)
         self.assertIn(expected_message, result.stderr)
