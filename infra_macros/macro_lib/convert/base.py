@@ -86,6 +86,7 @@ ASAN_DEFAULT_OPTIONS = {
     'detect_odr_violation': '1',
     'detect_stack_use_after_return': '1',
     'print_scariness': '1',
+    'print_suppressions': '0',
     'strict_init_order': '1',
 }
 
