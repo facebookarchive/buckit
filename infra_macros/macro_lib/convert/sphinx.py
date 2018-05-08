@@ -108,6 +108,9 @@ Attributes:
     section: int
         The manpage ``section``, defaults to ``1`` which is reserved for
         programs
+
+    manpage_name: str [Optional]
+        The name of the manpage to use.  The default is to use the target name
 """
 
 from __future__ import absolute_import
@@ -251,6 +254,9 @@ class _SphinxConverter(base.Converter):
         """
         confpy = confpy or {}
 
+        # add confpy extras
+        confpy.update(self.get_extra_confpy_assignments(name, **kwargs))
+
         # add confpy metadata
         confpy['@CONFPY'] = dict(confpy)
 
@@ -314,6 +320,7 @@ class _SphinxConverter(base.Converter):
         for rule in self._converters['python_binary'].convert(
             base_path,
             name=sphinx_wrapper_target,
+            par_style='xar',
             py_version='>=3.6',
             main_module='fbsphinx.bin.sphinx_wrapper',
             deps=python_deps,
@@ -385,13 +392,13 @@ class _SphinxConverter(base.Converter):
             ('out', 'builder=%s' % self.get_builder()),
             ('bash', command),
             ('srcs', srcs),
-            ('labels', self.get_labels(**kwargs)),
+            ('labels', self.get_labels(name, **kwargs)),
         )))
 
-    def get_labels(self, **kwargs):
+    def get_labels(self, name, **kwargs):
         return ()
 
-    def get_extra_confpy_assignments(self, **kwargs):
+    def get_extra_confpy_assignments(self, name, **kwargs):
         return collections.OrderedDict()
 
 
@@ -413,7 +420,7 @@ class SphinxWikiConverter(_SphinxConverter):
     def get_builder(self):
         return 'xml'
 
-    def get_labels(self, **kwargs):
+    def get_labels(self, name, **kwargs):
         return (
             'wiki_root_path:%s' % kwargs.get('wiki_root_path'),
         )
@@ -430,6 +437,7 @@ class SphinxManpageConverter(_SphinxConverter):
             'author',
             'description',
             'section',
+            'manpage_name',
         })
         return allowed_args
 
@@ -439,18 +447,19 @@ class SphinxManpageConverter(_SphinxConverter):
     def get_builder(self):
         return 'man'
 
-    def get_labels(self, **kwargs):
+    def get_labels(self, name, **kwargs):
         return (
             'description:%s' % kwargs.get('description'),
             'author:%s' % kwargs.get('author'),
             'section:%d' % kwargs.get('section', 1),
+            'manpage_name:%s' % kwargs.get('manpage_name', name),
         )
 
-    def get_extra_confpy_assignments(self, **kwargs):
+    def get_extra_confpy_assignments(self, name, **kwargs):
         return {
             'man_pages': [{
                 'doc': 'master_doc',
-                'name': kwargs.get('name'),
+                'name': kwargs.get('manpage_name', name),
                 'description': kwargs.get('description'),
                 'author': kwargs.get('author'),
                 'section': kwargs.get('section', 1),
