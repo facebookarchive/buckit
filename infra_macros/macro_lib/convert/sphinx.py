@@ -315,7 +315,7 @@ class _SphinxConverter(base.Converter):
             base_path,
             name=sphinx_wrapper_target,
             py_version='>=3.6',
-            main_module='fbsphinx.tools.sphinx_wrapper',
+            main_module='fbsphinx.bin.sphinx_wrapper',
             deps=python_deps,
         ):
             yield rule
