@@ -29,7 +29,8 @@ def create_build_mode(
         ghc_flags=(),
         asan_options=(),
         ubsan_options=(),
-        tsan_options=()):
+        tsan_options=(),
+        lsan_suppressions=()):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -56,6 +57,7 @@ def create_build_mode(
         asan_options: Extra ASAN runtime options
         ubsan_options: Extra UBSAN runtime options
         tsan_options: Extra TSAN runtime options
+        lsan_suppressions: LSAN suppressions
 
     Returns:
         A struct with each of the provided fields, or () if the field was
@@ -79,4 +81,5 @@ def create_build_mode(
         asan_options=asan_options,
         ubsan_options=ubsan_options,
         tsan_options=tsan_options,
+        lsan_suppressions=lsan_suppressions,
     )

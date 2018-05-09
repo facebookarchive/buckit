@@ -40,7 +40,8 @@ class BuildModeTest(tests.utils.TestCase):
             ghc_flags=(),
             asan_options=(),
             ubsan_options=(),
-            tsan_options=()):
+            tsan_options=(),
+            lsan_suppressions=()):
         return self.struct(
             aspp_flags=aspp_flags,
             cpp_flags=cpp_flags,
@@ -58,7 +59,8 @@ class BuildModeTest(tests.utils.TestCase):
             ghc_flags=ghc_flags,
             asan_options=asan_options,
             ubsan_options=ubsan_options,
-            tsan_options=tsan_options)
+            tsan_options=tsan_options,
+            lsan_suppressions=lsan_suppressions)
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
@@ -84,6 +86,7 @@ class BuildModeTest(tests.utils.TestCase):
             'create_build_mode(asan_options={"a":"1"})',
             'create_build_mode(ubsan_options={"b":"2"})',
             'create_build_mode(tsan_options={"c":"3"})',
+            'create_build_mode(lsan_suppressions=["a/b/c"])',
         ]
         expected = [
             self._create_mode_struct(aspp_flags=["-DFLAG"]),
@@ -103,6 +106,7 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(asan_options={"a":"1"}),
             self._create_mode_struct(ubsan_options={"b":"2"}),
             self._create_mode_struct(tsan_options={"c":"3"}),
+            self._create_mode_struct(lsan_suppressions=["a/b/c"]),
         ]
         result = root.run_unittests(self.includes, statements)
         self.assertSuccess(result, *expected)
@@ -185,7 +189,8 @@ class BuildModeTest(tests.utils.TestCase):
             ghc_flags=(),
             asan_options=(),
             ubsan_options=(),
-            tsan_options=())
+            tsan_options=(),
+            lsan_suppressions=())
 
         self.assertSuccess(result1, {'dev': expected})
         self.assertSuccess(result2, {'dev': expected})
@@ -249,7 +254,8 @@ class BuildModeTest(tests.utils.TestCase):
             ghc_flags=(),
             asan_options=(),
             ubsan_options=(),
-            tsan_options=())
+            tsan_options=(),
+            lsan_suppressions=())
 
         self.assertSuccess(
             result,
@@ -372,6 +378,7 @@ class BuildModeTest(tests.utils.TestCase):
             "asan_options": [],
             "tsan_options": [],
             "ubsan_options": [],
+            "lsan_suppressions": [],
         }
         expected = [
             ('foo/bar/baz', {'dev': expected_mode}),

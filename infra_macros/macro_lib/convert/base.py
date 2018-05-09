@@ -95,6 +95,10 @@ UBSAN_DEFAULT_OPTIONS = {
     'report_error_type': '1',
 }
 
+LSAN_DEFAULT_SUPPRESSIONS = [
+    '/lib/libpython',
+]
+
 TSAN_DEFAULT_OPTIONS = {
     'detect_deadlocks': '1',
     'halt_on_error': '1',
@@ -1570,6 +1574,8 @@ class Converter(object):
 
         configuration_src = []
 
+        sanitizer_variable_format = 'const char* const {name} = "{options}";'
+
         def gen_options_var(name, default_options, extra_options):
             if extra_options:
                 options = default_options.copy()
@@ -1577,7 +1583,7 @@ class Converter(object):
             else:
                 options = default_options
 
-            s = 'const char* const {name} = "{options}";'.format(
+            s = sanitizer_variable_format.format(
                 name=name,
                 options=':'.join([
                     '{}={}'.format(k, v)
@@ -1597,6 +1603,20 @@ class Converter(object):
                 UBSAN_DEFAULT_OPTIONS,
                 build_mode.ubsan_options if build_mode else None,
             ))
+
+            if build_mode and build_mode.lsan_suppressions:
+                lsan_suppressions = build_mode.lsan_suppressions
+            else:
+                lsan_suppressions = LSAN_DEFAULT_SUPPRESSIONS
+            configuration_src.append(
+                sanitizer_variable_format.format(
+                    name='kLSanDefaultSuppressions',
+                    options='\\n'.join([
+                        'leak:{}'.format(l) for l in lsan_suppressions
+                    ])
+                )
+            )
+
         if sanitizer and sanitizer == 'thread':
             configuration_src.append(gen_options_var(
                 'kTsanDefaultOptions',
