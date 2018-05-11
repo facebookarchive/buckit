@@ -267,7 +267,7 @@ class _SphinxConverter(base.Converter):
         # add things to buildinfo, filter out None(s) later
         confpy['@BUILDINFO'] = {
             'target': '//{}:{}'.format(base_path, name),
-            'source_path': base_path,
+            'target_base_path': base_path,
             'wiki_root_path': confpy.get('wiki_root_path', None),
         }
         for key, val in confpy['@BUILDINFO'].items():
