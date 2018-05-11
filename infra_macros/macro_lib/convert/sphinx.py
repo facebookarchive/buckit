@@ -327,12 +327,22 @@ class _SphinxConverter(base.Converter):
             deps=python_deps,
         ):
             yield rule
+        sphinx_wrapper_target = '%s-sphinx-wrapper' % name
+        for rule in self._converters['python_binary'].convert(
+            base_path,
+            name=sphinx_wrapper_target,
+            par_style='xar',
+            py_version='>=3.6',
+            main_module='fbsphinx.bin.sphinx_wrapper',
+            deps=python_deps,
+        ):
+            yield rule
 
         additional_doc_rules = []
         for rule in self._gen_apidoc_rules(
             base_path,
             name,
-            fbsphinx_wrapper_target,
+            sphinx_wrapper_target,
             apidoc_modules,
         ):
             additional_doc_rules.append(rule)
