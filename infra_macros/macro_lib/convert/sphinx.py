@@ -175,6 +175,7 @@ class _SphinxConverter(base.Converter):
             'apidoc_modules',
             'genrule_srcs',
             'confpy',
+            'sphinxbuild_opts',
         }
 
     def get_buck_rule_type(self):
@@ -297,6 +298,7 @@ class _SphinxConverter(base.Converter):
         name,
         apidoc_modules=None,
         confpy=None,
+        sphinxbuild_opts=None,
         genrule_srcs=None,
         python_binary_deps=(),
         python_library_deps=(),
@@ -313,15 +315,15 @@ class _SphinxConverter(base.Converter):
         python_deps = tuple(python_library_deps) + tuple((
             _dep + '-library'
             for _dep
-            in tuple(python_binary_deps) + (SPHINX_WRAPPER,)
+            in tuple(python_binary_deps) + (FBSPHINX_WRAPPER,)
         ))
-        sphinx_wrapper_target = '%s-sphinx-wrapper' % name
+        fbsphinx_wrapper_target = '%s-fbsphinx-wrapper' % name
         for rule in self._converters['python_binary'].convert(
             base_path,
-            name=sphinx_wrapper_target,
+            name=fbsphinx_wrapper_target,
             par_style='xar',
             py_version='>=3.6',
-            main_module='fbsphinx.bin.sphinx_wrapper',
+            main_module='fbsphinx.bin.fbsphinx_wrapper',
             deps=python_deps,
         ):
             yield rule
@@ -330,7 +332,7 @@ class _SphinxConverter(base.Converter):
         for rule in self._gen_apidoc_rules(
             base_path,
             name,
-            sphinx_wrapper_target,
+            fbsphinx_wrapper_target,
             apidoc_modules,
         ):
             additional_doc_rules.append(rule)
@@ -356,22 +358,15 @@ class _SphinxConverter(base.Converter):
         command = ' '.join((
             'mkdir $OUT &&',
             '{rsync_additional_docs}',
-            'dirname',
-            '$(location {confpy_target})',
-            '| xargs -I%',
-            '$(exe :{sphinx_wrapper_target})',
-            'build',
-            '-q',
-            '-W',
-            '-T',
-            '-b {builder}',
-            '-c %',
+            '$(exe :{fbsphinx_wrapper_target})',
+            'buck build',
+            '--confpy $(location {confpy_target})',
+            '--builder {builder}',
+            '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
+            '--extras {json_extras}',
             '.',  # source dir
             '$OUT',
         )).format(
-            sphinx_wrapper_target=sphinx_wrapper_target,
-            builder=self.get_builder(),
-            confpy_target=confpy_rule.target_name,
             rsync_additional_docs=(
                 'rsync -a {} $SRCDIR &&'.format(
                     ' '.join((
@@ -383,6 +378,11 @@ class _SphinxConverter(base.Converter):
                 if additional_doc_rules
                 else ''
             ),
+            fbsphinx_wrapper_target=fbsphinx_wrapper_target,
+            builder=self.get_builder(),
+            confpy_target=confpy_rule.target_name,
+            SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
+            json_extras=json.dumps(sphinxbuild_opts or {}),
         )
 
         yield Rule('genrule', collections.OrderedDict((
@@ -417,7 +417,7 @@ class SphinxWikiConverter(_SphinxConverter):
         return 'sphinx_wiki'
 
     def get_builder(self):
-        return 'xml'
+        return 'wiki'
 
     def get_labels(self, name, **kwargs):
         return (
@@ -444,7 +444,7 @@ class SphinxManpageConverter(_SphinxConverter):
         return 'sphinx_manpage'
 
     def get_builder(self):
-        return 'man'
+        return 'manpage'
 
     def get_labels(self, name, **kwargs):
         return (
