@@ -268,7 +268,6 @@ class _SphinxConverter(base.Converter):
             'target': '//{}:{}'.format(base_path, name),
             'source_path': base_path,
             'wiki_root_path': confpy.get('wiki_root_path', None),
-            'srcs': srcs,
         }
         for key, val in confpy['@BUILDINFO'].items():
             if val is None:
@@ -276,7 +275,7 @@ class _SphinxConverter(base.Converter):
 
         command = ' '.join((
             '$(exe {FBSPHINX_WRAPPER})',
-            'confpy',  # wrapper subcommand
+            'buck confpy',  # wrapper subcommand
             '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
             '--extras \'{json_extras}\'',
             '{srcs} > $OUT',
