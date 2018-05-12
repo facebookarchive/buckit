@@ -54,8 +54,6 @@ LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')
 YACC = ThirdPartyRuleTarget('bison', 'bison')
 YACC_FLAGS = ['-y', '-d']
 
-CUDA_DEP = ThirdPartyRuleTarget('cuda', 'cuda')
-
 
 ASAN_UBSAN_FLAGS = [
     '-fno-common',
@@ -764,6 +762,17 @@ class CppConverter(base.Converter):
                 visibility=visibility))
 
         return (':' + header_name, ':' + source_name, rules)
+
+    def has_cuda_dep(self, dependencies):
+        """
+        Returns whether there is any dependency on CUDA tp2.
+        """
+
+        for dep in dependencies:
+            if dep.repo is not None and dep.base_path == 'cuda':
+                return True
+
+        return False
 
     def is_cuda(self, srcs):
         """
@@ -1490,8 +1499,9 @@ class CppConverter(base.Converter):
 
         # Add in any CUDA deps.  We only add this if it's not always present,
         # it's common to explicitly depend on the cuda runtime.
-        if cuda and CUDA_DEP not in dependencies:
-            dependencies.append(CUDA_DEP)
+        if cuda and not self.has_cuda_dep(dependencies):
+            print('Warning: rule {}:{} with .cu files has to specify CUDA '
+                  'external_dep to work.'.format(base_path, name))
 
         # If any deps were specified, add them to the output attrs.  For
         # libraries, we always use make these exported, since this is the
