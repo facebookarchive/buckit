@@ -82,7 +82,7 @@ SANITIZERS = {
 ASAN_DEFAULT_OPTIONS = {
     'check_initialization_order': '1',
     'detect_invalid_pointer_pairs': '1',
-    'detect_leaks': '0',
+    'detect_leaks': '1',
     'detect_odr_violation': '1',
     'detect_stack_use_after_return': '1',
     'print_scariness': '1',
@@ -96,7 +96,11 @@ UBSAN_DEFAULT_OPTIONS = {
 }
 
 LSAN_DEFAULT_SUPPRESSIONS = [
+    'boost::python::',
     '/lib/libpython',
+    'libluajit-5.1.so.2',
+    'CRYPTO_malloc',
+    '_d_run_main',
 ]
 
 TSAN_DEFAULT_OPTIONS = {
