@@ -227,6 +227,7 @@ class _SphinxConverter(base.Converter):
                 '--follow-links',
                 '--no-toc',
                 '--implicit-namespaces',
+                '--separate',
                 '{apidoc_root}',
             )).format(
                 sphinx_wrapper_target=sphinx_wrapper_target,
