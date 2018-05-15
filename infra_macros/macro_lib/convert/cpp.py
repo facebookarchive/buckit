@@ -860,7 +860,7 @@ class CppConverter(base.Converter):
         rule_type = self.get_fbconfig_rule_type()
         header_build = rule_type == 'cpp_precompiled_header'
         # standalone .so should not depend on libatomic.so
-        so_build = rule_type == 'cpp_binary' and dlopen_info
+        so_build = rule_type == 'cpp_binary' and dlopen_info is not None
         if self._context.compiler == 'clang' and not (header_build or so_build):
             for platform in self.get_platforms():
                 if self.get_tool_version(platform, 'gcc') >= LooseVersion('5'):
