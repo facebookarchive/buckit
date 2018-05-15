@@ -843,32 +843,25 @@ class CppConverter(base.Converter):
             'auto_headers',
             global_defns.AutoHeaders.SOURCES)
 
-    def get_implicit_platform_deps(self, dlopen_info):
+    def get_implicit_deps(self):
         """
         Add additional dependencies we need to implicitly add to the build for
         various reasons.
         """
 
-        platform_deps = collections.OrderedDict()
+        deps = []
 
         # TODO(#13588666): When using clang with the gcc-5-glibc-2.23 platform,
         # `-latomic` isn't automatically added to the link line, meaning uses
         # of `std::atomic<T>` fail to link with undefined reference errors.
         # So implicitly add this dep here.
-        # TODO(#17067102): `cxx_precompiled_header` rules currently
-        # don't support `platform_deps` parameter.
-        rule_type = self.get_fbconfig_rule_type()
-        header_build = rule_type == 'cpp_precompiled_header'
-        # standalone .so should not depend on libatomic.so
-        so_build = rule_type == 'cpp_binary' and dlopen_info is not None
-        if self._context.compiler == 'clang' and not (header_build or so_build):
-            for platform in self.get_platforms():
-                if self.get_tool_version(platform, 'gcc') >= LooseVersion('5'):
-                    platform_deps.setdefault(platform, [])
-                    platform_deps[platform].append(
-                        ThirdPartyRuleTarget('libgcc', 'atomic'))
+        #
+        # TODO(#17067102): `cpp_precompiled_header` rules currently don't
+        # support `platform_deps` parameter.
+        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
+            deps.append(ThirdPartyRuleTarget('libgcc', 'atomic'))
 
-        return platform_deps
+        return deps
 
     def verify_linker_flags(self, flags):
         """
@@ -1506,14 +1499,6 @@ class CppConverter(base.Converter):
             print('Warning: rule {}:{} with .cu files has to specify CUDA '
                   'external_dep to work.'.format(base_path, name))
 
-        # If any deps were specified, add them to the output attrs.  For
-        # libraries, we always use make these exported, since this is the
-        # expected behavior in fbcode.
-        if dependencies:
-            parameter = 'exported_deps' if self.is_library() else 'deps'
-            attributes[parameter] = (
-                self.format_deps(d for d in dependencies if d.repo is None))
-
         # Set the build platform, via both the `default_platform` parameter and
         # the default flavors support.
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
@@ -1521,28 +1506,22 @@ class CppConverter(base.Converter):
             if not self.is_deployable():
                 attributes['defaults'] = {'platform': platform}
 
-        out_platform_deps = collections.OrderedDict()
+        # Add in implicit deps.
+        if not nodefaultlibs:
+            dependencies.extend(self.get_implicit_deps())
 
-        # Add in implicit, per-platform deps.
-        implicit_deps = self.get_implicit_platform_deps(dlopen_info).items()
-        for platform, deps in implicit_deps:
-            self.merge_platform_deps(
-                out_platform_deps,
-                self.to_platform_param(deps, platforms=[platform]))
-
-        # Add third-party deps as per-platform deps.
-        self.merge_platform_deps(
-            out_platform_deps,
-            self.to_platform_param(
-                [d for d in dependencies if d.repo is not None]))
-
-        # Write out platform-specific deps.
-        if out_platform_deps:
-            parameter = (
-                'exported_platform_deps'
-                if self.is_library() else 'platform_deps')
-            attributes[parameter] = (
-                self.format_platform_deps(out_platform_deps))
+        # If any deps were specified, add them to the output attrs.  For
+        # libraries, we always use make these exported, since this is the
+        # expected behavior in fbcode.
+        if dependencies:
+            deps_param, plat_deps_param = (
+                ('exported_deps', 'exported_platform_deps')
+                if self.is_library()
+                else ('deps', 'platform_deps'))
+            out_deps, out_plat_deps = self.format_all_deps(dependencies)
+            attributes[deps_param] = out_deps
+            if out_plat_deps:
+                attributes[plat_deps_param] = out_plat_deps
 
         if out_dep_queries:
             attributes['deps_query'] = ' union '.join(out_dep_queries)
