@@ -20,6 +20,7 @@ class BuildModeTest(tests.utils.TestCase):
     includes = [
         ("@fbcode_macros//build_defs:build_mode.bzl", "build_mode"),
         ("@fbcode_macros//build_defs:create_build_mode.bzl", "create_build_mode"),
+        ("@fbcode_macros//build_defs:create_build_mode.bzl", "extend_build_mode"),
     ]
 
     def _create_mode_struct(
@@ -107,6 +108,55 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(ubsan_options={"b":"2"}),
             self._create_mode_struct(tsan_options={"c":"3"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c"]),
+        ]
+        result = root.run_unittests(self.includes, statements)
+        self.assertSuccess(result, *expected)
+
+    @tests.utils.with_project()
+    def test_extends_proper_build_modes(self, root):
+        root.project.cells["fbcode_macros"].add_file(
+            "build_defs/build_mode_overrides.bzl",
+            "build_mode_overrides = {}")
+
+        statements = [
+            'extend_build_mode(create_build_mode(aspp_flags=["-DFLAG"]), aspp_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(c_flags=("-DFLAG",)), c_flags=("-DFLAG_TWO",))',
+            'extend_build_mode(create_build_mode(clang_flags=["-DFLAG"]), clang_flags=("-DFLAG_TWO",))',
+            'extend_build_mode(create_build_mode(cpp_flags=("-DFLAG",)), cpp_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(cxx_flags=["-DFLAG"]), cxx_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(cxxpp_flags=["-DFLAG"]), cxxpp_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(dmd_flags=["-DFLAG"]), dmd_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(gcc_flags=["-DFLAG"]), gcc_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(gdc_flags=["-DFLAG"]), gdc_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(ghc_flags=["-DFLAG"]), ghc_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(java_flags=["-DFLAG"]), java_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(ldc_flags=["-DFLAG"]), ldc_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(ld_flags=["-DFLAG"]), ld_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(par_flags=["-DFLAG"]), par_flags=["-DFLAG_TWO"])',
+            'extend_build_mode(create_build_mode(asan_options={"a":"1"}), asan_options={"z":"100"})',
+            'extend_build_mode(create_build_mode(ubsan_options={"b":"2"}), ubsan_options={"y":"99"})',
+            'extend_build_mode(create_build_mode(tsan_options={"c":"3"}), tsan_options={"x":"98"})',
+            'extend_build_mode(create_build_mode(lsan_suppressions=["a/b/c"]), lsan_suppressions=["z/y/x"])',
+        ]
+        expected = [
+            self._create_mode_struct(aspp_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(c_flags=("-DFLAG", "-DFLAG_TWO")),
+            self._create_mode_struct(clang_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(cpp_flags=("-DFLAG", "-DFLAG_TWO")),
+            self._create_mode_struct(cxx_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(cxxpp_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(dmd_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(gcc_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(gdc_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(ghc_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(java_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(ldc_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(ld_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(par_flags=["-DFLAG", "-DFLAG_TWO"]),
+            self._create_mode_struct(asan_options={"a":"1", "z":"100"}),
+            self._create_mode_struct(ubsan_options={"b":"2", "y":"99"}),
+            self._create_mode_struct(tsan_options={"c":"3", "x":"98"}),
+            self._create_mode_struct(lsan_suppressions=["a/b/c", "z/y/x"]),
         ]
         result = root.run_unittests(self.includes, statements)
         self.assertSuccess(result, *expected)
