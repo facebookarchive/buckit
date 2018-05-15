@@ -843,7 +843,7 @@ class CppConverter(base.Converter):
             'auto_headers',
             global_defns.AutoHeaders.SOURCES)
 
-    def get_implicit_platform_deps(self):
+    def get_implicit_platform_deps(self, dlopen_info):
         """
         Add additional dependencies we need to implicitly add to the build for
         various reasons.
@@ -855,10 +855,13 @@ class CppConverter(base.Converter):
         # `-latomic` isn't automatically added to the link line, meaning uses
         # of `std::atomic<T>` fail to link with undefined reference errors.
         # So implicitly add this dep here.
-        if (self._context.compiler == 'clang' and
-                # TODO(#17067102): `cxx_precompiled_header` rules currently
-                # don't support `platform_deps` parameter.
-                self.get_fbconfig_rule_type() != 'cpp_precompiled_header'):
+        # TODO(#17067102): `cxx_precompiled_header` rules currently
+        # don't support `platform_deps` parameter.
+        rule_type = self.get_fbconfig_rule_type()
+        header_build = rule_type == 'cpp_precompiled_header'
+        # standalone .so should not depend on libatomic.so
+        so_build = rule_type == 'cpp_binary' and dlopen_info
+        if self._context.compiler == 'clang' and not (header_build or so_build):
             for platform in self.get_platforms():
                 if self.get_tool_version(platform, 'gcc') >= LooseVersion('5'):
                     platform_deps.setdefault(platform, [])
@@ -1521,7 +1524,8 @@ class CppConverter(base.Converter):
         out_platform_deps = collections.OrderedDict()
 
         # Add in implicit, per-platform deps.
-        for platform, deps in self.get_implicit_platform_deps().items():
+        implicit_deps = self.get_implicit_platform_deps(dlopen_info).items()
+        for platform, deps in implicit_deps:
             self.merge_platform_deps(
                 out_platform_deps,
                 self.to_platform_param(deps, platforms=[platform]))
