@@ -175,6 +175,7 @@ class _SphinxConverter(base.Converter):
             'apidoc_modules',
             'genrule_srcs',
             'confpy',
+            'sphinxapidoc_opts',
             'sphinxbuild_opts',
         }
 
@@ -205,8 +206,9 @@ class _SphinxConverter(base.Converter):
         self,
         base_path,
         name,
-        sphinx_wrapper_target,
+        fbsphinx_wrapper_target,
         apidoc_modules,
+        sphinxapidoc_opts,
     ):
         """
         A simple genrule wrapper for running sphinx-apidoc
@@ -216,24 +218,19 @@ class _SphinxConverter(base.Converter):
 
         for module, outdir in apidoc_modules.items():
             command = ' '.join((
-                'mkdir',
-                '-p',
+                '$(exe :{fbsphinx_wrapper_target})',
+                'buck apidoc',
+                '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
+                "--extras '{extras}'",
                 '$OUT',
-                '&&',
-                'SPHINX_APIDOC_OPTIONS=members',
-                '$(exe :{sphinx_wrapper_target})',
-                'apidoc',
-                '--output-dir=$OUT',
-                '--follow-links',
-                '--no-toc',
-                '--implicit-namespaces',
-                '--separate',
                 '{apidoc_root}',
             )).format(
-                sphinx_wrapper_target=sphinx_wrapper_target,
+                fbsphinx_wrapper_target=fbsphinx_wrapper_target,
+                SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
+                extras=sphinxapidoc_opts or {},
                 apidoc_root=os.path.join(
                     '..',
-                    sphinx_wrapper_target + '#link-tree',
+                    fbsphinx_wrapper_target + '#link-tree',
                     module[:].replace('.', '/'),
                 )
             )
@@ -299,6 +296,7 @@ class _SphinxConverter(base.Converter):
         name,
         apidoc_modules=None,
         confpy=None,
+        sphinxapidoc_opts=None,
         sphinxbuild_opts=None,
         genrule_srcs=None,
         python_binary_deps=(),
@@ -328,23 +326,14 @@ class _SphinxConverter(base.Converter):
             deps=python_deps,
         ):
             yield rule
-        sphinx_wrapper_target = '%s-sphinx-wrapper' % name
-        for rule in self._converters['python_binary'].convert(
-            base_path,
-            name=sphinx_wrapper_target,
-            par_style='xar',
-            py_version='>=3.6',
-            main_module='fbsphinx.bin.sphinx_wrapper',
-            deps=python_deps,
-        ):
-            yield rule
 
         additional_doc_rules = []
         for rule in self._gen_apidoc_rules(
             base_path,
             name,
-            sphinx_wrapper_target,
+            fbsphinx_wrapper_target,
             apidoc_modules,
+            sphinxapidoc_opts,
         ):
             additional_doc_rules.append(rule)
             yield rule
@@ -374,7 +363,7 @@ class _SphinxConverter(base.Converter):
             '--confpy $(location {confpy_target})',
             '--builder {builder}',
             '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
-            '--extras {json_extras}',
+            "--extras '{json_extras}'",
             '.',  # source dir
             '$OUT',
         )).format(
