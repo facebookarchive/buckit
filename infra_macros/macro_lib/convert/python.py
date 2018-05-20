@@ -61,6 +61,8 @@ class Manifest(object):
 
     def __init__(self):
         self._modules = None
+        self.__file__ = __file__
+        self.__name__ = __name__
 
     @property
     def modules(self):

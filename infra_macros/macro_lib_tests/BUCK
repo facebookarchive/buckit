@@ -25,3 +25,11 @@ python_unittest(
     ],
     external_deps = ["mock"],
 )
+
+python_unittest(
+    name = "test_manifest",
+    srcs = [
+        "test_manifest.py",
+    ],
+    par_style = "xar",
+)
