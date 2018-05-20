@@ -54,7 +54,11 @@ def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
                 if platform not in third_party_config["platforms"]:
                     fail(
                         "Path %s has invalid platform %s. Must be one of %s" % (
-                            path, platform, ", ".join(sorted(_all_platforms))))
+                            path,
+                            platform,
+                            ", ".join(sorted(_all_platforms)),
+                        ),
+                    )
                 platform_arch = \
                     third_party_config["platforms"][platform]["architecture"]
                 if path not in ret[cell]:
@@ -64,9 +68,13 @@ def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
 
                 if platform_arch in ret[cell][path]:
                     fail(
-                    "Path %s has both platform %s and %s for architecture %s" % (
-                        path, ret[cell][path][platform_arch], platform,
-                        platform_arch))
+                        "Path %s has both platform %s and %s for architecture %s" % (
+                            path,
+                            ret[cell][path][platform_arch],
+                            platform,
+                            platform_arch,
+                        ),
+                    )
                 else:
                     ret[cell][path][platform_arch] = platform
     return ret
@@ -77,7 +85,7 @@ def _get_use_platform_files():
     """
     Determines whether platform files should be used, or just the default
     """
-    return read_boolean('fbcode', 'platform_files', True)
+    return read_boolean("fbcode", "platform_files", True)
 
 def _get_platform_overrides():
     """
@@ -106,14 +114,16 @@ def _get_platform_for_base_path(base_path):
     return _get_platform_for_cell_path_and_arch(
         config.get_current_repo_name(),
         base_path,
-        _current_architecture)
+        _current_architecture,
+    )
 
 def _get_platform_for_current_buildfile():
     """  Returns `get_platform_for_cell_path_and_arch()` for the build file that calls this method """
     return _get_platform_for_cell_path_and_arch(
         config.get_current_repo_name(),
         native.package_name(),
-        _current_architecture)
+        _current_architecture,
+    )
 
 def _get_platform_for_cell_path_and_arch(cell, path, arch):
     """
@@ -148,9 +158,9 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
     return _get_default_platform()
 
 platform = struct(
-    get_default_platform=_get_default_platform,
-    get_platform_for_current_buildfile=_get_platform_for_current_buildfile,
-    get_platform_for_base_path=_get_platform_for_base_path,
-    get_platform_for_cell_path_and_arch=_get_platform_for_cell_path_and_arch,
-    get_platform_overrides=_get_platform_overrides,
+    get_default_platform = _get_default_platform,
+    get_platform_for_current_buildfile = _get_platform_for_current_buildfile,
+    get_platform_for_base_path = _get_platform_for_base_path,
+    get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
+    get_platform_overrides = _get_platform_overrides,
 )

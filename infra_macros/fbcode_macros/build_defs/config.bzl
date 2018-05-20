@@ -13,10 +13,12 @@ NOTE: Many of these settings will be gradually factored out into just the
 """
 
 load(
-    "@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean",
-    "read_list", "read_string", "read_facebook_internal_string"
+    "@fbcode_macros//build_defs/config:read_configs.bzl",
+    "read_boolean",
+    "read_facebook_internal_string",
+    "read_list",
+    "read_string",
 )
-
 
 def _get_add_auto_headers_glob():
     """
@@ -30,31 +32,36 @@ def _get_add_auto_headers_glob():
     """
     return read_boolean("fbcode", "add_auto_headers_glob", False)
 
-
 def _get_allocators():
     """
     Get the targets used for various types of allocators
     """
     return {
-        "jemalloc":
-        read_list(
-            "fbcode", "allocators.jemalloc", ["jemalloc//jemalloc:jemalloc"],
-            delimiter=","),
-        "jemalloc_debug":
-        read_list(
-            "fbcode", "allocators.jemalloc_debug",
+        "jemalloc": read_list(
+            "fbcode",
+            "allocators.jemalloc",
+            ["jemalloc//jemalloc:jemalloc"],
+            delimiter = ",",
+        ),
+        "jemalloc_debug": read_list(
+            "fbcode",
+            "allocators.jemalloc_debug",
             ["jemalloc//jemalloc:jemalloc_debug"],
-            delimiter=","),
-        "tcmalloc":
-        read_list(
-            "fbcode", "allocators.tcmalloc", ["tcmalloc//tcmalloc:tcmalloc"],
-            delimiter=","),
-        "malloc":
-        read_list(
-            "fbcode", "allocators.malloc", [],
-            delimiter=","),
+            delimiter = ",",
+        ),
+        "tcmalloc": read_list(
+            "fbcode",
+            "allocators.tcmalloc",
+            ["tcmalloc//tcmalloc:tcmalloc"],
+            delimiter = ",",
+        ),
+        "malloc": read_list(
+            "fbcode",
+            "allocators.malloc",
+            [],
+            delimiter = ",",
+        ),
     }
-
 
 def _get_auto_pch_blacklist():
     """
@@ -66,8 +73,7 @@ def _get_auto_pch_blacklist():
     Returns:
         A list of directories that should not receive precompiled headers
     """
-    return read_list("fbcode", "auto_pch_blacklist", [], delimiter=",")
-
+    return read_list("fbcode", "auto_pch_blacklist", [], delimiter = ",")
 
 def _get_build_mode():
     """
@@ -80,7 +86,6 @@ def _get_build_mode():
         The build mode
     """
     return read_string("fbcode", "build_mode", "dev")
-
 
 def _get_compiler_family():
     """
@@ -97,7 +102,6 @@ def _get_compiler_family():
         family = "clang" if "clang" in cxx else "gcc"
     return family
 
-
 def _get_core_tools_path():
     """
     Get the path to a list of core tools
@@ -111,13 +115,11 @@ def _get_core_tools_path():
     """
     return read_string("fbcode", "core_tools_path", "")
 
-
 def _get_coverage():
     """
     Whether to gather coverage information or not
     """
     return read_boolean("fbcode", "coverage", False)
-
 
 def _get_current_host_os():
     """ Get a string version of the host os. This will eventually go away """
@@ -136,7 +138,6 @@ def _get_current_host_os():
         return "windows"
     fail("Could not determine a supported os. Got %r" % info)
 
-
 def _get_current_repo_name():
     """
     Gets a name for the current repository from configuration
@@ -152,13 +153,11 @@ def _get_current_repo_name():
     """
     return read_string("fbcode", "current_repo_name", "fbcode")
 
-
 def _get_cython_compiler():
     """
     The target that will provide cython compiler
     """
     return read_string("cython", "cython_compiler", None)
-
 
 def _get_default_allocator():
     """
@@ -168,7 +167,6 @@ def _get_default_allocator():
         The allocator from fbcode.allocators that should be used by default
     """
     return read_string("fbcode", "default_allocator", "malloc")
-
 
 def _get_default_link_style():
     """
@@ -180,7 +178,6 @@ def _get_default_link_style():
         One of "static", "shared" or "any"
     """
     return read_string("defaults.cxx_library", "type", "static")
-
 
 def _get_fbcode_style_deps():
     """
@@ -197,7 +194,6 @@ def _get_fbcode_style_deps():
     """
     return read_boolean("fbcode", "fbcode_style_deps", False)
 
-
 def _get_fbcode_style_deps_are_third_party():
     """
     Whether rules starting with "@/" should be treated like third-party rules
@@ -212,20 +208,17 @@ def _get_fbcode_style_deps_are_third_party():
     """
     return read_boolean("fbcode", "fbcode_style_deps_are_third_party", True)
 
-
 def _get_gtest_lib_dependencies():
     """
     The targets that will provide gtest C++ tests\' gtest and gmock deps
     """
     return read_string("fbcode", "gtest_lib_dependencies", None)
 
-
 def _get_gtest_main_dependency():
     """
     The target that will provide gtest C++ tests\' main function
     """
     return read_string("fbcode", "gtest_main_dependency", None)
-
 
 def _get_header_namespace_whitelist():
     """
@@ -240,7 +233,6 @@ def _get_header_namespace_whitelist():
         for target in read_list("fbcode", "header_namespace_whitelist", [], ",")
     ]
 
-
 def _get_image_build_command_target():
     """
     Buck target for the command used to build `image_layer` targets. We will
@@ -248,18 +240,17 @@ def _get_image_build_command_target():
     image compiler.
     """
     return read_string(
-        "fbcode", "image_build_command_target",
+        "fbcode",
+        "image_build_command_target",
         # Make sure Buck emits a usable error message if this is not set.
         "ADD_image_build_command_target_TO_YOUR_BUCKCONFIG",
     )
-
 
 def _get_lto_type():
     """
     What kind of Link Time Optimization the compiler supports
     """
     return read_string("fbcode", "lto_type", None)
-
 
 def _get_pyfi_overrides_path():
     """
@@ -273,20 +264,17 @@ def _get_require_platform():
     """
     return read_boolean("fbcode", "require_platform", False)
 
-
 def _get_sanitizer():
     """
     The type of sanitizer to try to use. If not set, do not use it
     """
     return read_string("fbcode", "sanitizer", None)
 
-
 def _get_third_party_buck_directory():
     """
     An additional dirctory that is added to all third party paths in a monorepo
     """
     return read_string("fbcode", "third_party_buck_directory", "")
-
 
 def _get_third_party_config_path():
     """
@@ -302,7 +290,6 @@ def _get_third_party_config_path():
     """
     return read_string("fbcode", "third_party_config_path", "")
 
-
 def _get_third_party_use_build_subdir():
     """
     Whether to assume that there is a "build" subdirectory in the third-party dir
@@ -312,7 +299,6 @@ def _get_third_party_use_build_subdir():
         third party dependencies, else False
     """
     return read_boolean("fbcode", "third_party_use_build_subdir", False)
-
 
 def _get_third_party_use_platform_subdir():
     """
@@ -327,7 +313,6 @@ def _get_third_party_use_platform_subdir():
     """
     return read_boolean("fbcode", "third_party_use_platform_subdir", False)
 
-
 def _get_third_party_use_tools_subdir():
     """
     Whether there is a tools subdirectory in third-party that should be used
@@ -341,22 +326,21 @@ def _get_third_party_use_tools_subdir():
     """
     return read_boolean("fbcode", "third_party_use_tools_subdir", False)
 
-
 def _get_thrift_compiler():
     """
     The target for the top level cpp thrift compiler
     """
     return read_string("thrift", "compiler", "thrift//thrift/compiler:thrift")
 
-
 def _get_thrift2_compiler():
     """
     The target for the cpp2 thrift compiler
     """
     return read_string(
-        "thrift", "compiler2", "thrift//thrift/compiler/py:thrift"
+        "thrift",
+        "compiler2",
+        "thrift//thrift/compiler/py:thrift",
     )
-
 
 def _get_thrift_deprecated_apache_compiler():
     """
@@ -364,13 +348,11 @@ def _get_thrift_deprecated_apache_compiler():
     """
     return read_facebook_internal_string("thrift", "deprecated_apache_compiler", "")
 
-
 def _get_thrift_hs2_compiler():
     """
     The target for the haskell thrift compiler
     """
     return read_facebook_internal_string("thrift", "hs2_compiler", "")
-
 
 def _get_thrift_ocaml_compiler():
     """
@@ -378,22 +360,21 @@ def _get_thrift_ocaml_compiler():
     """
     return read_facebook_internal_string("thrift", "ocaml_compiler", "")
 
-
 def _get_thrift_swift_compiler():
     """
     The target for the swift thrift compiler
     """
     return read_facebook_internal_string("thrift", "swift_compiler", "")
 
-
 def _get_thrift_templates():
     """
     The target that generates thrift templates
     """
     return read_string(
-        "thrift", "templates", "thrift//thrift/compiler/generate/templates:templates"
+        "thrift",
+        "templates",
+        "thrift//thrift/compiler/generate/templates:templates",
     )
-
 
 def _get_unknown_cells_are_third_party():
     """
@@ -408,7 +389,6 @@ def _get_unknown_cells_are_third_party():
     """
     return read_boolean("fbcode", "unknown_cells_are_third_party", False)
 
-
 def _get_use_build_info_linker_flags():
     """
     Whether or not to provide the linker with build_info flags.
@@ -421,50 +401,48 @@ def _get_use_build_info_linker_flags():
     """
     return read_boolean("fbcode", "use_build_info_linker_flags", False)
 
-
 def _get_use_custom_par_args():
     """
     If set, use custom build arguments for Facebook\'s internal pex build script
     """
     return read_boolean("fbcode", "use_custom_par_args", False)
 
-
 config = struct(
-    get_add_auto_headers_glob=_get_add_auto_headers_glob,
-    get_allocators=_get_allocators,
-    get_auto_pch_blacklist=_get_auto_pch_blacklist,
-    get_build_mode=_get_build_mode,
-    get_compiler_family=_get_compiler_family,
-    get_core_tools_path=_get_core_tools_path,
-    get_coverage=_get_coverage,
-    get_current_os=_get_current_host_os,
-    get_current_repo_name=_get_current_repo_name,
-    get_cython_compiler=_get_cython_compiler,
-    get_default_allocator=_get_default_allocator,
-    get_default_link_style=_get_default_link_style,
-    get_fbcode_style_deps=_get_fbcode_style_deps,
-    get_fbcode_style_deps_are_third_party=_get_fbcode_style_deps_are_third_party,
-    get_gtest_lib_dependencies=_get_gtest_lib_dependencies,
-    get_gtest_main_dependency=_get_gtest_main_dependency,
-    get_header_namespace_whitelist=_get_header_namespace_whitelist,
-    get_image_build_command_target=_get_image_build_command_target,
-    get_lto_type=_get_lto_type,
-    get_pyfi_overrides_path=_get_pyfi_overrides_path,
-    get_require_platform=_get_require_platform,
-    get_sanitizer=_get_sanitizer,
-    get_third_party_buck_directory=_get_third_party_buck_directory,
-    get_third_party_config_path=_get_third_party_config_path,
-    get_third_party_use_build_subdir=_get_third_party_use_build_subdir,
-    get_third_party_use_platform_subdir=_get_third_party_use_platform_subdir,
-    get_third_party_use_tools_subdir=_get_third_party_use_tools_subdir,
-    get_thrift2_compiler=_get_thrift2_compiler,
-    get_thrift_deprecated_apache_compiler=_get_thrift_deprecated_apache_compiler,
-    get_thrift_compiler=_get_thrift_compiler,
-    get_thrift_hs2_compiler=_get_thrift_hs2_compiler,
-    get_thrift_ocaml_compiler=_get_thrift_ocaml_compiler,
-    get_thrift_swift_compiler=_get_thrift_swift_compiler,
-    get_thrift_templates=_get_thrift_templates,
-    get_unknown_cells_are_third_party=_get_unknown_cells_are_third_party,
-    get_use_build_info_linker_flags=_get_use_build_info_linker_flags,
-    get_use_custom_par_args=_get_use_custom_par_args,
+    get_add_auto_headers_glob = _get_add_auto_headers_glob,
+    get_allocators = _get_allocators,
+    get_auto_pch_blacklist = _get_auto_pch_blacklist,
+    get_build_mode = _get_build_mode,
+    get_compiler_family = _get_compiler_family,
+    get_core_tools_path = _get_core_tools_path,
+    get_coverage = _get_coverage,
+    get_current_os = _get_current_host_os,
+    get_current_repo_name = _get_current_repo_name,
+    get_cython_compiler = _get_cython_compiler,
+    get_default_allocator = _get_default_allocator,
+    get_default_link_style = _get_default_link_style,
+    get_fbcode_style_deps = _get_fbcode_style_deps,
+    get_fbcode_style_deps_are_third_party = _get_fbcode_style_deps_are_third_party,
+    get_gtest_lib_dependencies = _get_gtest_lib_dependencies,
+    get_gtest_main_dependency = _get_gtest_main_dependency,
+    get_header_namespace_whitelist = _get_header_namespace_whitelist,
+    get_image_build_command_target = _get_image_build_command_target,
+    get_lto_type = _get_lto_type,
+    get_pyfi_overrides_path = _get_pyfi_overrides_path,
+    get_require_platform = _get_require_platform,
+    get_sanitizer = _get_sanitizer,
+    get_third_party_buck_directory = _get_third_party_buck_directory,
+    get_third_party_config_path = _get_third_party_config_path,
+    get_third_party_use_build_subdir = _get_third_party_use_build_subdir,
+    get_third_party_use_platform_subdir = _get_third_party_use_platform_subdir,
+    get_third_party_use_tools_subdir = _get_third_party_use_tools_subdir,
+    get_thrift2_compiler = _get_thrift2_compiler,
+    get_thrift_deprecated_apache_compiler = _get_thrift_deprecated_apache_compiler,
+    get_thrift_compiler = _get_thrift_compiler,
+    get_thrift_hs2_compiler = _get_thrift_hs2_compiler,
+    get_thrift_ocaml_compiler = _get_thrift_ocaml_compiler,
+    get_thrift_swift_compiler = _get_thrift_swift_compiler,
+    get_thrift_templates = _get_thrift_templates,
+    get_unknown_cells_are_third_party = _get_unknown_cells_are_third_party,
+    get_use_build_info_linker_flags = _get_use_build_info_linker_flags,
+    get_use_custom_par_args = _get_use_custom_par_args,
 )

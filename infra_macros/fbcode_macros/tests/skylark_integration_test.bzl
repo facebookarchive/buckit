@@ -33,7 +33,7 @@ def target_to_resource_path(target):
     """
     return target.replace("//", "/").replace(":", "/")
 
-def skylark_integration_test(name, deps=None, resources=None, **kwargs):
+def skylark_integration_test(name, deps = None, resources = None, **kwargs):
     """
     Helps run integration tests to test .bzl files
 
@@ -73,7 +73,8 @@ def skylark_integration_test(name, deps=None, resources=None, **kwargs):
     deps.append("fbcode_macros//tests:utils")
     if type(resources) == type(list):
         resources = {
-            target_to_resource_path(target): target for target in resources
+            target_to_resource_path(target): target
+            for target in resources
         }
 
     native.python_test(

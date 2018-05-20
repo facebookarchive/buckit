@@ -9,21 +9,19 @@
 Simple helpers for reading configurations
 """
 
-
 def read_boolean(section, field, default):
     val = read_config(section, field)
     if val != None:
-        if val.lower() == 'true':
+        if val.lower() == "true":
             return True
-        elif val.lower() == 'false':
+        elif val.lower() == "false":
             return False
         else:
-            fail('`{}:{}`: cannot coerce {} to bool'.format(section, field, val))
+            fail("`{}:{}`: cannot coerce {} to bool".format(section, field, val))
     elif default == True or default == False:
         return default
     else:
-        fail('`{}:{}`: no value set, requires bool'.format(section, field))
-
+        fail("`{}:{}`: no value set, requires bool".format(section, field))
 
 def read_list(section, field, default, delimiter):
     val = read_config(section, field)
@@ -32,12 +30,10 @@ def read_list(section, field, default, delimiter):
     elif type(default) == type([]):
         return default
     else:
-        fail('`{}:{}`: no value set, requires list delimited by {}'.format(section, field, delimiter))
-
+        fail("`{}:{}`: no value set, requires list delimited by {}".format(section, field, delimiter))
 
 def read_string(section, field, default):
     return read_config(section, field, default)
 
 def read_facebook_internal_string(section, field, default):
     return read_string(section, field, default)
-

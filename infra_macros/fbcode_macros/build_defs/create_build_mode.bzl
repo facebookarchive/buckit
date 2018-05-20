@@ -10,27 +10,27 @@ Simple module to create structs that are consumed by fbcode_macros//build_defs/b
 """
 
 """ The main modes that will usually be used """
-default_modes = ['dbg', 'dev', 'dbgo', 'opt']
+default_modes = ["dbg", "dev", "dbgo", "opt"]
 
 def create_build_mode(
-        aspp_flags=(),
-        cpp_flags=(),
-        cxxpp_flags=(),
-        c_flags=(),
-        cxx_flags=(),
-        ld_flags=(),
-        clang_flags=(),
-        gcc_flags=(),
-        java_flags=(),
-        dmd_flags=(),
-        gdc_flags=(),
-        ldc_flags=(),
-        par_flags=(),
-        ghc_flags=(),
-        asan_options=(),
-        ubsan_options=(),
-        tsan_options=(),
-        lsan_suppressions=()):
+        aspp_flags = (),
+        cpp_flags = (),
+        cxxpp_flags = (),
+        c_flags = (),
+        cxx_flags = (),
+        ld_flags = (),
+        clang_flags = (),
+        gcc_flags = (),
+        java_flags = (),
+        dmd_flags = (),
+        gdc_flags = (),
+        ldc_flags = (),
+        par_flags = (),
+        ghc_flags = (),
+        asan_options = (),
+        ubsan_options = (),
+        tsan_options = (),
+        lsan_suppressions = ()):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -64,24 +64,24 @@ def create_build_mode(
         not provided
     """
     return struct(
-        aspp_flags=aspp_flags,
-        cpp_flags=cpp_flags,
-        cxxpp_flags=cxxpp_flags,
-        c_flags=c_flags,
-        cxx_flags=cxx_flags,
-        ld_flags=ld_flags,
-        clang_flags=clang_flags,
-        gcc_flags=gcc_flags,
-        java_flags=java_flags,
-        dmd_flags=dmd_flags,
-        gdc_flags=gdc_flags,
-        ldc_flags=ldc_flags,
-        par_flags=par_flags,
-        ghc_flags=ghc_flags,
-        asan_options=asan_options,
-        ubsan_options=ubsan_options,
-        tsan_options=tsan_options,
-        lsan_suppressions=lsan_suppressions,
+        aspp_flags = aspp_flags,
+        cpp_flags = cpp_flags,
+        cxxpp_flags = cxxpp_flags,
+        c_flags = c_flags,
+        cxx_flags = cxx_flags,
+        ld_flags = ld_flags,
+        clang_flags = clang_flags,
+        gcc_flags = gcc_flags,
+        java_flags = java_flags,
+        dmd_flags = dmd_flags,
+        gdc_flags = gdc_flags,
+        ldc_flags = ldc_flags,
+        par_flags = par_flags,
+        ghc_flags = ghc_flags,
+        asan_options = asan_options,
+        ubsan_options = ubsan_options,
+        tsan_options = tsan_options,
+        lsan_suppressions = lsan_suppressions,
     )
 
 def _combine(lhs, rhs):
@@ -102,6 +102,7 @@ def _combine(lhs, rhs):
         A value of the lhs argument's type, with the elements from the rhs
         added to it
     """
+
     # Note: 'isinstance' and 'issubclass' are not available in this environment,
     # so we check here for the exact type. Subclasses will not pass this check.
     if type(lhs) == type({}):
@@ -117,24 +118,24 @@ def _combine(lhs, rhs):
 
 def extend_build_mode(
         build_mode,
-        aspp_flags=(),
-        cpp_flags=(),
-        cxxpp_flags=(),
-        c_flags=(),
-        cxx_flags=(),
-        ld_flags=(),
-        clang_flags=(),
-        gcc_flags=(),
-        java_flags=(),
-        dmd_flags=(),
-        gdc_flags=(),
-        ldc_flags=(),
-        par_flags=(),
-        ghc_flags=(),
-        asan_options=(),
-        ubsan_options=(),
-        tsan_options=(),
-        lsan_suppressions=()):
+        aspp_flags = (),
+        cpp_flags = (),
+        cxxpp_flags = (),
+        c_flags = (),
+        cxx_flags = (),
+        ld_flags = (),
+        clang_flags = (),
+        gcc_flags = (),
+        java_flags = (),
+        dmd_flags = (),
+        gdc_flags = (),
+        ldc_flags = (),
+        par_flags = (),
+        ghc_flags = (),
+        asan_options = (),
+        ubsan_options = (),
+        tsan_options = (),
+        lsan_suppressions = ()):
     """
     Creates a new build mode struct with the given flags added to it
 
@@ -168,22 +169,22 @@ def extend_build_mode(
         given fields added to each of them
     """
     return struct(
-        aspp_flags=_combine(build_mode.aspp_flags, aspp_flags),
-        cpp_flags=_combine(build_mode.cpp_flags, cpp_flags),
-        cxxpp_flags=_combine(build_mode.cxxpp_flags, cxxpp_flags),
-        c_flags=_combine(build_mode.c_flags, c_flags),
-        cxx_flags=_combine(build_mode.cxx_flags, cxx_flags),
-        ld_flags=_combine(build_mode.ld_flags, ld_flags),
-        clang_flags=_combine(build_mode.clang_flags, clang_flags),
-        gcc_flags=_combine(build_mode.gcc_flags, gcc_flags),
-        java_flags=_combine(build_mode.java_flags, java_flags),
-        dmd_flags=_combine(build_mode.dmd_flags, dmd_flags),
-        gdc_flags=_combine(build_mode.gdc_flags, gdc_flags),
-        ldc_flags=_combine(build_mode.ldc_flags, ldc_flags),
-        par_flags=_combine(build_mode.par_flags, par_flags),
-        ghc_flags=_combine(build_mode.ghc_flags, ghc_flags),
-        asan_options=_combine(build_mode.asan_options, asan_options),
-        ubsan_options=_combine(build_mode.ubsan_options, ubsan_options),
-        tsan_options=_combine(build_mode.tsan_options, tsan_options),
-        lsan_suppressions=_combine(build_mode.lsan_suppressions, lsan_suppressions),
+        aspp_flags = _combine(build_mode.aspp_flags, aspp_flags),
+        cpp_flags = _combine(build_mode.cpp_flags, cpp_flags),
+        cxxpp_flags = _combine(build_mode.cxxpp_flags, cxxpp_flags),
+        c_flags = _combine(build_mode.c_flags, c_flags),
+        cxx_flags = _combine(build_mode.cxx_flags, cxx_flags),
+        ld_flags = _combine(build_mode.ld_flags, ld_flags),
+        clang_flags = _combine(build_mode.clang_flags, clang_flags),
+        gcc_flags = _combine(build_mode.gcc_flags, gcc_flags),
+        java_flags = _combine(build_mode.java_flags, java_flags),
+        dmd_flags = _combine(build_mode.dmd_flags, dmd_flags),
+        gdc_flags = _combine(build_mode.gdc_flags, gdc_flags),
+        ldc_flags = _combine(build_mode.ldc_flags, ldc_flags),
+        par_flags = _combine(build_mode.par_flags, par_flags),
+        ghc_flags = _combine(build_mode.ghc_flags, ghc_flags),
+        asan_options = _combine(build_mode.asan_options, asan_options),
+        ubsan_options = _combine(build_mode.ubsan_options, ubsan_options),
+        tsan_options = _combine(build_mode.tsan_options, tsan_options),
+        lsan_suppressions = _combine(build_mode.lsan_suppressions, lsan_suppressions),
     )

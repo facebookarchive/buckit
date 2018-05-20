@@ -10,10 +10,13 @@ Function used to re-export files
 """
 
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
-load("@fbcode_macros//build_defs:python_typing.bzl",
-        "get_typing_config_target", "gen_typing_config")
+load(
+    "@fbcode_macros//build_defs:python_typing.bzl",
+    "gen_typing_config",
+    "get_typing_config_target",
+)
 
-def export_files(files, visibility=None, mode="reference"):
+def export_files(files, visibility = None, mode = "reference"):
     """ Takes a list of files, and exports each of them """
     for file in files:
         native.export_file(
@@ -22,16 +25,22 @@ def export_files(files, visibility=None, mode="reference"):
             mode = mode,
         )
 
-def buck_export_file(name, visibility=None, *args, **kwargs):
+def buck_export_file(name, visibility = None, *args, **kwargs):
     """ Proxy for native.export file """
     native.export_file(
         name = name,
         visibility = get_visibility(visibility, name),
         *args,
-        **kwargs)
+        **kwargs
+    )
 
-def export_file(name, visibility=None, mode="reference",
-                create_typing_rule=True, *args, **kwargs):
+def export_file(
+        name,
+        visibility = None,
+        mode = "reference",
+        create_typing_rule = True,
+        *args,
+        **kwargs):
     """
     Proxy for native.export file using reference mode by default
 
@@ -48,10 +57,11 @@ def export_file(name, visibility=None, mode="reference",
     """
     visibility = get_visibility(visibility, name)
     if create_typing_rule and get_typing_config_target():
-        gen_typing_config(target_name=name, visibility=visibility)
+        gen_typing_config(target_name = name, visibility = visibility)
     native.export_file(
         name = name,
         mode = mode,
         visibility = visibility,
         *args,
-        **kwargs)
+        **kwargs
+    )

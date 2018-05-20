@@ -20,13 +20,15 @@ def _get_build_modes_for_base_path(base_path):
     """ Returns `get_build_modes_for_cell_and_base_path()` for the specified base_path """
     return _get_build_modes_for_cell_and_base_path(
         config.get_current_repo_name(),
-        base_path)
+        base_path,
+    )
 
 def _get_build_modes_for_current_buildfile():
     """ Returns `get_build_modes_for_cell_and_base_path()` for the build file that calls this method """
     return _get_build_modes_for_cell_and_base_path(
         config.get_current_repo_name(),
-        native.package_name())
+        native.package_name(),
+    )
 
 def _get_build_modes_for_cell_and_base_path(cell, path):
     """
@@ -60,8 +62,8 @@ def _get_build_mode_overrides():
     """ Materializes all build modes for the current context """
     return {
         cell: {
-          path: get_build_mode()
-          for path, get_build_mode in cell_values.items()
+            path: get_build_mode()
+            for path, get_build_mode in cell_values.items()
         }
         for cell, cell_values in build_mode_overrides.items()
     }

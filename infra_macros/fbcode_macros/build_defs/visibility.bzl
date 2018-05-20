@@ -15,19 +15,19 @@ Functions that handle correcting 'visiblity' arguments
 # Also: Depsets are kind of dumb, and don't let you do fast membership lookups.
 # simulating with dict per https://docs.bazel.build/versions/master/skylark/lib/depset.html
 EXPERIMENTAL_WHITELIST = {
-    ('experimental/deeplearning', 'all_lua'): None,
-    ('experimental/deeplearning', 'fair_video_understanding'): None,
-    ('experimental/deeplearning/mobile-vision/segmentation/tools/create_coco_format_dataset/tests', 'analyze_json_lib'): None,
-    ('experimental/deeplearning/ntt/detection_caffe2/lib', 'lib'): None,
-    ('experimental/deeplearning/vajdap/xray', 'xray_lib'): None,
-    ('experimental/deeplearning/vision/cluster_utils', 'io'): None,
-    ('experimental/deeplearning/wym/classification_attribute/datasets', 'attr_data'): None,
-    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'classerrormeter'): None,
-    ('experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter', 'mapmeter'): None,
-    ('experimental/everstore/orphaned_needles/WorkitemList', 'workitemlist_client_lib'): None,
-    ('experimental/everstore/orphaned_needles/WorkitemList/if', 'workitemserver_thrift'): None,
-    ('experimental/guruqu/transformers', 'segmax_predict'): None,
-    ('experimental/pshinghal/dummy_service', 'thrift'): None,
+    ("experimental/deeplearning", "all_lua"): None,
+    ("experimental/deeplearning", "fair_video_understanding"): None,
+    ("experimental/deeplearning/mobile-vision/segmentation/tools/create_coco_format_dataset/tests", "analyze_json_lib"): None,
+    ("experimental/deeplearning/ntt/detection_caffe2/lib", "lib"): None,
+    ("experimental/deeplearning/vajdap/xray", "xray_lib"): None,
+    ("experimental/deeplearning/vision/cluster_utils", "io"): None,
+    ("experimental/deeplearning/wym/classification_attribute/datasets", "attr_data"): None,
+    ("experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter", "classerrormeter"): None,
+    ("experimental/deeplearning/zyan3/sherlock/visual_sherlock/meter", "mapmeter"): None,
+    ("experimental/everstore/orphaned_needles/WorkitemList", "workitemlist_client_lib"): None,
+    ("experimental/everstore/orphaned_needles/WorkitemList/if", "workitemserver_thrift"): None,
+    ("experimental/guruqu/transformers", "segmax_predict"): None,
+    ("experimental/pshinghal/dummy_service", "thrift"): None,
 }
 
 def get_visibility_for_base_path(visibility_attr, name_attr, base_path):
@@ -49,8 +49,8 @@ def get_visibility_for_base_path(visibility_attr, name_attr, base_path):
     Returns:
         A visibility array
     """
-    if (base_path.startswith("experimental/") and 
-            (base_path, name_attr) not in EXPERIMENTAL_WHITELIST):
+    if (base_path.startswith("experimental/") and
+        (base_path, name_attr) not in EXPERIMENTAL_WHITELIST):
         return ["//experimental/..."]
 
     if visibility_attr == None:
@@ -58,10 +58,12 @@ def get_visibility_for_base_path(visibility_attr, name_attr, base_path):
     else:
         return visibility_attr
 
-
 def get_visibility(visibility_attr, name_attr):
     """
     Returns either the provided visibility list, or a default visibility if None
     """
     return get_visibility_for_base_path(
-        visibility_attr, name_attr, native.package_name())
+        visibility_attr,
+        name_attr,
+        native.package_name(),
+    )

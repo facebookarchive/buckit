@@ -6,15 +6,20 @@ These generally are only allowed to be used by certain pre-configured targets
 
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
-    "read_boolean", "read_string"
+    "read_boolean",
+    "read_string",
 )
-load("@fbcode_macros//build_defs:python_typing.bzl",
-     "get_typing_config_target", "gen_typing_config")
+load(
+    "@fbcode_macros//build_defs:python_typing.bzl",
+    "gen_typing_config",
+    "get_typing_config_target",
+)
 
 _FBCODE_UI_MESSAGE = (
-    'Unsupported access to Buck rules! ' +
-    'Please use supported fbcode rules (https://fburl.com/fbcode-targets) ' +
-    'instead.')
+    "Unsupported access to Buck rules! " +
+    "Please use supported fbcode rules (https://fburl.com/fbcode-targets) " +
+    "instead."
+)
 
 def _get_forbid_raw_buck_rules():
     """
@@ -33,7 +38,9 @@ def _get_whitelisted_raw_buck_rules():
         dictionary of rule type to list of tuples of base path / rule name
     """
     whitelisted_raw_buck_rules_str = read_string(
-        "fbcode", "whitelisted_raw_buck_rules", ""
+        "fbcode",
+        "whitelisted_raw_buck_rules",
+        "",
     )
     whitelisted_raw_buck_rules = {}
     for rule_group in whitelisted_raw_buck_rules_str.strip().split(","):
@@ -54,7 +61,12 @@ def _verify_whitelisted_rule(rule_type, package_name, target_name):
         if (package_name, target_name) not in whitelist:
             fail(
                 "{}\n{}(): native rule {}:{} is not whitelisted".format(
-                    _FBCODE_UI_MESSAGE, rule_type, package_name, target_name))
+                    _FBCODE_UI_MESSAGE,
+                    rule_type,
+                    package_name,
+                    target_name,
+                ),
+            )
 
 def buck_command_alias(*args, **kwargs):
     """ Wrapper to access Buck's native command_alias rule """
@@ -76,7 +88,7 @@ def buck_python_library(name, *args, **kwargs):
     """ Wrapper to access Buck's native python_library rule """
     if get_typing_config_target():
         gen_typing_config(name)
-    native.python_library(name=name, *args, **kwargs)
+    native.python_library(name = name, *args, **kwargs)
 
 def remote_file(*args, **kwargs):
     """ Wrapper to access Buck's native remote_file rule """
@@ -96,18 +108,18 @@ def versioned_alias(*args, **kwargs):
 
 def buck_cxx_binary(name, **kwargs):
     """ Wrapper to access Buck's native cxx_binary rule """
-    _verify_whitelisted_rule('cxx_binary', native.package_name(), name)
-    native.cxx_binary(name=name, **kwargs)
+    _verify_whitelisted_rule("cxx_binary", native.package_name(), name)
+    native.cxx_binary(name = name, **kwargs)
 
 def buck_cxx_library(name, **kwargs):
     """ Wrapper to access Buck's native cxx_library rule """
-    _verify_whitelisted_rule('cxx_library', native.package_name(), name)
-    native.cxx_library(name=name, **kwargs)
+    _verify_whitelisted_rule("cxx_library", native.package_name(), name)
+    native.cxx_library(name = name, **kwargs)
 
 def buck_cxx_test(name, **kwargs):
     """ Wrapper to access Buck's native cxx_test rule """
-    _verify_whitelisted_rule('cxx_test', native.package_name(), name)
-    native.cxx_test(name=name, **kwargs)
+    _verify_whitelisted_rule("cxx_test", native.package_name(), name)
+    native.cxx_test(name = name, **kwargs)
 
 def buck_filegroup(*args, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """

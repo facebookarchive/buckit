@@ -1,4 +1,3 @@
-
 # Copyright 2016-present, Facebook, Inc.
 # All rights reserved.
 #
@@ -33,15 +32,16 @@ def _third_party_target(platform, project, rule):
             paths.join(
                 paths_config.third_party_root,
                 platform,
-                'build',
-                project),
-            rule)
+                "build",
+                project,
+            ),
+            rule,
+        )
     else:
         # For OSS compatibility
         return "{}//{}:{}".format(project, project, rule)
 
-
-def _external_dep_target(raw_target, platform, lang_suffix=''):
+def _external_dep_target(raw_target, platform, lang_suffix = ""):
     """
     Take one of the various external dependency formats, and return a target
 
@@ -74,8 +74,8 @@ def _external_dep_target(raw_target, platform, lang_suffix=''):
     elif type(raw_target) == type(""):
         target = (raw_target,)
     else:
-        fail('external dependency should be a tuple or string, ' +
-             'not {}'.format(raw_target))
+        fail("external dependency should be a tuple or string, " +
+             "not {}".format(raw_target))
 
     if len(target) in (1, 2):
         project = target[0]
@@ -86,11 +86,11 @@ def _external_dep_target(raw_target, platform, lang_suffix=''):
         rule = target[2]
 
     else:
-        fail(('illegal external dependency {}: must have 1, 2, or 3 elements').format(raw_target))
+        fail(("illegal external dependency {}: must have 1, 2, or 3 elements").format(raw_target))
 
     return _third_party_target(platform, project, rule)
 
 third_party = struct(
-    external_dep_target=_external_dep_target,
-    third_party_target=_third_party_target
+    external_dep_target = _external_dep_target,
+    third_party_target = _third_party_target,
 )

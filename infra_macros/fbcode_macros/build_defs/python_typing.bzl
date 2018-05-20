@@ -15,14 +15,13 @@ def get_typing_config_target():
     return read_string("python", "typing_config", None)
 
 def gen_typing_config_attrs(
-    target_name,
-    base_path="",
-    srcs=(),
-    deps=(),
-    typing=False,
-    typing_options="",
-    visibility=None,
-):
+        target_name,
+        base_path = "",
+        srcs = (),
+        deps = (),
+        typing = False,
+        typing_options = "",
+        visibility = None):
     """
     Generate typing configs, and gather those for our deps
 
@@ -53,23 +52,25 @@ def gen_typing_config_attrs(
     #       as something native in buck to also let it detect
     #       duplicate files
     typing_config = get_typing_config_target()
-    name = target_name + '-typing'
+    name = target_name + "-typing"
     cmds = ['mkdir -p "$OUT"']
     for dep in deps:
         # Experimental has visibility restricted, just skip them
-        if dep.startswith('//experimental'):
+        if dep.startswith("//experimental"):
             continue
+
         # not in fbcode don't follow out ex: xplat//target
-        if not dep.startswith('//') and not dep.startswith(':'):
+        if not dep.startswith("//") and not dep.startswith(":"):
             continue
         cmds.append(
-            'rsync -a "$(location {}-typing)/" "$OUT/"'.format(dep)
+            'rsync -a "$(location {}-typing)/" "$OUT/"'.format(dep),
         )
 
     if typing:
-        src_prefix = base_path.replace('.', '/')
+        src_prefix = base_path.replace(".", "/")
         file_name = paths.join(src_prefix, target_name)
-        cmds.append('mkdir -p `dirname $OUT/{}`'.format(file_name))
+        cmds.append("mkdir -p `dirname $OUT/{}`".format(file_name))
+
         # We should support generated sources at some pointa
         # If srcs is a dict then we should use the values
         if type(srcs) == type({}):
@@ -81,35 +82,36 @@ def gen_typing_config_attrs(
                 # TODO: This logic exists, but it may not be
                 #       correct unless the typing tool understands
                 #       ':<target>'
-                src if src[0] not in '@/:' else paths.basename(src)
+                src if src[0] not in "@/:" else paths.basename(src),
             )
             for src in srcs
         ]
-        cmd = '$(exe {}) part '.format(typing_config)
+        cmd = "$(exe {}) part ".format(typing_config)
         if typing_options:
             cmd += '--options="{}" '.format(typing_options)
-        cmd += '$OUT/{} {}'.format(file_name, ' '.join(srcs))
+        cmd += "$OUT/{} {}".format(file_name, " ".join(srcs))
         cmds.append(cmd)
 
     attrs = {}
-    attrs['name'] = name
+    attrs["name"] = name
+
     # Maybe we can fix this in the future, but specific visibility rules
     # break typing rules from depending on each other
-    attrs['visibility'] = get_visibility(None, name)
+    attrs["visibility"] = get_visibility(None, name)
+
     # Directory name is arbitrary
-    attrs['out'] = 'root'
-    attrs['cmd'] = '\n'.join(cmds)
+    attrs["out"] = "root"
+    attrs["cmd"] = "\n".join(cmds)
     return attrs
 
 def gen_typing_config(
-    target_name,
-    base_path='',
-    srcs=(),
-    deps=(),
-    typing=False,
-    typing_options='',
-    visibility=None,
-):
+        target_name,
+        base_path = "",
+        srcs = (),
+        deps = (),
+        typing = False,
+        typing_options = "",
+        visibility = None):
     """
     Generate typing configs, and gather those for our deps
 
@@ -134,12 +136,12 @@ def gen_typing_config(
         Nothing
     """
     attrs = gen_typing_config_attrs(
-        target_name=target_name,
-        base_path=base_path,
-        srcs=srcs,
-        deps=deps,
-        typing=typing,
-        typing_options=typing_options,
-        visibility=visibility,
+        target_name = target_name,
+        base_path = base_path,
+        srcs = srcs,
+        deps = deps,
+        typing = typing,
+        typing_options = typing_options,
+        visibility = visibility,
     )
     native.genrule(**attrs)
