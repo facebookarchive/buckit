@@ -25,6 +25,7 @@ def __get_current_architecture():
         fail("Current host architecture (%s) is unsupported" % arch)
 
 _all_platforms = third_party_config["platforms"].keys()
+
 _current_architecture = __get_current_architecture()
 
 def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
@@ -159,8 +160,8 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
 
 platform = struct(
     get_default_platform = _get_default_platform,
-    get_platform_for_current_buildfile = _get_platform_for_current_buildfile,
     get_platform_for_base_path = _get_platform_for_base_path,
     get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
+    get_platform_for_current_buildfile = _get_platform_for_current_buildfile,
     get_platform_overrides = _get_platform_overrides,
 )

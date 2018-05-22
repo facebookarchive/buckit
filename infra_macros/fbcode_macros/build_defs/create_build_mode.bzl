@@ -10,7 +10,13 @@ Simple module to create structs that are consumed by fbcode_macros//build_defs/b
 """
 
 """ The main modes that will usually be used """
-default_modes = ["dbg", "dev", "dbgo", "opt"]
+
+default_modes = [
+    "dbg",
+    "dev",
+    "dbgo",
+    "opt",
+]
 
 def create_build_mode(
         aspp_flags = (),

@@ -69,8 +69,8 @@ def _get_build_mode_overrides():
     }
 
 build_mode = struct(
-    get_build_modes_for_base_path = _get_build_modes_for_base_path,
-    get_build_modes_for_current_buildfile = _get_build_modes_for_current_buildfile,
-    get_build_modes_for_cell_and_base_path = _get_build_modes_for_cell_and_base_path,
     get_build_mode_overrides = _get_build_mode_overrides,
+    get_build_modes_for_base_path = _get_build_modes_for_base_path,
+    get_build_modes_for_cell_and_base_path = _get_build_modes_for_cell_and_base_path,
+    get_build_modes_for_current_buildfile = _get_build_modes_for_current_buildfile,
 )
