@@ -1166,14 +1166,18 @@ class CppConverter(base.Converter):
                 out_ldflags.append('-Wl,--gdb-index')
             ld_threads = self._context.buck_ops.read_config('fbcode', 'ld-threads')
             # lld does not (yet?) support the --thread-count option, so prevent
-            # it from being forwarded when using lld.
+            # it from being forwarded when using lld.  bfd seems to be in the
+            # same boat, and this happens on aarch64 machines.
             # FIXME: -fuse-ld= may take a path to an lld executable, for which
             #        this check will not work properly. Instead, maybe Context
             #        should have a member named 'linker', as it does with
             #        'compiler'?
             if ld_threads and \
                not core_tools.is_core_tool(base_path, name) and \
-               '-fuse-ld=lld' not in out_ldflags:
+               '-fuse-ld=lld' not in out_ldflags and \
+               self.get_platform_architecture(self.get_platform(base_path)) \
+               != 'aarch64' and \
+               '-fuse-ld=bfd' not in out_ldflags:
                 out_ldflags.extend([
                     '-Wl,--threads',
                     '-Wl,--thread-count,' + ld_threads,
