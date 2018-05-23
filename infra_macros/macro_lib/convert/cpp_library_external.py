@@ -214,7 +214,8 @@ class CppLibraryExternalConverter(base.Converter):
             imports=None,
             implicit_project_deps=True,
             supports_omnibus=None,
-            visibility=None):
+            visibility=None,
+            link_without_soname=None):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
@@ -245,7 +246,7 @@ class CppLibraryExternalConverter(base.Converter):
             soname = get_soname(solib_path)
         if soname is not None:
             attributes['soname'] = soname
-        if soname is None and os.path.exists(solib_path):
+        if (soname is None and os.path.exists(solib_path)) or link_without_soname:
             attributes['link_without_soname'] = True
 
         # Parse external deps.
