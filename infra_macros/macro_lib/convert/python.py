@@ -1257,7 +1257,7 @@ class PythonConverter(base.Converter):
                 if val is not None:
                     attrs[param] = val
 
-        if main_module != '__fb_test_main__':
+        if main_module not in {'__fb_test_main__', 'libfb.py.testslide.unittest'}:
             # Tests are properly enumerated from passed sources (see above).
             # For binary targets, we need this subtle hack to let
             # python_typecheck know where to start type checking the program.
