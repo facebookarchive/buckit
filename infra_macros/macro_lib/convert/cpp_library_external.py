@@ -54,19 +54,6 @@ def prefix_inputs(prefix, inputs):
         includes=[os.path.join(prefix, i) for i in inputs.includes])
 
 
-def get_soname(lib):
-    try:
-        output = subprocess.check_output(['objdump', '-p', lib])
-    except subprocess.CalledProcessError:
-        return None
-    for line in output.splitlines():
-        if line.strip():
-            parts = line.split()
-            if parts[0] == 'SONAME':
-                return parts[1]
-    return None
-
-
 class CppLibraryExternalConverter(base.Converter):
 
     def __init__(self, context, rule_type):
@@ -215,7 +202,7 @@ class CppLibraryExternalConverter(base.Converter):
             implicit_project_deps=True,
             supports_omnibus=None,
             visibility=None,
-            link_without_soname=None):
+            link_without_soname=False):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
@@ -234,20 +221,9 @@ class CppLibraryExternalConverter(base.Converter):
         if visibility is not None:
             attributes['visibility'] = visibility
 
-        # If the `soname` parameter isn't set, try to guess it from inspecting
-        # the DSO.
-        solib_path = (
-            self.get_lib_path(base_path, name, lib_dir, lib_name, '.so'))
-        self._context.buck_ops.add_build_file_dep('//' + solib_path)
-        # Use size to avoid parse warnings for linker scripts
-        # 228 was the largest linker script, and 5K the smallest real .so file
-        if (soname is None and os.path.exists(solib_path) and
-                os.path.getsize(solib_path) > 2048):
-            soname = get_soname(solib_path)
-        if soname is not None:
-            attributes['soname'] = soname
-        if (soname is None and os.path.exists(solib_path)) or link_without_soname:
-            attributes['link_without_soname'] = True
+        attributes['soname'] = soname
+        if link_without_soname:
+            attributes['link_without_soname'] = link_without_soname
 
         # Parse external deps.
         out_ext_deps = []
