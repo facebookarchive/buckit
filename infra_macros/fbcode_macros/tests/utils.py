@@ -168,6 +168,18 @@ class Cell:
             "default_build_file_syntax"
         ]:
             buckconfig["parser"]["default_build_file_syntax"] = "SKYLARK"
+        if "cxx" not in buckconfig or "cxx" not in buckconfig["cxx"]:
+            cxx = self._find_cxx()
+            cc = self._find_cc()
+            if cxx:
+                buckconfig["cxx"]["cxx"] = cxx
+                buckconfig["cxx"]["cxxpp"] = cxx
+                buckconfig["cxx"]["ld"] = cxx
+            if cc:
+                buckconfig["cxx"]["cc"] = cc
+                buckconfig["cxx"]["cpp"] = cc
+                buckconfig["cxx"]["aspp"] = cc
+
         parser = configparser.ConfigParser()
         for section, kvps in buckconfig.items():
             if len(kvps):
@@ -182,6 +194,22 @@ class Cell:
             return writer.getvalue()
         finally:
             writer.close()
+
+    def _find_cc(self):
+        for path_component in os.environ.get("PATH").split(os.pathsep):
+            for bin in ("gcc.par", "gcc"):
+                full_path = os.path.join(path_component, bin)
+                if os.path.exists(full_path):
+                    return full_path
+        return None
+
+    def _find_cxx(self):
+        for path_component in os.environ.get("PATH").split(os.pathsep):
+            for bin in ("g++.par", "g++"):
+                full_path = os.path.join(path_component, bin)
+                if os.path.exists(full_path):
+                    return full_path
+        return None
 
     def setup_filesystem(self):
         """

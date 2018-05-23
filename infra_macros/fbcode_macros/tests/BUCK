@@ -11,6 +11,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:missing_tp2_project.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
     "fbcode_macros//build_defs:paths_config.bzl",
     "fbcode_macros//build_defs:platform.bzl",
@@ -73,6 +74,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "export_files_test",
     srcs = ["export_files_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "missing_tp2_project_test",
+    srcs = ["missing_tp2_project_test.py"],
     deps = [":utils"],
 )
 
