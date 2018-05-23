@@ -22,6 +22,7 @@ def _third_party_target(platform, project, rule):
                   used in path creation
         project: The name of the project that is being referenced
         rule: The name of the rule inside of the project's build file
+
     Returns:
         The target for the args. This is something like
         //third-party-buck/<platform>/build/<project>:<rule> at Facebook,
@@ -64,6 +65,7 @@ def _external_dep_target(raw_target, platform, lang_suffix = ""):
         lang_suffix: If provided, this will be appended for rules that do not
                      explicitly specify a rule (i.e. the first three types of
                      arguments mentioned above)
+
     Returns:
         A normalized target for the specified platform, project and rule
     """
