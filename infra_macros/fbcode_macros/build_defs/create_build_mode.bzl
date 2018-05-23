@@ -108,6 +108,8 @@ def _combine(lhs, rhs):
         A value of the lhs argument's type, with the elements from the rhs
         added to it
     """
+    if not rhs:
+        return lhs
 
     # Note: 'isinstance' and 'issubclass' are not available in this environment,
     # so we check here for the exact type. Subclasses will not pass this check.
