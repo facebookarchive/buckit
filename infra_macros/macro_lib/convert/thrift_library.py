@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import collections
 import itertools
 import hashlib
+import pipes
 
 with allow_unsafe_import():  # noqa: magic
     import os
@@ -2282,6 +2283,8 @@ class RustThriftConverter(ThriftLangConverter):
             visibility,
             **kwargs):
         sources = self.merge_sources_map(sources_map).values()
+        crate_maps = ['--crate-map-file $(location {}-crate-map)'.format(dep)
+                        for dep in deps]
 
         attrs = collections.OrderedDict()
         attrs['name'] = '%s-gen-rs' % name
@@ -2289,8 +2292,12 @@ class RustThriftConverter(ThriftLangConverter):
             attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
-        attrs['cmd'] = '$(exe //common/rust/thrift/compiler:codegen) {} {} -o $OUT; /bin/rustfmt $OUT' \
-            .format(' '.join(['$(location %s)' % s for s in sources]), ' '.join(self.format_options(options)))
+        attrs['cmd'] = \
+            '$(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
+            .format(
+                sources=' '.join('$(location %s)' % s for s in sources),
+                options=' '.join(self.format_options(options)),
+                crate_maps=' '.join(crate_maps))
 
         # generated file: <name>/lib.rs
 
@@ -2306,10 +2313,6 @@ class RustThriftConverter(ThriftLangConverter):
             deps,
             visibility,
             **kwargs):
-
-        thrift_base = (
-            os.path.splitext(
-                os.path.basename(self.get_source_name(thrift_srcs.keys()[0])))[0])
 
         out_deps = [
             '//common/rust/thrift/runtime:rust_thrift',
@@ -2327,13 +2330,8 @@ class RustThriftConverter(ThriftLangConverter):
                 ('rust-crates-io', None, 'serde'),
             ]
 
-
         out_deps += deps
-
-        # Avoid some common names which are also Rust keywords
-        crate_name = thrift_base
-        if crate_name in RUST_KEYWORDS:
-            crate_name += "_"
+        crate_name = self.rust_crate_name(name, thrift_srcs)
 
         return self._rust_converter.convert(
             base_path,
@@ -2346,6 +2344,57 @@ class RustThriftConverter(ThriftLangConverter):
             visibility=visibility,
             **kwargs
         )
+
+    def rust_crate_name(self, name, thrift_srcs):
+        # Always name crate after rule - remapping will sort things out
+        crate_name = name.rsplit('-', 1)[0].replace('-', '_')
+        if crate_name in RUST_KEYWORDS:
+            crate_name += "_"
+        return crate_name
+
+    def get_rust_crate_map(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            visibility,
+            **kwargs):
+        # Generate a mapping from thrift file to crate and module. The
+        # file format is:
+        # thrift_path crate_name crate_alias [module]
+        #
+        # For single-thrift-file targets, we put it at the top of the namespace
+        # so users will likely want to alias the crate name to the thrift file
+        # name on import. For multi-thrift files, we put each file in its own
+        # module - the crate is named after the target, and the references are
+        # into the submodules.
+        crate_name = self.rust_crate_name(name, thrift_srcs)
+
+        crate_map = []
+        for src in thrift_srcs.keys():
+            src = os.path.join(base_path, self.get_source_name(src))
+            modname = os.path.splitext(os.path.basename(src))[0]
+            if len(thrift_srcs) > 1:
+                crate_map.append("{} {} {} {}"
+                                 .format(src, crate_name, crate_name, modname))
+            else:
+                crate_map.append("{} {} {}".format(src, crate_name, modname))
+
+        crate_map_name = '%s-crate-map' % name
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = crate_map_name
+        if visibility is not None:
+            attrs['visibility'] = visibility
+        attrs['out'] = os.path.join(os.curdir, crate_map_name + ".txt")
+        attrs['cmd'] = (
+            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
+            .format(pipes.quote('\n'.join(crate_map))))
+
+        return [Rule('genrule', attrs)]
 
     def get_language_rule(
             self,
@@ -2368,6 +2417,9 @@ class RustThriftConverter(ThriftLangConverter):
                 base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
         rules.extend(
             self.get_rust_to_rlib(
+                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
+        rules.extend(
+            self.get_rust_crate_map(
                 base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
 
         return rules
