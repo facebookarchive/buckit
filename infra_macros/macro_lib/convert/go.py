@@ -78,6 +78,7 @@ class GoConverter(base.Converter):
         compiler_flags=None,
         linker_flags=None,
         coverage_mode=None,
+        resources=None,
 
         # cgo
         cgo_deps=None,
@@ -104,6 +105,8 @@ class GoConverter(base.Converter):
             compiler_flags = []
         if linker_flags is None:
             linker_flags = []
+        if resources is None:
+            resources = []
 
         # cgo attributes
         if cgo_deps is None:
@@ -145,6 +148,9 @@ class GoConverter(base.Converter):
 
         if library:
             attributes['library'] = self.convert_build_target(base_path, library)
+
+        if resources:
+            attributes['resources'] = resources
 
         if self.is_binary():
             attributes['platform'] = self.get_platform(base_path)
