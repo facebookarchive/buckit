@@ -357,6 +357,7 @@ class _SphinxConverter(base.Converter):
 
         command = ' '.join((
             'mkdir $OUT &&',
+            'echo {BUCK_NONCE} >/dev/null &&',
             '{rsync_additional_docs}',
             '$(exe :{fbsphinx_wrapper_target})',
             'buck build',
@@ -367,6 +368,7 @@ class _SphinxConverter(base.Converter):
             '.',  # source dir
             '$OUT',
         )).format(
+            BUCK_NONCE=os.environ.get('BUCK_NONCE', ''),
             rsync_additional_docs=(
                 'rsync -a {} $SRCDIR &&'.format(
                     ' '.join((
