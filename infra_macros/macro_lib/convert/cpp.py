@@ -1029,10 +1029,16 @@ class CppConverter(base.Converter):
             if link_whole:
                 attributes['link_whole'] = link_whole
             if global_symbols:
-                flag = ('undefined' if out_link_style == 'static' else
-                        'export-dynamic-symbol')
-                out_exported_ldflags = ['-Wl,--%s,%s' % (flag, sym)
-                                        for sym in global_symbols]
+                if self.get_platform_architecture(
+                        self.get_platform(base_path)) == 'aarch64':
+                    # On aarch64 we use bfd linker which doesn't support
+                    # --export-dynamic-symbol. We force link_whole instead.
+                    attributes['link_whole'] = True
+                else:
+                    flag = ('undefined' if out_link_style == 'static' else
+                            'export-dynamic-symbol')
+                    out_exported_ldflags = ['-Wl,--%s,%s' % (flag, sym)
+                                            for sym in global_symbols]
 
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
