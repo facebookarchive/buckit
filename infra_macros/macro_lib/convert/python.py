@@ -181,7 +181,7 @@ class PythonConverter(base.Converter):
 
         return out_srcs
 
-    def parse_constraint(self, constraint):
+    def parse_constraint(self, platform, constraint):
         """
         Parse the given constraint into callable which tests a `LooseVersion`
         object.
@@ -192,10 +192,10 @@ class PythonConverter(base.Converter):
 
         # complex Constraints are silly, we only have py2 and py3
         if constraint in (2, '2'):
-            constraint = self.get_py2_version()
+            constraint = self.get_py2_version(platform)
             op = operator.eq
         elif constraint in (3, '3'):
-            constraint = self.get_py3_version()
+            constraint = self.get_py3_version(platform)
             op = operator.eq
         elif constraint.startswith('<='):
             constraint = constraint[2:].lstrip()
@@ -221,18 +221,24 @@ class PythonConverter(base.Converter):
         # We don't match py2 by default anymore. only py3
         if constraint is None:
             return False
-        matches = self.parse_constraint(constraint)
-        return matches(LooseVersion(self.get_py2_version()))
+        matched, = {
+            self.parse_constraint(p, constraint)
+                (LooseVersion(self.get_py2_version(p)))
+            for p in self.get_platforms()}
+        return matched
 
     def matches_py3(self, constraint):
-        matches = self.parse_constraint(constraint)
-        return matches(LooseVersion(self.get_py3_version()))
+        matched, = {
+            self.parse_constraint(p, constraint)
+                (LooseVersion(self.get_py3_version(p)))
+            for p in self.get_platforms()}
+        return matched
 
-    def get_python_version(self, constraint):
+    def get_python_version(self, platform, constraint):
         if self.matches_py3(constraint):
-            return self.get_py3_version()
+            return self.get_py3_version(platform)
         if self.matches_py2(constraint):
-            return self.get_py2_version()
+            return self.get_py2_version(platform)
         raise ValueError('invalid python constraint: {!r}'.format(constraint))
 
     def get_interpreter(self, platform, python_version):
@@ -676,18 +682,18 @@ class PythonConverter(base.Converter):
                     py3_srcs.update(vsrcs)
             if py2_srcs or py3_srcs:
                 py = self.get_tp2_project_target('python')
-                py2 = self.get_py2_version()
-                py3 = self.get_py3_version()
                 platforms = (
                     self.get_platforms()
                     if not self.is_tp2(base_path)
                     else [self.get_tp2_platform(base_path)])
                 all_versioned_srcs.append(
-                    ({self.get_dep_target(py, platform=p): py2
+                    ({self.get_dep_target(py, platform=p):
+                          self.get_py2_version(p)
                       for p in platforms},
                      py2_srcs))
                 all_versioned_srcs.append(
-                    ({self.get_dep_target(py, platform=p): py3
+                    ({self.get_dep_target(py, platform=p):
+                          self.get_py3_version(p)
                       for p in platforms},
                      py3_srcs))
 
@@ -805,7 +811,7 @@ class PythonConverter(base.Converter):
         platform_deps = []
         out_preload_deps = []
         platform = self.get_platform(base_path)
-        python_version = self.get_python_version(py_version)
+        python_version = self.get_python_version(platform, py_version)
         python_platform = self.get_python_platform(platform, python_version)
 
         if allocator is None:
@@ -1109,8 +1115,9 @@ class PythonConverter(base.Converter):
             versions = {py_version: name}
         else:
             versions = {}
+            platform = self.get_platform(base_path)
             for py_ver in py_version:
-                python_version = self.get_python_version(py_ver)
+                python_version = self.get_python_version(platform, py_ver)
                 new_name = name + '-' + python_version
                 versions[py_ver] = new_name
         py_tests = []
@@ -1222,7 +1229,7 @@ class PythonConverter(base.Converter):
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
             ('version_universe',
-             self.get_version_universe(self.get_py3_version())),
+             self.get_version_universe(self.get_py3_version(platform))),
         ))
         if visibility is not None:
             attrs['visibility'] = visibility
