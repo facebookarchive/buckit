@@ -65,7 +65,6 @@ class CustomRuleConverter(base.Converter):
             srcs=[],
             deps=[],
             strict=True,
-            output_subdir=None,
             env=None,
             visibility=None,
             no_remote=False):

@@ -1043,7 +1043,6 @@ class PythonConverter(base.Converter):
         emails=None,
         external_deps=[],
         needed_coverage=None,
-        output_subdir=None,
         argcomplete=None,
         strict_tabs=None,
         compile=None,
