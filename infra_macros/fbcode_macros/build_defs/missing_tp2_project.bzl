@@ -4,7 +4,7 @@ Helper macros for rules that do not exist for a given platform
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-_CMD_TEMPLATE = """echo {} | fold -s -w 70 | sed 's, *$,,' | awk 'NR == 1 {{ print $0 }} NR > 1 {{ printf("       %s\\n", $0) }}' 1>&2"""
+_CMD_TEMPLATE = """echo {} | fold -s -w 70 | sed 's, *$,,' | awk 'NR == 1 {{ print $0 }} NR > 1 {{ printf("       %s\\n", $0) }}' 1>&2; exit 1"""
 
 def missing_tp2_project(name, platform, project):
     """

@@ -46,3 +46,6 @@ class MissingTp2ProjectTest(tests.utils.TestCase):
                 'platform "random_platform"'
             )
         )
+        self.assertFalse(
+            "java.nio.file.NoSuchFileException" in result.stderr,
+            msg="Found NoSuchFileException in %s" % result.stderr)
