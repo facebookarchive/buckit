@@ -2723,14 +2723,17 @@ class ThriftLibraryConverter(base.Converter):
         # Types are generated for all legacy Python Thrift
         if 'py' in languages:
             languages.add('pyi')
+            # Save the options for pyi to use
+            py_options = (self.parse_thrift_options(
+                kwargs.get('thrift_py_options', ())
+            ))
 
         if 'py-asyncio' in languages:
             languages.add('pyi-asyncio')
-
-        if 'rust' in languages:
-            rust_options = (
-                self.parse_thrift_options(
-                    kwargs.get('thrift_rust_options', ())))
+            # Save the options for pyi to use
+            py_asyncio_options = (self.parse_thrift_options(
+                kwargs.get('thrift_py_asyncio_options', ())
+            ))
 
         # Generate rules for all supported languages.
         for lang in languages:
@@ -2740,10 +2743,12 @@ class ThriftLibraryConverter(base.Converter):
                 self.parse_thrift_options(
                     kwargs.get('thrift_{}_options'.format(
                         lang.replace('-', '_')), ())))
+            if lang == "pyi":
+                options.update(py_options)
+            if lang == "pyi-asyncio":
+                options.update(py_asyncio_options)
             if lang == 'py3':
                 options.update(cpp2_options)
-            if lang == 'rust':
-                options.update(rust_options)
             all_gen_srcs = collections.OrderedDict()
             for thrift_src, services in thrift_srcs.iteritems():
                 thrift_name = self.get_source_name(thrift_src)
