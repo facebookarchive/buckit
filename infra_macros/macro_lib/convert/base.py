@@ -328,12 +328,17 @@ class Converter(object):
         else:
             return self.get_third_party_root(platform)
 
+    def get_third_party_tools_root(self, platform):
+        return os.path.join(self.get_third_party_root(platform), 'tools')
+
     def get_repo_root(self, repo, platform):
         if repo is None:
             return ''
         elif (not self._context.config.get_unknown_cells_are_third_party() or
               self._context.buck_ops.read_config('repositories', repo)):
             return ''
+        elif repo == 'third-party-tools':
+            return self.get_third_party_tools_root(platform)
         else:
             return self.get_third_party_build_root(platform)
 
