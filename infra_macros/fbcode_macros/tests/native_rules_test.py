@@ -65,17 +65,23 @@ class NativeRulesTest(tests.utils.TestCase):
               exe = ":sh_binary",
             )
 
+            cxx_genrule(
+              name = "cxx_genrule",
+              cmd = "echo > $OUT",
+              out = "out.h",
+            )
+
+            remote_file(
+              name = "file",
+              sha1 = "d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
+              url = "http://example.com/foo",
+            )
+
             filegroup(
               name = "filegroup",
               srcs = [
                 "python_library.py",
               ],
-            )
-
-            cxx_genrule(
-              name = "cxx_genrule",
-              cmd = "echo > $OUT",
-              out = "out.h",
             )
 
             genrule(
@@ -97,12 +103,6 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "python_library.py",
               ],
-            )
-
-            remote_file(
-              name = "file",
-              sha1 = "d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
-              url = "http://example.com/foo",
             )
 
             sh_binary(
@@ -154,19 +154,19 @@ class NativeRulesTest(tests.utils.TestCase):
               ],
             )
 
+            python_library(
+              name = "python_library",
+              srcs = [
+                "python_library.py",
+              ],
+            )
+
             genrule(
               name = "python_library-typing",
               cmd = "mkdir -p \"$OUT\"",
               out = "root",
               visibility = [
                 "PUBLIC",
-              ],
-            )
-
-            python_library(
-              name = "python_library",
-              srcs = [
-                "python_library.py",
               ],
             )
         """)

@@ -291,18 +291,18 @@ class ExportFilesTest(tests.utils.TestCase):
 
         expected = dedent(
             """\
-        genrule(
-          name = "file1.sh-typing",
-          cmd = "mkdir -p \\"$OUT\\"",
-          out = "root",
+        export_file(
+          name = "file1.sh",
+          mode = "reference",
           visibility = [
             "PUBLIC",
           ],
         )
 
-        export_file(
-          name = "file1.sh",
-          mode = "reference",
+        genrule(
+          name = "file1.sh-typing",
+          cmd = "mkdir -p \\"$OUT\\"",
+          out = "root",
           visibility = [
             "PUBLIC",
           ],
