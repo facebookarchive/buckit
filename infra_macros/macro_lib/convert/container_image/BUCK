@@ -22,7 +22,7 @@ python_unittest(
     srcs = ["tests/test_volume_for_repo.py"],
     base_module = "",
     needed_coverage = [(
-        1.0,
+        100,
         ":volume_for_repo",
     )],
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
@@ -58,7 +58,7 @@ python_unittest(
     srcs = ["tests/test_subvolume_garbage_collector.py"],
     base_module = "",
     needed_coverage = [(
-        1.0,
+        100,
         ":subvolume_garbage_collector",
     )],
     par_style = "zip",  # "fastzip" won't work because of `fake_sudo.sh`

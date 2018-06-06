@@ -12,7 +12,7 @@ python_unittest(
     srcs = ["tests/test_subvolume_on_disk.py"],
     base_module = "compiler",
     needed_coverage = [(
-        1.0,
+        100,
         ":subvolume_on_disk",
     )],
     deps = [":subvolume_on_disk"],
@@ -29,7 +29,7 @@ python_unittest(
     srcs = ["tests/test_enriched_namedtuple.py"],
     base_module = "compiler",
     needed_coverage = [(
-        1.0,
+        100,
         ":enriched_namedtuple",
     )],
     deps = [":enriched_namedtuple"],
@@ -51,7 +51,7 @@ python_unittest(
     srcs = ["tests/test_requires_provides.py"],
     base_module = "compiler",
     needed_coverage = [(
-        1.0,
+        100,
         ":requires_provides",
     )],
     deps = [":requires_provides"],
@@ -79,7 +79,7 @@ python_unittest(
     srcs = ["tests/test_items.py"],
     base_module = "compiler",
     needed_coverage = [(
-        1.0,
+        100,
         ":items",
     )],
     deps = [
@@ -100,7 +100,7 @@ python_unittest(
     srcs = ["tests/test_dep_graph.py"],
     base_module = "compiler",
     needed_coverage = [(
-        1.0,
+        100,
         ":dep_graph",
     )],
     deps = [":dep_graph"],
@@ -173,7 +173,7 @@ image_feature_python_unittest(
     # executed by the Buck Python runtime.  I could conceivably shim all
     # that out, but it seems entirely not worth the trouble.
     needed_coverage = [(
-        1.0,
+        100,
         ":items_for_features",
     )],
     deps = [
@@ -197,7 +197,7 @@ image_feature_python_unittest(
     name = "test-compiler",
     srcs = ["tests/test_compiler.py"],
     needed_coverage = [(
-        1.0,
+        100,
         ":compiler",
     )],
     deps = [

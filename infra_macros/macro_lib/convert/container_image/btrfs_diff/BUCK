@@ -9,7 +9,7 @@ python_unittest(
     srcs = ["tests/test_coroutine_utils.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":coroutine_utils",
     )],
     deps = [":coroutine_utils"],
@@ -26,7 +26,7 @@ python_unittest(
     srcs = ["tests/test_extent.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":extent",
     )],
     deps = [":extent"],
@@ -43,7 +43,7 @@ python_unittest(
     srcs = ["tests/test_freeze.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":freeze",
     )],
     deps = [":freeze"],
@@ -67,7 +67,7 @@ python_unittest(
     srcs = ["tests/test_inode_id.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":inode_id",
     )],
     deps = [
@@ -92,7 +92,7 @@ python_unittest(
     srcs = ["tests/test_inode.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":inode",
     )],
     deps = [
@@ -119,7 +119,7 @@ python_unittest(
     srcs = ["tests/test_incomplete_inode.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":incomplete_inode",
     )],
     deps = [":incomplete_inode"],
@@ -141,7 +141,7 @@ python_unittest(
     srcs = ["tests/test_extents_to_chunks.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":extents_to_chunks",
     )],
     deps = [":extents_to_chunks"],
@@ -198,7 +198,7 @@ python_unittest(
     ],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":parse_send_stream",
     )],
     par_style = "zip",  # required by :test_demo_sendstreams
@@ -236,7 +236,7 @@ python_unittest(
     srcs = ["tests/test_subvolume.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":subvolume",
     )],
     deps = [
@@ -264,7 +264,7 @@ python_unittest(
     srcs = ["tests/test_subvolume_set.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":subvolume_set",
     )],
     deps = [
@@ -289,7 +289,7 @@ python_unittest(
     srcs = ["tests/test_sendstream_to_subvolume_set_integration.py"],
     base_module = "btrfs_diff",
     needed_coverage = [(
-        1.0,
+        100,
         ":inode_utils",
     )],
     par_style = "zip",  # required by :test_demo_sendstreams
