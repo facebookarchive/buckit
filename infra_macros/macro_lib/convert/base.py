@@ -441,9 +441,6 @@ class Converter(object):
 
         assert target.base_path is not None, str(target)
 
-        if platform is None:
-            platform = self.get_default_platform()
-
         repo_root = self.get_repo_root(target.repo, platform)
 
         return self.get_target(
@@ -511,14 +508,14 @@ class Converter(object):
 
         return processed
 
-    def convert_external_build_target(self, target, lang_suffix=''):
+    def convert_external_build_target(self, target, platform=None, lang_suffix=''):
         """
         Convert the given build target reference from an external dep TARGETS
         file reference.
         """
 
         parsed = self.normalize_external_dep(target, lang_suffix=lang_suffix)
-        return self.get_dep_target(parsed, source=target)
+        return self.get_dep_target(parsed, source=target, platform=platform)
 
     def convert_build_target(self, base_path, target, platform=None):
         """

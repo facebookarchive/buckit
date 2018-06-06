@@ -79,15 +79,23 @@ class DConverter(base.Converter):
 
         dependencies = []
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(
+                self.convert_build_target(
+                    base_path,
+                    target,
+                    platform=platform))
         for target in external_deps:
-            dependencies.append(self.convert_external_build_target(target))
+            dependencies.append(
+                self.convert_external_build_target(target, platform=platform))
         # All D rules get an implicit dep on the runtime.
         dependencies.append(
             self.get_dep_target(
-                ThirdPartyRuleTarget('dlang', 'druntime')))
+                ThirdPartyRuleTarget('dlang', 'druntime'),
+                platform=platform))
         dependencies.append(
-            self.get_dep_target(ThirdPartyRuleTarget('dlang', 'phobos')))
+            self.get_dep_target(
+                ThirdPartyRuleTarget('dlang', 'phobos'),
+                platform=platform))
         # Add in binary-specific link deps.
         if self.is_binary():
             d, r = self.get_binary_link_deps(

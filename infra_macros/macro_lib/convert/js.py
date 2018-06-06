@@ -41,10 +41,17 @@ class JsConverter(base.Converter):
         out_deps = []
 
         for dep in deps:
-            out_deps.append(self.convert_build_target(base_path, dep))
+            out_deps.append(
+                self.convert_build_target(
+                    base_path,
+                    dep,
+                    platform=self.get_default_platform()))
 
         for dep in external_deps:
-            out_deps.append(self.convert_external_build_target(dep))
+            out_deps.append(
+                self.convert_external_build_target(
+                    dep,
+                    platform=self.get_default_platform()))
 
         return out_deps
 

@@ -940,10 +940,18 @@ class PythonConverter(base.Converter):
         attributes['tests'] = tests
 
         if args:
-            attributes['args'] = self.convert_args_with_macros(base_path, args)
+            attributes['args'] = (
+                self.convert_args_with_macros(
+                    base_path,
+                    args,
+                    platform=platform))
 
         if env:
-            attributes['env'] = self.convert_env_with_macros(base_path, env)
+            attributes['env'] = (
+                self.convert_env_with_macros(
+                    base_path,
+                    env,
+                    platform=platform))
 
         if emails:
             attributes['contacts'] = emails
