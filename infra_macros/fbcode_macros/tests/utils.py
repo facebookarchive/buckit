@@ -587,6 +587,8 @@ def with_project(
 
             with Project(*project_args, **project_kwargs) as project:
                 new_args = args + (project.root_cell, )
+                if isinstance(new_args[0], TestCase):
+                    new_args[0].setUpProject(project.root_cell)
                 project.root_cell.update_buckconfig(
                     "parser", "default_build_file_syntax", build_file_syntax
                 )
@@ -631,6 +633,21 @@ class TestMethodRenamer(type):
 @six.add_metaclass(TestMethodRenamer)
 class TestCase(unittest.TestCase):
     maxDiff = None
+    setupPathsConfig = True
+    setupThirdPartyConfig = True
+    setupPlatformOverrides = True
+    setupBuildOverries = True
+
+    def setUpProject(self, root):
+        # Setup some defaults for the environment
+        if self.setupPathsConfig:
+            self.addPathsConfig(root)
+        if self.setupThirdPartyConfig:
+            self.addDummyThirdPartyConfig(root)
+        if self.setupPlatformOverrides:
+            self.addDummyPlatformOverrides(root)
+        if self.setupBuildOverries:
+            self.addDummyBuildModeOverrides(root)
 
     def addDummyThirdPartyConfig(self, root):
         current_arch = platform.machine()
@@ -641,15 +658,19 @@ class TestCase(unittest.TestCase):
                 "platforms": {{
                     "gcc5": {{
                         "architecture": "{current_arch}",
+                        "tools": {{}},
                     }},
                     "gcc6": {{
                         "architecture": "{current_arch}",
+                        "tools": {{}},
                     }},
                     "gcc7": {{
                         "architecture": "{current_arch}",
+                        "tools": {{}},
                     }},
                     "gcc5-other": {{
                         "architecture": "{other_arch}",
+                        "tools": {{}},
                     }},
                 }},
             }}

@@ -371,8 +371,6 @@ class BuildModeTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_helper_util_runs_properly(self, root):
-        self.addDummyPlatformOverrides(root)
-        self.addDummyThirdPartyConfig(root)
         build_mode_override = dedent("""
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",

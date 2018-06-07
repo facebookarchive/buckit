@@ -33,7 +33,6 @@ class ThirdPartyTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_third_party_target_works(self, root):
-        self.addPathsConfig(root)
         commands = [
             'third_party.third_party_target("platform", "project", "rule")',
         ]
@@ -44,7 +43,6 @@ class ThirdPartyTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_external_dep_target_fails_on_wrong_tuple_size(self, root):
-        self.addPathsConfig(root)
         commands = [
             'third_party.external_dep_target(' +
             '("foo", "bar", "baz", "other"), "platform")',
@@ -57,7 +55,6 @@ class ThirdPartyTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_external_dep_target_fails_on_bad_raw_target(self, root):
-        self.addPathsConfig(root)
         commands = [
             'third_party.external_dep_target({"not_a_string": "or_tuple"}, '
             '"platform")',
@@ -69,7 +66,6 @@ class ThirdPartyTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_external_dep(self, root):
-        self.addPathsConfig(root)
         commands = [
             'third_party.external_dep_target("foo", "platform")',
             'third_party.external_dep_target("foo", "platform", "-py")',

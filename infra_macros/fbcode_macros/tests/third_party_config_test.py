@@ -20,6 +20,7 @@ class ThirdPartyConfigTest(tests.utils.TestCase):
             "third_party_config"
         )
     ]
+    setupPlatformOverrides = False
 
     @tests.utils.with_project()
     def test_imports_third_party_lib(self, root):
