@@ -237,20 +237,21 @@ class PythonSwigConverter(SwigLangConverter):
             **kwargs):
 
         # Build the C/C++ python extension from the generated C/C++ sources.
-        out_compiler_flags = []
-        # Generated code uses a lot of shadowing, so disable GCC warnings
-        # related to this.
-        if self._context.compiler == 'gcc':
-            out_compiler_flags.append('-Wno-shadow')
-            out_compiler_flags.append('-Wno-shadow-local')
-            out_compiler_flags.append('-Wno-shadow-compatible-local')
         for rule in self._cpp_python_extension_converter.convert(
             base_path,
             name=name + '-ext',
             srcs=[src],
             base_module=py_base_module,
             module_name='_' + module,
-            compiler_flags=out_compiler_flags,
+            # Generated code uses a lot of shadowing, so disable GCC warnings
+            # related to this.
+            compiler_specific_flags={
+                'gcc': [
+                    '-Wno-shadow',
+                    '-Wno-shadow-local',
+                    '-Wno-shadow-compatible-local',
+                ],
+            },
             # This is pretty gross.  We format the deps just to get
             # re-parsed by the C/C++ converter.  Long-term, it'd be
             # be nice to support a better API in the converters to
