@@ -40,6 +40,9 @@ class DConverter(base.Converter):
     def is_binary(self):
         return self.get_fbconfig_rule_type() in ('d_binary', 'd_unittest')
 
+    def _get_platform(self):
+        return self._context.buck_ops.read_config('d', 'platform', None)
+
     def convert(self,
                 base_path,
                 name=None,
@@ -52,7 +55,7 @@ class DConverter(base.Converter):
                 **kwargs):
         rules = []
 
-        platform = self.get_default_platform()
+        platform = self._get_platform()
 
         attributes = collections.OrderedDict()
 
