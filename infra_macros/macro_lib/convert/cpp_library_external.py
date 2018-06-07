@@ -202,7 +202,15 @@ class CppLibraryExternalConverter(base.Converter):
             implicit_project_deps=True,
             supports_omnibus=None,
             visibility=None,
-            link_without_soname=False):
+            link_without_soname=False,
+            static_lib=None,  # ignored for now
+            static_pic_lib=None,  # ignored for now
+            shared_lib=None,  # ignored for now
+            versioned_static_lib=None,  # ignored for now
+            versioned_static_pic_lib=None,  # ignored for now
+            versioned_shared_lib=None,  # ignored for now
+            versioned_header_dirs=None,  # ignored for now
+            ):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
