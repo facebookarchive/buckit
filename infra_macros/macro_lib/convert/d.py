@@ -102,7 +102,7 @@ class DConverter(base.Converter):
                 base_path,
                 name,
                 attributes['linker_flags'])
-            dependencies.extend(self.format_deps(d))
+            dependencies.extend(self.format_deps(d, platform=platform))
             rules.extend(r)
         attributes['deps'] = dependencies
 
