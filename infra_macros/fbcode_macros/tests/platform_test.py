@@ -142,7 +142,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         statements = [
-            'platform.get_default_platform()',
+            "platform.get_default_platform()",
         ]
         root.update_buckconfig("fbcode", "require_platform", "true")
         root.update_buckconfig("fbcode", "platform", "gcc5")
@@ -156,7 +156,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         statements = [
-            'platform.get_default_platform()',
+            "platform.get_default_platform()",
         ]
         root.update_buckconfig("fbcode", "require_platform", "false")
         root.update_buckconfig("fbcode", "platform", "gcc5")
@@ -170,7 +170,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         statements = [
-            'platform.get_default_platform()',
+            "platform.get_default_platform()",
         ]
         root.update_buckconfig("fbcode", "require_platform", "false")
         root.update_buckconfig("fbcode", "platform", "gcc5")
@@ -267,8 +267,8 @@ class PlatformTest(tests.utils.TestCase):
         root.project.cells["fbcode_macros"].add_file(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
-        root.update_buckconfig('fbcode', 'platform_files', 'false')
-        root.update_buckconfig('cxx', 'default_platform', 'gcc8')
+        root.update_buckconfig("fbcode", "platform_files", "false")
+        root.update_buckconfig("cxx", "default_platform", "gcc8")
 
         statements = [
             'platform.get_platform_for_base_path("foo/bar")',
@@ -301,14 +301,14 @@ class PlatformTest(tests.utils.TestCase):
         )
 
         result = root.run([
-            'buck',
-            'run',
-            'fbcode_macros//tools:get_platform',
-            'foo/bar',
-            'foo/bar-other',
-            'foo/baz',
-            'foo',
-            'foobar',
+            "buck",
+            "run",
+            "fbcode_macros//tools:get_platform",
+            "foo/bar",
+            "foo/bar-other",
+            "foo/baz",
+            "foo",
+            "foobar",
         ], {}, {})
         self.assertSuccess(result)
         expected = dedent("""

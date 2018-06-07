@@ -134,7 +134,7 @@ def _get_tool_target(project, subpath, target_name, platform):
 
 def _get_tool_bin_target(project, platform):
     """
-    The the 'bin' target for a given project and platform.
+    The the "bin" target for a given project and platform.
 
     This is the main target for a tool, like gcc or thrift
     """

@@ -61,7 +61,7 @@ class ThirdPartyTest(tests.utils.TestCase):
         ]
         self.assertFailureWithMessage(
             root.run_unittests(self.includes, commands),
-            'external dependency should be a tuple or string'
+            "external dependency should be a tuple or string"
         )
 
     @tests.utils.with_project()
@@ -77,14 +77,14 @@ class ThirdPartyTest(tests.utils.TestCase):
             'third_party.external_dep_target(("foo", None, "bar"), "platform")',
         ]
         expected = [
-            '//third-party-buck/platform/build/foo:foo',
-            '//third-party-buck/platform/build/foo:foo-py',
-            '//third-party-buck/platform/build/foo:foo',
-            '//third-party-buck/platform/build/foo:foo-py',
-            '//third-party-buck/platform/build/foo:foo',
-            '//third-party-buck/platform/build/foo:foo-py',
-            '//third-party-buck/platform/build/foo:bar',
-            '//third-party-buck/platform/build/foo:bar',
+            "//third-party-buck/platform/build/foo:foo",
+            "//third-party-buck/platform/build/foo:foo-py",
+            "//third-party-buck/platform/build/foo:foo",
+            "//third-party-buck/platform/build/foo:foo-py",
+            "//third-party-buck/platform/build/foo:foo",
+            "//third-party-buck/platform/build/foo:foo-py",
+            "//third-party-buck/platform/build/foo:bar",
+            "//third-party-buck/platform/build/foo:bar",
         ]
         self.assertSuccess(
             root.run_unittests(self.includes, commands), *expected
@@ -104,14 +104,14 @@ class ThirdPartyTest(tests.utils.TestCase):
             'third_party.external_dep_target(("foo", None, "bar"), "platform")',
         ]
         expected = [
-            'foo//foo:foo',
-            'foo//foo:foo-py',
-            'foo//foo:foo',
-            'foo//foo:foo-py',
-            'foo//foo:foo',
-            'foo//foo:foo-py',
-            'foo//foo:bar',
-            'foo//foo:bar',
+            "foo//foo:foo",
+            "foo//foo:foo-py",
+            "foo//foo:foo",
+            "foo//foo:foo-py",
+            "foo//foo:foo",
+            "foo//foo:foo-py",
+            "foo//foo:bar",
+            "foo//foo:bar",
         ]
         self.assertSuccess(
             root.run_unittests(self.includes, commands), *expected
@@ -128,9 +128,9 @@ class ThirdPartyTest(tests.utils.TestCase):
             'third_party.replace_third_party_repo("@/third-party:foo:bar/baz", "gcc-5")',
         ]
         expected = [
-            'foo bar',
-            '//third-party-buck/default/build/foo:bar/baz',
-            '//third-party-buck/gcc-5/build/foo:bar/baz',
+            "foo bar",
+            "//third-party-buck/default/build/foo:bar/baz",
+            "//third-party-buck/gcc-5/build/foo:bar/baz",
         ]
         self.assertSuccess(
             root.run_unittests(self.includes, commands, buckfile="foo/BUCK"), *expected

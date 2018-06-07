@@ -17,10 +17,10 @@ import platform
 
 parser = argparse.ArgumentParser(
     description="Print out path:platform mapping for a list of subdirectories")
-parser.add_argument('--platforms-file', required=True)
-parser.add_argument('--repo', default='fbcode')
-parser.add_argument('--architecture')
-parser.add_argument('dirs', nargs='+')
+parser.add_argument("--platforms-file", required=True)
+parser.add_argument("--repo", default="fbcode")
+parser.add_argument("--architecture")
+parser.add_argument("dirs", nargs="+")
 args = parser.parse_args(sys.argv[1:])
 
 # This file name is set by the command alias in tools/BUCK
@@ -39,5 +39,5 @@ for user_dir in args.dirs:
             break
         user_dir = os.path.dirname(user_dir)
     else:
-        plat = dirs_for_cell[''][arch_string]
-    print('%s:%s' % (original_user_dir, plat))
+        plat = dirs_for_cell[""][arch_string]
+    print("%s:%s" % (original_user_dir, plat))

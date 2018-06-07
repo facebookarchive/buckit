@@ -17,7 +17,7 @@ def missing_tp2_project(name, platform, project):
     Args:
         name: The name of the rule within the project that is unavailable
         project: The high level name of the project that is unavailable
-                  (e.g. 'openssl', or 'gflags')
+                  (e.g. "openssl", or "gflags")
         platform: The name of the platform that the project is unavailable for
     """
     msg = 'ERROR: {}: project "{}" does not exist for platform "{}"'.format(

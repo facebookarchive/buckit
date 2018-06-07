@@ -107,7 +107,7 @@ def _get_core_tools_path():
     Get the path to a list of core tools
 
     If set, the include_def style path to a file that contains a list of core
-    tools. This is only useful in Facebook\'s repository and is used to reduce
+    tools. This is only useful in Facebook's repository and is used to reduce
     rulekey thrashing
 
     Returns:
@@ -210,13 +210,13 @@ def _get_fbcode_style_deps_are_third_party():
 
 def _get_gtest_lib_dependencies():
     """
-    The targets that will provide gtest C++ tests\' gtest and gmock deps
+    The targets that will provide gtest C++ tests' gtest and gmock deps
     """
     return read_string("fbcode", "gtest_lib_dependencies", None)
 
 def _get_gtest_main_dependency():
     """
-    The target that will provide gtest C++ tests\' main function
+    The target that will provide gtest C++ tests' main function
     """
     return read_string("fbcode", "gtest_main_dependency", None)
 
@@ -403,7 +403,7 @@ def _get_use_build_info_linker_flags():
 
 def _get_use_custom_par_args():
     """
-    If set, use custom build arguments for Facebook\'s internal pex build script
+    If set, use custom build arguments for Facebook's internal pex build script
     """
     return read_boolean("fbcode", "use_custom_par_args", False)
 

@@ -41,7 +41,7 @@ def _get_build_modes_for_cell_and_base_path(cell, path):
 
     Returns:
         A dictionary of mode name -> structs containing additional flags. e.g.
-        one might return {'dev': create_build_mode(CFLAGS=["-DDEBUG"])}
+        one might return {"dev": create_build_mode(CFLAGS=["-DDEBUG"])}
 
         NOTE: This will invoke a method at runtime because some build mode
               definiitions require a build file context (e.g. for read_config)

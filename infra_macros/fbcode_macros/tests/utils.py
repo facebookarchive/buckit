@@ -40,7 +40,7 @@ UnitTestResult = collections.namedtuple(
     "UnitTestResult", ["returncode", "stdout", "stderr", "debug_lines"]
 )
 AuditTestResult = collections.namedtuple(
-    'AuditTestResult', ['returncode', 'stdout', 'stderr', 'files']
+    "AuditTestResult", ["returncode", "stdout", "stderr", "files"]
 )
 
 
@@ -304,8 +304,8 @@ class Cell:
         current_file = None
         file_contents = ""
         for line in stdout.splitlines():
-            if line.startswith('#'):
-                found_filename = line.strip('# ')
+            if line.startswith("#"):
+                found_filename = line.strip("# ")
                 if found_filename in ret:
                     if current_file is not None:
                         ret[current_file] = file_contents.strip()
@@ -339,10 +339,10 @@ class Cell:
         """
         default_env = {}
         if not self.project.run_buckd:
-            default_env['NO_BUCKD'] = '1'
+            default_env["NO_BUCKD"] = "1"
         environment = default_env.update(environment or {})
 
-        cmd = ['buck', 'audit', 'rules'] + buck_files
+        cmd = ["buck", "audit", "rules"] + buck_files
 
         ret = self.run(cmd, {}, environment)
         audit_files = self._parse_audit_output(ret.stdout, buck_files)

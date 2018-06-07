@@ -25,7 +25,7 @@ class ThirdPartyConfigTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_imports_third_party_lib(self, root):
         statements = [
-            'len(third_party_config) > 0',
+            "len(third_party_config) > 0",
             (
                 'all(["architecture" in platform for platform in '
                 'third_party_config["platforms"].values()])'

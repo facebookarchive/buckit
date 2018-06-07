@@ -17,9 +17,9 @@ import os
 
 parser = argparse.ArgumentParser(
     description="Print out path:build_mode mapping for a list of subdirectories")
-parser.add_argument('--build-modes-file', required=True)
-parser.add_argument('--repo', default='fbcode')
-parser.add_argument('dirs', nargs='+')
+parser.add_argument("--build-modes-file", required=True)
+parser.add_argument("--repo", default="fbcode")
+parser.add_argument("dirs", nargs="+")
 args = parser.parse_args(sys.argv[1:])
 
 # This file name is set by the command alias in tools/BUCK
@@ -41,4 +41,4 @@ for user_dir in args.dirs:
         user_dir = os.path.dirname(user_dir)
     else:
         build_mode = {}
-    print('%s:%s' % (original_user_dir, json.dumps(build_mode, sort_keys=True)))
+    print("%s:%s" % (original_user_dir, json.dumps(build_mode, sort_keys=True)))

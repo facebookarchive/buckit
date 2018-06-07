@@ -195,32 +195,32 @@ class BuildModeTest(tests.utils.TestCase):
 
         result1 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar/baz/BUCK"
         )
         result2 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar/BUCK"
         )
         result3 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar-other/BUCK"
         )
         result4 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/baz/BUCK",
         )
         result5 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/BUCK",
         )
         result6 = root.run_unittests(
             self.includes,
-            ['build_mode.get_build_modes_for_current_buildfile()'],
+            ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foobar/BUCK",
         )
 
@@ -244,11 +244,11 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=(),
             lsan_suppressions=())
 
-        self.assertSuccess(result1, {'dev': expected})
-        self.assertSuccess(result2, {'dev': expected})
-        self.assertSuccess(result3, {'dbg': expected})
-        self.assertSuccess(result4, {'opt': expected})
-        self.assertSuccess(result5, {'opt': expected})
+        self.assertSuccess(result1, {"dev": expected})
+        self.assertSuccess(result2, {"dev": expected})
+        self.assertSuccess(result3, {"dbg": expected})
+        self.assertSuccess(result4, {"opt": expected})
+        self.assertSuccess(result5, {"opt": expected})
         self.assertSuccess(result6, {})
 
     @tests.utils.with_project()
@@ -311,11 +311,11 @@ class BuildModeTest(tests.utils.TestCase):
 
         self.assertSuccess(
             result,
-            {'dev': expected},
-            {'dev': expected},
-            {'dbg': expected},
-            {'opt': expected},
-            {'opt': expected},
+            {"dev": expected},
+            {"dev": expected},
+            {"dbg": expected},
+            {"opt": expected},
+            {"opt": expected},
             {},
         )
 
@@ -399,15 +399,15 @@ class BuildModeTest(tests.utils.TestCase):
             build_mode_override)
 
         result = root.run([
-            'buck',
-            'run',
-            'fbcode_macros//tools:get_build_mode',
-            'foo/bar/baz',
-            'foo/bar',
-            'foo/bar-other',
-            'foo/baz',
-            'foo',
-            'foobar',
+            "buck",
+            "run",
+            "fbcode_macros//tools:get_build_mode",
+            "foo/bar/baz",
+            "foo/bar",
+            "foo/bar-other",
+            "foo/baz",
+            "foo",
+            "foobar",
         ], {}, {})
 
         expected_mode = {
@@ -431,19 +431,19 @@ class BuildModeTest(tests.utils.TestCase):
             "lsan_suppressions": [],
         }
         expected = [
-            ('foo/bar/baz', {'dev': expected_mode}),
-            ('foo/bar', {'dev': expected_mode}),
-            ('foo/bar-other', {'dbg': expected_mode}),
-            ('foo/baz', {'opt': expected_mode}),
-            ('foo', {'opt': expected_mode}),
-            ('foobar', {}),
+            ("foo/bar/baz", {"dev": expected_mode}),
+            ("foo/bar", {"dev": expected_mode}),
+            ("foo/bar-other", {"dbg": expected_mode}),
+            ("foo/baz", {"opt": expected_mode}),
+            ("foo", {"opt": expected_mode}),
+            ("foobar", {}),
         ]
 
         self.assertSuccess(result)
         print(result.stdout)
         actual = [
-            (line.split(':', 1)[0], json.loads(line.split(':', 1)[1]))
-            for line in result.stdout.split('\n')
+            (line.split(":", 1)[0], json.loads(line.split(":", 1)[1]))
+            for line in result.stdout.split("\n")
             if line
         ]
         self.assertEqual(expected, actual)
