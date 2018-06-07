@@ -25,14 +25,18 @@ BUILD_DEFS = [
     "fbcode_macros//tools:get_build_mode.py",
     "fbcode_macros//tools:get_platform.py",
     "fbcode_macros//tools:BUCK",
+    "bazel_skylib//:lib.bzl",
+    "bazel_skylib//lib:collections.bzl",
     "bazel_skylib//lib:dicts.bzl",
-    "bazel_skylib//lib:structs.bzl",
+    "bazel_skylib//lib:new_sets.bzl",
+    "bazel_skylib//lib:partial.bzl",
+    "bazel_skylib//lib:paths.bzl",
     "bazel_skylib//lib:selects.bzl",
     "bazel_skylib//lib:sets.bzl",
     "bazel_skylib//lib:shell.bzl",
-    "bazel_skylib//lib:collections.bzl",
-    "bazel_skylib//lib:paths.bzl",
-    "bazel_skylib//:lib.bzl",
+    "bazel_skylib//lib:structs.bzl",
+    "bazel_skylib//lib:types.bzl",
+    "bazel_skylib//lib:versions.bzl",
 ]
 
 UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)
