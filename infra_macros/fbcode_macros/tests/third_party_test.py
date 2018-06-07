@@ -116,3 +116,68 @@ class ThirdPartyTest(tests.utils.TestCase):
         self.assertSuccess(
             root.run_unittests(self.includes, commands), *expected
         )
+
+    @tests.utils.with_project()
+    def test_replace_third_party_repo_works(self, root):
+        self.addPathsConfig(root)
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
+        commands = [
+            'third_party.replace_third_party_repo("foo bar", None)',
+            'third_party.replace_third_party_repo("@/third-party:foo:bar/baz", None)',
+            'third_party.replace_third_party_repo("@/third-party:foo:bar/baz", "gcc-5")',
+        ]
+        expected = [
+            'foo bar',
+            '//third-party-buck/default/build/foo:bar/baz',
+            '//third-party-buck/gcc-5/build/foo:bar/baz',
+        ]
+        self.assertSuccess(
+            root.run_unittests(self.includes, commands, buckfile="foo/BUCK"), *expected
+        )
+
+    @tests.utils.with_project()
+    def test_tool_paths_with_use_platforms_and_build_subdirs(self, root):
+        self.addPathsConfig(root)
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
+
+        commands = [
+            'third_party.get_build_path("gcc7")',
+            'third_party.get_build_target_prefix("gcc7")',
+            'third_party.get_tool_path("ld", "gcc7")',
+            'third_party.get_tool_target("ld", "bin", "ldd", "gcc7")',
+            'third_party.get_tool_bin_target("ld", "gcc7")',
+        ]
+        expected = [
+            "third-party-buck/gcc7/build",
+            "//third-party-buck/gcc7/build/",
+            "third-party-buck/gcc7/tools/ld",
+            "//third-party-buck/gcc7/tools/ld/bin:ldd",
+            "//third-party-buck/gcc7/tools:ld/bin",
+        ]
+        self.assertSuccess(
+            root.run_unittests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_tool_paths_without_use_platforms_and_build_subdirs(self, root):
+        self.addPathsConfig(root, use_platforms_and_build_subdirs=False)
+        self.addDummyThirdPartyConfig(root)
+        self.addDummyPlatformOverrides(root)
+
+        commands = [
+            'third_party.get_build_path("gcc7")',
+            'third_party.get_build_target_prefix("gcc7")',
+            'third_party.get_tool_path("ld", "gcc7")',
+            'third_party.get_tool_target("ld", "bin", "ldd", "gcc7")',
+            'third_party.get_tool_bin_target("ld", "gcc7")',
+        ]
+        expected = [
+            "third-party-buck",
+            "//third-party-buck/",
+            "third-party-buck/ld",
+            "ld//bin:ldd",
+            "ld//ld:ld",
+        ]
+        self.assertSuccess(
+            root.run_unittests(self.includes, commands), *expected)

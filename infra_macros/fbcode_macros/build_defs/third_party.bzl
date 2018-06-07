@@ -11,6 +11,10 @@ Various helpers to get labels for use in third-party
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
+load(
+    "@fbcode_macros//build_defs:platform.bzl",
+    platform_helpers = "platform",
+)
 
 def _third_party_target(platform, project, rule):
     """
@@ -92,7 +96,100 @@ def _external_dep_target(raw_target, platform, lang_suffix = ""):
 
     return _third_party_target(platform, project, rule)
 
+def _get_build_path(platform):
+    """ Get the path to a `build` directory for a given platform """
+    if paths_config.use_platforms_and_build_subdirs:
+        return paths.join(paths_config.third_party_root, platform, "build")
+    else:
+        return paths_config.third_party_root
+
+def _get_build_target_prefix(platform):
+    """
+    Returns the first part of a target that would be in the build directory for a given platform
+
+    Args:
+        platform: The platform to search for
+
+    Returns:
+        The first part of the target, e.g. //third-party/build/
+    """
+    return "//{}/".format(_get_build_path(platform))
+
+def _get_tool_path(project, platform):
+    """ Get the path to a `tool` directory for a given project """
+    if paths_config.use_platforms_and_build_subdirs:
+        return paths.join(paths_config.third_party_root, platform, "tools", project)
+    else:
+        return paths.join(paths_config.third_party_root, project)
+
+def _get_tool_target(project, subpath, target_name, platform):
+    """ Gets the target a rule in a project's `tool` directory """
+    if paths_config.use_platforms_and_build_subdirs:
+        subpath_fragment = "/" + subpath if subpath else ""
+        return "//{}/{}/tools/{}{}:{}".format(
+            paths_config.third_party_root, platform, project, subpath_fragment,
+            target_name)
+    else:
+        return "{}//{}:{}".format(project, subpath, target_name)
+
+def _get_tool_bin_target(project, platform):
+    """
+    The the 'bin' target for a given project and platform.
+
+    This is the main target for a tool, like gcc or thrift
+    """
+    if paths_config.use_platforms_and_build_subdirs:
+        return "//{}/{}/tools:{}/bin".format(
+            paths_config.third_party_root, platform, project)
+    else:
+        return "{}//{}:{}".format(project, project, project)
+
+def _replace_third_party_repo_list(targets, platform):
+    """
+    Converts a list of targets potentially containing @/third-party to buck-compatible targets for the given platform
+
+    Args:
+        targets: A list of targets potentially containing @/third-party: to
+                 convert into platform-normalized, buck-compatible targets
+        platform: The platform to use. If not specified, auto-detection based
+                  on the calling build file will be attempted
+
+    Returns:
+        A list of strings with @/third-party: properly replaced
+    """
+    return [_replace_third_party_repo(target, platform) for target in targets]
+
+def _replace_third_party_repo(string, platform):
+    """
+    Converts the @/third-party: string to the appropriate platform target prefix
+
+    This is to allow support of @/third-party: as a way to specify the
+    path within third-party for the specified platform. As platform support
+    improves in buck, this will be removed
+
+    Args:
+        string: The string to in which to replace @/third-party:. e.g.
+                @/third-party:zstd:bin/zstdcat might become
+                //third-party-buck/build/<platform>/zstd:bin/zstdcat
+        platform: The platform to use. If not specified, auto-detection based
+                  on the calling build file will be attempted
+
+    Returns:
+        The original string with @/third-party: properly replaced
+    """
+    # TODO: OSS
+    if platform == None:
+        platform = platform_helpers.get_default_platform()
+    return string.replace("@/third-party:", _get_build_target_prefix(platform))
+
 third_party = struct(
     external_dep_target = _external_dep_target,
+    get_build_path = _get_build_path,
+    get_build_target_prefix = _get_build_target_prefix,
+    get_tool_bin_target = _get_tool_bin_target,
+    get_tool_path = _get_tool_path,
+    get_tool_target = _get_tool_target,
+    replace_third_party_repo = _replace_third_party_repo,
+    replace_third_party_repo_list = _replace_third_party_repo_list,
     third_party_target = _third_party_target,
 )
