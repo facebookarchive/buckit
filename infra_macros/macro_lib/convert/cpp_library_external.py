@@ -212,6 +212,17 @@ class CppLibraryExternalConverter(base.Converter):
             versioned_header_dirs=None,  # ignored for now
             ):
 
+        # Just a quick hack to make sure that include_dir keeps working until
+        # we remove the get_inputs logic
+        if include_dir is None:
+            if versioned_header_dirs:
+                include_dir = [
+                    '/'.join(d.split('/')[1:])
+                    for d in versioned_header_dirs[0][1]
+                ]
+            else:
+                include_dir = []
+
         # We currently have to handle `cpp_library_external` rules in fbcode,
         # until we move fboss's versioned tp2 deps to use Buck's version
         # support.
