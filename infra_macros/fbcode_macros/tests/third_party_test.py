@@ -28,7 +28,7 @@ class ThirdPartyTest(tests.utils.TestCase):
         ]
         expected = ["project//project:rule"]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected
+            root.runUnitTests(self.includes, commands), *expected
         )
 
     @tests.utils.with_project()
@@ -38,7 +38,7 @@ class ThirdPartyTest(tests.utils.TestCase):
         ]
         expected = ["//third-party-buck/platform/build/project:rule"]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected
+            root.runUnitTests(self.includes, commands), *expected
         )
 
     @tests.utils.with_project()
@@ -48,7 +48,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             '("foo", "bar", "baz", "other"), "platform")',
         ]
         self.assertFailureWithMessage(
-            root.run_unittests(self.includes, commands),
+            root.runUnitTests(self.includes, commands),
             'illegal external dependency ("foo", "bar", "baz", "other"): ' +
             'must have 1, 2, or 3 elements'
         )
@@ -60,7 +60,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             '"platform")',
         ]
         self.assertFailureWithMessage(
-            root.run_unittests(self.includes, commands),
+            root.runUnitTests(self.includes, commands),
             "external dependency should be a tuple or string"
         )
 
@@ -87,7 +87,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "//third-party-buck/platform/build/foo:bar",
         ]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected
+            root.runUnitTests(self.includes, commands), *expected
         )
 
     @tests.utils.with_project()
@@ -114,7 +114,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "foo//foo:bar",
         ]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected
+            root.runUnitTests(self.includes, commands), *expected
         )
 
     @tests.utils.with_project()
@@ -133,7 +133,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "//third-party-buck/gcc-5/build/foo:bar/baz",
         ]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands, buckfile="foo/BUCK"), *expected
+            root.runUnitTests(self.includes, commands, buckfile="foo/BUCK"), *expected
         )
 
     @tests.utils.with_project()
@@ -157,7 +157,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "//third-party-buck/gcc7/tools:ld/bin",
         ]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected)
+            root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_tool_paths_without_use_platforms_and_build_subdirs(self, root):
@@ -180,4 +180,4 @@ class ThirdPartyTest(tests.utils.TestCase):
             "ld//ld:ld",
         ]
         self.assertSuccess(
-            root.run_unittests(self.includes, commands), *expected)
+            root.runUnitTests(self.includes, commands), *expected)

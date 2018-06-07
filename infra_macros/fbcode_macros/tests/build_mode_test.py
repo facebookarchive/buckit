@@ -65,7 +65,7 @@ class BuildModeTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             "build_mode_overrides = {}")
 
@@ -109,12 +109,12 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(tsan_options={"c":"3"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c"]),
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)
 
     @tests.utils.with_project()
     def test_extends_proper_build_modes(self, root):
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             "build_mode_overrides = {}")
 
@@ -160,7 +160,7 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(lsan_suppressions=["a/b/c", "z/y/x"]),
             self._create_mode_struct(cxx_flags=("-DFLAG",),asan_options={"a":"1"}),
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)
 
     @tests.utils.with_project()
@@ -189,36 +189,36 @@ class BuildModeTest(tests.utils.TestCase):
             }}
 
         """)
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             build_mode_override)
 
-        result1 = root.run_unittests(
+        result1 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar/baz/BUCK"
         )
-        result2 = root.run_unittests(
+        result2 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar/BUCK"
         )
-        result3 = root.run_unittests(
+        result3 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/bar-other/BUCK"
         )
-        result4 = root.run_unittests(
+        result4 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/baz/BUCK",
         )
-        result5 = root.run_unittests(
+        result5 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foo/BUCK",
         )
-        result6 = root.run_unittests(
+        result6 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
             buckfile="foobar/BUCK",
@@ -276,11 +276,11 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo": opt,
             }}
         """)
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             build_mode_override)
 
-        result = root.run_unittests(self.includes, [
+        result = root.runUnitTests(self.includes, [
             'build_mode.get_build_modes_for_base_path("foo/bar/baz")',
             'build_mode.get_build_modes_for_base_path("foo/bar")',
             'build_mode.get_build_modes_for_base_path("foo/bar-other")',
@@ -344,7 +344,7 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo": opt,
             }}
         """)
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             build_mode_override)
 
@@ -362,7 +362,7 @@ class BuildModeTest(tests.utils.TestCase):
             }
         }
 
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_mode_overrides()"],
         )
@@ -394,7 +394,7 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo": opt,
             }}
         """)
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl",
             build_mode_override)
 

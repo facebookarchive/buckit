@@ -23,16 +23,16 @@ class PythonTypingTest(tests.utils.TestCase):
     @tests.utils.with_project(run_buckd=True)
     def test_get_typing_config_target_obeys_buckconfig(self, root):
         self.assertSuccess(
-            root.run_unittests(
+            root.runUnitTests(
                 includes=self.includes,
                 statements=["get_typing_config_target()"],
             ),
             None
         )
 
-        root.update_buckconfig("python", "typing_config", "//python:typing")
+        root.updateBuckconfig("python", "typing_config", "//python:typing")
         self.assertSuccess(
-            root.run_unittests(
+            root.runUnitTests(
                 includes=self.includes,
                 statements=["get_typing_config_target()"],
             ),
@@ -111,15 +111,15 @@ class PythonTypingTest(tests.utils.TestCase):
                 """),
             },
         ]
-        root.update_buckconfig("python", "typing_config", "//python:typing")
+        root.updateBuckconfig("python", "typing_config", "//python:typing")
 
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)
 
     @tests.utils.with_project()
     def test_gen_typing_config_attrs_creates_genrules(self, root):
-        root.update_buckconfig("python", "typing_config", "//python:typing")
-        root.add_file("BUCK", dedent("""
+        root.updateBuckconfig("python", "typing_config", "//python:typing")
+        root.addFile("BUCK", dedent("""
         load("@fbcode_macros//build_defs:python_typing.bzl",
             "gen_typing_config")
 
@@ -195,5 +195,5 @@ class PythonTypingTest(tests.utils.TestCase):
             )
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)

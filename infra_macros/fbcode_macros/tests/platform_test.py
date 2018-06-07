@@ -55,10 +55,10 @@ class PlatformTest(tests.utils.TestCase):
             }
             """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
         expected = {
@@ -72,7 +72,7 @@ class PlatformTest(tests.utils.TestCase):
                 }
             }
         }
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes, ["platform.get_platform_overrides()"]
         )
         self.assertSuccess(result, expected)
@@ -91,14 +91,14 @@ class PlatformTest(tests.utils.TestCase):
             }
             """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
 
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes, ["platform.get_platform_overrides()"]
         )
         self.assertFailureWithMessage(
@@ -121,14 +121,14 @@ class PlatformTest(tests.utils.TestCase):
             }
             """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
 
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes, ["platform.get_platform_overrides()"]
         )
         self.assertFailureWithMessage(
@@ -144,11 +144,11 @@ class PlatformTest(tests.utils.TestCase):
         statements = [
             "platform.get_default_platform()",
         ]
-        root.update_buckconfig("fbcode", "require_platform", "true")
-        root.update_buckconfig("fbcode", "platform", "gcc5")
-        root.update_buckconfig("cxx", "default_platform", "gcc7")
+        root.updateBuckconfig("fbcode", "require_platform", "true")
+        root.updateBuckconfig("fbcode", "platform", "gcc5")
+        root.updateBuckconfig("cxx", "default_platform", "gcc7")
 
-        results = root.run_unittests(self.includes, statements)
+        results = root.runUnitTests(self.includes, statements)
         self.assertSuccess(results, "gcc5")
 
     @tests.utils.with_project()
@@ -158,11 +158,11 @@ class PlatformTest(tests.utils.TestCase):
         statements = [
             "platform.get_default_platform()",
         ]
-        root.update_buckconfig("fbcode", "require_platform", "false")
-        root.update_buckconfig("fbcode", "platform", "gcc5")
-        root.update_buckconfig("cxx", "default_platform", "gcc7")
+        root.updateBuckconfig("fbcode", "require_platform", "false")
+        root.updateBuckconfig("fbcode", "platform", "gcc5")
+        root.updateBuckconfig("cxx", "default_platform", "gcc7")
 
-        results = root.run_unittests(self.includes, statements)
+        results = root.runUnitTests(self.includes, statements)
         self.assertSuccess(results, "gcc7")
 
     @tests.utils.with_project()
@@ -172,10 +172,10 @@ class PlatformTest(tests.utils.TestCase):
         statements = [
             "platform.get_default_platform()",
         ]
-        root.update_buckconfig("fbcode", "require_platform", "false")
-        root.update_buckconfig("fbcode", "platform", "gcc5")
+        root.updateBuckconfig("fbcode", "require_platform", "false")
+        root.updateBuckconfig("fbcode", "platform", "gcc5")
 
-        results = root.run_unittests(self.includes, statements)
+        results = root.runUnitTests(self.includes, statements)
         self.assertSuccess(results, "default")
 
     @tests.utils.with_project()
@@ -192,10 +192,10 @@ class PlatformTest(tests.utils.TestCase):
             }}
         """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
         statements = [
@@ -205,7 +205,7 @@ class PlatformTest(tests.utils.TestCase):
             'platform.get_platform_for_base_path("foo")',
             'platform.get_platform_for_base_path("foobar")',
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, "gcc5", "gcc6", "gcc6", "gcc6", "gcc7")
 
     @tests.utils.with_project()
@@ -222,26 +222,26 @@ class PlatformTest(tests.utils.TestCase):
             }}
         """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
         statements = ["platform.get_platform_for_current_buildfile()"]
-        result1 = root.run_unittests(
+        result1 = root.runUnitTests(
             self.includes, statements, buckfile="foo/bar/BUCK"
         )
-        result2 = root.run_unittests(
+        result2 = root.runUnitTests(
             self.includes, statements, buckfile="foo/bar-other/BUCK"
         )
-        result3 = root.run_unittests(
+        result3 = root.runUnitTests(
             self.includes, statements, buckfile="foo/baz/BUCK"
         )
-        result4 = root.run_unittests(
+        result4 = root.runUnitTests(
             self.includes, statements, buckfile="foo/BUCK"
         )
-        result5 = root.run_unittests(
+        result5 = root.runUnitTests(
             self.includes, statements, buckfile="foobar/BUCK"
         )
 
@@ -261,25 +261,25 @@ class PlatformTest(tests.utils.TestCase):
             }}
         """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", self.third_party_config
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
-        root.update_buckconfig("fbcode", "platform_files", "false")
-        root.update_buckconfig("cxx", "default_platform", "gcc8")
+        root.updateBuckconfig("fbcode", "platform_files", "false")
+        root.updateBuckconfig("cxx", "default_platform", "gcc8")
 
         statements = [
             'platform.get_platform_for_base_path("foo/bar")',
             'platform.get_platform_for_base_path("foobar")',
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, "gcc8", "gcc8")
 
     @tests.utils.with_project()
     def test_parses_default_overrides_file(self, root):
-        results = root.run_unittests(
+        results = root.runUnitTests(
             self.includes, ["platform.get_default_platform()"]
         )
         self.assertSuccess(results, "default")
@@ -296,7 +296,7 @@ class PlatformTest(tests.utils.TestCase):
             }}
         """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
 

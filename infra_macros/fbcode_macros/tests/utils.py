@@ -107,13 +107,13 @@ class Cell:
         self._files = recursively_get_files_contents(name, True)
         self._helper_functions = []
 
-    def add_file(self, relative_path, contents):
+    def addFile(self, relative_path, contents):
         """
         Add a file that should be written into this cell when running commands
         """
         self._files[relative_path] = contents
 
-    def add_resources_from(self, relative_path):
+    def addResourcesFrom(self, relative_path):
         """
         Add a file or directory from pkg_resources to this cell
         """
@@ -121,26 +121,26 @@ class Cell:
         self._files.update(files)
         return files
 
-    def add_directory(self, relative_path):
+    def addDirectory(self, relative_path):
         """
         Add an empty directory in this cell that will be created when commmands
         are run
         """
         self._directories.append(relative_path)
 
-    def full_path(self):
+    def fullPath(self):
         """
         Get the full path to this cell's root
         """
         return os.path.join(self.project.project_path, self.name)
 
-    def update_buckconfig(self, section, key, value):
+    def updateBuckconfig(self, section, key, value):
         """
         Update the .buckconfig for this cell
         """
         self.buckconfig[section][key] = value
 
-    def update_buckconfig_with_dict(self, values):
+    def updateBuckconfigWithDict(self, values):
         """
         Update the .buckconfig for this cell with multiple values
 
@@ -154,13 +154,13 @@ class Cell:
             for key, value in kvps.items():
                 self.buckconfig[section][key] = value
 
-    def create_buckconfig_contents(self):
+    def createBuckconfigContents(self):
         """
         Create contents of a .buckconfig file
         """
         buckconfig = copy.deepcopy(self.buckconfig)
         for cell_name, cell in self.project.cells.items():
-            relative_path = os.path.relpath(cell.full_path(), self.full_path())
+            relative_path = os.path.relpath(cell.fullPath(), self.fullPath())
             buckconfig["repositories"][cell_name] = relative_path
         if "polyglot_parsing_enabled" not in buckconfig["parser"]:
             buckconfig["parser"]["polyglot_parsing_enabled"] = "true"
@@ -169,8 +169,8 @@ class Cell:
         ]:
             buckconfig["parser"]["default_build_file_syntax"] = "SKYLARK"
         if "cxx" not in buckconfig or "cxx" not in buckconfig["cxx"]:
-            cxx = self._find_cxx()
-            cc = self._find_cc()
+            cxx = self._findCXX()
+            cc = self._findCC()
             if cxx:
                 buckconfig["cxx"]["cxx"] = cxx
                 buckconfig["cxx"]["cxxpp"] = cxx
@@ -195,7 +195,7 @@ class Cell:
         finally:
             writer.close()
 
-    def _find_cc(self):
+    def _findCC(self):
         for path_component in os.environ.get("PATH").split(os.pathsep):
             for bin in ("gcc.par", "gcc"):
                 full_path = os.path.join(path_component, bin)
@@ -203,7 +203,7 @@ class Cell:
                     return full_path
         return None
 
-    def _find_cxx(self):
+    def _findCXX(self):
         for path_component in os.environ.get("PATH").split(os.pathsep):
             for bin in ("g++.par", "g++"):
                 full_path = os.path.join(path_component, bin)
@@ -211,16 +211,16 @@ class Cell:
                     return full_path
         return None
 
-    def setup_filesystem(self):
+    def setupFilesystem(self):
         """
-        Sets up the filesystem for this cell in self.full_path()
+        Sets up the filesystem for this cell in self.fullPath()
 
         This method:
         - creates all directories
         - creates all specified files and their parent directories
         - writes out a .buckconfig file
         """
-        cell_path = self.full_path()
+        cell_path = self.fullPath()
 
         if not os.path.exists(cell_path):
             os.makedirs(cell_path)
@@ -231,25 +231,25 @@ class Cell:
                 os.makedirs(dir_path)
 
         for path, contents in self._files.items():
-            self.write_file(path, contents)
+            self.writeFile(path, contents)
 
-        buckconfig = self.create_buckconfig_contents()
+        buckconfig = self.createBuckconfigContents()
         with open(os.path.join(cell_path, ".buckconfig"), "w") as fout:
             fout.write(buckconfig)
 
-    def setup_all_filesystems(self):
+    def setupAllFilesystems(self):
         """
-        Sets up the filesystem per self.setup_filesystem for this cell and
+        Sets up the filesystem per self.setupFilesystem for this cell and
         all others
         """
         for cell in self.project.cells.values():
-            cell.setup_filesystem()
+            cell.setupFilesystem()
 
-    def write_file(self, relative_path, contents):
+    def writeFile(self, relative_path, contents):
         """
         Writes out a file into the cell, making parent dirs if necessary
         """
-        cell_path = self.full_path()
+        cell_path = self.fullPath()
         dir_path, filename = os.path.split(relative_path)
         full_dir_path = os.path.join(cell_path, dir_path)
         file_path = os.path.join(cell_path, relative_path)
@@ -258,7 +258,7 @@ class Cell:
         with open(file_path, "w") as fout:
             fout.write(contents)
 
-    def get_default_environment(self):
+    def getDefaultEnvironment(self):
         # We don't start a daemon up because:
         # - Generally we're only running once, and in a temp dir, so it doesn't
         #   make a big difference
@@ -284,22 +284,22 @@ class Cell:
         Returns:
             The RunResult from running the command
         """
-        self.setup_all_filesystems()
+        self.setupAllFilesystems()
         for path, contents in extra_files.items():
-            self.write_file(path, contents)
-        environment = self.get_default_environment()
+            self.writeFile(path, contents)
+        environment = self.getDefaultEnvironment()
         environment.update(environment_overrides or {})
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=self.full_path(),
+            cwd=self.fullPath(),
             env=environment,
         )
         stdout, stderr = proc.communicate()
         return RunResult(proc.returncode, stdout, stderr)
 
-    def _parse_audit_output(self, stdout, files):
+    def _parseAuditOutput(self, stdout, files):
         ret = {file: None for file in files}
         current_file = None
         file_contents = ""
@@ -324,7 +324,7 @@ class Cell:
         ret[current_file] = file_contents.strip()
         return ret
 
-    def run_audit(self, buck_files, environment=None):
+    def runAudit(self, buck_files, environment=None):
         """
         A method to compare existing outputs of `buck audit rules` to new ones
         and ensure that the final product works as expected
@@ -345,7 +345,7 @@ class Cell:
         cmd = ["buck", "audit", "rules"] + buck_files
 
         ret = self.run(cmd, {}, environment)
-        audit_files = self._parse_audit_output(ret.stdout, buck_files)
+        audit_files = self._parseAuditOutput(ret.stdout, buck_files)
 
         return AuditTestResult(
             returncode=ret.returncode,
@@ -354,7 +354,7 @@ class Cell:
             files=audit_files
         )
 
-    def run_unittests(
+    def runUnitTests(
         self,
         includes,
         statements,
@@ -431,7 +431,7 @@ class Cell:
         )
         debug_lines = [
             # Sample line: DEBUG: /Users/user/temp/BUCK:1:1: TEST_RESULT: "hi"
-            self._convert_debug(line.split(":", 5)[-1].strip())
+            self._convertDebug(line.split(":", 5)[-1].strip())
             for line in result.stderr.split("\n")
             if line.startswith("DEBUG: ") and "TEST_RESULT:" in line
         ]
@@ -442,7 +442,7 @@ class Cell:
             debug_lines=debug_lines,
         )
 
-    def _convert_debug(self, string):
+    def _convertDebug(self, string):
         """
         Converts a TEST_RESULT line generated by run_unittests into a real
         object. Functions are turned into 'function' named tuples, and structs
@@ -510,17 +510,17 @@ class Project:
 
     def __enter__(self):
         self.project_path = tempfile.mkdtemp()
-        self.root_cell = self.add_cell("root")
-        self.root_cell.add_resources_from(".buckversion")
+        self.root_cell = self.addCell("root")
+        self.root_cell.addResourcesFrom(".buckversion")
 
         if self.add_fbcode_macros_cell:
-            self.add_cell("fbcode_macros")
+            self.addCell("fbcode_macros")
         if self.add_skylib_cell:
-            self.add_cell("bazel_skylib")
+            self.addCell("bazel_skylib")
         return self
 
     def __exit__(self, type, value, traceback):
-        self.kill_buckd()
+        self.killBuckd()
         if self.project_path:
             if self.remove_files:
                 shutil.rmtree(self.project_path)
@@ -531,9 +531,9 @@ class Project:
                     )
                 )
 
-    def kill_buckd(self):
+    def killBuckd(self):
         for cell in self.cells.values():
-            cell_path = cell.full_path()
+            cell_path = cell.fullPath()
             if os.path.exists(os.path.join(cell_path, ".buckd")):
                 try:
                     with open(os.devnull, "w") as dev_null:
@@ -546,7 +546,7 @@ class Project:
                 except subprocess.CalledProcessError as e:
                     print("buck kill failed: {}".format(e))
 
-    def add_cell(self, name):
+    def addCell(self, name):
         """Add a new cell"""
         if name in self.cells:
             raise ValueError("Cell {} already exists".format(name))
@@ -589,7 +589,7 @@ def with_project(
                 new_args = args + (project.root_cell, )
                 if isinstance(new_args[0], TestCase):
                     new_args[0].setUpProject(project.root_cell)
-                project.root_cell.update_buckconfig(
+                project.root_cell.updateBuckconfig(
                     "parser", "default_build_file_syntax", build_file_syntax
                 )
                 f(*new_args, **kwargs)
@@ -676,7 +676,7 @@ class TestCase(unittest.TestCase):
             }}
         """.format(current_arch=current_arch, other_arch=other_arch)
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", third_party_config
         )
 
@@ -691,7 +691,7 @@ class TestCase(unittest.TestCase):
             }
             """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
 
@@ -721,7 +721,7 @@ class TestCase(unittest.TestCase):
             }}
         """
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/build_mode_overrides.bzl", build_mode_overrides
         )
 
@@ -739,7 +739,7 @@ class TestCase(unittest.TestCase):
             )
             """ % (third_party_root, use_platforms_and_build_subdirs)
         )
-        root.project.cells["fbcode_macros"].add_file(
+        root.project.cells["fbcode_macros"].addFile(
             "build_defs/paths_config.bzl", paths_config
         )
 

@@ -106,7 +106,7 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_use_custom_par_args()",
         ]
 
-        ret = root.run_unittests(self.includes, statements)
+        ret = root.runUnitTests(self.includes, statements)
 
         self.assertSuccess(ret)
         self.assertEqual(expected, ret.debug_lines)
@@ -278,8 +278,8 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_use_custom_par_args()",
         ]
 
-        root.update_buckconfig_with_dict(buckconfig)
-        ret = root.run_unittests(self.includes, statements)
+        root.updateBuckconfigWithDict(buckconfig)
+        ret = root.runUnitTests(self.includes, statements)
 
         self.assertSuccess(ret)
         self.assertEqual(expected, ret.debug_lines)
@@ -288,8 +288,8 @@ class ConfigTest(tests.utils.TestCase):
     def test_compiler_family_uses_cxx_cxx_if_fbcode_compiler_family_missing(
         self, root
     ):
-        root.update_buckconfig("cxx", "cxx", "test-clang")
-        ret = root.run_unittests(
+        root.updateBuckconfig("cxx", "cxx", "test-clang")
+        ret = root.runUnitTests(
             self.includes, ["config.get_compiler_family()"]
         )
 

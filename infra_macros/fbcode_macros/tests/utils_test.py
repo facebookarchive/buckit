@@ -37,8 +37,8 @@ class UtilsTest(tests.utils.TestCase):
 
             root = project.root_cell
             self.assertIn("fbcode_macros", project.cells)
-            root.add_directory("foo/bar/dir")
-            root.add_file(
+            root.addDirectory("foo/bar/dir")
+            root.addFile(
                 "testing/file.bzl",
                 dedent(
                     """
@@ -49,10 +49,10 @@ class UtilsTest(tests.utils.TestCase):
                 """
                 )
             )
-            root.add_resources_from("testdata/utils_test/sample.txt")
-            root.update_buckconfig("foo", "bar", "baz")
-            root.update_buckconfig("foo", "foobar", "baz")
-            root.update_buckconfig_with_dict(
+            root.addResourcesFrom("testdata/utils_test/sample.txt")
+            root.updateBuckconfig("foo", "bar", "baz")
+            root.updateBuckconfig("foo", "foobar", "baz")
+            root.updateBuckconfigWithDict(
                 {
                     "foo": {
                         "bar": "foobar1",
@@ -63,7 +63,7 @@ class UtilsTest(tests.utils.TestCase):
                     }
                 }
             )
-            ret = root.run_unittests(
+            ret = root.runUnitTests(
                 [("//testing:file.bzl", "identity", "get_struct")], [
                     "identity(1)", "identity(True)", 'get_struct(a="b")',
                     'identity(identity)', 'identity({"a": "b"})',
@@ -101,7 +101,7 @@ class UtilsTest(tests.utils.TestCase):
                 isfile(os.path.join(macros_dir, "build_defs", "config.bzl"))
             )
             self.assertEqual(
-                os.path.join(project.project_path, "root"), root.full_path()
+                os.path.join(project.project_path, "root"), root.fullPath()
             )
             self.assertTrue(
                 os.path.isdir(os.path.join(root_dir, "foo", "bar", "dir"))
@@ -156,9 +156,9 @@ class UtilsTest(tests.utils.TestCase):
 
         buckd_dir = None
         with tests.utils.Project(run_buckd=True) as project:
-            buckd_dir = os.path.join(project.root_cell.full_path(), ".buckd")
+            buckd_dir = os.path.join(project.root_cell.fullPath(), ".buckd")
 
-            result = project.root_cell.run_unittests([], ["1"])
+            result = project.root_cell.runUnitTests([], ["1"])
             self.assertSuccess(result)
 
             # Make sure that buck is running
@@ -178,7 +178,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=False, add_fbcode_macros_cell=True
         ) as project:
             temp_dir = project.project_path
-            project.root_cell.setup_all_filesystems()
+            project.root_cell.setupAllFilesystems()
             self.assertTrue(os.path.isdir(temp_dir))
         try:
             self.assertTrue(os.path.isdir(temp_dir))
@@ -190,9 +190,9 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=False
         ) as project:
             temp_dir = project.project_path
-            project.root_cell.setup_all_filesystems()
+            project.root_cell.setupAllFilesystems()
             self.assertTrue(os.path.isdir(temp_dir))
-            result = project.root_cell.run_unittests([], ["1"])
+            result = project.root_cell.runUnitTests([], ["1"])
             self.assertSuccess(result)
             self.assertEqual(1, result.debug_lines[0])
             self.assertFalse(
@@ -253,7 +253,7 @@ class UtilsTest(tests.utils.TestCase):
     def test_parses_audit_results_properly(self):
         with tests.utils.Project(remove_files=False) as project:
             root = project.root_cell
-            root.add_file(
+            root.addFile(
                 "foo/main.cpp",
                 dedent(
                     """\
@@ -262,7 +262,7 @@ class UtilsTest(tests.utils.TestCase):
             """
                 )
             )
-            root.add_file(
+            root.addFile(
                 "bar/lib.h",
                 dedent(
                     """\
@@ -271,7 +271,7 @@ class UtilsTest(tests.utils.TestCase):
             """
                 )
             )
-            root.add_file(
+            root.addFile(
                 "bar/lib.cpp",
                 dedent(
                     """\
@@ -280,7 +280,7 @@ class UtilsTest(tests.utils.TestCase):
             """
                 )
             )
-            root.add_file(
+            root.addFile(
                 "bar/BUCK",
                 dedent(
                     """\
@@ -293,7 +293,7 @@ class UtilsTest(tests.utils.TestCase):
             """
                 )
             )
-            root.add_file(
+            root.addFile(
                 "foo/BUCK",
                 dedent(
                     """\
@@ -340,7 +340,7 @@ class UtilsTest(tests.utils.TestCase):
                 )
             }
 
-            ret = root.run_audit(["foo/BUCK", "bar/BUCK"])
+            ret = root.runAudit(["foo/BUCK", "bar/BUCK"])
 
             self.validateAudit(expected, ret)
 
@@ -349,7 +349,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            ret = root.run_unittests([], ['"string1"', '"string3"'])
+            ret = root.runUnitTests([], ['"string1"', '"string3"'])
             with self.assertRaises(AssertionError):
                 self.assertSuccess(ret, "string1", "string2")
 
@@ -358,7 +358,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            ret = root.run_unittests([], ['"string1"', '"string3"'])
+            ret = root.runUnitTests([], ['"string1"', '"string3"'])
             with self.assertRaises(AssertionError):
                 self.assertFailureWithMessage(ret, "string1")
 
@@ -367,7 +367,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            ret = root.run_unittests([], ['"string1"', '"string3" +'])
+            ret = root.runUnitTests([], ['"string1"', '"string3" +'])
             with self.assertRaises(AssertionError):
                 self.assertFailureWithMessage(ret, "WTF")
 
@@ -376,7 +376,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            ret = root.run_unittests(
+            ret = root.runUnitTests(
                 [], ['"string1"', '"string3"'], 'fail("WTF")'
             )
             self.assertFailureWithMessage(ret, "WTF")

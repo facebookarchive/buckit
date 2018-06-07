@@ -40,6 +40,6 @@ class ThirdPartyConfigTest(tests.utils.TestCase):
             ),
         ]
         expected = [True for statement in statements]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result)
         self.assertEquals(expected, result.debug_lines)

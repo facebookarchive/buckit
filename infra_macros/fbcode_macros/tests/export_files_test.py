@@ -17,11 +17,11 @@ class ExportFilesTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_buck_export_file_handles_visibility(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.add_file("file3.sh", "echo file3")
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.addFile("file3.sh", "echo file3")
 
-        root.add_file(
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -59,16 +59,16 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
     @tests.utils.with_project()
     def test_buck_export_file_exports_copy_mode_by_default(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.add_file("file3.sh", "echo file3")
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.addFile("file3.sh", "echo file3")
 
-        root.add_file(
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -108,17 +108,17 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
 
     @tests.utils.with_project()
     def test_export_file_handles_visibility(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.add_file("file3.sh", "echo file3")
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.addFile("file3.sh", "echo file3")
 
-        root.add_file(
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -158,16 +158,16 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
     @tests.utils.with_project()
     def test_exports_reference_mode_by_default(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.add_file("file3.sh", "echo file3")
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.addFile("file3.sh", "echo file3")
 
-        root.add_file(
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -207,18 +207,18 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
     @tests.utils.with_project()
     def test_export_files_exports_multiple_files(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.add_file("file3.sh", "echo file3")
-        root.add_file("file4.sh", "echo file4")
-        root.add_file("file5.sh", "echo file5")
-        root.add_file("file6.sh", "echo file6")
-        root.add_file(
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.addFile("file3.sh", "echo file3")
+        root.addFile("file4.sh", "echo file4")
+        root.addFile("file5.sh", "echo file5")
+        root.addFile("file6.sh", "echo file6")
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -269,16 +269,16 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
     @tests.utils.with_project()
     def test_creates_typing_rule_if_enabled_in_config_and_params(self, root):
-        root.add_file("file1.sh", "echo file1")
-        root.add_file("file2.sh", "echo file2")
-        root.update_buckconfig("python", "typing_config", "//python:typing")
+        root.addFile("file1.sh", "echo file1")
+        root.addFile("file2.sh", "echo file2")
+        root.updateBuckconfig("python", "typing_config", "//python:typing")
 
-        root.add_file(
+        root.addFile(
             "BUCK",
             dedent(
                 """\
@@ -319,5 +319,5 @@ class ExportFilesTest(tests.utils.TestCase):
         """
         )
 
-        result = root.run_audit(["BUCK"])
+        result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)

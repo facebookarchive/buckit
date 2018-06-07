@@ -19,7 +19,7 @@ class CommonPathTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_returns_correct_paths_with_default(self, root):
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes,
             ["get_buck_out_path()", "get_gen_path()"],
         )
@@ -27,8 +27,8 @@ class CommonPathTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_returns_correct_paths_with_config(self, root):
-        root.update_buckconfig("project", "buck_out", "buck-out/dev")
-        result = root.run_unittests(
+        root.updateBuckconfig("project", "buck_out", "buck-out/dev")
+        result = root.runUnitTests(
             self.includes,
             ["get_buck_out_path()", "get_gen_path()"],
         )

@@ -34,8 +34,8 @@ class MissingTp2ProjectTest(tests.utils.TestCase):
                 deps = [":foo_some_long_project_name"],
             )
             """)
-        root.add_file("BUCK", buckfile)
-        root.add_file("main.cpp", "int main() { return 0; }")
+        root.addFile("BUCK", buckfile)
+        root.addFile("main.cpp", "int main() { return 0; }")
         result = root.run(["buck", "build", "//:main"], {}, {})
 
         self.assertFailureWithMessage(

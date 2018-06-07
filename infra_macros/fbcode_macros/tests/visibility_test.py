@@ -28,7 +28,7 @@ class VisibilityTest(tests.utils.TestCase):
             'get_visibility(None, "foo")',
             'get_visibility(["//..."], "foo")',
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, ["PUBLIC"], ["//..."])
 
     @tests.utils.with_project()
@@ -39,7 +39,7 @@ class VisibilityTest(tests.utils.TestCase):
             'get_visibility(["//..."], "all_lua")',
             'get_visibility(["//..."], "foo")',
         ]
-        result = root.run_unittests(
+        result = root.runUnitTests(
             self.includes,
             statements,
             buckfile="experimental/deeplearning/BUCK")
@@ -62,6 +62,6 @@ class VisibilityTest(tests.utils.TestCase):
             'get_visibility_for_base_path(None, "target", "other_dir")',
             'get_visibility_for_base_path(["//..."], "target", "target_dir")',
         ]
-        result = root.run_unittests(self.includes, statements)
+        result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, ["//experimental/..."], ["PUBLIC"],
                            ["//..."], ["PUBLIC"], ["//..."])
