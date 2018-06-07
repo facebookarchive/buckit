@@ -308,6 +308,7 @@ class RustConverter(base.Converter):
         test_attributes = collections.OrderedDict()
 
         name = '%s-unittest' % attributes['name']
+        platform = self.get_platform(base_path)
 
         test_attributes['name'] = name
         if visibility is not None:
@@ -322,7 +323,9 @@ class RustConverter(base.Converter):
             binary=True,
             strip_mode=None,
             build_info=True,
-            platform=self.get_platform(base_path))
+            platform=platform)
+
+        test_attributes['default_platform'] = platform
 
         if 'crate' in attributes:
             test_attributes['crate'] = '%s_unittest' % attributes['crate']
