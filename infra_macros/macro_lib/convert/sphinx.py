@@ -246,15 +246,20 @@ class _SphinxConverter(base.Converter):
         name,
         srcs,
         confpy,
+        apidoc_modules,
         **kwargs
     ):
         """
         Simple genrule wrapper for running fbsphinx-confpy to create a conf.py
         """
         confpy = confpy or {}
+        apidoc_modules = apidoc_modules or {}
 
         # add confpy extras
         confpy.update(self.get_extra_confpy_assignments(name, **kwargs))
+
+        # add sys.path modifications for apidocs
+        confpy['@insert_syspath_modules'] = list(apidoc_modules.keys())
 
         # add confpy metadata
         confpy['@CONFPY'] = dict(confpy)
@@ -351,6 +356,7 @@ class _SphinxConverter(base.Converter):
             base_path=base_path,
             srcs=srcs,
             confpy=confpy,
+            apidoc_modules=apidoc_modules,  # to manipulate sys.path
             **kwargs
         )
         yield confpy_rule
