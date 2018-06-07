@@ -138,42 +138,28 @@ class PlatformTest(tests.utils.TestCase):
         )
 
     @tests.utils.with_project()
-    def test_get_default_platform_returns_fbcode_platform_when_platform_required(
+    def test_get_platform_fails_when_platform_required(
         self, root
     ):
         statements = [
-            "platform.get_default_platform()",
+            'platform.get_platform_for_base_path("blah")',
         ]
         root.updateBuckconfig("fbcode", "require_platform", "true")
-        root.updateBuckconfig("fbcode", "platform", "gcc5")
-        root.updateBuckconfig("cxx", "default_platform", "gcc7")
 
         results = root.runUnitTests(self.includes, statements)
-        self.assertSuccess(results, "gcc5")
+        self.assertFailureWithMessage(
+            results,
+            "Cannot find fbcode platform to use for architecture {}"
+            .format(self.current_arch),
+        )
 
     @tests.utils.with_project()
-    def test_get_default_platform_returns_cxx_default_platform_if_platform_not_required(
+    def test_get_platform_default_when_platform_not_required(
         self, root
     ):
         statements = [
-            "platform.get_default_platform()",
+            'platform.get_platform_for_base_path("blah")',
         ]
-        root.updateBuckconfig("fbcode", "require_platform", "false")
-        root.updateBuckconfig("fbcode", "platform", "gcc5")
-        root.updateBuckconfig("cxx", "default_platform", "gcc7")
-
-        results = root.runUnitTests(self.includes, statements)
-        self.assertSuccess(results, "gcc7")
-
-    @tests.utils.with_project()
-    def test_get_default_platform_returns_default_if_platform_not_required(
-        self, root
-    ):
-        statements = [
-            "platform.get_default_platform()",
-        ]
-        root.updateBuckconfig("fbcode", "require_platform", "false")
-        root.updateBuckconfig("fbcode", "platform", "gcc5")
 
         results = root.runUnitTests(self.includes, statements)
         self.assertSuccess(results, "default")
@@ -252,7 +238,7 @@ class PlatformTest(tests.utils.TestCase):
         self.assertSuccess(result5, "gcc7")
 
     @tests.utils.with_project()
-    def test_returns_default_platform_if_files_disabled(self, root):
+    def test_returns_platform_override_if_set(self, root):
         platform_overrides = dedent(
             """\
             platform_overrides = {"fbcode": {
@@ -267,8 +253,7 @@ class PlatformTest(tests.utils.TestCase):
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
-        root.updateBuckconfig("fbcode", "platform_files", "false")
-        root.updateBuckconfig("cxx", "default_platform", "gcc8")
+        root.updateBuckconfig("fbcode", "platform", "gcc8")
 
         statements = [
             'platform.get_platform_for_base_path("foo/bar")',
@@ -276,13 +261,6 @@ class PlatformTest(tests.utils.TestCase):
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, "gcc8", "gcc8")
-
-    @tests.utils.with_project()
-    def test_parses_default_overrides_file(self, root):
-        results = root.runUnitTests(
-            self.includes, ["platform.get_default_platform()"]
-        )
-        self.assertSuccess(results, "default")
 
     @tests.utils.with_project()
     def test_helper_util_runs_properly(self, root):

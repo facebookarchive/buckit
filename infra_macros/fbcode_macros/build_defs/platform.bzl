@@ -82,12 +82,6 @@ def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
 
 _platform_overrides = _transform_platform_overrides(platform_overrides)
 
-def _get_use_platform_files():
-    """
-    Determines whether platform files should be used, or just the default
-    """
-    return read_boolean("fbcode", "platform_files", True)
-
 def _get_platform_overrides():
     """
     Gets a validated and modified version of platform_overrides
@@ -99,11 +93,12 @@ def _get_platform_overrides():
     return _platform_overrides
 
 def _get_default_platform():
-    """ Returns the default cxx platform to use """
-    if config.get_require_platform():
-        return read_config("fbcode", "platform")
-    else:
-        return read_config("cxx", "default_platform", "default")
+    """ Returns the default fbcode platform to use """
+    return read_config("fbcode", "defaut_platform", "default")
+
+def _get_platform_override():
+    """ Returns the user-specified fbcode platform override """
+    return read_config("fbcode", "platform")
 
 def _get_platform_for_base_path(base_path):
     """
@@ -142,8 +137,10 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
         and is valid for the current host architecture. If nothing matches, the
         default platform is returned
     """
-    if not _get_use_platform_files():
-        return _get_default_platform()
+
+    platform_override = _get_platform_override()
+    if platform_override != None:
+        return platform_override
 
     per_cell_overrides = _platform_overrides.get(cell)
     if per_cell_overrides != None:
@@ -155,6 +152,12 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
             if ret != None and arch in ret:
                 return ret[arch]
             path = paths.dirname(path)
+
+    # If we require a platform to be found, fail at this point.
+    if read_boolean("fbcode", "require_platform", False):
+        fail(
+          "Cannot find fbcode platform to use for architecture {}"
+          .format(arch))
 
     return _get_default_platform()
 

@@ -227,21 +227,6 @@ class Converter(object):
         self._tp2_build_dat_cache = {}
         self._core_tools = None
 
-    def get_default_platform(self):
-        """
-        Return the default fbcode platform we're building against.
-        """
-        # In fbcode, we have more elaborate configurations for various
-        # "platforms". We require this to be set to something valid.
-        # Outside of fbcode, we just pass the macro lib a dictionary of
-        # platforms and specify 'default' as the only platform. This allows
-        # us to not branch the codepaths at all in code that wants platform
-        # information.
-        if self._context.config.get_require_platform():
-            return self._context.buck_ops.read_config('fbcode', 'platform', None)
-        else:
-            return self._context.buck_ops.read_config('cxx', 'default_platform', 'default')
-
     def parse_platform_file(self, filename):
         """
         Parse the given platform file and return its platform.
