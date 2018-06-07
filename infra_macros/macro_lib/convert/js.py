@@ -45,20 +45,27 @@ class JsConverter(base.Converter):
                 self.convert_build_target(
                     base_path,
                     dep,
-                    platform=self.get_default_platform()))
+                    platform=self.get_platform()))
 
         for dep in external_deps:
             out_deps.append(
                 self.convert_external_build_target(
                     dep,
-                    platform=self.get_default_platform()))
+                    platform=self.get_platform()))
 
         return out_deps
+
+    def get_platform(self):
+        """
+        Node rules always use the platforms set in the root PLATFORM file.
+        """
+
+        return super(JsConverter, self).get_platform('')
 
     def get_node_path(self, version_string):
         path_template = '/usr/local/fbcode/{}/bin/node-{}'
 
-        platform = self.get_default_platform()
+        platform = self.get_platform()
         config = self.get_third_party_config(platform)
         fallback_path = path_template.format(
             platform,
@@ -67,7 +74,7 @@ class JsConverter(base.Converter):
 
         if (version_string):
             path = path_template.format(
-                self.get_default_platform(),
+                platform,
                 version_string,
             )
             if (os.path.isfile(path)):
@@ -216,7 +223,7 @@ class JsConverter(base.Converter):
         attrs['cmd'] = ' '.join([
             '$(exe //tools/make_par:buck_make_jsar)',
             '--node=' + self.get_node_path(node),
-            '--platform=' + self.get_default_platform(),
+            '--platform=' + self.get_platform(),
             '"$OUT"',
             os.path.join(base_path, index),
             '$(location :{})'.format(modules_tree.attributes['name']),

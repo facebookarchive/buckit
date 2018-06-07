@@ -1001,7 +1001,13 @@ class CppConverter(base.Converter):
         build_mode = self.get_build_mode()
         cuda = self.is_cuda(srcs)
         dlopen_info = self.get_dlopen_info(dlopen_enabled)
-        platform = self.get_platform(base_path)
+        platform = (
+            self.get_platform(
+                base_path
+                if self.get_fbconfig_rule_type() != 'cpp_node_extension'
+                # Node rules always use the platforms set in the root PLATFORM
+                # file.
+                else ''))
 
         attributes = collections.OrderedDict()
 
