@@ -130,6 +130,7 @@ class CustomRuleConverter(base.Converter):
         env['FBCODE_THIRD_PARTY_TOOLS'] = (
             ':'.join(
                 '$(location {})'.format(r) for r in sorted(tool_bin_rules)))
+        env['SRCS'] = '"$SRCS"'
         cmd += (
             'env ' +
             ' '.join(['{}={}'.format(k, v) for k, v in env.iteritems()]) +
