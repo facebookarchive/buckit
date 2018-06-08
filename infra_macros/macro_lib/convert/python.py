@@ -279,6 +279,7 @@ class PythonConverter(base.Converter):
         py_build_info = collections.OrderedDict()
 
         py_build_info['main_module'] = main_module
+        py_build_info['par_style'] = 'live'
 
         interp = self.get_interpreter(platform, python_version)
         py_build_info['python_home'] = os.path.dirname(os.path.dirname(interp))
