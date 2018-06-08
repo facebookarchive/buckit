@@ -182,3 +182,21 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                 'flag'
             ],
             flags)
+
+    def test_passes_tags_through(self):
+        self.setup_with_config({('fbcode', 'os_family'): 'mac'}, {})
+        rules = self._converter.convert(
+            'base',
+            'name',
+            srcs=["Lib.cpp"],
+            headers=["Lib.h"],
+            deps=[],
+            tags=["test_tag"],
+        )
+
+        self.assertEqual(1, len(rules))
+        self.assertEqual('cxx_library', rules[0].type)
+        attrs = rules[0].attributes
+        labels = attrs.get('labels')
+        self.assertIsNotNone(labels)
+        self.assertTrue("test_tag" in labels)

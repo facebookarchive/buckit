@@ -1404,8 +1404,10 @@ class CppConverter(base.Converter):
         else:
             attributes['linker_flags'] = out_exported_ldflags + out_ldflags
 
+        attributes['labels'] = list(tags)
+
         if self.is_test(self.get_buck_rule_type()):
-            attributes['labels'] = self.convert_labels(platform, 'c++', *tags)
+            attributes['labels'].extend(self.convert_labels(platform, 'c++'))
             if self.is_coverage_enabled(base_path):
                 attributes['labels'].append('coverage')
             attributes['use_default_test_main'] = use_default_test_main
@@ -1774,6 +1776,7 @@ class CppConverter(base.Converter):
             'yacc_args',
             'additional_coverage_targets',
             'autodeps_keep',
+            'tags',
         }
 
         # Set rule-type-specific args.
