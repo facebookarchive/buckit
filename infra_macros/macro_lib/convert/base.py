@@ -729,11 +729,11 @@ class Converter(object):
         out = []
 
         for platform in self.get_platforms():
-            value = value(platform) if callable(value) else value
-            if value:
+            result = value(platform) if callable(value) else value
+            if result:
                 # Buck expects the platform name as a regex, so anchor and
                 # escape it for literal matching.
-                out.append(('^{}$'.format(re.escape(platform)), value))
+                out.append(('^{}$'.format(re.escape(platform)), result))
 
         return out
 
