@@ -49,7 +49,7 @@ Common Attributes:
 
         A rule like::
             apidoc_modules = {
-                "mypackage/mymodule": "mymodule",
+                "mypackage.mymodule": "mymodule",
             }
 
         Will run ``sphinx-apidoc`` with the argument mypackage/mymodule,
@@ -218,21 +218,12 @@ class _SphinxConverter(base.Converter):
 
         for module, outdir in apidoc_modules.items():
             command = ' '.join((
-                '$(exe :{fbsphinx_wrapper_target})',
+                'mkdir -p $OUT && $(exe :{fbsphinx_wrapper_target})',
                 'buck apidoc',
-                '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
-                "--extras '{extras}'",
+                module,
                 '$OUT',
-                '{apidoc_root}',
             )).format(
                 fbsphinx_wrapper_target=fbsphinx_wrapper_target,
-                SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
-                extras=sphinxapidoc_opts or {},
-                apidoc_root=os.path.join(
-                    '..',
-                    fbsphinx_wrapper_target + '#link-tree',
-                    module[:].replace('.', '/'),
-                )
             )
             yield Rule('genrule', collections.OrderedDict((
                 ('name', name + '-apidoc-' + module),
@@ -257,9 +248,6 @@ class _SphinxConverter(base.Converter):
 
         # add confpy extras
         confpy.update(self.get_extra_confpy_assignments(name, **kwargs))
-
-        # add sys.path modifications for apidocs
-        confpy['@insert_syspath_modules'] = list(apidoc_modules.keys())
 
         # add confpy metadata
         confpy['@CONFPY'] = dict(confpy)
