@@ -762,16 +762,13 @@ class PythonConverter(base.Converter):
         if external_deps:
             attributes['platform_deps'] = (
                 self.format_platform_deps(
+                    [self.normalize_external_dep(
+                         dep,
+                         lang_suffix='-py',
+                         parse_version=True)
+                     for dep in external_deps],
                     # We support the auxiliary versions hack for neteng/Django.
-                    self.convert_auxiliary_deps(
-                        self.to_platform_param(
-                            [
-                                self.normalize_external_dep(
-                                    dep,
-                                    lang_suffix='-py',
-                                    parse_version=True)
-                                for dep in external_deps
-                            ]))))
+                    deprecated_auxiliary_deps=True))
 
         if self.is_test():
             attributes['labels'] = ['unittest-library']
@@ -843,8 +840,7 @@ class PythonConverter(base.Converter):
             # Add the "coverage" library as a dependency for all python tests.
             platform_deps.extend(
                 self.format_platform_deps(
-                    self.to_platform_param(
-                        [ThirdPartyRuleTarget('coverage', 'coverage-py')])))
+                    [ThirdPartyRuleTarget('coverage', 'coverage-py')]))
 
         # Otherwise, this is a binary, so just the library portion as a dep.
         else:
@@ -903,9 +899,8 @@ class PythonConverter(base.Converter):
         # Provide a standard set of backport deps to all binaries
         platform_deps.extend(
             self.format_platform_deps(
-                self.to_platform_param(
-                    [ThirdPartyRuleTarget('typing', 'typing-py'),
-                     ThirdPartyRuleTarget('python-future', 'python-future-py')])))
+                [ThirdPartyRuleTarget('typing', 'typing-py'),
+                 ThirdPartyRuleTarget('python-future', 'python-future-py')]))
 
         # Add in a specialized manifest when building inplace binaries.
         #

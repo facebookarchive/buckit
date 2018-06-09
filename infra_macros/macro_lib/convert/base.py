@@ -350,16 +350,13 @@ class Converter(object):
         for Buck.
         """
 
-        out_platform_flags = []
-
+        platform_flags = {}
         for arch, flags in sorted(arch_flags.items()):
             platforms = self.get_platforms_for_arch(arch)
-            if platforms:
-                out_platform_flags.append(
-                    ('|'.join('^' + re.escape(p) + '$' for p in platforms),
-                     flags))
+            for platform in self.get_platforms_for_arch(arch):
+                platform_flags[platform] = flags
 
-        return out_platform_flags
+        return self.format_platform_param(platform_flags.get)
 
     def get_tool_version(self, platform, project):
         conf = self._context.third_party_config['platforms'][platform]
@@ -462,36 +459,30 @@ class Converter(object):
 
         return parsed if not parse_version else (parsed, version)
 
-    def convert_auxiliary_deps(self, platform_deps):
+    def _convert_auxiliary_deps(self, platform, deps):
         """
         Perform auxiliary dep processing on the given map of platforms to
         (`RuleTarget`, version) tuples.
         """
 
-        processed = collections.OrderedDict()
+        # Load the auxiliary version list from the config.
+        config = self.get_third_party_config(platform)
+        aux_versions = config['build']['auxiliary_versions']
 
-        for platform, deps in platform_deps.items():
+        processed_deps = []
 
-            # Load the auxiliary version list from the config.
-            config = self.get_third_party_config(platform)
-            aux_versions = config['build']['auxiliary_versions']
+        for dep, vers in deps:
 
-            processed_deps = []
+            # If the parsed version for this project is listed as an
+            # auxiliary version in the config, then redirect this dep to
+            # use the alternate project name it's installed as.
+            proj = os.path.basename(dep.base_path)
+            if vers is not None and vers in aux_versions.get(proj, []):
+                dep = dep._replace(base_path=dep.base_path + '-' + vers)
 
-            for dep, vers in deps:
+            processed_deps.append(dep)
 
-                # If the parsed version for this project is listed as an
-                # auxiliary version in the config, then redirect this dep to
-                # use the alternate project name it's installed as.
-                proj = os.path.basename(dep.base_path)
-                if vers is not None and vers in aux_versions.get(proj, []):
-                    dep = dep._replace(base_path=dep.base_path + '-' + vers)
-
-                processed_deps.append(dep)
-
-            processed[platform] = processed_deps
-
-        return processed
+        return processed_deps
 
     def convert_external_build_target(self, target, platform=None, lang_suffix=''):
         """
@@ -560,13 +551,12 @@ class Converter(object):
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
+        tp2_dep_srcs = [src for src in srcs if is_tp2_src_dep(src)]
         out_platform_srcs = (
-            self.format_platform_deps(
-                self.to_platform_param(
-                    [src for src in srcs if is_tp2_src_dep(src)]),
-                lambda plat, srcs:
-                    [self.format_source(src, platform=plat)
-                     for src in srcs]))
+            self.format_platform_param(
+                lambda platform:
+                    [self.format_source(src, platform=platform)
+                     for src in tp2_dep_srcs]))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -584,14 +574,13 @@ class Converter(object):
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
+        tp2_dep_srcs = [src
+                        for src in srcs_with_flags if is_tp2_src_dep(src.src)]
         out_platform_srcs = (
             self.format_platform_param(
-                self.to_platform_param(
-                    [src
-                     for src in srcs_with_flags if is_tp2_src_dep(src.src)]),
-                lambda plat, srcs:
-                    [self.format_source_with_flags(src, platform=plat)
-                     for src in srcs]))
+                lambda platform:
+                    [self.format_source_with_flags(src, platform=platform)
+                     for src in tp2_dep_srcs]))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -617,14 +606,13 @@ class Converter(object):
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
+        tp2_srcs = {name: src
+                    for name, src in srcs.items() if is_tp2_src_dep(src)}
         out_platform_srcs = (
             self.format_platform_param(
-                self.to_platform_param(
-                    {name: src
-                     for name, src in srcs.items() if is_tp2_src_dep(src)}),
-                lambda plat, srcs:
-                    {name: self.format_source(src, platform=plat)
-                     for name, src in srcs.items()}))
+                lambda platform:
+                    {name: self.format_source(src, platform=platform)
+                     for name, src in tp2_srcs.items()}))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -737,58 +725,44 @@ class Converter(object):
             dst.setdefault(platform, [])
             dst[platform].extend(deps)
 
-    def format_platform_param(self, param, formatter=None):
-        """
-        Takes a map of fbcode platform names to lists of deps and converts to
-        an output list appropriate for Buck's `platform_deps` parameter.
-        """
-
+    def format_platform_param(self, value):
         out = []
 
-        for platform, value in sorted(param.iteritems()):
-            out.append(
+        for platform in self.get_platforms():
+            value = value(platform) if callable(value) else value
+            if value:
                 # Buck expects the platform name as a regex, so anchor and
                 # escape it for literal matching.
-                ('^{}$'.format(re.escape(platform)),
-                 value if formatter is None else formatter(platform, value)))
+                out.append(('^{}$'.format(re.escape(platform)), value))
 
         return out
 
-    def format_platform_deps(self, deps):
+    def format_platform_deps(self, deps, deprecated_auxiliary_deps=False):
         """
         Takes a map of fbcode platform names to lists of deps and converts to
         an output list appropriate for Buck's `platform_deps` parameter.
 
         Also add override support for PyFI migration - T22354138
         """
-        def overrides_handler(platform, deps):
-            """ Process PyFI overrides """
+
+        def gen(platform):
+            pdeps = deps
+
+            # Auxiliary deps support.
+            if deprecated_auxiliary_deps:
+                pdeps = self._convert_auxiliary_deps(platform, pdeps)
+
+            # Process PyFI overrides
             pyfi_overrides_path = self._context.config.get_pyfi_overrides_path()
             if pyfi_overrides_path:
                 overrides = include_defs(pyfi_overrides_path)
                 if platform in overrides.PYFI_SUPPORTED_PLATFORMS:
-                    deps = [overrides.PYFI_OVERRIDES.get(d.base_path, d) for d in deps]
+                    pdeps = [overrides.PYFI_OVERRIDES.get(d.base_path, d)
+                             for d in pdeps]
 
-            return self.format_deps(deps, platform=platform)
+            return self.format_deps(pdeps, platform=platform)
 
-        return self.format_platform_param(deps, overrides_handler)
-
-    def to_platform_param(self, param, platforms=None):
-        """
-        Convert a list of parsed targets to a mapping of platforms to deps.
-        """
-
-        platform_param = collections.OrderedDict()
-
-        if platforms is None:
-            platforms = self.get_platforms()
-
-        # Add the platform-specific dep for each platform.
-        for platform in platforms:
-            if param:
-                platform_param[platform] = copy.copy(param)
-
-        return platform_param
+        return self.format_platform_param(gen)
 
     def format_all_deps(self, deps, platform=None):
         """
@@ -809,8 +783,7 @@ class Converter(object):
         if platform is None:
             out_platform_deps.extend(
                 self.format_platform_deps(
-                    self.to_platform_param(
-                        [d for d in deps if d.repo is not None])))
+                    [d for d in deps if d.repo is not None]))
 
         return out_deps, out_platform_deps
 

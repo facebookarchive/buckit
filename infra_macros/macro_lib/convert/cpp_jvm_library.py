@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import functools
 import os
 import re
 
@@ -38,31 +39,32 @@ class CppJvmLibrary(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
 
-        ppflags = []
-        ldflags = []
-        for platform in self.get_platforms():
-            # We use include/library paths to wrap the custom FB JDK installed
-            # at system locations.  As such, we don't properly hash various
-            # components (e.g. headers, libraries) pulled into the build.
-            # Longer-term, we should move the FB JDK into tp2 to do this
-            # properly.
-            plat_re = '^{}$'.format(re.escape(platform))
-            jvm_path = '/usr/local/fb-jdk-{}-{}'.format(major_version, platform)
+        def formatter(flags, platform):
             arch = self.get_platform_architecture(platform)
             # Remap arch to JVM-specific names.
             arch = {'x86_64': 'amd64'}.get(arch, arch)
-            ppflags.append((
-                plat_re,
-                ['-isystem',
-                 os.path.join(jvm_path, 'include'),
-                 '-isystem',
-                 os.path.join(jvm_path, 'include', 'linux')]))
-            ldflags.append((
-                plat_re,
-                ['-L{}/jre/lib/{}/server'.format(jvm_path, arch),
-                 '-Wl,-rpath={}/jre/lib/{}/server'.format(jvm_path, arch),
-                 '-ljvm']))
-        attrs['exported_platform_preprocessor_flags'] = ppflags
-        attrs['exported_platform_linker_flags'] = ldflags
+            return [flag.format(arch=arch, platform=platform) for flag in flags]
+
+        jvm_path = '/usr/local/fb-jdk-{}-{{platform}}'.format(major_version)
+
+        # We use include/library paths to wrap the custom FB JDK installed at
+        # system locations.  As such, we don't properly hash various components
+        # (e.g. headers, libraries) pulled into the build.  Longer-term, we
+        # should move the FB JDK into tp2 to do this properly.
+        attrs['exported_platform_preprocessor_flags'] = (
+            self.format_platform_param(
+                functools.partial(
+                    formatter,
+                    ['-isystem',
+                     os.path.join(jvm_path, 'include'),
+                     '-isystem',
+                     os.path.join(jvm_path, 'include', 'linux')])))
+        attrs['exported_platform_linker_flags'] = (
+            self.format_platform_param(
+                functools.partial(
+                    formatter,
+                    ['-L{}/jre/lib/{{arch}}/server'.format(jvm_path),
+                     '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(jvm_path),
+                     '-ljvm'])))
 
         return [Rule('cxx_library', attrs)]
