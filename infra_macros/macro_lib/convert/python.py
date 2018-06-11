@@ -434,16 +434,6 @@ class PythonConverter(base.Converter):
 
         return build_args
 
-    def format_sources(self, src_map):
-        """
-        The `platform_srcs` parameter for Python rules matches against the
-        python platform, which has the format `py<py-vers>-<platform>`.  So
-        drop the `^` anchor from the platform regex so we match these properly.
-        """
-
-        srcs, plat_srcs = self.format_source_map(src_map)
-        return srcs, [(p[1:], s) for p, s in plat_srcs]
-
     def should_generate_interp_rules(self, helper_deps):
         """
         Return whether we should generate the interp helpers.
@@ -706,18 +696,18 @@ class PythonConverter(base.Converter):
             # expects all test srcs to be python modules.
             if self.is_test():
                 attributes['srcs'], attributes['platform_srcs'] = (
-                    self.format_sources(
+                    self.format_source_map(
                         {k: v
                          for k, v in parsed_srcs.iteritems()
                          if k.endswith('.py')}))
                 attributes['resources'], attributes['platform_resources'] = (
-                    self.format_sources(
+                    self.format_source_map(
                         {k: v
                          for k, v in parsed_srcs.iteritems()
                          if not k.endswith('.py')}))
             else:
                 attributes['srcs'], attributes['platform_srcs'] = (
-                    self.format_sources(parsed_srcs))
+                    self.format_source_map(parsed_srcs))
 
         # Emit platform-specific sources.  We split them between the
         # `platform_srcs` and `platform_resources` parameter based on their
@@ -731,7 +721,7 @@ class PythonConverter(base.Converter):
                 out_resources = collections.OrderedDict()
                 for dst, src in (
                         self.without_platforms(
-                            self.format_sources(ver_srcs))).items():
+                            self.format_source_map(ver_srcs))).items():
                     if dst.endswith('.py') or dst.endswith('.so'):
                         out_srcs[dst] = src
                     else:
