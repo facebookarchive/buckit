@@ -85,13 +85,9 @@ class GoConverter(base.Converter):
         cgo_deps=None,
         headers=None,
         preprocessor_flags=None,
-        platform_preprocessor_flags=None,
         cgo_compiler_flags=None,
-        platform_compiler_flags=None,
         linker_extra_outputs=None,
-        platform_linker_flags=None,
         link_style=None,
-        raw_headers=None,
         visibility=None,
     ):
         if srcs is None:
@@ -116,18 +112,10 @@ class GoConverter(base.Converter):
             headers = []
         if preprocessor_flags is None:
             preprocessor_flags = []
-        if platform_preprocessor_flags is None:
-            platform_preprocessor_flags = []
         if cgo_compiler_flags is None:
             cgo_compiler_flags = []
-        if platform_compiler_flags is None:
-            platform_compiler_flags = []
         if linker_extra_outputs is None:
             linker_extra_outputs = []
-        if platform_linker_flags is None:
-            platform_linker_flags = []
-        if raw_headers is None:
-            raw_headers = []
 
         extra_rules = []
 
@@ -187,20 +175,12 @@ class GoConverter(base.Converter):
             attributes['headers'] = headers
         if preprocessor_flags:
             attributes['preprocessor_flags'] = preprocessor_flags
-        if platform_preprocessor_flags:
-            attributes['platform_preprocessor_flags'] = platform_preprocessor_flags
         if cgo_compiler_flags:
             attributes['cgo_compiler_flags'] = cgo_compiler_flags
-        if platform_compiler_flags:
-            attributes['platform_compiler_flags'] = platform_compiler_flags
         if linker_extra_outputs:
             attributes['linker_extra_outputs'] = linker_extra_outputs
-        if platform_linker_flags:
-            attributes['platform_linker_flags'] = platform_linker_flags
         if link_style:
             attributes['link_style'] = link_style
-        if raw_headers:
-            attributes['raw_headers'] = raw_headers
 
         if self.is_test():
             attributes['coverage_mode'] = "set"
