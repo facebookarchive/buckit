@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import collections
 import os
 
+
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
     global _import_macro_lib__imported
