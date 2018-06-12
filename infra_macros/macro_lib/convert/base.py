@@ -299,6 +299,25 @@ class Converter(object):
 
         return sorted(platforms)
 
+    def _to_buck_platform(self, platform, compiler):
+        """
+        Convert a given fbcode platform name into the Buck (C++) platform name.
+        As the latter is compiler-family-specific, while the former is not, it
+        at least takes into account the compiler chosen by the build mode.
+        """
+
+        return platform + '-' + compiler
+
+    def get_buck_platform(self, base_path):
+        """
+        Return the Buck platform to use for a deployable rule at the given base
+        path, running some consistency checks as well.
+        """
+
+        return self._to_buck_platform(
+            self.get_platform(base_path),
+            self._context.compiler)
+
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
             return os.path.join(
@@ -733,7 +752,9 @@ class Converter(object):
             if result:
                 # Buck expects the platform name as a regex, so anchor and
                 # escape it for literal matching.
-                out.append(('^{}$'.format(re.escape(platform)), result))
+                buck_platform = (
+                    self._to_buck_platform(platform, self._context.compiler))
+                out.append(('^{}$'.format(re.escape(buck_platform)), result))
 
         return out
 
@@ -1153,9 +1174,9 @@ class Converter(object):
 
         return ldflags
 
-    def read_shlib_interfaces(self, platform):
+    def read_shlib_interfaces(self, buck_platform):
         return self.read_choice(
-            'cxx#' + platform,
+            'cxx#' + buck_platform,
             'shlib_interfaces',
             ['disabled', 'enabled', 'defined_only'])
 
@@ -1185,8 +1206,9 @@ class Converter(object):
         # everything onto the dynamic symbol table.  Since this only affects
         # object files from sources immediately owned by `cpp_binary` rules,
         # this shouldn't have much of a performance issue.
+        buck_platform = self.get_buck_platform(base_path)
         if (self.get_link_style() == 'shared' and
-                self.read_shlib_interfaces(platform) == 'defined_only'):
+                self.read_shlib_interfaces(buck_platform) == 'defined_only'):
             ldflags.append('-Wl,--export-dynamic')
 
         return ldflags
@@ -1228,7 +1250,9 @@ class Converter(object):
         # discern code generation flags from language specific flags, just
         # pass all our C/C++ compiler flags in.
         compiler_flags = self.get_compiler_flags(base_path)
-        section = 'cxx#{}'.format(platform)
+        section = (
+            'cxx#{}'
+            .format(self._to_buck_platform(platform, self._context.compiler)))
         flags.extend(self.read_flags(section, 'cflags', []))
         flags.extend(compiler_flags['c_cpp_output'])
         flags.extend(self.read_flags(section, 'cxxflags', []))
@@ -1291,6 +1315,10 @@ class Converter(object):
         # 5. If enabled, add in LTO linker flags.
         if self.is_lto_enabled():
             if self._context.compiler == 'clang':
+                if self._context.lto_type not in ('monolithic', 'thin'):
+                    raise ValueError(
+                        'clang does not support {} LTO'
+                        .format(self._context.lto_type))
                 # Clang does not support fat LTO objects, so we build everything
                 # as IR only, and must also link everything with -flto
                 ldflags.append('-flto=thin' if self._context.lto_type ==
@@ -1300,6 +1328,10 @@ class Converter(object):
                 ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
             else:
                 assert(self._context.compiler == 'gcc')
+                if self._context.lto_type != 'fat':
+                    raise ValueError(
+                        'gcc does not support {} LTO'
+                        .format(cxx_mode.lto_type))
                 # GCC has fat LTO objects, where we build everything as both IR
                 # and object code and then conditionally opt-in here, at link-
                 # time, based on "enable_lto" in the TARGETS file.

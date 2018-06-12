@@ -208,9 +208,10 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # in a gcc build. This means we need to fetch the appropriate flags
         # here, and also filter out inappropriate ones we get from the
         # $(cxxppflags) macro in the cxxgenrule.
+        buck_platform = self.get_buck_platform(base_path)
         base_clang_flags = '%s %s' % (
-            self._context.buck_ops.read_config('rust#' + platform, 'bindgen_cxxppflags'),
-            self._context.buck_ops.read_config('rust#' + platform, 'bindgen_cxxflags'))
+            self._context.buck_ops.read_config('rust#' + buck_platform, 'bindgen_cxxppflags'),
+            self._context.buck_ops.read_config('rust#' + buck_platform, 'bindgen_cxxflags'))
         base_clang_flags = base_clang_flags.split(' ')
 
         def formatter(fmt):

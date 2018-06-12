@@ -125,6 +125,7 @@ class CustomRuleConverter(base.Converter):
         env['FBCODE_BUILD_MODE'] = self._context.mode
         env['FBCODE_BUILD_TOOL'] = 'buck'
         env['FBCODE_PLATFORM'] = platform
+        env['BUCK_PLATFORM'] = self.get_buck_platform(base_path)
         # Add in the tool rules to the environment.  They won't be consumed by
         # the script/user, but they will affect the rule key.
         env['FBCODE_THIRD_PARTY_TOOLS'] = (

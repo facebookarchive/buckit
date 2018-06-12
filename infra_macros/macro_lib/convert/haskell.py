@@ -746,8 +746,9 @@ class HaskellConverter(base.Converter):
         # Handle DLL deps.
         out_dep_queries = []
         if dlls:
+            buck_platform = self.get_buck_platform(base_path)
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                cpp.convert_dlls(base_path, name, platform,
+                cpp.convert_dlls(base_path, name, platform, buck_platform,
                                  dlls, self.get_fbcode_dir_from_gen_dir(),
                                  visibility=visibility))
             rules.extend(dll_rules)
@@ -776,7 +777,7 @@ class HaskellConverter(base.Converter):
             attributes['linker_flags'] = out_linker_flags
 
         if self.is_deployable():
-            attributes['platform'] = platform
+            attributes['platform'] = self.get_buck_platform(base_path)
 
             # TODO: support `link_style` for `haskell_ghci` rule.
             if self.get_fbconfig_rule_type() != 'haskell_ghci':
@@ -905,7 +906,7 @@ class HaskellConverter(base.Converter):
             attrs['visibility'] = visibility
         if haddock_flags:
             attrs['haddock_flags'] = haddock_flags
-        attrs['platform'] = self.get_platform(base_path)
+        attrs['platform'] = self.get_buck_platform(base_path)
 
         out_deps = []
         for target in deps:

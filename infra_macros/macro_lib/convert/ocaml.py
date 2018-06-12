@@ -84,7 +84,7 @@ class OCamlConverter(base.Converter):
             attributes['bytecode_only'] = True
 
         if self.get_fbconfig_rule_type() == 'ocaml_binary':
-            attributes['platform'] = platform
+            attributes['platform'] = self.get_buck_platform(base_path)
 
         # Add the C/C++ build info lib to deps.
         if self.get_fbconfig_rule_type() == 'ocaml_binary':

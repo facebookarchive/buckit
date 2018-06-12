@@ -450,7 +450,7 @@ class LuaConverter(base.Converter):
         attributes['python_platform'] = self.get_py2_platform(platform)
 
         # Set platform.
-        attributes['platform'] = platform
+        attributes['platform'] = self.get_buck_platform(base_path)
 
         # Tests depend on FB lua test lib.
         if self.is_test():

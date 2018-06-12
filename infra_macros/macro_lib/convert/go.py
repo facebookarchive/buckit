@@ -142,7 +142,7 @@ class GoConverter(base.Converter):
             attributes['resources'] = resources
 
         if self.is_binary():
-            attributes['platform'] = self.get_platform(base_path)
+            attributes['platform'] = self.get_buck_platform(base_path)
 
         dependencies = []
         for target in deps:

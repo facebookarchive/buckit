@@ -181,13 +181,13 @@ class RustConverter(base.Converter):
             attributes['crate'] = crate
 
         if self.is_binary():
+            platform = self.get_platform(base_path)
             if not link_style:
                 link_style = self.get_link_style()
 
             attributes['link_style'] = link_style
 
-            platform = self.get_platform(base_path)
-            attributes['default_platform'] = platform
+            attributes['default_platform'] = self.get_buck_platform(base_path)
 
             ldflags = self.get_ldflags(
                 base_path,
@@ -308,7 +308,6 @@ class RustConverter(base.Converter):
         test_attributes = collections.OrderedDict()
 
         name = '%s-unittest' % attributes['name']
-        platform = self.get_platform(base_path)
 
         test_attributes['name'] = name
         if visibility is not None:
@@ -323,9 +322,9 @@ class RustConverter(base.Converter):
             binary=True,
             strip_mode=None,
             build_info=True,
-            platform=platform)
+            platform=self.get_platform(base_path))
 
-        test_attributes['default_platform'] = platform
+        test_attributes['default_platform'] = self.get_buck_platform(base_path)
 
         if 'crate' in attributes:
             test_attributes['crate'] = '%s_unittest' % attributes['crate']

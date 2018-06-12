@@ -212,7 +212,14 @@ def create_dll_rules(
     return rules
 
 # TODO: Remove the default value when haskell rules get converted
-def convert_dlls(base_path, name, platform, dlls, fbcode_dir, visibility=None):
+def convert_dlls(
+        base_path,
+        name,
+        platform,
+        buck_platform,
+        dlls,
+        fbcode_dir,
+        visibility=None):
     """
     """
 
@@ -330,7 +337,7 @@ def convert_dlls(base_path, name, platform, dlls, fbcode_dir, visibility=None):
     deps.append(
         RootRuleTarget(
             base_path,
-            '{}#{}'.format(attrs['name'], platform)))
+            '{}#{}'.format(attrs['name'], buck_platform)))
     return rules, deps, ldflags, dep_queries
 
 
@@ -1229,7 +1236,8 @@ class CppConverter(base.Converter):
         for flag in linker_flags:
             macro_handlers = {}
             if self.is_binary(dlopen_info):
-                macro_handlers['platform'] = lambda: platform
+                macro_handlers['platform'] = (
+                    lambda: self.get_buck_platform(base_path))
             if flag != '--enable-new-dtags':
                 out_exported_ldflags.extend(
                     ['-Xlinker',
@@ -1356,8 +1364,9 @@ class CppConverter(base.Converter):
 
         # Handle DLL deps.
         if dlls:
+            buck_platform = self.get_buck_platform(base_path)
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                convert_dlls(base_path, name, platform, dlls,
+                convert_dlls(base_path, name, platform, buck_platform, dlls,
                              self.get_fbcode_dir_from_gen_dir(), visibility))
             extra_rules.extend(dll_rules)
             dependencies.extend(dll_deps)
@@ -1513,9 +1522,10 @@ class CppConverter(base.Converter):
         # Set the build platform, via both the `default_platform` parameter and
         # the default flavors support.
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            attributes['default_platform'] = platform
+            buck_platform = self.get_buck_platform(base_path)
+            attributes['default_platform'] = buck_platform
             if not self.is_deployable():
-                attributes['defaults'] = {'platform': platform}
+                attributes['defaults'] = {'platform': buck_platform}
 
         # Add in implicit deps.
         if not nodefaultlibs:
@@ -1681,7 +1691,6 @@ class CppConverter(base.Converter):
         # rules to wrap the extension in a prebuilt C/C++ library consumable
         # by Java dependents.
         if not self._context.mode.startswith('dev'):
-            platform = self.get_platform(base_path)
 
             # Wrap the extension in a `prebuilt_cxx_library` rule
             # using the user-facing name.  This is what Java library
@@ -1691,6 +1700,7 @@ class CppConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['soname'] = soname
+            platform = self.get_buck_platform(base_path)
             attrs['shared_lib'] = ':{}#{}'.format(name, platform)
             rules.append(Rule('prebuilt_cxx_library', attrs))
 

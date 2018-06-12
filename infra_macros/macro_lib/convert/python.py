@@ -458,6 +458,7 @@ class PythonConverter(base.Converter):
 
     def convert_interp_rules(
             self,
+            base_path,
             name,
             platform,
             python_version,
@@ -478,7 +479,7 @@ class PythonConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['main_module'] = interp_main_module
-            attrs['cxx_platform'] = platform
+            attrs['cxx_platform'] = self.get_buck_platform(base_path)
             attrs['platform'] = python_platform
             attrs['version_universe'] = (
                 self.get_version_universe(python_version))
@@ -912,7 +913,7 @@ class PythonConverter(base.Converter):
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 
-        attributes['cxx_platform'] = platform
+        attributes['cxx_platform'] = self.get_buck_platform(base_path)
         attributes['platform'] = python_platform
         attributes['version_universe'] = (
             self.get_version_universe(python_version))
@@ -963,6 +964,7 @@ class PythonConverter(base.Converter):
                 )
             interp_rules = (
                 self.convert_interp_rules(
+                    base_path,
                     name,
                     platform,
                     python_version,
@@ -981,6 +983,7 @@ class PythonConverter(base.Converter):
                 )
             rules.extend(
                 self.create_typecheck(
+                    base_path,
                     name,
                     main_module,
                     platform,
@@ -1188,6 +1191,7 @@ class PythonConverter(base.Converter):
 
     def create_typecheck(
         self,
+        base_path,
         name,
         main_module,
         platform,
@@ -1213,7 +1217,7 @@ class PythonConverter(base.Converter):
         attrs = collections.OrderedDict((
             ('name', name + '-typecheck'),
             ('main_module', 'python_typecheck'),
-            ('cxx_platform', platform),
+            ('cxx_platform', self.get_buck_platform(base_path)),
             ('platform', python_platform),
             ('deps', typecheck_deps),
             ('platform_deps', platform_deps),
