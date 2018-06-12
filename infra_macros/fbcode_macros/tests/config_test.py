@@ -35,6 +35,7 @@ class ConfigTest(tests.utils.TestCase):
                 "tcmalloc": ["tcmalloc//tcmalloc:tcmalloc"],
                 "malloc": []
             },  # get_allocators
+            False,  # get_auto_fdo_enabled
             [],  # get_auto_pch_blacklist
             "dev",  # get_build_mode
             "gcc",  # get_compiler_family
@@ -72,6 +73,7 @@ class ConfigTest(tests.utils.TestCase):
         statements = [
             "config.get_add_auto_headers_glob()",
             "config.get_allocators()",
+            "config.get_auto_fdo_enabled()",
             "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_compiler_family()",
@@ -122,6 +124,9 @@ class ConfigTest(tests.utils.TestCase):
             current_os = "windows"
 
         buckconfig = {
+            "cxx": {
+                "profile": "//tools:profile",
+            },
             "fbcode": {
                 "add_auto_headers_glob":
                 "true",
@@ -204,6 +209,7 @@ class ConfigTest(tests.utils.TestCase):
                 "tcmalloc": ["//foo:tcmalloc"],
                 "malloc": ["//foo:malloc"],
             },  # get_allocators
+            True,  # get_auto_fdo_enabled
             ["/foo", "/bar"],  # get_auto_pch_blacklist
             "opt",  # get_build_mode
             "clang",  # get_compiler_family
@@ -244,6 +250,7 @@ class ConfigTest(tests.utils.TestCase):
         statements = [
             "config.get_add_auto_headers_glob()",
             "config.get_allocators()",
+            "config.get_auto_fdo_enabled()",
             "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_compiler_family()",

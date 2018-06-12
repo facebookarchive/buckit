@@ -63,6 +63,11 @@ def _get_allocators():
         ),
     }
 
+def _get_auto_fdo_enabled():
+    """ Returns whether or not this build is using AutoFDO profile feedback """
+    # cxx.profile is the target containing the AutoFDO profile feedback data
+    return read_config('cxx', 'profile') != None
+
 def _get_auto_pch_blacklist():
     """
     Gets directories that should not have precopmied headers
@@ -410,6 +415,7 @@ def _get_use_custom_par_args():
 config = struct(
     get_add_auto_headers_glob = _get_add_auto_headers_glob,
     get_allocators = _get_allocators,
+    get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
     get_compiler_family = _get_compiler_family,
