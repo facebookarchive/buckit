@@ -72,11 +72,6 @@ ASAN_UBSAN_FLAGS = [
 UBSAN_FLAGS = [
     '-fsanitize=undefined',
     '-fno-sanitize=alignment',
-    # ASAN/MSAN/TSAN define pre-processor symbols:
-    # ADDRESS_SANITIZER/MEMORY_SANITIZER/THREAD_SANITIZER.
-    # UBSAN doesn't define anything and makes it hard to
-    # conditionally compile.
-    '-DUNDEFINED_SANITIZER=1',
     '-fsanitize-blacklist=$(location //tools/build:ubsan-blacklist)',
 
     # Python extensions are loaded with RTLD_LOCAL which is
