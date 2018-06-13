@@ -306,7 +306,12 @@ class Converter(object):
         at least takes into account the compiler chosen by the build mode.
         """
 
-        return platform + '-' + compiler
+        fmt = (
+            self._context.buck_ops.read_config(
+                'fbcode',
+                'buck_platform_format',
+                '{platform}'))
+        return fmt.format(platform=platform, compiler=compiler)
 
     def get_buck_platform(self, base_path):
         """
