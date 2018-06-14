@@ -273,6 +273,11 @@ class LuaConverter(base.Converter):
         cpp_main_attrs['force_static'] = True
         cpp_main_attrs['srcs'] = [':' + cpp_main_source_name]
 
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform = self.get_buck_platform(base_path)
+        cpp_main_attrs['default_platform'] = buck_platform
+        cpp_main_attrs['defaults'] = {'platform': buck_platform}
+
         # Set the dependencies that linked into the C/C++ starter binary.
         out_deps = []
 

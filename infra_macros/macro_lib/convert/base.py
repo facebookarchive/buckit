@@ -1501,6 +1501,11 @@ class Converter(object):
             ['-nodefaultlibs'] +
             list(linker_flags))
 
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform = self.get_buck_platform(base_path)
+        lib_attrs['default_platform'] = buck_platform
+        lib_attrs['defaults'] = {'platform': buck_platform}
+
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
         if self.is_lto_enabled() and self._context.compiler == 'clang':
@@ -1650,6 +1655,11 @@ class Converter(object):
         ]
         lib_attrs['srcs'] = [':' + source_gen_name]
         lib_attrs['compiler_flags'] = self.get_extra_cflags()
+
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform = self.get_buck_platform(base_path)
+        lib_attrs['default_platform'] = buck_platform
+        lib_attrs['defaults'] = {'platform': buck_platform}
 
         lib_linker_flags = []
         if linker_flags:

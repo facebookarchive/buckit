@@ -162,6 +162,10 @@ class JavaSwigConverter(SwigLangConverter):
         # "Something.h" in the source code of the C/C++ Java extension.
         attrs['headers'] = [hdr]
         attrs['header_namespace'] = ''
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform = self.get_buck_platform(base_path)
+        attrs['default_platform'] = buck_platform
+        attrs['defaults'] = {'platform': buck_platform}
         rules.append(Rule('cxx_library', attrs))
 
         # Pack all generated source directories into a source zip, which we'll
