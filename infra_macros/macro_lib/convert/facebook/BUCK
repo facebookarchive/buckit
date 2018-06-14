@@ -1,6 +1,11 @@
+buck_sh_binary(
+    name = "make_busybox_tgz.sh",
+    main = "make_busybox_tgz.sh",
+)
+
 custom_rule(
     name = "busybox-tgz",
     build_args = "$(location @/third-party:busybox:bin/busybox)",
-    build_script = "make_busybox_tgz.sh",
+    build_script_dep = ":make_busybox_tgz.sh",
     output_bin_files = ["busybox.tgz"],
 )
