@@ -180,14 +180,14 @@ class RustConverter(base.Converter):
         if crate:
             attributes['crate'] = crate
 
+        attributes['default_platform'] = self.get_buck_platform(base_path)
+
         if self.is_binary():
             platform = self.get_platform(base_path)
             if not link_style:
                 link_style = self.get_link_style()
 
             attributes['link_style'] = link_style
-
-            attributes['default_platform'] = self.get_buck_platform(base_path)
 
             ldflags = self.get_ldflags(
                 base_path,
