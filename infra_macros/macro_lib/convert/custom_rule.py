@@ -50,9 +50,7 @@ class CustomRuleConverter(base.Converter):
             self,
             base_path,
             name,
-            build_script=None,
-            build_script_path=None,
-            build_script_dep=None,
+            build_script_dep,
             build_args=None,
             output_gen_files=[],
             output_bin_files=[],
@@ -63,10 +61,6 @@ class CustomRuleConverter(base.Converter):
             env=None,
             visibility=None,
             no_remote=False):
-
-        if strict and build_script_path is not None:
-            raise ValueError(
-                '`build_script_path` is not supported in `strict` mode')
 
         out = self.get_output_dir(name)
         platform = self.get_platform(base_path)
@@ -137,39 +131,8 @@ class CustomRuleConverter(base.Converter):
             ' '.join(['{}={}'.format(k, v) for k, v in env.iteritems()]) +
             ' ')
 
-        # If a raw build script path was specified, add that to the command.
-        if build_script is not None:
-            full_path = (
-                os.path.normpath(
-                    os.path.join(
-                        build_script_path or base_path,
-                        build_script)))
-
-            # If `build_script` resolves to a absolute path, error out, since
-            # Buck doesn't currently have a way to make these affect the rule
-            # key.
-            if os.path.isabs(full_path):
-                raise ValueError(
-                    'absolute build script paths are not supported: {}'
-                    .format(full_path))
-
-            # Wrap the build script in an `export_file` rule and reference it
-            # in the command via a location macro so that it gets properly
-            # represented in the rule key.
-            attrs = collections.OrderedDict()
-            attrs['name'] = out + '-build-script'
-            if visibility is not None:
-                attrs['visibility'] = visibility
-            attrs['out'] = os.path.join(out + '-build-script', full_path)
-            attrs['src'] = os.path.relpath(full_path, base_path)
-            extra_rules.append(Rule('export_file', attrs))
-            cmd += '$(location :{}-build-script)'.format(out)
-
-        # Otherwise, if just `build_script_dep`, convert this straight to a
-        # executable macro.
-        else:
-            cmd += '$(exe {})'.format(
-                self.convert_build_target(base_path, build_script_dep))
+        cmd += '$(exe {})'.format(
+            self.convert_build_target(base_path, build_script_dep))
 
         # Add the fbconfig-specified args that point to special directories.
         if not strict:
