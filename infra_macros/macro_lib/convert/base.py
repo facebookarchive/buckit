@@ -1524,9 +1524,15 @@ class Converter(object):
 
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
-        if self.is_lto_enabled() and self._context.compiler == 'clang':
-            lib_attrs['linker_flags'].append(
-                '-flto=thin' if self._context.lto_type == 'thin' else '-flto')
+        if self.is_lto_enabled():
+            lib_attrs['platform_linker_flags'] = (
+                self.format_platform_param(
+                    lambda _, compiler: (
+                        ['-flto=thin'
+                         if self._context.lto_type == 'thin'
+                         else '-flto']
+                        if compiler == 'clang'
+                        else [])))
 
         if static:
             # Use link_whole to make sure the build info symbols are always
@@ -1684,16 +1690,21 @@ class Converter(object):
                 ['-nodefaultlibs'] +
                 list(linker_flags)
             )
+        if lib_linker_flags:
+            lib_attrs['linker_flags'] = lib_linker_flags
 
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
-        if self.is_lto_enabled() and self._context.compiler == 'clang':
-            lib_linker_flags.append(
-                '-flto=thin' if self._context.lto_type == 'thin' else '-flto'
-            )
+        if self.is_lto_enabled():
+            lib_attrs['platform_linker_flags'] = (
+                self.format_platform_param(
+                    lambda _, compiler: (
+                        ['-flto=thin'
+                         if self._context.lto_type == 'thin'
+                         else '-flto']
+                        if compiler == 'clang'
+                        else [])))
 
-        if lib_linker_flags:
-            lib_attrs['linker_flags'] = lib_linker_flags
 
         # Use link_whole to make sure the build info symbols are always
         # added to the binary, even if the binary does not refer to them.
