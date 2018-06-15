@@ -128,7 +128,7 @@ class OCamlConverter(base.Converter):
             name,
             self.get_fbconfig_rule_type(),
             binary=self.is_binary(),
-            platform=platform)
+            platform=platform if self.is_binary() else None)
 
         if "-flto" in ldflags:
             attributes['compiler_flags'].extend(["-ccopt", "-flto", "-cclib", "-flto"])

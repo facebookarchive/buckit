@@ -1283,6 +1283,7 @@ class Converter(object):
             name,
             rule_type,
             binary=False,
+            deployable=None,
             strip_mode=None,
             build_info=False,
             lto=False,
@@ -1290,6 +1291,18 @@ class Converter(object):
         """
         Return linker flags to apply to links.
         """
+
+        # Default `deployable` to whatever `binary` was set to, as very rule
+        # types make a distinction.
+        if deployable is None:
+            deployable = binary
+
+        # The `binary`, `build_info`, and `plaform` params only make sense for
+        # "deployable" rules.
+        assert not binary or deployable
+        assert not lto or deployable
+        assert not build_info or deployable
+        assert not (deployable ^ (platform is not None))
 
         ldflags = []
 
@@ -1307,7 +1320,8 @@ class Converter(object):
 
         # 3. Add in flags specific for linking a binary.
         if binary:
-            ldflags.extend(self.get_binary_ldflags(base_path, name, rule_type, platform))
+            ldflags.extend(
+                self.get_binary_ldflags(base_path, name, rule_type, platform))
 
         # 4. Add in the build info linker flags.
         # In OSS, we don't need to actually use the build info (and the

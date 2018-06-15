@@ -77,7 +77,7 @@ class DConverter(base.Converter):
                 self.get_fbconfig_rule_type(),
                 binary=self.is_binary(),
                 build_info=self.is_binary(),
-                platform=platform))
+                platform=platform if self.is_binary() else None))
         attributes['linker_flags'] = out_ldflags
 
         dependencies = []

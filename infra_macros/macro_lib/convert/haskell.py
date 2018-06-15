@@ -655,13 +655,14 @@ class HaskellConverter(base.Converter):
                 name,
                 self.get_fbconfig_rule_type(),
                 binary=self.is_binary(),
+                deployable=self.is_deployable(),
                 # Never apply stripping flags to library rules, as they only
                 # get linked when using dynamic linking (which we avoid
                 # applying stripping to anyway), and added unused linker flags
                 # affect rule keys up the tree.
                 strip_mode=None if self.is_deployable() else 'none',
                 build_info=self.is_deployable(),
-                platform=platform))
+                platform=platform if self.is_deployable() else None))
         for ldflag in ldflags:
             out_linker_flags.extend(['-optl', ldflag])
         out_linker_flags.extend(validated_compiler_flags)

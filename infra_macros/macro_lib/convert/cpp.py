@@ -1157,6 +1157,7 @@ class CppConverter(base.Converter):
                 name,
                 self.get_fbconfig_rule_type(),
                 binary=self.is_binary(dlopen_info),
+                deployable=self.is_deployable(),
                 # Never apply stripping flags to library rules, as they only
                 # get linked in `dev` mode which we avoid stripping in anyway,
                 # any adding unused linker flags affects rule keys up the tree.

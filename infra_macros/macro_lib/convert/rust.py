@@ -193,12 +193,8 @@ class RustConverter(base.Converter):
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),
-                binary=self.is_binary(),
-                # Never apply stripping flags to library rules, as they only
-                # get linked in `dev` mode which we avoid stripping in anyway,
-                # any adding unused linker flags affects rule keys up the tree.
-                strip_mode=None if self.is_deployable() else 'none',
-                build_info=self.is_deployable(),
+                binary=True,
+                build_info=True,
                 platform=platform)
             attributes['linker_flags'] = ldflags + (linker_flags or [])
 
