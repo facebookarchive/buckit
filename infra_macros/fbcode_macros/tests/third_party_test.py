@@ -124,13 +124,19 @@ class ThirdPartyTest(tests.utils.TestCase):
         self.addDummyPlatformOverrides(root)
         commands = [
             'third_party.replace_third_party_repo("foo bar", None)',
+            'third_party.replace_third_party_repo("@/third-party-tools:foo:bar/baz", None)',
+            'third_party.replace_third_party_repo("@/third-party-tools:foo:bar/baz", "gcc-5")',
             'third_party.replace_third_party_repo("@/third-party:foo:bar/baz", None)',
             'third_party.replace_third_party_repo("@/third-party:foo:bar/baz", "gcc-5")',
+            'third_party.replace_third_party_repo("$(exe @/third-party-tools:clang:bin/clang) $(exe @/third-party:foo:bar)", None)',
         ]
         expected = [
             "foo bar",
+            "//third-party-buck/default/tools/foo:bar/baz",
+            "//third-party-buck/gcc-5/tools/foo:bar/baz",
             "//third-party-buck/default/build/foo:bar/baz",
             "//third-party-buck/gcc-5/build/foo:bar/baz",
+            "$(exe //third-party-buck/default/tools/clang:bin/clang) $(exe //third-party-buck/default/build/foo:bar)",
         ]
         self.assertSuccess(
             root.runUnitTests(self.includes, commands, buckfile="foo/BUCK"), *expected

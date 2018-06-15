@@ -115,6 +115,25 @@ def _get_build_target_prefix(platform):
     """
     return "//{}/".format(_get_build_path(platform))
 
+def _get_tools_target_prefix(platform):
+    """
+    Returns the first part of a target that would be in the tools directory for a given platform
+
+    Args:
+        platform: The platform to search for
+
+    Returns:
+        The first part of the target, e.g. //third-party/tools/
+    """
+    return "//{}/".format(_get_tools_path(platform))
+
+def _get_tools_path(platform):
+    """ Get the path to a `tools` directory for a given platform """
+    if paths_config.use_platforms_and_build_subdirs:
+        return paths.join(paths_config.third_party_root, platform, "tools")
+    else:
+        return paths_config.third_party_root
+
 def _get_tool_path(project, platform):
     """ Get the path to a `tool` directory for a given project """
     if paths_config.use_platforms_and_build_subdirs:
@@ -180,7 +199,9 @@ def _replace_third_party_repo(string, platform):
     # TODO: OSS
     if platform == None:
         platform = platform_helpers.get_default_platform()
-    return string.replace("@/third-party:", _get_build_target_prefix(platform))
+    return string.replace(
+        "@/third-party-tools:", _get_tools_target_prefix(platform)).replace(
+        "@/third-party:", _get_build_target_prefix(platform))
 
 third_party = struct(
     external_dep_target = _external_dep_target,
@@ -189,6 +210,7 @@ third_party = struct(
     get_tool_bin_target = _get_tool_bin_target,
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,
+    get_tools_path = _get_tools_path,
     replace_third_party_repo = _replace_third_party_repo,
     replace_third_party_repo_list = _replace_third_party_repo_list,
     third_party_target = _third_party_target,
