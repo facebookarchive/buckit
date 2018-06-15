@@ -1257,10 +1257,9 @@ class Converter(object):
         # code generation back into the linker.  Since we don't actually
         # discern code generation flags from language specific flags, just
         # pass all our C/C++ compiler flags in.
+        buck_platform = self._to_buck_platform(platform, 'gcc')
         compiler_flags = self.get_compiler_flags(base_path)
-        section = (
-            'cxx#{}'
-            .format(self._to_buck_platform(platform, self._context.compiler)))
+        section = 'cxx#{}'.format(buck_platform)
         flags.extend(self.read_flags(section, 'cflags', []))
         flags.extend(compiler_flags['c_cpp_output'])
         flags.extend(self.read_flags(section, 'cxxflags', []))
