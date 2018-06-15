@@ -380,7 +380,8 @@ class Converter(object):
             for platform in self.get_platforms_for_arch(arch):
                 platform_flags[platform] = flags
 
-        return self.format_platform_param(platform_flags.get)
+        return self.format_platform_param(
+            lambda platform, _: platform_flags.get(platform))
 
     def get_tool_version(self, platform, project):
         conf = self._context.third_party_config['platforms'][platform]
@@ -578,7 +579,7 @@ class Converter(object):
         tp2_dep_srcs = [src for src in srcs if is_tp2_src_dep(src)]
         out_platform_srcs = (
             self.format_platform_param(
-                lambda platform:
+                lambda platform, _:
                     [self.format_source(src, platform=platform)
                      for src in tp2_dep_srcs]))
 
@@ -602,7 +603,7 @@ class Converter(object):
                         for src in srcs_with_flags if is_tp2_src_dep(src.src)]
         out_platform_srcs = (
             self.format_platform_param(
-                lambda platform:
+                lambda platform, _:
                     [self.format_source_with_flags(src, platform=platform)
                      for src in tp2_dep_srcs]))
 
@@ -634,7 +635,7 @@ class Converter(object):
                     for name, src in srcs.items() if is_tp2_src_dep(src)}
         out_platform_srcs = (
             self.format_platform_param(
-                lambda platform:
+                lambda platform, _:
                     {name: self.format_source(src, platform=platform)
                      for name, src in tp2_srcs.items()}))
 
@@ -753,7 +754,9 @@ class Converter(object):
         out = []
 
         for platform in self.get_platforms():
-            result = value(platform) if callable(value) else value
+            result = (
+                value(platform, self._context.compiler)
+                if callable(value) else value)
             if result:
                 # Buck expects the platform name as a regex, so anchor and
                 # escape it for literal matching.
@@ -771,7 +774,7 @@ class Converter(object):
         Also add override support for PyFI migration - T22354138
         """
 
-        def gen(platform):
+        def gen(platform, _):
             pdeps = deps
 
             # Auxiliary deps support.

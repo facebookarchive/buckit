@@ -39,7 +39,7 @@ class CppJvmLibrary(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
 
-        def formatter(flags, platform):
+        def formatter(flags, platform, _):
             arch = self.get_platform_architecture(platform)
             # Remap arch to JVM-specific names.
             arch = {'x86_64': 'amd64'}.get(arch, arch)
