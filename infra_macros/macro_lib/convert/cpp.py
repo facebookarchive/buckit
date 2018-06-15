@@ -1052,9 +1052,6 @@ class CppConverter(base.Converter):
         for lang in self.get_compiler_langs():
             out_lang_compiler_flags.setdefault(lang, [])
             out_lang_compiler_flags[lang].extend(compiler_flags)
-            out_lang_compiler_flags[lang].extend(
-                compiler_specific_flags.get(
-                    'gcc' if cuda else self._context.compiler, []))
         for flag in nvcc_flags:
             out_lang_compiler_flags.setdefault('cuda_cpp_output', [])
             out_lang_compiler_flags['cuda_cpp_output'].append('-_NVCC_')
@@ -1079,6 +1076,10 @@ class CppConverter(base.Converter):
         out_platform_compiler_flags = []
         out_platform_compiler_flags.extend(
             self.get_platform_flags_from_arch_flags(arch_compiler_flags))
+        out_platform_compiler_flags.extend(
+            self.format_platform_param(
+                lambda _, compiler:
+                    compiler_specific_flags.get('gcc' if cuda else compiler)))
         if out_platform_compiler_flags:
             attributes['platform_compiler_flags'] = (
                 out_platform_compiler_flags)
