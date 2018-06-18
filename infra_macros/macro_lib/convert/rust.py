@@ -438,6 +438,7 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         lib_attrs['crate'] = (crate or name) + "_build_info"
         lib_attrs['preferred_linkage'] = 'static'
         lib_attrs['srcs'] = [':' + source_name]
+        lib_attrs['default_platform'] = self.get_buck_platform(base_path)
         rules.append(Rule('rust_library', lib_attrs))
 
         return RootRuleTarget(base_path, lib_name), rules
