@@ -30,6 +30,7 @@ class DeweyArtifactConverter(base.Converter):
             'artifact',
             'path',
             'visibility',
+            'executable',
         ])
 
     def get_download_rule(
@@ -40,6 +41,7 @@ class DeweyArtifactConverter(base.Converter):
             artifact,
             path,
             visibility,
+            executable
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -57,8 +59,16 @@ class DeweyArtifactConverter(base.Converter):
               dewey cat --project {project} --commit {commit} --tag {tag} \
                         --path {path} --dest $OUT
             fi
-        """.format(project=project, commit=commit, tag=artifact, path=path)
+            {make_executable}
+        """.format(
+            project=project,
+            commit=commit,
+            tag=artifact,
+            path=path,
+            make_executable="chmod +x $OUT" if executable else ""
+        )
         attributes['bash'] = bash
+        attributes['executable'] = executable
         return Rule('genrule', attributes)
 
     def convert(
@@ -70,8 +80,9 @@ class DeweyArtifactConverter(base.Converter):
             artifact,
             path,
             visibility=None,
+            executable=False,
             **kwargs
     ):
         rules = []
-        rules.append(self.get_download_rule(name, project, commit, artifact, path, visibility))
+        rules.append(self.get_download_rule(name, project, commit, artifact, path, visibility, executable))
         return rules
