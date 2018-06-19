@@ -68,7 +68,7 @@ class CustomUnittestConverter(base.Converter):
 
             # If the first parameter is a location macro, just extract the
             # build target and use that.
-            m = re.search('^\$\(location (?P<test>.*)\)$', command[0])
+            m = re.search('^\$\((location|exe) (?P<test>.*)\)$', command[0])
             if m is not None:
                 test = m.group('test')
 
