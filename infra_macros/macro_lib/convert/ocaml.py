@@ -18,6 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 class OCamlConverter(base.Converter):
@@ -84,7 +85,7 @@ class OCamlConverter(base.Converter):
             attributes['bytecode_only'] = True
 
         if self.get_fbconfig_rule_type() == 'ocaml_binary':
-            attributes['platform'] = self.get_buck_platform(base_path)
+            attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         # Add the C/C++ build info lib to deps.
         if self.get_fbconfig_rule_type() == 'ocaml_binary':

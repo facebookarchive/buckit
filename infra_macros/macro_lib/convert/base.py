@@ -67,8 +67,8 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
-load("@fbcode_macros//build_defs:platform.bzl", "platform")
 
 SANITIZERS = {
     'address': 'asan',
@@ -273,7 +273,7 @@ class Converter(object):
         """
         Get the fbcode platform to use for the given base path.
         """
-        return platform.get_platform_for_base_path(base_path)
+        return platform_utils.get_platform_for_base_path(base_path)
 
     def get_platform_architecture(self, platform):
         """
@@ -298,30 +298,6 @@ class Converter(object):
                 platforms.add(platform)
 
         return sorted(platforms)
-
-    def _to_buck_platform(self, platform, compiler):
-        """
-        Convert a given fbcode platform name into the Buck (C++) platform name.
-        As the latter is compiler-family-specific, while the former is not, it
-        at least takes into account the compiler chosen by the build mode.
-        """
-
-        fmt = (
-            self._context.buck_ops.read_config(
-                'fbcode',
-                'buck_platform_format',
-                '{platform}'))
-        return fmt.format(platform=platform, compiler=compiler)
-
-    def get_buck_platform(self, base_path):
-        """
-        Return the Buck platform to use for a deployable rule at the given base
-        path, running some consistency checks as well.
-        """
-
-        return self._to_buck_platform(
-            self.get_platform(base_path),
-            self._context.compiler)
 
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
@@ -761,7 +737,7 @@ class Converter(object):
                 # Buck expects the platform name as a regex, so anchor and
                 # escape it for literal matching.
                 buck_platform = (
-                    self._to_buck_platform(platform, self._context.compiler))
+                    platform_utils.to_buck_platform(platform, self._context.compiler))
                 out.append(('^{}$'.format(re.escape(buck_platform)), result))
 
         return out
@@ -1214,7 +1190,7 @@ class Converter(object):
         # everything onto the dynamic symbol table.  Since this only affects
         # object files from sources immediately owned by `cpp_binary` rules,
         # this shouldn't have much of a performance issue.
-        buck_platform = self.get_buck_platform(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         if (self.get_link_style() == 'shared' and
                 self.read_shlib_interfaces(buck_platform) == 'defined_only'):
             ldflags.append('-Wl,--export-dynamic')
@@ -1257,7 +1233,7 @@ class Converter(object):
         # code generation back into the linker.  Since we don't actually
         # discern code generation flags from language specific flags, just
         # pass all our C/C++ compiler flags in.
-        buck_platform = self._to_buck_platform(platform, 'gcc')
+        buck_platform = platform_utils._to_buck_platform(platform, 'gcc')
         compiler_flags = self.get_compiler_flags(base_path)
         section = 'cxx#{}'.format(buck_platform)
         flags.extend(self.read_flags(section, 'cflags', []))
@@ -1518,7 +1494,7 @@ class Converter(object):
             list(linker_flags))
 
         # Setup platform default for compilation DB, and direct building.
-        buck_platform = self.get_buck_platform(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         lib_attrs['default_platform'] = buck_platform
         lib_attrs['defaults'] = {'platform': buck_platform}
 
@@ -1679,7 +1655,7 @@ class Converter(object):
         lib_attrs['compiler_flags'] = self.get_extra_cflags()
 
         # Setup platform default for compilation DB, and direct building.
-        buck_platform = self.get_buck_platform(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         lib_attrs['default_platform'] = buck_platform
         lib_attrs['defaults'] = {'platform': buck_platform}
 

@@ -29,6 +29,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 VENDOR_PATH = 'third-party-source/go'
 
@@ -142,7 +143,7 @@ class GoConverter(base.Converter):
             attributes['resources'] = resources
 
         if self.is_binary():
-            attributes['platform'] = self.get_buck_platform(base_path)
+            attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         dependencies = []
         for target in deps:

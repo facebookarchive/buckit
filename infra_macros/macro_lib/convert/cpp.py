@@ -46,6 +46,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
@@ -1238,7 +1239,7 @@ class CppConverter(base.Converter):
             macro_handlers = {}
             if self.is_binary(dlopen_info):
                 macro_handlers['platform'] = (
-                    lambda: self.get_buck_platform(base_path))
+                    lambda: platform_utils.get_buck_platform_for_base_path(base_path))
             if flag != '--enable-new-dtags':
                 out_exported_ldflags.extend(
                     ['-Xlinker',
@@ -1365,7 +1366,7 @@ class CppConverter(base.Converter):
 
         # Handle DLL deps.
         if dlls:
-            buck_platform = self.get_buck_platform(base_path)
+            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
                 convert_dlls(base_path, name, platform, buck_platform, dlls,
                              self.get_fbcode_dir_from_gen_dir(), visibility))
@@ -1523,7 +1524,7 @@ class CppConverter(base.Converter):
         # Set the build platform, via both the `default_platform` parameter and
         # the default flavors support.
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            buck_platform = self.get_buck_platform(base_path)
+            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             attributes['default_platform'] = buck_platform
             if not self.is_deployable():
                 attributes['defaults'] = {'platform': buck_platform}
@@ -1701,7 +1702,7 @@ class CppConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['soname'] = soname
-            platform = self.get_buck_platform(base_path)
+            platform = platform_utils.get_buck_platform_for_base_path(base_path)
             attrs['shared_lib'] = ':{}#{}'.format(name, platform)
             rules.append(Rule('prebuilt_cxx_library', attrs))
 

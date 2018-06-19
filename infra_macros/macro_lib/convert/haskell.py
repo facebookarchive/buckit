@@ -25,6 +25,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 # Flags controlling warnings issued by compiler
@@ -747,7 +748,7 @@ class HaskellConverter(base.Converter):
         # Handle DLL deps.
         out_dep_queries = []
         if dlls:
-            buck_platform = self.get_buck_platform(base_path)
+            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
                 cpp.convert_dlls(base_path, name, platform, buck_platform,
                                  dlls, self.get_fbcode_dir_from_gen_dir(),
@@ -778,7 +779,7 @@ class HaskellConverter(base.Converter):
             attributes['linker_flags'] = out_linker_flags
 
         if self.is_deployable():
-            attributes['platform'] = self.get_buck_platform(base_path)
+            attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
             # TODO: support `link_style` for `haskell_ghci` rule.
             if self.get_fbconfig_rule_type() != 'haskell_ghci':
@@ -907,7 +908,7 @@ class HaskellConverter(base.Converter):
             attrs['visibility'] = visibility
         if haddock_flags:
             attrs['haddock_flags'] = haddock_flags
-        attrs['platform'] = self.get_buck_platform(base_path)
+        attrs['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         out_deps = []
         for target in deps:

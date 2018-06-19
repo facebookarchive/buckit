@@ -24,6 +24,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 DEFAULT_CPP_MAIN = RootRuleTarget('tools/make_lar', 'lua_main')
@@ -274,7 +275,7 @@ class LuaConverter(base.Converter):
         cpp_main_attrs['srcs'] = [':' + cpp_main_source_name]
 
         # Setup platform default for compilation DB, and direct building.
-        buck_platform = self.get_buck_platform(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         cpp_main_attrs['default_platform'] = buck_platform
         cpp_main_attrs['defaults'] = {'platform': buck_platform}
 
@@ -455,7 +456,7 @@ class LuaConverter(base.Converter):
         attributes['python_platform'] = self.get_py2_platform(platform)
 
         # Set platform.
-        attributes['platform'] = self.get_buck_platform(base_path)
+        attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         # Tests depend on FB lua test lib.
         if self.is_test():

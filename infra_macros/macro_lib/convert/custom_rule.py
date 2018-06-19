@@ -23,6 +23,7 @@ with allow_unsafe_import():
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 # An "alias" for a bash command to get a relative path.  This is pretty
@@ -119,7 +120,7 @@ class CustomRuleConverter(base.Converter):
         env['FBCODE_BUILD_MODE'] = self._context.mode
         env['FBCODE_BUILD_TOOL'] = 'buck'
         env['FBCODE_PLATFORM'] = platform
-        env['BUCK_PLATFORM'] = self.get_buck_platform(base_path)
+        env['BUCK_PLATFORM'] = platform_utils.get_buck_platform_for_base_path(base_path)
         # Add in the tool rules to the environment.  They won't be consumed by
         # the script/user, but they will affect the rule key.
         env['FBCODE_THIRD_PARTY_TOOLS'] = (

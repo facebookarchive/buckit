@@ -24,6 +24,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
 class RustConverter(base.Converter):
@@ -180,7 +181,7 @@ class RustConverter(base.Converter):
         if crate:
             attributes['crate'] = crate
 
-        attributes['default_platform'] = self.get_buck_platform(base_path)
+        attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         if self.is_binary():
             platform = self.get_platform(base_path)
@@ -320,7 +321,7 @@ class RustConverter(base.Converter):
             build_info=True,
             platform=self.get_platform(base_path))
 
-        test_attributes['default_platform'] = self.get_buck_platform(base_path)
+        test_attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         if 'crate' in attributes:
             test_attributes['crate'] = '%s_unittest' % attributes['crate']
@@ -438,7 +439,7 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         lib_attrs['crate'] = (crate or name) + "_build_info"
         lib_attrs['preferred_linkage'] = 'static'
         lib_attrs['srcs'] = [':' + source_name]
-        lib_attrs['default_platform'] = self.get_buck_platform(base_path)
+        lib_attrs['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         rules.append(Rule('rust_library', lib_attrs))
 
         return RootRuleTarget(base_path, lib_name), rules

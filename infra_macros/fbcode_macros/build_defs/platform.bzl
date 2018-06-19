@@ -12,7 +12,11 @@ Helpers to discover information about platforms as defined by fbcode
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean")
+load(
+    "@fbcode_macros//build_defs/config:read_configs.bzl",
+    "read_boolean",
+    "read_string",
+)
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
 def __get_current_architecture():
@@ -161,10 +165,36 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
 
     return _get_default_platform()
 
+def _to_buck_platform(platform, compiler):
+    """
+    Convert a given fbcode platform name into the Buck (C++) platform name.
+    As the latter is compiler-family-specific, while the former is not, it
+    at least takes into account the compiler chosen by the build mode.
+    """
+
+    fmt = read_string("fbcode", "buck_platform_format", "{platform}")
+    return fmt.format(platform=platform, compiler=compiler)
+
+def _get_buck_platform_for_base_path(base_path):
+    """
+    Return the Buck platform to use for a deployable rule at the given base
+    path, running some consistency checks as well.
+    """
+
+    return _to_buck_platform(
+        _get_platform_for_base_path(base_path),
+        config.get_compiler_family())
+
+def _get_buck_platform_for_current_buildfile():
+    return _get_buck_platform_for_base_path(native.package_name())
+
 platform = struct(
+    get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
+    get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,
     get_default_platform = _get_default_platform,
     get_platform_for_base_path = _get_platform_for_base_path,
     get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
     get_platform_for_current_buildfile = _get_platform_for_current_buildfile,
     get_platform_overrides = _get_platform_overrides,
+    to_buck_platform = _to_buck_platform,
 )

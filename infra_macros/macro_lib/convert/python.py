@@ -39,6 +39,7 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 
@@ -479,7 +480,7 @@ class PythonConverter(base.Converter):
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['main_module'] = interp_main_module
-            attrs['cxx_platform'] = self.get_buck_platform(base_path)
+            attrs['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
             attrs['platform'] = python_platform
             attrs['version_universe'] = (
                 self.get_version_universe(python_version))
@@ -913,7 +914,7 @@ class PythonConverter(base.Converter):
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 
-        attributes['cxx_platform'] = self.get_buck_platform(base_path)
+        attributes['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         attributes['platform'] = python_platform
         attributes['version_universe'] = (
             self.get_version_universe(python_version))
@@ -1217,7 +1218,7 @@ class PythonConverter(base.Converter):
         attrs = collections.OrderedDict((
             ('name', name + '-typecheck'),
             ('main_module', 'python_typecheck'),
-            ('cxx_platform', self.get_buck_platform(base_path)),
+            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
             ('platform', python_platform),
             ('deps', typecheck_deps),
             ('platform_deps', platform_deps),

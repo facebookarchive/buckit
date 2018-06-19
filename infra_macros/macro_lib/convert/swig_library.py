@@ -37,6 +37,7 @@ target = import_macro_lib('fbcode_target')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 
@@ -163,7 +164,7 @@ class JavaSwigConverter(SwigLangConverter):
         attrs['headers'] = [hdr]
         attrs['header_namespace'] = ''
         # Setup platform default for compilation DB, and direct building.
-        buck_platform = self.get_buck_platform(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         attrs['default_platform'] = buck_platform
         attrs['defaults'] = {'platform': buck_platform}
         rules.append(Rule('cxx_library', attrs))
@@ -179,7 +180,7 @@ class JavaSwigConverter(SwigLangConverter):
         # fixed platform at parse-time (which means Java binaries will only
         # ever build against one platform at a time).
         attrs['srcs'] = (
-            ['{}#{}'.format(s, self.get_buck_platform(base_path))
+            ['{}#{}'.format(s, platform_utils.get_buck_platform_for_base_path(base_path))
              for s in gen_srcs.values()])
         attrs['out'] = src_zip_name
         rules.append(Rule('zip_file', attrs))
