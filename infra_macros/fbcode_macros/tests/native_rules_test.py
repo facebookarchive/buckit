@@ -49,6 +49,7 @@ class NativeRulesTest(tests.utils.TestCase):
                 sha1="d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
             )
             buck_sh_binary(name="sh_binary", main="sh_binary.sh")
+            buck_sh_binary(name="sh_binary2.sh")
             buck_sh_test(name="sh_test", test="sh_test.sh")
             versioned_alias(
                 name="versioned_alias",
@@ -108,6 +109,11 @@ class NativeRulesTest(tests.utils.TestCase):
             sh_binary(
               name = "sh_binary",
               main = "sh_binary.sh",
+            )
+
+            sh_binary(
+              name = "sh_binary2.sh",
+              main = "sh_binary2.sh",
             )
 
             sh_test(

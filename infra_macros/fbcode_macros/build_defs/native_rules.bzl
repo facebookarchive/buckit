@@ -94,9 +94,18 @@ def remote_file(*args, **kwargs):
     """ Wrapper to access Buck's native remote_file rule """
     native.remote_file(*args, **kwargs)
 
-def buck_sh_binary(*args, **kwargs):
-    """ Wrapper to access Buck's native sh_binary rule """
-    native.sh_binary(*args, **kwargs)
+def buck_sh_binary(name, main = None, *args, **kwargs):
+    """
+    Wrapper to access Buck's native sh_binary rule
+
+    Args:
+        name: The name of the rule
+        main: The name of the script. If not provided, `name` will be used
+        *args: Rest of args to pass to sh_binary
+        **kwargs: Rest of kwargs to pass to sh_binary
+    """
+    main = main or name
+    native.sh_binary(name=name, main=main, *args, **kwargs)
 
 def buck_sh_test(*args, **kwargs):
     """ Wrapper to access Buck's native sh_test rule """
