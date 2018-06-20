@@ -1013,12 +1013,12 @@ class Converter(object):
 
             # Apply compiler-specific build mode flags.
             for lang in c_langs:
-                if self._context.compiler == 'gcc':
-                    compiler_flags[lang].extend(
-                        self.format_platform_param(build_mode.gcc_flags))
-                else:
-                    compiler_flags[lang].extend(
-                        self.format_platform_param(build_mode.clang_flags))
+                compiler_flags[lang].extend(
+                    self.format_platform_param(
+                        lambda _, compiler:
+                            build_mode.gcc_flags
+                            if compiler == 'gcc'
+                            else build_mode.clang_flags))
 
             # Cuda always uses GCC.
             compiler_flags['cuda_cpp_output'].extend(
