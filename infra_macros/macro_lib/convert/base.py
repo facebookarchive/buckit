@@ -996,32 +996,39 @@ class Converter(object):
         # Apply the general sanitizer/coverage flags.
         for lang in c_langs:
             if self.get_sanitizer() is not None:
-                compiler_flags[lang].extend(self.get_sanitizer_flags())
-            compiler_flags[lang].extend(self.get_coverage_flags(base_path))
+                compiler_flags[lang].extend(
+                    self.format_platform_param(self.get_sanitizer_flags()))
+            compiler_flags[lang].extend(
+                self.format_platform_param(self.get_coverage_flags(base_path)))
 
         # Apply flags from the build mode file.
         build_mode = self.get_build_mode()
         if build_mode is not None:
 
             # Apply language-specific build mode flags.
-            compiler_flags['c_cpp_output'].extend(build_mode.c_flags)
+            compiler_flags['c_cpp_output'].extend(
+                self.format_platform_param(build_mode.c_flags))
             compiler_flags['cxx_cpp_output'].extend(
-                build_mode.cxx_flags)
+                self.format_platform_param(build_mode.cxx_flags))
 
             # Apply compiler-specific build mode flags.
             for lang in c_langs:
                 if self._context.compiler == 'gcc':
-                    compiler_flags[lang].extend(build_mode.gcc_flags)
+                    compiler_flags[lang].extend(
+                        self.format_platform_param(build_mode.gcc_flags))
                 else:
-                    compiler_flags[lang].extend(build_mode.clang_flags)
+                    compiler_flags[lang].extend(
+                        self.format_platform_param(build_mode.clang_flags))
 
             # Cuda always uses GCC.
             compiler_flags['cuda_cpp_output'].extend(
-                build_mode.gcc_flags)
+                self.format_platform_param(build_mode.gcc_flags))
 
         # Add in command line flags last.
-        compiler_flags['c_cpp_output'].extend(self.get_extra_cflags())
-        compiler_flags['cxx_cpp_output'].extend(self.get_extra_cxxflags())
+        compiler_flags['c_cpp_output'].extend(
+            self.format_platform_param(self.get_extra_cflags()))
+        compiler_flags['cxx_cpp_output'].extend(
+            self.format_platform_param(self.get_extra_cxxflags()))
 
         return compiler_flags
 
@@ -1237,9 +1244,13 @@ class Converter(object):
         compiler_flags = self.get_compiler_flags(base_path)
         section = 'cxx#{}'.format(buck_platform)
         flags.extend(self.read_flags(section, 'cflags', []))
-        flags.extend(compiler_flags['c_cpp_output'])
+        for plat_re, cflags in compiler_flags['c_cpp_output']:
+            if re.search(plat_re, buck_platform):
+                flags.extend(cflags)
         flags.extend(self.read_flags(section, 'cxxflags', []))
-        flags.extend(compiler_flags['cxx_cpp_output'])
+        for plat_re, cflags in compiler_flags['cxx_cpp_output']:
+            if re.search(plat_re, buck_platform):
+                flags.extend(cflags)
 
         # This warning can fire on unreachable paths after a lot of inlining
         # If it doesn't show up in normal compiles, not much point in
