@@ -47,7 +47,7 @@ load(  # noqa F821
     "remote_file",
     "versioned_alias",
 )
-
+load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 with allow_unsafe_import():  # noqa: F821
     import sys
 
@@ -62,7 +62,6 @@ custom_rule = import_macro_lib('convert/custom_rule')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
 d = import_macro_lib('convert/d')
-dewey_artifact = import_macro_lib('convert/dewey_artifact')
 discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 haskell = import_macro_lib('convert/haskell')
@@ -152,7 +151,6 @@ def convert(context, base_path, rule):
         d.DConverter(context, 'd_binary'),
         d.DConverter(context, 'd_library'),
         d.DConverter(context, 'd_unittest', 'd_test'),
-        dewey_artifact.DeweyArtifactConverter(context),
         go.GoConverter(context, 'go_binary'),
         go.GoConverter(context, 'go_library'),
         go.GoConverter(context, 'cgo_library'),
@@ -219,6 +217,7 @@ def convert(context, base_path, rule):
         'buck_python_library': buck_python_library,  # noqa F821
         'buck_sh_binary': buck_sh_binary,  # noqa F821
         'buck_sh_test': buck_sh_test,  # noqa F821
+        'dewey_artifact': dewey_artifact,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821
         'versioned_alias': versioned_alias,  # noqa F821
