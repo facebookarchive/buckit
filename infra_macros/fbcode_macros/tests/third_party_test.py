@@ -49,7 +49,7 @@ class ThirdPartyTest(tests.utils.TestCase):
         ]
         self.assertFailureWithMessage(
             root.runUnitTests(self.includes, commands),
-            'illegal external dependency ("foo", "bar", "baz", "other"): ' +
+            'illegal external dependency ',
             'must have 1, 2, or 3 elements'
         )
 

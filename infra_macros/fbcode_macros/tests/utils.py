@@ -103,6 +103,7 @@ class Cell:
         self.name = name
         self.buckconfig = collections.defaultdict(dict)
         self.buckconfig["ui"]["superconsole"] = "disabled"
+        self.buckconfig["color"]["ui"] = "false"
         self.project = project
         self._directories = []
         self._files = recursively_get_files_contents(name, True)
@@ -168,9 +169,7 @@ class Cell:
             buckconfig["repositories"][cell_name] = relative_path
         if "polyglot_parsing_enabled" not in buckconfig["parser"]:
             buckconfig["parser"]["polyglot_parsing_enabled"] = "true"
-        if "default_build_file_syntax" not in buckconfig[
-            "default_build_file_syntax"
-        ]:
+        if "default_build_file_syntax" not in buckconfig["parser"]:
             buckconfig["parser"]["default_build_file_syntax"] = "SKYLARK"
         if "cxx" not in buckconfig or "cxx" not in buckconfig["cxx"]:
             cxx = self._findCXX()
@@ -435,12 +434,16 @@ class Cell:
         result = self.run(
             cmd, {buckfile: buck_file_content}, environment_overrides
         )
-        debug_lines = [
+        debug_lines = []
+        for line in result.stderr.split("\n"):
+            # python. Sample line: | TEST_RESULT: {}
+            if line.startswith("| TEST_RESULT:"):
+                debug_lines.append(
+                    self._convertDebug(line.split(":", 1)[-1].strip()))
             # Sample line: DEBUG: /Users/user/temp/BUCK:1:1: TEST_RESULT: "hi"
-            self._convertDebug(line.split(":", 5)[-1].strip())
-            for line in result.stderr.split("\n")
-            if line.startswith("DEBUG: ") and "TEST_RESULT:" in line
-        ]
+            elif line.startswith("DEBUG: ") and "TEST_RESULT:" in line:
+                debug_lines.append(
+                    self._convertDebug(line.split(":", 5)[-1].strip()))
         return UnitTestResult(
             returncode=result.returncode,
             stdout=result.stdout,
