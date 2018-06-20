@@ -805,7 +805,9 @@ class TestCase(unittest.TestCase):
             )
 
         try:
-            self.assertEqual(expected_results.keys(), result.files.keys())
+            self.assertEqual(
+                sorted(expected_results.keys()),
+                sorted(result.files.keys()))
         except AssertionError as e:
             raise_with_traceback(
                 AssertionError(

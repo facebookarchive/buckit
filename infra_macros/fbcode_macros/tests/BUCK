@@ -11,6 +11,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:common_paths.bzl",
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
+    "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
