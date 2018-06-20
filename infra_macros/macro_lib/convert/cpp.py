@@ -1056,8 +1056,9 @@ class CppConverter(base.Converter):
                 self.format_platform_param(compiler_flags))
             out_lang_plat_compiler_flags[lang].extend(
                 self.format_platform_param(
-                    compiler_specific_flags.get(
-                        'gcc' if cuda else self._context.compiler, [])))
+                    lambda _, compiler:
+                        compiler_specific_flags.get(
+                            'gcc' if cuda else compiler)))
         out_lang_plat_compiler_flags.setdefault('cuda_cpp_output', [])
         out_lang_plat_compiler_flags['cuda_cpp_output'].extend(
             self.format_platform_param(
