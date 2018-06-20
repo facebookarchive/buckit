@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 import os
 import re
 import shutil
+import stat
 import subprocess
 
 try:
@@ -380,3 +381,22 @@ class UtilsTest(tests.utils.TestCase):
                 [], ['"string1"', '"string3"'], 'fail("WTF")'
             )
             self.assertFailureWithMessage(ret, "WTF")
+
+    def test_adding_executable_file_makes_it_executable(self):
+        def is_executable(path):
+            return (os.stat(path).st_mode & stat.S_IXUSR) != 0
+
+        with tests.utils.Project(
+            remove_files=True, add_fbcode_macros_cell=True
+        ) as project:
+            root = project.root_cell
+            root.addFile('foo.sh', 'echo "foo"', executable=True)
+            root.addFile('bar.sh', 'echo "bar"', executable=False)
+            root.addFile('baz.sh', 'echo "baz"', executable=False)
+            root.setupAllFilesystems()
+            self.assertTrue(
+                is_executable(os.path.join(root.fullPath(), 'foo.sh')))
+            self.assertFalse(
+                is_executable(os.path.join(root.fullPath(), 'bar.sh')))
+            self.assertFalse(
+                is_executable(os.path.join(root.fullPath(), 'baz.sh')))

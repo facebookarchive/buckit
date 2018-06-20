@@ -21,6 +21,7 @@ import shutil
 import logging
 import platform
 import re
+import stat
 import StringIO
 import textwrap
 import unittest
@@ -106,12 +107,15 @@ class Cell:
         self._directories = []
         self._files = recursively_get_files_contents(name, True)
         self._helper_functions = []
+        self._executable_files = set()
 
-    def addFile(self, relative_path, contents):
+    def addFile(self, relative_path, contents, executable=False):
         """
         Add a file that should be written into this cell when running commands
         """
         self._files[relative_path] = contents
+        if executable:
+            self._executable_files.add(relative_path)
 
     def addResourcesFrom(self, relative_path):
         """
@@ -231,7 +235,7 @@ class Cell:
                 os.makedirs(dir_path)
 
         for path, contents in self._files.items():
-            self.writeFile(path, contents)
+            self.writeFile(path, contents, executable=path in self._executable_files)
 
         buckconfig = self.createBuckconfigContents()
         with open(os.path.join(cell_path, ".buckconfig"), "w") as fout:
@@ -245,7 +249,7 @@ class Cell:
         for cell in self.project.cells.values():
             cell.setupFilesystem()
 
-    def writeFile(self, relative_path, contents):
+    def writeFile(self, relative_path, contents, executable=False):
         """
         Writes out a file into the cell, making parent dirs if necessary
         """
@@ -257,6 +261,8 @@ class Cell:
             os.makedirs(full_dir_path)
         with open(file_path, "w") as fout:
             fout.write(contents)
+        if executable:
+            os.chmod(file_path, os.stat(file_path).st_mode | stat.S_IEXEC)
 
     def getDefaultEnvironment(self):
         # We don't start a daemon up because:
@@ -759,7 +765,13 @@ class TestCase(unittest.TestCase):
     ):
         """ Make sure that we failed with a substring in stderr """
         self.assertNotEqual(0, result.returncode)
-        self.assertIn(expected_message, result.stderr)
+        try:
+            self.assertIn(expected_message, result.stderr)
+        except AssertionError as e:
+            # If we get a parse error, it's a lot easier to read as multiple
+            # lines, rather than a single line witn \n in it
+            e.args = (e.args[0].replace(r'\n', '\n'),) + e.args[1:]
+            raise e
         for message in expected_message:
             self.assertIn(message, result.stderr)
 
