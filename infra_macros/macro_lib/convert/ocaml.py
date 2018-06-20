@@ -50,6 +50,7 @@ class OCamlConverter(base.Converter):
             external_deps=(),
             visibility=None,
             ppx_flag=None,
+            nodefaultlibs=False,
         ):
 
         extra_rules = []
@@ -109,7 +110,11 @@ class OCamlConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if self.is_binary():
-            d, r = self.get_binary_link_deps(base_path, name)
+            d, r = self.get_binary_link_deps(
+                base_path,
+                name,
+                default_deps=not nodefaultlibs,
+            )
             dependencies.extend(d)
             extra_rules.extend(r)
 
@@ -130,6 +135,9 @@ class OCamlConverter(base.Converter):
             self.get_fbconfig_rule_type(),
             binary=self.is_binary(),
             platform=platform if self.is_binary() else None)
+
+        if nodefaultlibs:
+            ldflags.append('-nodefaultlibs')
 
         if "-flto" in ldflags:
             attributes['compiler_flags'].extend(["-ccopt", "-flto", "-cclib", "-flto"])
