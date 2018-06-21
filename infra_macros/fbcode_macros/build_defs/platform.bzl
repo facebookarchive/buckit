@@ -11,6 +11,7 @@ Helpers to discover information about platforms as defined by fbcode
 
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
@@ -183,7 +184,7 @@ def _get_buck_platform_for_base_path(base_path):
 
     return _to_buck_platform(
         _get_platform_for_base_path(base_path),
-        config.get_compiler_family())
+        compiler.get_compiler_for_base_path(base_path))
 
 def _get_buck_platform_for_current_buildfile():
     return _get_buck_platform_for_base_path(native.package_name())

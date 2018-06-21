@@ -42,7 +42,8 @@ class BuildModeTest(tests.utils.TestCase):
             asan_options=(),
             ubsan_options=(),
             tsan_options=(),
-            lsan_suppressions=()):
+            lsan_suppressions=(),
+            compiler=None):
         return self.struct(
             aspp_flags=aspp_flags,
             cpp_flags=cpp_flags,
@@ -61,7 +62,8 @@ class BuildModeTest(tests.utils.TestCase):
             asan_options=asan_options,
             ubsan_options=ubsan_options,
             tsan_options=tsan_options,
-            lsan_suppressions=lsan_suppressions)
+            lsan_suppressions=lsan_suppressions,
+            compiler=compiler)
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
@@ -242,7 +244,8 @@ class BuildModeTest(tests.utils.TestCase):
             asan_options=(),
             ubsan_options=(),
             tsan_options=(),
-            lsan_suppressions=())
+            lsan_suppressions=(),
+            compiler=None)
 
         self.assertSuccess(result1, {"dev": expected})
         self.assertSuccess(result2, {"dev": expected})
@@ -307,7 +310,8 @@ class BuildModeTest(tests.utils.TestCase):
             asan_options=(),
             ubsan_options=(),
             tsan_options=(),
-            lsan_suppressions=())
+            lsan_suppressions=(),
+            compiler=None)
 
         self.assertSuccess(
             result,
@@ -429,6 +433,7 @@ class BuildModeTest(tests.utils.TestCase):
             "tsan_options": [],
             "ubsan_options": [],
             "lsan_suppressions": [],
+            "compiler": None,
         }
         expected = [
             ("foo/bar/baz", {"dev": expected_mode}),

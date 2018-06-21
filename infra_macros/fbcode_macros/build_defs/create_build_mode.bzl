@@ -36,7 +36,8 @@ def create_build_mode(
         asan_options = (),
         ubsan_options = (),
         tsan_options = (),
-        lsan_suppressions = ()):
+        lsan_suppressions = (),
+        compiler = None):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -64,6 +65,9 @@ def create_build_mode(
         ubsan_options: Extra UBSAN runtime options
         tsan_options: Extra TSAN runtime options
         lsan_suppressions: LSAN suppressions
+        compiler: Use this compiler for deployable rules under this directory,
+                  for build modes which don't globall set the compiler family
+                  choice.
 
     Returns:
         A struct with each of the provided fields, or () if the field was
@@ -88,6 +92,7 @@ def create_build_mode(
         ubsan_options = ubsan_options,
         tsan_options = tsan_options,
         lsan_suppressions = lsan_suppressions,
+        compiler = compiler,
     )
 
 def _combine(lhs, rhs):
@@ -195,4 +200,5 @@ def extend_build_mode(
         ubsan_options = _combine(build_mode.ubsan_options, ubsan_options),
         tsan_options = _combine(build_mode.tsan_options, tsan_options),
         lsan_suppressions = _combine(build_mode.lsan_suppressions, lsan_suppressions),
+        compiler = build_mode.compiler,
     )

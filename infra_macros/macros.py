@@ -269,7 +269,8 @@ def _install_converted_rules(globals, **context_kwargs):
 __all__.append('install_converted_rules')
 def install_converted_rules(globals, **context_kwargs):
     context_kwargs = {
-        'compiler': config.get_compiler_family(),
+        'default_compiler': config.get_default_compiler_family(),
+        'global_compiler': config.get_global_compiler_family(),
         'coverage': config.get_coverage(),
         'link_style': config.get_default_link_style(),
         'mode': config.get_build_mode(),

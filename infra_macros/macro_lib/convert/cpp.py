@@ -533,7 +533,9 @@ class CppConverter(base.Converter):
         sanitizer = self.get_sanitizer()
         assert sanitizer is not None
 
-        assert self._context.compiler == 'clang'
+        self.assert_global_compiler(
+            "can only use sanitizers with build modes that use clang globally",
+            "clang")
         assert sanitizer in SANITIZER_FLAGS
 
         flags = SANITIZER_COMMON_FLAGS + SANITIZER_FLAGS[sanitizer]
@@ -596,8 +598,9 @@ class CppConverter(base.Converter):
         # We use LLVM's coverage modes so that all coverage instrumentation
         # is inlined in the binaries and so work seamlessly with Buck's caching
         # (http://llvm.org/docs/CoverageMappingFormat.html).
-        if self._context.compiler != 'clang':
-            raise Exception('coverage is only supported when using clang')
+        self.assert_global_compiler(
+            "can only use coverage with build modes that use clang globally",
+            "clang")
 
         return True
 
@@ -1067,8 +1070,9 @@ class CppConverter(base.Converter):
 
         clang_profile = self._context.buck_ops.read_config('cxx', 'profile')
         if clang_profile is not None:
-            if self._context.compiler != "clang":
-                raise ValueError("cxx.profile only supported by clang compiler")
+            self.assert_global_compiler(
+                "cxx.profile only supported by modes using clang globally",
+                "clang")
             profile_args = [
                 '-fprofile-sample-use=$(location {})'.format(clang_profile),
                 '-fdebug-info-for-profiling',

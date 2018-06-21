@@ -67,6 +67,7 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 
@@ -132,7 +133,8 @@ Context = collections.namedtuple(
     [
         'buck_ops',
         'build_mode',
-        'compiler',
+        'default_compiler',
+        'global_compiler',
         'coverage',
         'link_style',
         'mode',
@@ -298,6 +300,28 @@ class Converter(object):
                 platforms.add(platform)
 
         return sorted(platforms)
+
+    def assert_global_compiler(self, msg=None, compiler=None):
+        """
+        Assert that a global compiler is set.
+        """
+
+        if compiler is None:
+            assert self._context.global_compiler, msg
+        else:
+            assert self._context.global_compiler == compiler, msg
+
+    def _get_supported_compilers(self):
+        """
+        Return list of compilers supported in this build mode.
+        """
+
+        # If a global compiler is set, then always return a list of just that.
+        if self._context.global_compiler:
+            return [self._context.global_compiler]
+
+        # Otherwise, we assume we support clang and gcc.
+        return ['clang', 'gcc']
 
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
@@ -730,15 +754,17 @@ class Converter(object):
         out = []
 
         for platform in self.get_platforms():
-            result = (
-                value(platform, self._context.compiler)
-                if callable(value) else value)
-            if result:
-                # Buck expects the platform name as a regex, so anchor and
-                # escape it for literal matching.
-                buck_platform = (
-                    platform_utils.to_buck_platform(platform, self._context.compiler))
-                out.append(('^{}$'.format(re.escape(buck_platform)), result))
+            for compiler in self._get_supported_compilers():
+                result = (
+                    value(platform, compiler)
+                    if callable(value) else value)
+                if result:
+                    # Buck expects the platform name as a regex, so anchor and
+                    # escape it for literal matching.
+                    buck_platform = (
+                        platform_utils.to_buck_platform(platform, compiler))
+                    out.append(
+                        ('^{}$'.format(re.escape(buck_platform)), result))
 
         return out
 
@@ -799,7 +825,7 @@ class Converter(object):
         new_labels = []
         new_labels.append('buck')
         new_labels.append(self._context.mode)
-        new_labels.append(self._context.compiler)
+        new_labels.append(compiler.get_compiler_for_current_buildfile())
         sanitizer = self.get_sanitizer()
         if sanitizer is not None and sanitizer != 'address-undefined-dev':
             new_labels.append(SANITIZERS[sanitizer])
@@ -1322,7 +1348,9 @@ class Converter(object):
 
         # 5. If enabled, add in LTO linker flags.
         if self.is_lto_enabled():
-            if self._context.compiler == 'clang':
+            self.assert_global_compiler(
+                'can only use LTO in modes with a fixed global compiler')
+            if self._context.global_compiler == 'clang':
                 if self._context.lto_type not in ('monolithic', 'thin'):
                     raise ValueError(
                         'clang does not support {} LTO'
@@ -1335,7 +1363,7 @@ class Converter(object):
                 ldflags.append('-Wl,-plugin-opt,-function-sections')
                 ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
             else:
-                assert(self._context.compiler == 'gcc')
+                assert self._context.global_compiler == 'gcc'
                 if self._context.lto_type != 'fat':
                     raise ValueError(
                         'gcc does not support {} LTO'
@@ -1376,7 +1404,9 @@ class Converter(object):
         if sanitizer is None:
             return []
 
-        assert self._context.compiler == 'clang'
+        self.assert_global_compiler(
+            "can only use sanitizers with build modes that use clang globally",
+            "clang")
 
         sanitizer = SANITIZERS[sanitizer]
         deps = [
@@ -1387,7 +1417,9 @@ class Converter(object):
 
     def get_coverage_binary_deps(self):
         assert self._context.coverage
-        assert self._context.compiler == 'clang'
+        self.assert_global_compiler(
+            "can only use coverage with build modes that use clang globally",
+            "clang")
 
         if self.get_sanitizer() is None:
             return [

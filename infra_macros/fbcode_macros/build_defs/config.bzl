@@ -20,6 +20,14 @@ load(
     "read_string",
 )
 
+def _falsy_as_none(val):
+    """
+    Converts "falsy" things to `None`.  Useful as we have no way to "unset"
+    config settings via `-c`, and so it's common to overwrite with an empty
+    value instead.
+    """
+    return val or None
+
 def _get_add_auto_headers_glob():
     """
     Determines whether to add an autoheaders dependency.
@@ -92,7 +100,7 @@ def _get_build_mode():
     """
     return read_string("fbcode", "build_mode", "dev")
 
-def _get_compiler_family():
+def _get_default_compiler_family():
     """
     The family of compiler that is in use.
 
@@ -101,11 +109,22 @@ def _get_compiler_family():
     Returns:
         Either "clang" or "gcc" depending on settings
     """
-    family = read_string("fbcode", "compiler_family", None)
+    family = read_string("fbcode", "default_compiler", None)
     if not family:
         cxx = read_config("cxx", "cxx", "gcc")
         family = "clang" if "clang" in cxx else "gcc"
     return family
+
+def _get_global_compiler_family():
+    """
+    The family of compiler that is in use.
+
+    If not set, it will be determined from the name of the cxx.compiler binary
+
+    Returns:
+        Either "clang" or "gcc" depending on settings
+    """
+    return _falsy_as_none(read_string("fbcode", "global_compiler", None))
 
 def _get_core_tools_path():
     """
@@ -418,16 +437,17 @@ config = struct(
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
-    get_compiler_family = _get_compiler_family,
     get_core_tools_path = _get_core_tools_path,
     get_coverage = _get_coverage,
     get_current_os = _get_current_host_os,
     get_current_repo_name = _get_current_repo_name,
     get_cython_compiler = _get_cython_compiler,
     get_default_allocator = _get_default_allocator,
+    get_default_compiler_family = _get_default_compiler_family,
     get_default_link_style = _get_default_link_style,
     get_fbcode_style_deps = _get_fbcode_style_deps,
     get_fbcode_style_deps_are_third_party = _get_fbcode_style_deps_are_third_party,
+    get_global_compiler_family = _get_global_compiler_family,
     get_gtest_lib_dependencies = _get_gtest_lib_dependencies,
     get_gtest_main_dependency = _get_gtest_main_dependency,
     get_header_namespace_whitelist = _get_header_namespace_whitelist,

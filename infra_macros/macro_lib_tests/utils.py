@@ -126,7 +126,8 @@ class ConverterTestCase(unittest.TestCase):
             base.Context(
                 buck_ops=buck_ops,
                 build_mode=create_build_mode.create_build_mode(),
-                compiler='gcc',
+                default_compiler='gcc',
+                global_compiler=None,
                 coverage=False,
                 link_style='shared',
                 mode='opt',
