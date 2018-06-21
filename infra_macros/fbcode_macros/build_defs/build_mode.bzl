@@ -30,6 +30,13 @@ def _get_build_modes_for_current_buildfile():
         native.package_name(),
     )
 
+def _get_build_mode_for_base_path(base_path):
+    """
+    Returns `get_build_modes_for_cell_and_base_path()` for the build file and
+    that calls this method and the current build mode
+    """
+    return _get_build_modes_for_base_path(base_path).get(config.get_build_mode())
+
 def _get_build_modes_for_cell_and_base_path(cell, path):
     """
     Get the build modes for a given cell and path (and subpaths) within that cell
@@ -69,6 +76,7 @@ def _get_build_mode_overrides():
     }
 
 build_mode = struct(
+    get_build_mode_for_base_path = _get_build_mode_for_base_path,
     get_build_mode_overrides = _get_build_mode_overrides,
     get_build_modes_for_base_path = _get_build_modes_for_base_path,
     get_build_modes_for_cell_and_base_path = _get_build_modes_for_cell_and_base_path,
