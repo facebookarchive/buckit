@@ -1049,17 +1049,21 @@ class CppConverter(base.Converter):
 
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
-        out_lang_compiler_flags = self.get_compiler_flags(base_path)
+        out_lang_plat_compiler_flags = self.get_compiler_flags(base_path)
         for lang in self.get_compiler_langs():
-            out_lang_compiler_flags.setdefault(lang, [])
-            out_lang_compiler_flags[lang].extend(compiler_flags)
-            out_lang_compiler_flags[lang].extend(
-                compiler_specific_flags.get(
-                    'gcc' if cuda else self._context.compiler, []))
-        for flag in nvcc_flags:
-            out_lang_compiler_flags.setdefault('cuda_cpp_output', [])
-            out_lang_compiler_flags['cuda_cpp_output'].append('-_NVCC_')
-            out_lang_compiler_flags['cuda_cpp_output'].append(flag)
+            out_lang_plat_compiler_flags.setdefault(lang, [])
+            out_lang_plat_compiler_flags[lang].extend(
+                self.format_platform_param(compiler_flags))
+            out_lang_plat_compiler_flags[lang].extend(
+                self.format_platform_param(
+                    lambda _, compiler:
+                        compiler_specific_flags.get(
+                            'gcc' if cuda else compiler)))
+        out_lang_plat_compiler_flags.setdefault('cuda_cpp_output', [])
+        out_lang_plat_compiler_flags['cuda_cpp_output'].extend(
+            self.format_platform_param(
+                list(itertools.chain(
+                    *[('-_NVCC_', flag) for flag in nvcc_flags]))))
 
         clang_profile = self._context.buck_ops.read_config('cxx', 'profile')
         if clang_profile is not None:
@@ -1070,11 +1074,14 @@ class CppConverter(base.Converter):
                 '-fdebug-info-for-profiling',
                 # '-fprofile-sample-accurate'
             ]
-            out_lang_compiler_flags['c_cpp_output'].extend(profile_args)
-            out_lang_compiler_flags['cxx_cpp_output'].extend(profile_args)
+            out_lang_plat_compiler_flags['c_cpp_output'].extend(
+                self.format_platform_param(profile_args))
+            out_lang_plat_compiler_flags['cxx_cpp_output'].extend(
+                self.format_platform_param(profile_args))
 
-        if out_lang_compiler_flags:
-            attributes['lang_compiler_flags'] = out_lang_compiler_flags
+        if out_lang_plat_compiler_flags:
+            attributes['lang_platform_compiler_flags'] = (
+                out_lang_plat_compiler_flags)
 
         # Form platform-specific compiler flags.
         out_platform_compiler_flags = []
@@ -1562,7 +1569,7 @@ class CppConverter(base.Converter):
         if self.get_buck_rule_type() == 'cxx_precompiled_header':
             attributes['src'] = src
             exclude_names = [
-                'lang_compiler_flags',
+                'lang_platform_compiler_flags',
                 'lang_preprocessor_flags',
                 'linker_flags',
                 'preprocessor_flags',
