@@ -65,6 +65,7 @@ ASAN_UBSAN_FLAGS = [
 
     '-fno-sanitize=alignment',
     '-fno-sanitize=function',
+    '-fno-sanitize=null',
     '-fno-sanitize=object-size',
     '-fno-sanitize=unsigned-integer-overflow',
     '-fno-sanitize=vptr',
