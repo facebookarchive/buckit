@@ -45,6 +45,7 @@ load(  # noqa F821
     "buck_sh_binary",
     "buck_sh_test",
     "remote_file",
+    "test_suite",
     "versioned_alias",
 )
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
@@ -222,6 +223,7 @@ def convert(context, base_path, rule):
         'export_files': export_files,  # noqa F821
         'versioned_alias': versioned_alias,  # noqa F821
         'remote_file': remote_file,  # noqa F821
+        'test_suite': test_suite,  # noqa F821
         'buck_command_alias': buck_command_alias,  # noqa F821
     }
 

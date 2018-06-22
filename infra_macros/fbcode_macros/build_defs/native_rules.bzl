@@ -10,6 +10,10 @@ load(
     "read_string",
 )
 load(
+    "@fbcode_macros//build_defs:visibility.bzl",
+    "get_visibility",
+)
+load(
     "@fbcode_macros//build_defs:python_typing.bzl",
     "gen_typing_config",
     "get_typing_config_target",
@@ -133,3 +137,11 @@ def buck_cxx_test(name, **kwargs):
 def buck_filegroup(*args, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """
     native.filegroup(*args, **kwargs)
+
+def test_suite(name, visibility=None, *args, **kwargs):
+    """ Wrapper to access Buck's native test_suite rule """
+    native.test_suite(
+        name=name,
+        visibility=get_visibility(visibility, name),
+        *args,
+        **kwargs)

@@ -31,6 +31,7 @@ class NativeRulesTest(tests.utils.TestCase):
             "buck_cxx_binary",
             "buck_cxx_library",
             "buck_cxx_test",
+            "test_suite",
         )
         """)
 
@@ -51,6 +52,7 @@ class NativeRulesTest(tests.utils.TestCase):
             buck_sh_binary(name="sh_binary", main="sh_binary.sh")
             buck_sh_binary(name="sh_binary2.sh")
             buck_sh_test(name="sh_test", test="sh_test.sh")
+            test_suite(name="all_tests", tests=[":sh_test"])
             versioned_alias(
                 name="versioned_alias",
                 versions={
@@ -61,6 +63,16 @@ class NativeRulesTest(tests.utils.TestCase):
         """))
 
         expected = dedent("""
+            test_suite(
+              name = "all_tests",
+              tests = [
+                ":sh_test",
+              ],
+              visibility = [
+                "PUBLIC",
+              ],
+            )
+
             command_alias(
               name = "command_alias",
               exe = ":sh_binary",
