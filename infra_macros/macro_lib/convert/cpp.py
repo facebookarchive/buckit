@@ -46,6 +46,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
 
 
@@ -534,7 +535,7 @@ class CppConverter(base.Converter):
         sanitizer = self.get_sanitizer()
         assert sanitizer is not None
 
-        self.assert_global_compiler(
+        compiler.require_global_compiler(
             "can only use sanitizers with build modes that use clang globally",
             "clang")
         assert sanitizer in SANITIZER_FLAGS
@@ -599,7 +600,7 @@ class CppConverter(base.Converter):
         # We use LLVM's coverage modes so that all coverage instrumentation
         # is inlined in the binaries and so work seamlessly with Buck's caching
         # (http://llvm.org/docs/CoverageMappingFormat.html).
-        self.assert_global_compiler(
+        compiler.require_global_compiler(
             "can only use coverage with build modes that use clang globally",
             "clang")
 
@@ -1071,7 +1072,7 @@ class CppConverter(base.Converter):
 
         clang_profile = self._context.buck_ops.read_config('cxx', 'profile')
         if clang_profile is not None:
-            self.assert_global_compiler(
+            compiler.require_global_compiler(
                 "cxx.profile only supported by modes using clang globally",
                 "clang")
             profile_args = [

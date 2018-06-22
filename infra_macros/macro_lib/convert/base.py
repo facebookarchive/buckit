@@ -301,16 +301,6 @@ class Converter(object):
 
         return sorted(platforms)
 
-    def assert_global_compiler(self, msg=None, compiler=None):
-        """
-        Assert that a global compiler is set.
-        """
-
-        if compiler is None:
-            assert self._context.global_compiler, msg
-        else:
-            assert self._context.global_compiler == compiler, msg
-
     def _get_supported_compilers(self):
         """
         Return list of compilers supported in this build mode.
@@ -1348,7 +1338,7 @@ class Converter(object):
 
         # 5. If enabled, add in LTO linker flags.
         if self.is_lto_enabled():
-            self.assert_global_compiler(
+            compiler.require_global_compiler(
                 'can only use LTO in modes with a fixed global compiler')
             if self._context.global_compiler == 'clang':
                 if self._context.lto_type not in ('monolithic', 'thin'):
@@ -1404,7 +1394,7 @@ class Converter(object):
         if sanitizer is None:
             return []
 
-        self.assert_global_compiler(
+        compiler.require_global_compiler(
             "can only use sanitizers with build modes that use clang globally",
             "clang")
 
@@ -1417,7 +1407,7 @@ class Converter(object):
 
     def get_coverage_binary_deps(self):
         assert self._context.coverage
-        self.assert_global_compiler(
+        compiler.require_global_compiler(
             "can only use coverage with build modes that use clang globally",
             "clang")
 

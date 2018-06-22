@@ -9,6 +9,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:build_mode.bzl",
     "fbcode_macros//build_defs:build_mode_overrides.bzl",
     "fbcode_macros//build_defs:common_paths.bzl",
+    "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
@@ -75,6 +76,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "common_paths_test",
     srcs = ["common_paths_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "compiler_test",
+    srcs = ["compiler_test.py"],
     deps = [":utils"],
 )
 

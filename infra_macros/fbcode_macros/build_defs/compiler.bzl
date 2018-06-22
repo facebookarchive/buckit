@@ -5,6 +5,19 @@ Helpers to related to C/C++ compiler families used for the build.
 load("@fbcode_macros//build_defs:build_mode.bzl", "build_mode")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 
+def _require_global_compiler(msg, compiler=None):
+    """
+    Assert that a global compiler is set.
+    """
+
+    global_compiler = config.get_global_compiler_family()
+    if compiler == None:
+        if global_compiler == None:
+            fail(msg)
+    else:
+        if global_compiler != compiler:
+            fail(msg)
+
 def _get_compiler_for_base_path(base_path):
     """
     Return the compiler family to use for the buildfile at the given base path.
@@ -40,4 +53,5 @@ def _get_compiler_for_current_buildfile():
 compiler = struct(
     get_compiler_for_base_path = _get_compiler_for_base_path,
     get_compiler_for_current_buildfile = _get_compiler_for_current_buildfile,
+    require_global_compiler = _require_global_compiler,
 )
