@@ -1052,6 +1052,22 @@ class CppConverter(base.Converter):
                     out_exported_ldflags = ['-Wl,--%s,%s' % (flag, sym)
                                             for sym in global_symbols]
 
+        # Parse the `header_namespace` parameter.
+        if header_namespace is not None:
+            if (base_path, name) not in self._context.config.get_header_namespace_whitelist() and not any(
+                # Check base path prefix in header_namespace_whitelist
+                len(t) == 1 and base_path.startswith(t[0])
+                for t in self._context.config.get_header_namespace_whitelist()
+            ):
+                raise ValueError(
+                    '{}(): the `header_namespace` parameter is *not* '
+                    'supported in fbcode -- `#include` paths must match '
+                    'their fbcode-relative path. ({}/{})'
+                    .format(self.get_fbconfig_rule_type(), base_path, name))
+            out_header_namespace = header_namespace
+        else:
+            out_header_namespace = base_path
+
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
         out_lang_plat_compiler_flags = self.get_compiler_flags(base_path)
@@ -1338,18 +1354,9 @@ class CppConverter(base.Converter):
             else:
                 attributes['headers'] = out_headers
 
-        if header_namespace is not None:
-            if (base_path, name) not in self._context.config.get_header_namespace_whitelist() and not any(
-                # Check base path prefix in header_namespace_whitelist
-                len(t) == 1 and base_path.startswith(t[0])
-                for t in self._context.config.get_header_namespace_whitelist()
-            ):
-                raise ValueError(
-                    '{}(): the `header_namespace` parameter is *not* '
-                    'supported in fbcode -- `#include` paths must match '
-                    'their fbcode-relative path. ({}/{})'
-                    .format(self.get_fbconfig_rule_type(), base_path, name))
-            attributes['header_namespace'] = header_namespace
+        # Set an explicit header namespace if not the default.
+        if out_header_namespace != base_path:
+            attributes['header_namespace'] = out_header_namespace
 
         # Convert the `srcs` parameter.  If `known_warnings` is set, add in
         # flags to mute errors.
