@@ -593,7 +593,7 @@ class PythonConverter(base.Converter):
             ['inplace', 'standalone'],
             'standalone')
 
-    def gen_associated_targets(self, name, targets, visibility):
+    def gen_associated_targets(self, base_path, name, targets, visibility):
         """
         Associated Targets are buck rules that need to be built, when This
         target is built, but are not a code dependency. Which is why we
@@ -604,6 +604,7 @@ class PythonConverter(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['deps'] = targets
+        attrs['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         return Rule('cxx_library', attrs)
 
     def create_library(
@@ -1077,7 +1078,7 @@ class PythonConverter(base.Converter):
             )
 
         if runtime_deps:
-            rule = self.gen_associated_targets(library_name, runtime_deps, visibility)
+            rule = self.gen_associated_targets(base_path, library_name, runtime_deps, visibility)
             deps = list(deps) + [rule.target_name]
             yield rule
 
