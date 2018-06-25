@@ -922,9 +922,9 @@ class PythonConverter(base.Converter):
         attributes['linker_flags'] = (
             self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
 
+        attributes['labels'] = list(tags)
         if self.is_test():
-            attributes['labels'] = (
-                self.convert_labels(platform, 'python', *tags))
+            attributes['labels'].extend(self.convert_labels(platform, 'python'))
 
         attributes['tests'] = tests
 
