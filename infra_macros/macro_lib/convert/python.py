@@ -806,11 +806,7 @@ class PythonConverter(base.Converter):
         python_platform = self.get_python_platform(platform, python_version)
 
         if allocator is None:
-            # Default gcc-5 platforms to jemalloc (as per S146810).
-            if self.get_tool_version(platform, 'gcc') >= LooseVersion('5'):
-                allocator = 'jemalloc'
-            else:
-                allocator = 'malloc'
+            allocator = self.get_allocator(allocator)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
