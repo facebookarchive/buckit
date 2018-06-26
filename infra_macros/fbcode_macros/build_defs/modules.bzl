@@ -20,11 +20,16 @@ def _get_module_name(cell, base_path, name):
     return module_name
 
 def _get_module_map(name, headers):
-    lines = (
-        ['module {} {{'.format(name)] +
-        ['  header "{}"'.format(h) for h in headers] +
-        ['  export *',
-         '}'])
+    lines = []
+    lines.append('module {} {{'.format(name))
+    for header, attrs in sorted(headers.items()):
+        line = '  '
+        for attr in sorted(attrs):
+            line += attr + ' '
+        line += 'header "{}"'.format(header)
+        lines.append(line)
+    lines.append('  export *')
+    lines.append('}')
     return ''.join([line + '\n' for line in lines])
 
 def _module_map_rule(name, module_name, headers):

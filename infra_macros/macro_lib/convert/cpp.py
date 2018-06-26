@@ -1070,17 +1070,6 @@ class CppConverter(base.Converter):
         else:
             out_header_namespace = base_path
 
-        # Create rule to generate the implicit `module.modulemap`.
-        if modules.enabled() and self.is_library():
-            module_name = modules.get_module_name('fbcode', base_path, name)
-            mmap_name = name + '-module-map'
-            modules.module_map_rule(
-                mmap_name,
-                module_name,
-                [paths.join(out_header_namespace, self.get_source_name(h))
-                 for h in (headers or [])],
-            )
-
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
         out_lang_plat_compiler_flags = self.get_compiler_flags(base_path)
@@ -1360,22 +1349,37 @@ class CppConverter(base.Converter):
                 # Let it throw AttributeError if update() can't be found neither
                 out_headers.update({k: k for k in src_headers})
 
-        # If we're using modules, we need to add in the `module.modulemap` file
-        # and make sure it gets installed at the root of the include tree so
-        # that clang can locate it for auto-loading.  To do this, we need to
-        # clear the header namespace (which defaults to the base path) and
-        # instead propagate its value via the keys of the header dict so that
-        # we can make sure it's only applied to the user-provided headers and
-        # not the module map.
+        # Modularize libraries.
         if modules.enabled() and self.is_library():
+
+            # If we're using modules, we need to add in the `module.modulemap`
+            # file and make sure it gets installed at the root of the include
+            # tree so that clang can locate it for auto-loading.  To do this,
+            # we need to clear the header namespace (which defaults to the base
+            # path) and instead propagate its value via the keys of the header
+            # dict so that we can make sure it's only applied to the user-
+            # provided headers and not the module map.
             if base.is_collection(out_headers):
-                out_headers = {paths.join(out_header_namespace, h):
-                               h for h in out_headers}
+                out_headers = {paths.join(out_header_namespace, self.get_source_name(h)): h
+                               for h in out_headers}
             else:
                 out_headers = {paths.join(out_header_namespace, h): s
                                for h, s in out_headers.items()}
-            out_headers["module.modulemap"] = ":" + mmap_name
             out_header_namespace = ""
+
+            # Create rule to generate the implicit `module.modulemap`.
+            module_name = modules.get_module_name('fbcode', base_path, name)
+            mmap_name = name + '-module-map'
+            modules.module_map_rule(
+                mmap_name,
+                module_name,
+                # `-inl.h` headers are private extensinos of their `.h` files,
+                # mark them as `private` and `textual`.
+                {h: ['private', 'textual'] if h.endswith('-inl.h') else []
+                 for h in out_headers})
+
+            # Add in module map.
+            out_headers["module.modulemap"] = ":" + mmap_name
 
         # Write out our output headers.
         if out_headers:

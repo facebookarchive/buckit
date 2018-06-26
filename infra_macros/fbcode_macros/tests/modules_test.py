@@ -32,11 +32,11 @@ class ModulesTest(tests.utils.TestCase):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes,
-                ['modules.get_module_map("name", ["header1.h", "header2.h"])']),
+                ['modules.get_module_map("name", {"header1.h": ["private"], "header2.h": {}})']),
             textwrap.dedent(
                 """\
                 module name {
-                  header "header1.h"
+                  private header "header1.h"
                   header "header2.h"
                   export *
                 }
