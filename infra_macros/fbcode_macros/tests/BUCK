@@ -15,6 +15,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
+    "fbcode_macros//build_defs:modules.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
     "fbcode_macros//build_defs:paths_config.bzl",
     "fbcode_macros//build_defs:platform.bzl",
@@ -100,6 +101,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "missing_tp2_project_test",
     srcs = ["missing_tp2_project_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "modules_test",
+    srcs = ["modules_test.py"],
     deps = [":utils"],
 )
 
