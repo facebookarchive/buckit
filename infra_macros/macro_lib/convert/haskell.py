@@ -577,6 +577,7 @@ class HaskellConverter(base.Converter):
             enable_profiling=None,
             ghci_bin_dep=None,
             ghci_init=None,
+            extra_script_templates=(),
             eventlog=None,
             link_whole=None,
             force_static=None,
@@ -616,6 +617,22 @@ class HaskellConverter(base.Converter):
             d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['preload_deps'], attributes['platform_preload_deps'] = \
                 self.format_all_deps(d)
+
+            attributes['extra_script_templates'] = map(
+                lambda template : self.convert_source(base_path, template),
+                extra_script_templates)
+            template_base_names = []
+            # BUCK generates a standard script with the same name as TARGET
+            # by default
+            template_base_names.append(name)
+            for templatePath in attributes['extra_script_templates']:
+                template_base_names.append(os.path.basename(templatePath))
+            if len(template_base_names) > len(set(template_base_names)):
+                raise ValueError(
+                    '{0}:{1}: parameter `extra_script_templates`: '.format(
+                        base_path, name) +
+                    'Template file names must be unique and not same as ' +
+                    'the TARGET name')
             rules.extend(r)
 
         if ghci_bin_dep is not None:
