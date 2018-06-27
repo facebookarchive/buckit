@@ -288,6 +288,75 @@ class PythonSwigConverter(SwigLangConverter):
         yield Rule('python_library', attrs)
 
 
+class GoSwigConverter(SwigLangConverter):
+    """
+    Specializer to support generating Go libraries from swig sources.
+    """
+
+    def __init__(self, context, *args, **kwargs):
+        super(GoSwigConverter, self).__init__(context, *args, **kwargs)
+
+    def get_lang(self):
+        return 'go'
+
+    def get_lang_opt(self):
+        return '-go'
+
+    def get_lang_flags(self, go_package_name=None, **kwargs):
+        return [
+            '-cgo',
+            '-intgosize', '64',  # should fit most of the cases
+            '-module', go_package_name
+        ]
+
+    def get_generated_sources(self, module):
+        src = module + '.go'
+        return collections.OrderedDict([(src, src)])
+
+    def get_language_rule(
+            self,
+            base_path,
+            name,
+            module,
+            hdr,
+            src,
+            gen_srcs,
+            cpp_deps,
+            deps,
+            go_package_name=None,
+            visibility=None,
+            **kwargs):
+
+        # generate the cgo_library
+        attrs = collections.OrderedDict()
+        attrs['name'] = name
+        attrs['package_name'] = go_package_name
+        if visibility is not None:
+            attrs['visibility'] = visibility
+
+        # platform is required for cxx_genrule (copied from java)
+        attrs['srcs'] = (
+            ['{}#{}'.format(s, platform_utils.get_buck_platform_for_base_path(base_path))
+             for s in gen_srcs.values()])
+
+        # create wrapper cxx_library rule that includes generated .cc files
+        for dep in cpp_deps:
+            cxx_rule_args = {}
+            cxx_rule_args['name'] = "{}-ext".format(dep.name)
+            cxx_rule_args['deps'] = self.format_deps([dep])
+            cxx_rule_args['srcs'] = [src]
+
+            deps.extend(self.format_deps([RuleTarget(
+                name="{}-ext".format(dep.name),
+                base_path=dep.base_path,
+                repo=dep.repo)]))
+            yield Rule('cxx_library', cxx_rule_args)
+
+        attrs['deps'] = deps
+
+        yield Rule('cgo_library', attrs)
+
+
 class SwigLibraryConverter(base.Converter):
 
     def __init__(self, *args, **kwargs):
@@ -296,6 +365,7 @@ class SwigLibraryConverter(base.Converter):
         # Setup the macro converters.
         converters = [
             JavaSwigConverter(*args, **kwargs),
+            GoSwigConverter(*args, **kwargs),
             PythonSwigConverter(*args, **kwargs),
         ]
         self._converters = {c.get_lang(): c for c in converters}
@@ -546,6 +616,7 @@ class SwigLibraryConverter(base.Converter):
             'module',
             'name',
             'py_base_module',
+            'go_package_name',
             'swig_flags',
         }
 
