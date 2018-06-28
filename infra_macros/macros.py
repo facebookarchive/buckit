@@ -168,9 +168,11 @@ def require_default_headers_rule():
     name = '__default_headers__'
     if get_base_path() not in HEADERS_RULE_CACHE:
         HEADERS_RULE_CACHE.add(get_base_path())
+        buck_platform = platform_utils.get_buck_platform_for_current_buildfile()
         cxx_library(
             name=name,
-            default_platform=platform_utils.get_buck_platform_for_current_buildfile(),
+            default_platform=buck_platform,
+            defaults={'platform': buck_platform},
             exported_headers=(
                 glob(['**/*' + ext for ext in cxx_sources.HEADER_EXTS])
             ),

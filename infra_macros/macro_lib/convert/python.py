@@ -520,6 +520,9 @@ class PythonConverter(base.Converter):
             attrs['visibility'] = visibility
         attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+        attrs['default_platform'] = buck_platform
+        attrs['defaults'] = {'platform': buck_platform}
         lib_rule = Rule('cxx_library', attrs)
         rules.append(lib_rule)
 
@@ -604,7 +607,9 @@ class PythonConverter(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['deps'] = targets
-        attrs['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+        attrs['default_platform'] = buck_platform
+        attrs['defaults'] = {'platform': buck_platform}
         return Rule('cxx_library', attrs)
 
     def create_library(
