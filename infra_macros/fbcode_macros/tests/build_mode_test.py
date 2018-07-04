@@ -140,6 +140,8 @@ class BuildModeTest(tests.utils.TestCase):
             'extend_build_mode(create_build_mode(tsan_options={"c":"3"}), tsan_options={"x":"98"})',
             'extend_build_mode(create_build_mode(lsan_suppressions=["a/b/c"]), lsan_suppressions=["z/y/x"])',
             'extend_build_mode(create_build_mode(asan_options={"a":"1"}), cxx_flags=["-DFLAG"])',
+            'extend_build_mode(create_build_mode(compiler="foo"), cxx_flags=["-DFLAG"])',
+            'extend_build_mode(create_build_mode(compiler="foo"), compiler="bar")',
         ]
         expected = [
             self._create_mode_struct(aspp_flags=["-DFLAG", "-DFLAG_TWO"]),
@@ -161,6 +163,8 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(tsan_options={"c":"3", "x":"98"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c", "z/y/x"]),
             self._create_mode_struct(cxx_flags=("-DFLAG",),asan_options={"a":"1"}),
+            self._create_mode_struct(compiler="foo",cxx_flags=("-DFLAG",)),
+            self._create_mode_struct(compiler="bar"),
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)

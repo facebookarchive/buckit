@@ -148,7 +148,8 @@ def extend_build_mode(
         asan_options = (),
         ubsan_options = (),
         tsan_options = (),
-        lsan_suppressions = ()):
+        lsan_suppressions = (),
+        compiler=None):
     """
     Creates a new build mode struct with the given flags added to it
 
@@ -176,11 +177,18 @@ def extend_build_mode(
         ubsan_options: Extra UBSAN runtime options
         tsan_options: Extra TSAN runtime options
         lsan_suppressions: LSAN suppressions
+        compiler: Use this compiler for deployable rules under this directory,
+                  for build modes which don't globally set the compiler family
+                  choice. Example inputs: 'clang', or 'gcc'.
 
     Returns:
         A struct with each of the given build mode struct's fields, with the
-        given fields added to each of them
+        given fields added to each of them. If compiler is provided, it is
+        used instead of the compiler specified by the given build mode
     """
+    new_compiler = build_mode.compiler
+    if compiler:
+        new_compiler = compiler
     return struct(
         aspp_flags = _combine(build_mode.aspp_flags, aspp_flags),
         cpp_flags = _combine(build_mode.cpp_flags, cpp_flags),
@@ -200,5 +208,5 @@ def extend_build_mode(
         ubsan_options = _combine(build_mode.ubsan_options, ubsan_options),
         tsan_options = _combine(build_mode.tsan_options, tsan_options),
         lsan_suppressions = _combine(build_mode.lsan_suppressions, lsan_suppressions),
-        compiler = build_mode.compiler,
+        compiler = new_compiler,
     )
