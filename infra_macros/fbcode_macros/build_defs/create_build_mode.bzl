@@ -66,8 +66,8 @@ def create_build_mode(
         tsan_options: Extra TSAN runtime options
         lsan_suppressions: LSAN suppressions
         compiler: Use this compiler for deployable rules under this directory,
-                  for build modes which don't globall set the compiler family
-                  choice.
+                  for build modes which don't globally set the compiler family
+                  choice. Example inputs: 'clang', or 'gcc'.
 
     Returns:
         A struct with each of the provided fields, or () if the field was
