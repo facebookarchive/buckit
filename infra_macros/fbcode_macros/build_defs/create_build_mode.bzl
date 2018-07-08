@@ -9,8 +9,7 @@
 Simple module to create structs that are consumed by fbcode_macros//build_defs/build_mode.bzl
 """
 
-""" The main modes that will usually be used """
-
+# The main modes that will usually be used
 default_modes = [
     "dbg",
     "dev",

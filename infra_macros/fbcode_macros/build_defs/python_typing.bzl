@@ -47,6 +47,7 @@ def gen_typing_config_attrs(
         native.genrule(), or to a 'Rule' object. 'Rule' logic will eventually be
         deprecated, at which point this method will go away
     """
+    _ignore = visibility
 
     # TODO: Might make sense to have this combination logic
     #       as something native in buck to also let it detect
