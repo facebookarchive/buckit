@@ -461,7 +461,7 @@ class HaskellConverter(base.Converter):
 
         return (':' + attrs['name'], rules)
 
-    def _get_dep_rule(self, name, deps, visibility):
+    def _get_dep_rule(self, base_path, name, deps, visibility):
         """
         Sets up a dummy rule with the given dep objects formatted and installed
         using `deps` and `platform_deps` to support multi-platform builds.
@@ -478,6 +478,10 @@ class HaskellConverter(base.Converter):
             attrs['visibility'] = visibility
         attrs['preferred_linkage'] = 'static'
         attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+        attrs['default_platform'] = buck_platform
+        attrs['defaults'] = {'platform': buck_platform}
         return Rule('cxx_library', attrs)
 
     def convert_c2hs(self, base_path, name, platform, source, deps, visibility):
@@ -493,7 +497,7 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         d, r = self.get_binary_link_deps(base_path, deps_name)
-        rules.append(self._get_dep_rule(deps_name, deps + d, visibility))
+        rules.append(self._get_dep_rule(base_path, deps_name, deps + d, visibility))
         rules.extend(r)
 
         attrs = collections.OrderedDict()
@@ -534,7 +538,7 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         d, r = self.get_binary_link_deps(base_path, deps_name)
-        rules.append(self._get_dep_rule(deps_name, deps + d, visibility))
+        rules.append(self._get_dep_rule(base_path, deps_name, deps + d, visibility))
         rules.extend(r)
 
         out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
