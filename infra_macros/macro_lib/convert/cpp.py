@@ -698,6 +698,8 @@ class CppConverter(base.Converter):
         file.
         """
 
+        is_cpp = ('--skeleton=lalr1.cc' in yacc_flags)
+
         name_base = '{}={}'.format(name.replace(os.sep, '-'), yacc_src)
         header_name = name_base + '.h'
         source_name = name_base + '.cc'
@@ -706,11 +708,11 @@ class CppConverter(base.Converter):
         header = base + '.h'
         source = base + '.cc'
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name_base
-        attrs['out'] = base + '.d'
-        attrs['srcs'] = [yacc_src]
-        attrs['cmd'] = ' && '.join([
+        if is_cpp:
+            stack_header_name = '{}=stack.hh'.format(name.replace(os.sep, '-'))
+            stack_header = 'stack.hh'
+
+        commands = [
             'mkdir -p $OUT',
             '$(exe {yacc}) {args} -o "$OUT/{base}.c" $SRCS',
 
@@ -732,8 +734,23 @@ class CppConverter(base.Converter):
             r""" -e 's|'"$OUT"'/'{base}'\.h\b|'{out_h}'|g' """
             ' "$OUT/{base}.h"',
             'rm -f "$OUT/{base}"*.bak',
-            'mv "$OUT/{base}.c" "$OUT/{base}.cc"',
-        ]).format(
+            'mv "$OUT/{base}.c" "$OUT/{base}.cc"'
+        ]
+
+        if is_cpp:
+            commands.append(
+                # Patch the header file to add include header file prefix
+                # e.g.: thrifty.yy.h => thrift/compiler/thrifty.yy.h
+                'sed -i.bak'
+                r""" -e 's|#include "{base}.h"|#include "{base_path}/{base}.h"|g' """
+                ' "$OUT/{base}.cc"'
+            )
+
+        attrs = collections.OrderedDict()
+        attrs['name'] = name_base
+        attrs['out'] = base + '.d'
+        attrs['srcs'] = [yacc_src]
+        attrs['cmd'] = ' && '.join(commands).format(
             yacc=self.get_tool_target(YACC, platform),
             args=' '.join(
                 [pipes.quote(f) for f in YACC_FLAGS + list(yacc_flags)]),
@@ -753,7 +770,8 @@ class CppConverter(base.Converter):
                     base + '.h',
                     base + '.h')),
             defn=re.sub('[./]', '_', os.path.join(base_path, header)).upper(),
-            base=pipes.quote(base))
+            base=pipes.quote(base),
+            base_path=base_path)
 
         rules = []
         rules.append(Rule('genrule', attrs))
@@ -770,7 +788,19 @@ class CppConverter(base.Converter):
                 source,
                 visibility=visibility))
 
-        return (':' + header_name, ':' + source_name, rules)
+        if is_cpp:
+            rules.append(
+                self.copy_rule(
+                    '$(location :{})/{}'.format(name_base, stack_header),
+                    stack_header_name,
+                    stack_header,
+                    visibility=visibility))
+
+        returned_headers = [':' + header_name]
+        if is_cpp:
+            returned_headers.append(':' + stack_header_name)
+
+        return (returned_headers, ':' + source_name, rules)
 
     def has_cuda_dep(self, dependencies):
         """
@@ -1307,7 +1337,7 @@ class CppConverter(base.Converter):
         yacc_srcs, srcs = self.split_matching_extensions_and_other(
             srcs, self.YACC_EXTS)
         for yacc_src in yacc_srcs:
-            header, source, rules = (
+            yacc_headers, source, rules = (
                 self.convert_yacc(
                     base_path,
                     name,
@@ -1315,7 +1345,7 @@ class CppConverter(base.Converter):
                     yacc_src,
                     platform,
                     visibility))
-            out_headers.append(header)
+            out_headers.extend(yacc_headers)
             out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
             extra_rules.extend(rules)
 
