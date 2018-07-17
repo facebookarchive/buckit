@@ -87,6 +87,7 @@ FBCODE_RULES = [
     'go_binary',
     'go_library',
     'cgo_library',
+    'go_bindgen_library',
     'go_unittest',
     'haskell_binary',
     'haskell_external_library',
