@@ -896,6 +896,13 @@ class PythonConverter(base.Converter):
                 [ThirdPartyRuleTarget('typing', 'typing-py'),
                  ThirdPartyRuleTarget('python-future', 'python-future-py')]))
 
+        # Provide a hook for the nuclide debugger in @mode/dev builds, so
+        # that one can have `PYTHONBREAKPOINT=nuclide.set_trace` in their
+        # environment (eg .bashrc) and then simply write `breakpoint()`
+        # to launch a debugger with no fuss
+        if self.get_package_style() == "inplace":
+            dependencies.append("//nuclide:debugger-hook")
+
         # Add in a specialized manifest when building inplace binaries.
         #
         # TODO(#11765906):  We shouldn't need to create this manifest rule for
