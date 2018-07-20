@@ -93,6 +93,7 @@ def build_image(args):
         # The various btrfs ioctls we will perform most likely all require
         # root.  Future: look into using more granular capabilities here.
         'sudo',
+        'PYTHONDONTWRITEBYTECODE=1',  # Avoid root-owned .pyc in buck-out/
         args.image_build_command,
         'build',
         '--no-pkg', '--no-export', '--no-clean-built-layer',

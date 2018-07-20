@@ -187,7 +187,9 @@ def sudo_demo_sendstreams():
         #   ./btrfs_diff/tests:
         #   demo_sendstreams.py
         [
-            'sudo', sys.executable,
+            'sudo',
+            'PYTHONDONTWRITEBYTECODE=1',  # Avoid root-owned .pyc in buck-out/
+            sys.executable,
             '-m', 'btrfs_diff.tests.demo_sendstreams',
             '--print', 'pickle',
             # At present, because of a design glitch in `scratch`, `root`
