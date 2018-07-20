@@ -33,11 +33,11 @@ def get_volume_for_current_repo(min_free_bytes, artifacts_dir):
     Image-build tooling **must never** access paths in this volume without
     going through this function.  Otherwise, the volume will not get
     remounted correctly if the host containing the repo got rebooted.
+
+    PRE-CONDITION: `artifacts_dir` exists and is writable by `root`.
     '''
-    try:
-        os.mkdir(artifacts_dir)
-    except OSError:
-        pass  # artifacts_dir might already exist
+    if not os.path.exists(artifacts_dir):  # pragma: no cover
+        raise RuntimeError(f'{artifacts_dir} must exist')
 
     volume_dir = os.path.join(artifacts_dir, VOLUME_DIR)
     subprocess.check_call([

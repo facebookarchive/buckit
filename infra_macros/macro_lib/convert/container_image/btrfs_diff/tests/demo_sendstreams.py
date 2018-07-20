@@ -16,7 +16,8 @@ See `python3 -m btrfs_diff.tests.demo_sendstreams --help` for usage.
 Run this:
 
   cd PATH_TO/container_image/
-  sudo python3 -m btrfs_diff.tests.demo_sendstreams --update-gold
+  sudo python3 -m btrfs_diff.tests.demo_sendstreams \
+    --update-gold --artifacts-dir "$(artifacts_dir.py)"
 
 You will then need to manually update `uuid_create` and related fields in
 the "expected" section of the test.
@@ -49,6 +50,7 @@ import time
 
 from typing import Tuple
 
+from artifacts_dir import get_per_repo_artifacts_dir
 
 from .btrfs_utils import (
     CheckedRunTemplate, mark_subvolume_readonly_and_get_sendstream,
@@ -185,8 +187,13 @@ def sudo_demo_sendstreams():
         #   ./btrfs_diff/tests:
         #   demo_sendstreams.py
         [
-            'sudo', sys.executable, '-m', 'btrfs_diff.tests.demo_sendstreams',
+            'sudo', sys.executable,
+            '-m', 'btrfs_diff.tests.demo_sendstreams',
             '--print', 'pickle',
+            # At present, because of a design glitch in `scratch`, `root`
+            # cannot get the correct artifacts directory, it has to be the
+            # repo's owning user making this call.
+            '--artifacts-dir', get_per_repo_artifacts_dir(),
         ],
         cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         stdout=subprocess.PIPE, check=True,
@@ -211,7 +218,6 @@ if __name__ == '__main__':
     import enum
     import pprint
 
-    from artifacts_dir import get_per_repo_artifacts_dir
     from volume_for_repo import get_volume_for_current_repo
 
     p = argparse.ArgumentParser(
@@ -237,10 +243,17 @@ if __name__ == '__main__':
             'you will need to manually update some constants like '
             '`uuid_create` in the "expected" section of the test code.',
     )
+    p.add_argument(
+        '--artifacts-dir',
+        help='If omitted, will be created for the current user & repo',
+    )
     args = p.parse_args()
 
+    if args.artifacts_dir is None:
+        args.artifacts_dir = get_per_repo_artifacts_dir()
+
     with tempfile.TemporaryDirectory(
-        dir=get_volume_for_current_repo(1e8, get_per_repo_artifacts_dir()),
+        dir=get_volume_for_current_repo(1e8, args.artifacts_dir),
     ) as temp_dir:
         sendstream_dict = demo_sendstreams(temp_dir)
         # This width makes the `--dump`ed commands fit on one line.
