@@ -45,7 +45,8 @@ class CppJvmLibrary(base.Converter):
             arch = {'x86_64': 'amd64'}.get(arch, arch)
             return [flag.format(arch=arch, platform=platform) for flag in flags]
 
-        jvm_path = '/usr/local/fb-jdk-{}-{{platform}}'.format(major_version)
+        platform_jvm_path = '/usr/local/fb-jdk-{}-{{platform}}'.format(major_version)
+        jvm_path = '/usr/local/fb-jdk-{}'.format(major_version)
 
         # We use include/library paths to wrap the custom FB JDK installed at
         # system locations.  As such, we don't properly hash various components
@@ -56,6 +57,10 @@ class CppJvmLibrary(base.Converter):
                 functools.partial(
                     formatter,
                     ['-isystem',
+                     os.path.join(platform_jvm_path, 'include'),
+                     '-isystem',
+                     os.path.join(platform_jvm_path, 'include', 'linux'),
+                     '-isystem',
                      os.path.join(jvm_path, 'include'),
                      '-isystem',
                      os.path.join(jvm_path, 'include', 'linux')])))
@@ -63,7 +68,9 @@ class CppJvmLibrary(base.Converter):
             self.format_platform_param(
                 functools.partial(
                     formatter,
-                    ['-L{}/jre/lib/{{arch}}/server'.format(jvm_path),
+                    ['-L{}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
+                     '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
+                     '-L{}/jre/lib/{{arch}}/server'.format(jvm_path),
                      '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(jvm_path),
                      '-ljvm'])))
 
