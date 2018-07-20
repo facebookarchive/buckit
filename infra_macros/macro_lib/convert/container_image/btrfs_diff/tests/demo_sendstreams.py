@@ -177,7 +177,7 @@ def demo_sendstreams(temp_dir: bytes):
         return res
 
 
-def sudo_demo_sendstreams():
+def sudo_demo_sendstreams(path_in_repo):
     'Re-execute the script in this module under `sudo`, unpickle the result.'
     return pickle.loads(subprocess.run(
         # We depend on a hierarchy of this sort:
@@ -195,7 +195,7 @@ def sudo_demo_sendstreams():
             # At present, because of a design glitch in `scratch`, `root`
             # cannot get the correct artifacts directory, it has to be the
             # repo's owning user making this call.
-            '--artifacts-dir', get_per_repo_artifacts_dir(),
+            '--artifacts-dir', get_per_repo_artifacts_dir(path_in_repo),
         ],
         cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         stdout=subprocess.PIPE, check=True,

@@ -78,12 +78,10 @@ python_library(
 
 # These binaries are used by `image_layer.py` as build-time helpers.
 
-# We cannot use `python_binary` here, because in `@mode/opt`, we would get
-# packed into an archive that would prevents us from finding the artifact
-# directory for the current repo.
-buck_sh_binary(
+python_binary(
     name = "artifacts-dir",
-    main = "artifacts_dir.py",
+    main_module = "artifacts_dir",
+    deps = [":artifacts_dir"],
 )
 
 python_binary(

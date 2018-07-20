@@ -3,6 +3,7 @@ import io
 import os
 import pickle
 import subprocess
+import sys
 import unittest
 
 from typing import List, Sequence
@@ -75,7 +76,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         )
 
         # Now check that `demo_sendstream.py` also exercises those operations.
-        stream_dict = sudo_demo_sendstreams()
+        stream_dict = sudo_demo_sendstreams(sys.argv[0])
         out_lines = [
             *stream_dict['create_ops']['dump'],
             *stream_dict['mutate_ops']['dump'],

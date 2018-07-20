@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+'DANGER: The resulting PAR will not work if copied outside of buck-out.'
 import os
 import shutil
 import subprocess
@@ -44,20 +45,18 @@ def _maybe_make_symlink_to_scratch(
     return target_path
 
 
-def get_per_repo_artifacts_dir() -> str:
+def get_per_repo_artifacts_dir(path_in_repo) -> str:
     '''
+    The caller is responsible for providing a path known to be in the repo.
+    We cannot just use __file__, because that will never in the repo in
+    tests running under @mode/opt. For that reason, tests should just pass
+    sys.argv[0].
+
     This is intended to work:
      - under Buck's internal macro interpreter, and
      - using the system python from `facebookexperimental/buckit`.
-
-    We cannot unit-test this because our unit-tests run via LPARS, which
-    break the assumption that the Python source path is located in the repo.
     '''
-    # This must be `realpath` because when used from the `image_layer`
-    # implementation, this is a `sh_binary`.  Buck's implementation hides
-    # the actual source tree behind a symlink, so we need to (clownily)
-    # strip that away.
-    repo_path = os.path.realpath(__file__)
+    repo_path = os.path.abspath(path_in_repo)
     while True:
         repo_path = os.path.dirname(repo_path)
         if repo_path == '/':
@@ -88,4 +87,5 @@ def get_per_repo_artifacts_dir() -> str:
 
 
 if __name__ == '__main__':
-    print(get_per_repo_artifacts_dir())
+    import sys
+    print(get_per_repo_artifacts_dir(sys.argv[0]))

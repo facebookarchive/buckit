@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import unittest
 
 from contextlib import contextmanager
@@ -31,7 +32,9 @@ class ImageLayerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.subvolumes_dir = os.path.join(
-            get_volume_for_current_repo(1e8, get_per_repo_artifacts_dir()),
+            get_volume_for_current_repo(
+                1e8, get_per_repo_artifacts_dir(sys.argv[0]),
+            ),
             'targets',
         )
 

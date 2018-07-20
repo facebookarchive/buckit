@@ -229,6 +229,7 @@ python_unittest(
         )
         for t in IMAGE_LAYER_DEPS
     },
+    par_style = "zip",  # "fastzip" would break :volume_for_repo in @mode/opt
     # As with `test-image-feature`, we cannot get `image_layer.py` coverage.
     deps = [
         ":subvolume_on_disk",
