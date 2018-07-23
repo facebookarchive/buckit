@@ -45,7 +45,7 @@ def _maybe_make_symlink_to_scratch(
     return target_path
 
 
-def get_per_repo_artifacts_dir(path_in_repo) -> str:
+def ensure_per_repo_artifacts_dir_exists(path_in_repo) -> str:
     '''
     The caller is responsible for providing a path known to be in the repo.
     We cannot just use __file__, because that will never in the repo in
@@ -88,4 +88,4 @@ def get_per_repo_artifacts_dir(path_in_repo) -> str:
 
 if __name__ == '__main__':
     import sys
-    print(get_per_repo_artifacts_dir(sys.argv[0]))
+    print(ensure_per_repo_artifacts_dir_exists(sys.argv[0]))

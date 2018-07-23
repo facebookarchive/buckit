@@ -2,7 +2,7 @@
 '''
 Usage:
 
-    python3 -m btrfs_diff.tests.gold_demo_sendstreams stream_name
+    python3 -m btrfs_diff.tests.pring_gold_demo_sendstreams stream_name
 
 Prints to stdout the binary send-stream corresponding to one of the
 scripts defined in `demo_sendstreams.py`.

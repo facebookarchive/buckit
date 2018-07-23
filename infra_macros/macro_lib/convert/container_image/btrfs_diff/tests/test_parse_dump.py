@@ -16,7 +16,7 @@ from ..send_stream import (
     SendStreamItems,
 )
 
-from .demo_sendstreams import sudo_demo_sendstreams, gold_demo_sendstreams
+from .demo_sendstreams import make_demo_sendstreams, gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items
 
 # `unittest`'s output shortening makes tests much harder to debug.
@@ -76,7 +76,7 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
         )
 
         # Now check that `demo_sendstream.py` also exercises those operations.
-        stream_dict = sudo_demo_sendstreams(sys.argv[0])
+        stream_dict = make_demo_sendstreams(sys.argv[0])
         out_lines = [
             *stream_dict['create_ops']['dump'],
             *stream_dict['mutate_ops']['dump'],

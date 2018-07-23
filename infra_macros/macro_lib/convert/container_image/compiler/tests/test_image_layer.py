@@ -5,7 +5,7 @@ import unittest
 
 from contextlib import contextmanager
 
-from artifacts_dir import get_per_repo_artifacts_dir
+from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from volume_for_repo import get_volume_for_current_repo
 
 from ..subvolume_on_disk import SubvolumeOnDisk
@@ -33,7 +33,7 @@ class ImageLayerTestCase(unittest.TestCase):
     def setUp(self):
         self.subvolumes_dir = os.path.join(
             get_volume_for_current_repo(
-                1e8, get_per_repo_artifacts_dir(sys.argv[0]),
+                1e8, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
             ),
             'targets',
         )
