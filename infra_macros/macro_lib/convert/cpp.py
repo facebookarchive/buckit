@@ -1403,9 +1403,11 @@ class CppConverter(base.Converter):
             modules.module_map_rule(
                 mmap_name,
                 module_name,
-                # `-inl.h` headers are private extensinos of their `.h` files,
-                # mark them as `private` and `textual`.
-                {h: ['private', 'textual'] if h.endswith('-inl.h') else []
+                # There are a few header suffixes (e.g. '-inl.h') that indicate a
+                # "private" extension to some library interface. We generally want
+                # to keep these are non modular. So mark them private/textual.
+                {h: ['private', 'textual'] if h.endswith(('-inl.h', '-impl.h', '-pre.h'))
+                 else []
                  for h in out_headers})
 
             # Add in module map.
