@@ -173,6 +173,9 @@ python_library(
         "tests/btrfs_utils.py",
     ],
     base_module = "btrfs_diff",
+    external_deps = [
+        ("btrfs-progs", None, "btrfsutil-py"),
+    ],
 )
 
 python_binary(

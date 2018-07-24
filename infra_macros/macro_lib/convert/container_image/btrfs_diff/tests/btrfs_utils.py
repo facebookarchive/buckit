@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 'Helpers for writing tests against btrfs-progs, see e.g. `demo_sendstreams.py`'
+import btrfsutil
 import contextlib
 import os
 import subprocess
@@ -8,10 +9,7 @@ from typing import List, Union
 
 
 def subvolume_set_readonly(subvol_path: bytes, *, readonly):
-    subprocess.run([
-        'btrfs', 'property', 'set', '-ts', subvol_path, 'ro',
-        'true' if readonly else 'false',
-    ], check=True)
+    return btrfsutil.set_subvolume_read_only(subvol_path, readonly)
 
 
 def mark_subvolume_readonly_and_get_sendstream(
@@ -22,7 +20,7 @@ def mark_subvolume_readonly_and_get_sendstream(
     # Btrfs bug #25329702: in some cases, a `send` without a sync will violate
     # read-after-write consistency and send a "past" view of the filesystem.
     # Do this on the read-only filesystem to improve consistency.
-    subprocess.run(['btrfs', 'filesystem', 'sync', subvol_path], check=True)
+    btrfsutil.sync(subvol_path)
 
     # Btrfs bug #25379871: our 4.6 kernels have an experimental xattr caching
     # patch, which is broken, and results in xattrs not showing up in the `send`
@@ -35,6 +33,7 @@ def mark_subvolume_readonly_and_get_sendstream(
             'getfattr', '--no-dereference', '--recursive', subvol_path
         ], input=b'', check=True)
 
+    # Shell out since `btrfsutil` has no send/receive support yet
     return subprocess.run(
         ['btrfs', 'send'] + send_args + [subvol_path],
         stdout=subprocess.PIPE, check=True,
@@ -48,14 +47,11 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         self.paths = []
 
     def create(self, path: bytes):
-        subprocess.run(['btrfs', 'subvolume', 'create', path], check=True)
+        btrfsutil.create_subvolume(path)
         self.paths.append(path)
 
     def snapshot(self, source: bytes, dest: bytes):
-        # Future: `dest` has some funky semantics, review if productionizing.
-        subprocess.run(
-            ['btrfs', 'subvolume', 'snapshot', source, dest], check=True,
-        )
+        btrfsutil.create_snapshot(source, dest)
         self.paths.append(dest)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -65,9 +61,7 @@ class TempSubvolumes(contextlib.AbstractContextManager):
             subvolume_set_readonly(path, readonly=False)
         for path in reversed(self.paths):
             try:
-                subprocess.run([
-                    'btrfs', 'subvolume', 'delete', path
-                ], check=True)
+                btrfsutil.delete_subvolume(path)
             except BaseException:  # Yes, even KeyboardInterrupt & SystemExit
                 pass
 
