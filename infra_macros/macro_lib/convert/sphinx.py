@@ -65,8 +65,14 @@ Common Attributes:
         The ``destination_dir`` is the sub-directory to merge the files
         into, alongside the declared ``srcs``.
 
-    confpy: Dict[str, Union[bool, int, str, List, Dict]
-        This provides a way to override or add settings to conf.py
+    config: Dict[str, Dict[str, Union[bool, int, str, List, Dict]]
+        This provides a way to override or add settings to conf.py,
+        sphinx-build and others
+
+        Section headers:
+            conf.py
+            sphinx-build
+            sphinx-apidoc
 
         These need to serialize to JSON
 
@@ -174,9 +180,7 @@ class _SphinxConverter(base.Converter):
             'python_library_deps',
             'apidoc_modules',
             'genrule_srcs',
-            'confpy',
-            'sphinxapidoc_opts',
-            'sphinxbuild_opts',
+            'config',
         }
 
     def get_buck_rule_type(self):
@@ -208,7 +212,6 @@ class _SphinxConverter(base.Converter):
         name,
         fbsphinx_wrapper_target,
         apidoc_modules,
-        sphinxapidoc_opts,
     ):
         """
         A simple genrule wrapper for running sphinx-apidoc
@@ -231,66 +234,12 @@ class _SphinxConverter(base.Converter):
                 ('bash', command),
             )))
 
-    def _get_confpy_rule(
-        self,
-        base_path,
-        name,
-        srcs,
-        confpy,
-        apidoc_modules,
-        **kwargs
-    ):
-        """
-        Simple genrule wrapper for running fbsphinx-confpy to create a conf.py
-        """
-        confpy = confpy or {}
-        apidoc_modules = apidoc_modules or {}
-
-        # add confpy extras
-        confpy.update(self.get_extra_confpy_assignments(name, **kwargs))
-
-        # add confpy metadata
-        confpy['@CONFPY'] = dict(confpy)
-
-        # add sources, let fbsphinx-confpy determine master_doc
-        confpy['@srcs'] = srcs
-
-        # add things to buildinfo, filter out None(s) later
-        confpy['@BUILDINFO'] = {
-            'target': '//{}:{}'.format(base_path, name),
-            'target_base_path': base_path,
-            'wiki_root_path': confpy.get('wiki_root_path', None),
-        }
-        for key, val in confpy['@BUILDINFO'].items():
-            if val is None:
-                del confpy['@BUILDINFO'][key]
-
-        command = ' '.join((
-            '$(exe {FBSPHINX_WRAPPER})',
-            'buck confpy',  # wrapper subcommand
-            '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
-            '--extras \'{json_extras}\'',
-            '{srcs} > $OUT',
-        )).format(
-            FBSPHINX_WRAPPER=FBSPHINX_WRAPPER,
-            SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
-            json_extras=json.dumps(confpy),
-            srcs=' '.join(srcs),
-        )
-        return Rule('genrule', collections.OrderedDict((
-            ('name', name + '-conf_py'),
-            ('out', 'conf.py'),
-            ('bash', command),
-        )))
-
     def convert(
         self,
         base_path,
         name,
         apidoc_modules=None,
-        confpy=None,
-        sphinxapidoc_opts=None,
-        sphinxbuild_opts=None,
+        config=None,
         genrule_srcs=None,
         python_binary_deps=(),
         python_library_deps=(),
@@ -326,7 +275,6 @@ class _SphinxConverter(base.Converter):
             name,
             fbsphinx_wrapper_target,
             apidoc_modules,
-            sphinxapidoc_opts,
         ):
             additional_doc_rules.append(rule)
             yield rule
@@ -339,46 +287,29 @@ class _SphinxConverter(base.Converter):
             additional_doc_rules.append(rule)
             yield rule
 
-        confpy_rule = self._get_confpy_rule(
-            name=name,
-            base_path=base_path,
-            srcs=srcs,
-            confpy=confpy,
-            apidoc_modules=apidoc_modules,  # to manipulate sys.path
-            **kwargs
-        )
-        yield confpy_rule
-
         command = ' '.join((
-            'mkdir $OUT &&',
             'echo {BUCK_NONCE} >/dev/null &&',
-            '{rsync_additional_docs}',
             '$(exe :{fbsphinx_wrapper_target})',
-            'buck build',
-            '--confpy $(location {confpy_target})',
+            'buck run',
+            '--target {target}',
             '--builder {builder}',
             '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
-            "--extras '{json_extras}'",
+            "--config '{config}'",
+            "--generated-sources '{generated_sources}'",
             '.',  # source dir
             '$OUT',
         )).format(
             BUCK_NONCE=os.environ.get('BUCK_NONCE', ''),
-            rsync_additional_docs=(
-                'rsync -a {} $SRCDIR &&'.format(
-                    ' '.join((
-                        '$(location {})'.format(rule.target_name)
-                        for rule
-                        in additional_doc_rules
-                    )),
-                )
-                if additional_doc_rules
-                else ''
-            ),
             fbsphinx_wrapper_target=fbsphinx_wrapper_target,
+            target='//{}:{}'.format(base_path, name),
             builder=self.get_builder(),
-            confpy_target=confpy_rule.target_name,
             SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
-            json_extras=json.dumps(sphinxbuild_opts or {}),
+            config=json.dumps(config or {}),
+            generated_sources=json.dumps([
+                '$(location {})'.format(rule.target_name)
+                for rule
+                in additional_doc_rules
+            ]),
         )
 
         yield Rule('genrule', collections.OrderedDict((
