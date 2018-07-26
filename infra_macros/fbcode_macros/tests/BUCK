@@ -12,6 +12,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
+    "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
@@ -89,6 +90,13 @@ skylark_integration_test(
 skylark_integration_test(
     name = "config_test",
     srcs = ["config_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "custom_rule_test",
+    srcs = ["custom_rule_test.py"],
+    resources = glob(["testdata/custom_rule/*"]),
     deps = [":utils"],
 )
 

@@ -189,10 +189,33 @@ def _get_buck_platform_for_base_path(base_path):
 def _get_buck_platform_for_current_buildfile():
     return _get_buck_platform_for_base_path(native.package_name())
 
+def _get_fbcode_and_buck_platform_for_current_buildfile():
+    """
+    Returns both the general fbcode platform and the buck platform as a tuple
+
+    The fbcode platform is used for things like paths and build info stamping
+    The buck platform is used internally in buck to specify which toolchain
+    settings to use.
+
+    e.g. One might get gcc-5-glibc-2.23, gcc-5-glibc-2.23-clang back.
+    gcc-5-glibc-2.23 would be used when finding third-party packages, but
+    gcc-5-glibc-2.23-clang would be used in cxx_binary rules to force clang
+    compiler and build flags to be used for a binary.
+
+    This method just reduces some duplicate work that would be done if both
+    get_platform_for_current_buildfile() and get_buck_platform_for_current_buildfile()
+    were run.
+    """
+    package = native.package_name()
+    fbcode_platform = _get_platform_for_base_path(package)
+    buck_platform = _to_buck_platform(fbcode_platform, compiler.get_compiler_for_base_path(package))
+    return fbcode_platform, buck_platform
+
 platform = struct(
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
     get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,
     get_default_platform = _get_default_platform,
+    get_fbcode_and_buck_platform_for_current_buildfile = _get_fbcode_and_buck_platform_for_current_buildfile,
     get_platform_for_base_path = _get_platform_for_base_path,
     get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
     get_platform_for_current_buildfile = _get_platform_for_current_buildfile,

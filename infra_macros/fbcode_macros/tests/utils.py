@@ -182,6 +182,9 @@ class Cell:
                 buckconfig["cxx"]["cc"] = cc
                 buckconfig["cxx"]["cpp"] = cc
                 buckconfig["cxx"]["aspp"] = cc
+        if ("fbcode" not in buckconfig or
+                "buck_platform_format" not in buckconfig["fbcode"]):
+            buckconfig["fbcode"]["buck_platform_format"] = "{platform}-{compiler}"
 
         parser = configparser.ConfigParser()
         for section, kvps in buckconfig.items():
