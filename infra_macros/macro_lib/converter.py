@@ -49,6 +49,8 @@ load(  # noqa F821
     "versioned_alias",
 )
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
+load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
+
 with allow_unsafe_import():  # noqa: F821
     import sys
 
@@ -59,7 +61,6 @@ cpp_library_external = import_macro_lib('convert/cpp_library_external')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
 )
-custom_rule = import_macro_lib('convert/custom_rule')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
 d = import_macro_lib('convert/d')
@@ -175,7 +176,6 @@ def convert(context, base_path, rule):
         js.JsConverter(context, 'js_executable'),
         js.JsConverter(context, 'js_node_module_external'),
         js.JsConverter(context, 'js_npm_module'),
-        custom_rule.CustomRuleConverter(context),
         custom_unittest.CustomUnittestConverter(context),
         thrift_library.ThriftLibraryConverter(context),
         swig_library.SwigLibraryConverter(context),
@@ -227,6 +227,7 @@ def convert(context, base_path, rule):
         'remote_file': remote_file,  # noqa F821
         'test_suite': test_suite,  # noqa F821
         'buck_command_alias': buck_command_alias,  # noqa F821
+        'custom_rule': custom_rule  # noqa F821
     }
 
     for converter in converters:
