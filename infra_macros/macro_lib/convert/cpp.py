@@ -703,6 +703,7 @@ class CppConverter(base.Converter):
         name_base = '{}={}'.format(name.replace(os.sep, '-'), yacc_src)
         header_name = name_base + '.h'
         source_name = name_base + '.cc'
+        yacc_src_rel = base_path + os.sep + yacc_src
 
         base = yacc_src
         header = base + '.h'
@@ -711,6 +712,8 @@ class CppConverter(base.Converter):
         if is_cpp:
             stack_header_name = '{}=stack.hh'.format(name.replace(os.sep, '-'))
             stack_header = 'stack.hh'
+        else:
+            stack_header = None
 
         commands = [
             'mkdir -p $OUT',
@@ -745,6 +748,13 @@ class CppConverter(base.Converter):
                 r""" -e 's|#include "{base}.h"|#include "{base_path}/{base}.h"|g' """
                 ' "$OUT/{base}.cc"'
             )
+            commands.append(
+                # Sanitize the stack header file's line-markers.
+                'sed -i.bak'
+                r""" -e 's|'"$OUT"'/'{stack_header}'|'{stack_header}'|g' """
+                r""" -e 's|'"{cwd}/{yacc_src_rel}"'|'"{yacc_src_rel}"'|g' """
+                ' "$OUT/{stack_header}"',
+            )
 
         attrs = collections.OrderedDict()
         attrs['name'] = name_base
@@ -771,7 +781,11 @@ class CppConverter(base.Converter):
                     base + '.h')),
             defn=re.sub('[./]', '_', os.path.join(base_path, header)).upper(),
             base=pipes.quote(base),
-            base_path=base_path)
+            base_path=base_path,
+            stack_header=stack_header,
+            yacc_src_rel=yacc_src_rel,
+            cwd=os.getcwd(),
+        )
 
         rules = []
         rules.append(Rule('genrule', attrs))
