@@ -1,99 +1,216 @@
 #!/usr/bin/env python3
 'Helpers for writing tests against btrfs-progs, see e.g. `demo_sendstreams.py`'
-import btrfsutil
 import contextlib
 import os
 import subprocess
 
-from typing import List, Union
+from typing import Union
+
+# Nibble on unicode strings with the intent of treating them as bytes.
+Bytey = Union[str, bytes]
 
 
-def subvolume_set_readonly(subvol_path: bytes, *, readonly):
-    return btrfsutil.set_subvolume_read_only(subvol_path, readonly)
+# Bite me, Python3
+def byteme(s: Bytey) -> bytes:
+    'Byte literals are tiring, just promote strings as needed.'
+    return s.encode() if isinstance(s, str) else s
 
 
-def mark_subvolume_readonly_and_get_sendstream(
-    subvol_path: bytes, *, send_args: List[Union[bytes, str]],
-):
-    subvolume_set_readonly(subvol_path, readonly=True)
+class Subvol:
+    '''
+    ## What is this for?
 
-    # Btrfs bug #25329702: in some cases, a `send` without a sync will violate
-    # read-after-write consistency and send a "past" view of the filesystem.
-    # Do this on the read-only filesystem to improve consistency.
-    btrfsutil.sync(subvol_path)
+    This class is to be a privilege / abstraction boundary that allows
+    regular, unprivileged Python code to construct images.  Many btrfs
+    ioctls require CAP_SYS_ADMIN (or some kind of analog -- e.g. a
+    `libguestfs` VM or a privileged server for performing image operations).
+    Furthermore, writes to the image-under-construction may require similar
+    sorts of privileges to manipulate the image-under-construction as uid 0.
 
-    # Btrfs bug #25379871: our 4.6 kernels have an experimental xattr caching
-    # patch, which is broken, and results in xattrs not showing up in the `send`
-    # stream unless that metadata is `fsync`ed.  For some dogscience reason,
-    # `getfattr` on a file actually triggers such an `fsync`. We do this on a
-    # read-only filesystem to improve consistency.
-    kernel_ver = subprocess.check_output(['uname', '-r'])
-    if kernel_ver.startswith(b'4.6.'):
-        subprocess.run([
-            'getfattr', '--no-dereference', '--recursive', subvol_path
-        ], input=b'', check=True)
+    One approach would be to eschew privilege boundaries, and to run the
+    entire build process as `root`.  However, that would forever confine our
+    build tool to be run in VMs and other tightly isolated contexts.  Since
+    unprivileged image construction is technically possible, we will instead
+    take the approach that -- as much as possible -- the build code runs
+    unprivileged, as the repo-owning user, and only manipulates the
+    filesystem-under-construction via this one class.
 
-    # Shell out since `btrfsutil` has no send/receive support yet
-    return subprocess.run(
-        ['btrfs', 'send'] + send_args + [subvol_path],
-        stdout=subprocess.PIPE, check=True,
-    ).stdout
+    For now, this means shelling out via `sudo`, but in the future,
+    `libguestfs` or a privileged filesystem construction proxy could be
+    swapped in with minimal changes to the overall structure.
+
+    ## Usage
+
+    - Think of `Subvol` as a ticket to operate on a btrfs subvolume that
+      exists, or is about to be created, at a known path on disk. This
+      convention lets us cleanly describe paths on a subvolume that does not
+      yet physically exist.
+
+    - Call the functions from the btrfs section to manage the subvolumes.
+
+    - Call `subvol.run_as_root()` to use shell commands to manipulate the
+      image under construction.
+
+    - Call `subvol.path('image/relative/path')` to refer to paths inside the
+      subvolume e.g. in arguments to the `subvol.run_*` functions.
+    '''
+
+    def __init__(self, path: Bytey, already_exists=False):
+        '''
+        `Subvol` can represent not-yet-created subvolumes.  Unless
+        already_exists=True, you must call create() or snapshot() to
+        actually make the subvolume.
+        '''
+        self._path = os.path.abspath(byteme(path))
+        self._exists = already_exists
+        # Ensure that there's a btrfs subvolume at this path. As per @kdave --
+        # https://stackoverflow.com/a/32865333
+        if self._exists:
+            # You'd think I could just `os.statvfs`, but no, not until Py3.7
+            # https://bugs.python.org/issue32143
+            fs_type = subprocess.run(
+                ['stat', '-f', '--format=%T', self._path],
+                stdout=subprocess.PIPE,
+            ).stdout.decode().strip()
+            ino = os.stat(self._path).st_ino
+            if fs_type != 'btrfs' or ino != 256:
+                raise AssertionError(
+                    f'No btrfs subvol at {self._path} -- fs type {fs_type}, '
+                    f'inode {ino}.'
+                )
+
+    def path(self, path_in_subvol: Bytey=b'.') -> bytes:
+        p = os.path.normpath(byteme(path_in_subvol))  # before testing for '..'
+        if p.startswith(b'../') or p == b'..':
+            raise AssertionError(f'{path_in_subvol} is outside the subvol')
+        # The `btrfs` CLI is not very flexible, so it will try to name a
+        # subvol '.' if we do not normalize `/subvol/.`.
+        return os.path.normpath(os.path.join(self._path, (
+            path_in_subvol.encode() if isinstance(path_in_subvol, str)
+                else path_in_subvol
+            # Without the lstrip, we would lose the subvolume prefix
+            # if the supplied path is absolute.
+        ).lstrip(b'/')))
+
+    # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
+    # new subvolumes, and not just touch existing ones.
+    def run_as_root(self, args, *, _subvol_exists=True, stdout=None, **kwargs):
+        if _subvol_exists != self._exists:
+            raise AssertionError(
+                f'{self.path()} exists is {self._exists}, not {_subvol_exists}'
+            )
+        # Ban our subcommands from writing to stdout, since many of our
+        # tools (e.g. make-demo-sendstream, compiler) write structured
+        # data to stdout to be usable in pipelines.
+        if stdout is None:
+            stdout = 2
+        return subprocess.run(
+            ['sudo', *args], stdout=stdout, **kwargs, check=True,
+        )
+
+    # Future: run_in_image()
+
+    # From here on out, every public method directly maps to the btrfs API.
+    # For now, we shell out, but in the future, we may talk to a privileged
+    # `btrfsutil` helper, or use `guestfs`.
+
+    def _btrfs_run(self, args, **kwargs):
+        return self.run_as_root(['btrfs', *args], **kwargs)
+
+    def create(self):
+        self._btrfs_run(
+            ['subvolume', 'create', self.path()], _subvol_exists=False,
+        )
+        self._exists = True
+
+    def snapshot(self, source: 'Subvol'):
+        # Since `snapshot` has awkward semantics around the `dest`,
+        # `_subvol_exists` won't be enough and we ought to ensure that the
+        # path physically does not exist.  This needs to run as root, since
+        # `os.path.exists` may not have the right permissions.
+        self.run_as_root(
+            ['test', '!', '-e', self.path()], _subvol_exists=False
+        )
+        self._btrfs_run(
+            ['subvolume', 'snapshot', source.path(), self.path()],
+            _subvol_exists=False,
+        )
+        self._exists = True
+
+    def delete(self):
+        self._btrfs_run(['subvolume', 'delete', self.path()])
+        self._exists = False
+
+    def set_readonly(self, readonly: bool):
+        self._btrfs_run([
+            'property', 'set', '-ts', self.path(), 'ro',
+            'true' if readonly else 'false',
+        ])
+
+    def sync(self):
+        self._btrfs_run(['filesystem', 'sync', self.path()])
+
+    def _send(
+        self, *, stdout, no_data: bool=False, parent: 'Subvol'=None,
+    ) -> subprocess.CompletedProcess:
+        self.set_readonly(True)
+
+        # Btrfs bug #25329702: in some cases, a `send` without a sync will
+        # violate read-after-write consistency and send a "past" view of the
+        # filesystem.  Do this on the read-only filesystem to improve
+        # consistency.
+        self.sync()
+
+        # Btrfs bug #25379871: our 4.6 kernels have an experimental xattr
+        # caching patch, which is broken, and results in xattrs not showing
+        # up in the `send` stream unless that metadata is `fsync`ed.  For
+        # some dogscience reason, `getfattr` on a file actually triggers
+        # such an `fsync`.  We do this on a read-only filesystem to improve
+        # consistency.
+        kernel_ver = subprocess.check_output(['uname', '-r'])
+        if kernel_ver.startswith(b'4.6.'):
+            self.run_as_root([
+                'getfattr', '--no-dereference', '--recursive', self.path()
+            ])
+
+        return self._btrfs_run([
+            'send',
+            *(['--no-data'] if no_data else []),
+            *(['-p', parent.path()] if parent else []),
+            self.path(),
+        ], stdout=stdout)
+
+    def get_sendstream(self, **kwargs) -> bytes:
+        return self._send(stdout=subprocess.PIPE, **kwargs).stdout
+
+    # Future: write_sendstream_to_file()
 
 
 class TempSubvolumes(contextlib.AbstractContextManager):
     'Tracks the subvolumes it creates, and destroys them on context exit.'
 
     def __init__(self):
-        self.paths = []
+        self.subvols = []
 
-    def create(self, path: bytes):
-        btrfsutil.create_subvolume(path)
-        self.paths.append(path)
+    def create(self, path: Bytey) -> Subvol:
+        subvol = Subvol(path)
+        subvol.create()
+        self.subvols.append(subvol)
+        return subvol
 
-    def snapshot(self, source: bytes, dest: bytes):
-        btrfsutil.create_snapshot(source, dest)
-        self.paths.append(dest)
+    def snapshot(self, source: Subvol, dest_path: Bytey) -> Subvol:
+        dest = Subvol(dest_path)
+        dest.snapshot(source)
+        self.subvols.append(dest)
+        return dest
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # If any of subvolumes are nested, and the parents were made
         # read-only, we won't be able to delete them.
-        for path in self.paths:
-            subvolume_set_readonly(path, readonly=False)
-        for path in reversed(self.paths):
+        for subvol in self.subvols:
+            subvol.set_readonly(False)
+        for subvol in reversed(self.subvols):
             try:
-                btrfsutil.delete_subvolume(path)
+                subvol.delete()
             except BaseException:  # Yes, even KeyboardInterrupt & SystemExit
                 pass
-
-
-class CheckedRunTemplate:
-    'Shortens repetitive invocations of subprocess.run(..., check=True)'
-
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def __call__(self, *cmd, **kwargs):
-        'Accepts and implicitly stringifies float & int arguments.'
-        assert all(isinstance(c, (str, bytes, int, float)) for c in cmd)
-        subprocess.run(
-            [(c if isinstance(c, bytes) else str(c)) for c in cmd],
-            **kwargs,
-            **self.kwargs,
-            check=True,  # Errors must ALWAYS be handled.
-        )
-
-
-def byteme(s: Union[str, bytes]) -> bytes:
-    'Byte literals are tiring, just promote strings as needed.'
-    return s.encode() if isinstance(s, str) else s
-
-
-class RelativePath:
-    'Callable that converts paths to be relative to a base directory.'
-
-    def __init__(self, *paths_to_join):
-        self.base_dir = os.path.join(*(byteme(p) for p in paths_to_join))
-
-    def __call__(self, path: Union[str, bytes]='.'):
-        assert not os.path.isabs(path), f'{path} must not be absolute'
-        return os.path.normpath(os.path.join(self.base_dir, byteme(path)))
