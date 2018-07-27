@@ -161,7 +161,7 @@ python_library(
     ],
 )
 
-# Read the docblock of `make_demo_sendtreams.py` to learn about the gold data.
+# Read the docblock of `demo_sendtreams.py` to learn about the gold data.
 export_file(
     name = "gold_demo_sendstreams.pickle",
     src = "tests/gold_demo_sendstreams.pickle",
@@ -175,22 +175,9 @@ python_library(
     base_module = "btrfs_diff",
 )
 
-python_binary(
-    name = "testlib-make-demo-sendstreams",
-    srcs = ["tests/make_demo_sendstreams.py"],
-    base_module = "btrfs_diff",
-    main_module = "btrfs_diff.tests.make_demo_sendstreams",
-    par_style = "zip",  # :volume_for_repo requires this
-    deps = [
-        ":btrfs_utils",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":volume_for_repo",
-    ],
-)
-
 # If you depend on this, you must set `par_style = "zip"`.  "fastzip" won't
-# work because it will prevent us from accessing our `gen_srcs` via
-# filesystem APIs.
+# work because it will prevent us from accessing the `gen_srcs` from this
+# target and from `:volume_for_repo` via filesystem APIs.
 python_library(
     name = "testlib_demo_sendstreams",
     srcs = [
@@ -199,13 +186,24 @@ python_library(
     ],
     base_module = "btrfs_diff",
     gen_srcs = {
-        ":testlib-make-demo-sendstreams": "tests/make-demo-sendstreams",
         ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
     deps = [
+        ":btrfs_utils",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":artifacts_dir",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":volume_for_repo",
     ],
+)
+
+# Use this binary to update the gold data.
+python_binary(
+    name = "make-demo-sendstreams",
+    base_module = "btrfs_diff",
+    main_module = "btrfs_diff.tests.demo_sendstreams",
+    par_style = "zip",  # :testlib_demo_sendstreams requires this
+    deps = [":testlib_demo_sendstreams"],
 )
 
 python_unittest(
