@@ -202,6 +202,50 @@ const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
 
 GENERATED_LIB_SUFFIX = '__generated-lib__'
 
+ASAN_UBSAN_FLAGS = [
+    '-fno-common',
+    '-fsanitize=address',
+    '-fsanitize-address-use-after-scope',
+    '-fsanitize=nullability',
+    '-fsanitize=undefined',
+
+    '-fno-sanitize=alignment',
+    '-fno-sanitize=function',
+    '-fno-sanitize=null',
+    '-fno-sanitize=object-size',
+    '-fno-sanitize=unsigned-integer-overflow',
+    '-fno-sanitize=vptr',
+]
+
+UBSAN_FLAGS = [
+    '-fsanitize=undefined',
+    '-fno-sanitize=alignment',
+    '-fsanitize-blacklist=$(location //tools/build:ubsan-blacklist)',
+
+    # Python extensions are loaded with RTLD_LOCAL which is
+    # incompatible with vptr & function UBSAN checks.
+    '-fsanitize-recover=function',
+    '-fsanitize-recover=vptr',
+]
+
+SANITIZER_FLAGS = {
+    'address': ASAN_UBSAN_FLAGS,
+    'address-undefined': ASAN_UBSAN_FLAGS + UBSAN_FLAGS,
+    'efficiency-cache': [
+        '-fsanitize=efficiency-cache-frag',
+    ],
+    'undefined': UBSAN_FLAGS,
+    'address-undefined-dev': ASAN_UBSAN_FLAGS,
+    'thread': [
+        '-fsanitize=thread',
+    ],
+}
+SANITIZER_COMMON_FLAGS = [
+    '-fno-sanitize-recover=all',
+    '-fno-omit-frame-pointer',
+]
+
+
 def is_collection(obj):
     """
     Return whether the object is a array-like collection.
@@ -1405,6 +1449,24 @@ class Converter(object):
 
         return deps
 
+    def get_sanitizer_flags(self):
+        """
+        Return compiler/preprocessor flags needed to support sanitized
+        builds.
+        """
+
+        sanitizer = self.get_sanitizer()
+        assert sanitizer is not None
+
+        compiler.require_global_compiler(
+            "can only use sanitizers with build modes that use clang globally",
+            "clang")
+        assert sanitizer in SANITIZER_FLAGS
+
+        flags = SANITIZER_COMMON_FLAGS + SANITIZER_FLAGS[sanitizer]
+
+        return flags
+
     def get_coverage_binary_deps(self):
         assert self._context.coverage
         compiler.require_global_compiler(
@@ -1418,6 +1480,65 @@ class Converter(object):
         else:
             # all coverage deps are included in the santizer deps
             return []
+
+    def get_coverage_flags(self, base_path):
+        """
+        Return compiler flags needed to support coverage builds.
+        """
+
+        flags = []
+
+        if self.is_coverage_enabled(base_path):
+            if self.get_sanitizer() is not None:
+                flags.append('-fsanitize-coverage=bb')
+            else:
+                # Add flags to enable LLVM's Source-based Code Coverage
+                flags.append('-fprofile-instr-generate')
+                flags.append('-fcoverage-mapping')
+
+        return flags
+
+    def allowed_by_coverage_only(self, base_path):
+        """
+        Returns whether the `cxx.coverage_only` whitelists the given rule for
+        coverage.
+        """
+
+        prefixes = self._context.buck_ops.read_config('cxx', 'coverage_only')
+
+        # If not option was set, then always enable coverage.
+        if prefixes is None:
+            return True
+
+        # Otherwise, the base path has to match one of the prefixes to enable
+        # coverage.
+        for prefix in shlex.split(prefixes):
+            if base_path.startswith(prefix):
+                return True
+
+        return False
+
+    def is_coverage_enabled(self, base_path):
+        """
+        Return whether to build C/C++ code with coverage enabled.
+        """
+
+        # Only use coverage if the global build mode coverage flag is set.
+        if not self._context.coverage:
+            return False
+
+        # Make sure the `cxx.coverage_only` option allows this rule.
+        if not self.allowed_by_coverage_only(base_path):
+            return False
+
+        # We use LLVM's coverage modes so that all coverage instrumentation
+        # is inlined in the binaries and so work seamlessly with Buck's caching
+        # (http://llvm.org/docs/CoverageMappingFormat.html).
+        compiler.require_global_compiler(
+            "can only use coverage with build modes that use clang globally",
+            "clang")
+
+        return True
 
     def get_binary_link_deps(
             self,
