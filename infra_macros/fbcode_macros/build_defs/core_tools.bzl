@@ -16,32 +16,22 @@ generated thrift sources, causing the vast majority of sandcastle and developer
 builds to diverge.
 """
 
-_CORE_TOOLS_PATH = read_config('fbcode', 'core_tools_path')
-_CORE_TOOLS = None
+load("@bazel_skylib//lib:new_sets.bzl", "sets")
+load("@fbcode_macros//build_defs:core_tools_targets.bzl", "core_tools_targets")
 
-
-def is_core_tool(base_path, name):
+def _is_core_tool(package_name, name):
     """
-    Returns whether the target represented by the given base path and name is
-    considered a "core" tool.
+    Returns whether the target represented by the given package name and rule name is considered a "core" tool.
+
+    Args:
+        package_name: The name of the package (without any leading //)
+        name: The name of the rule to inspect
+
+    Returns:
+        Whether the target is a core tool
     """
+    return sets.contains(core_tools_targets, (package_name, name))
 
-    global _CORE_TOOLS, _CORE_TOOLS_PATH
-
-    # Outside of fbcode, the rulekey thrash should not exist, so skip
-    # in all cases
-    if not _CORE_TOOLS_PATH:
-        return False
-
-    # Load core tools from the path, if it hasn't been already.
-    if _CORE_TOOLS is None:
-        add_build_file_dep('//' + _CORE_TOOLS_PATH)
-        tools = set()
-        with open(_CORE_TOOLS_PATH) as of:
-            for line in of:
-                if not line.startswith('#'):
-                    tools.add(line.strip())
-        _CORE_TOOLS = tools
-
-    target = '//{}:{}'.format(base_path, name)
-    return target in _CORE_TOOLS
+core_tools = struct(
+    is_core_tool = _is_core_tool,
+)

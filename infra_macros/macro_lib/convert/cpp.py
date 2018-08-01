@@ -41,13 +41,13 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/global_defns.py".format(macro_root), "global_defns")
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-include_defs("{}/core_tools.py".format(macro_root), "core_tools")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 

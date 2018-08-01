@@ -11,6 +11,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:common_paths.bzl",
     "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
+    "fbcode_macros//build_defs:core_tools.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
@@ -97,6 +98,11 @@ skylark_integration_test(
     name = "custom_rule_test",
     srcs = ["custom_rule_test.py"],
     resources = glob(["testdata/custom_rule/*"]),
+)
+
+skylark_integration_test(
+    name = "core_tools_test",
+    srcs = ["core_tools_test.py"],
     deps = [":utils"],
 )
 

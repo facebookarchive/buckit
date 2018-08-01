@@ -62,7 +62,6 @@ def import_macro_lib(path):
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 fbcode_target = import_macro_lib('fbcode_target')
-core_tools = import_macro_lib('core_tools')
 build_info = import_macro_lib('build_info')
 RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
@@ -70,6 +69,7 @@ ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
+load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 
 SANITIZERS = {
     'address': 'asan',
@@ -271,7 +271,6 @@ class Converter(object):
     def __init__(self, context):
         self._context = context
         self._tp2_build_dat_cache = {}
-        self._core_tools = None
 
     def parse_platform_file(self, filename):
         """
