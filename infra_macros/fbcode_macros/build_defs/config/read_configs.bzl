@@ -35,5 +35,12 @@ def read_list(section, field, default, delimiter):
 def read_string(section, field, default):
     return read_config(section, field, default)
 
+def read_int(section, field, default):
+    val = read_config(section, field)
+    if val != None:
+        return int(val)
+    else:
+        return default
+
 def read_facebook_internal_string(section, field, default):
     return read_string(section, field, default)
