@@ -1,3 +1,39 @@
+python_library(
+    name = "testlib_temp_subvolumes",
+    srcs = [
+        "tests/temp_subvolumes.py",
+    ],
+    base_module = "",
+    deps = [
+        ":subvol_utils",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":artifacts_dir",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":volume_for_repo",
+    ],
+)
+
+python_library(
+    name = "subvol_utils",
+    srcs = ["subvol_utils.py"],
+    base_module = "",
+)
+
+python_unittest(
+    name = "test-subvol-utils",
+    srcs = ["tests/test_subvol_utils.py"],
+    base_module = "",
+    needed_coverage = [(
+        100,
+        ":subvol_utils",
+    )],
+    par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
+    deps = [
+        ":subvol_utils",
+        ":testlib_temp_subvolumes",
+    ],
+)
+
 # For `test_volume_for_repo.py`. At build time, we find use `dirname(__file__)`
 export_file(name = "set_up_volume.sh")
 

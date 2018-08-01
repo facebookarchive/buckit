@@ -167,20 +167,6 @@ export_file(
     src = "tests/gold_demo_sendstreams.pickle",
 )
 
-python_library(
-    name = "btrfs_utils",
-    srcs = [
-        "tests/btrfs_utils.py",
-    ],
-    base_module = "btrfs_diff",
-    deps = [
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":artifacts_dir",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":volume_for_repo",
-    ],
-)
-
 # If you depend on this, you must set `par_style = "zip"`.  "fastzip" won't
 # work because it will prevent us from accessing the `gen_srcs` from this
 # target and from `:volume_for_repo` via filesystem APIs.
@@ -195,7 +181,8 @@ python_library(
         ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
     deps = [
-        ":btrfs_utils",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":testlib_temp_subvolumes",
     ],
 )
 

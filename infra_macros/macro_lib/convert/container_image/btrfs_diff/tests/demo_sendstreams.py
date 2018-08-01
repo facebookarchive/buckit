@@ -57,7 +57,8 @@ import time
 from functools import partial
 from typing import Tuple
 
-from .btrfs_utils import Subvol, TempSubvolumes
+from subvol_utils import Subvol
+from tests.temp_subvolumes import TempSubvolumes
 
 
 def _make_create_ops_subvolume(subvols: TempSubvolumes, path: bytes) -> Subvol:
