@@ -183,8 +183,7 @@ class ImageLayerConverter(base.Converter):
             binary_path=$(location {helper_base}:volume-for-repo)
             volume_dir=\\$("$binary_path" "$artifacts_dir" {min_free_bytes})
             subvolumes_dir="$volume_dir/targets"
-            # NB: The rest of artifacts_dir is deliberately left user-writable.
-            sudo mkdir -p "$subvolumes_dir"
+            mkdir -p "$subvolumes_dir"
 
             # Capture output to a tempfile to hide logspam on successful runs.
             my_log=`mktemp`

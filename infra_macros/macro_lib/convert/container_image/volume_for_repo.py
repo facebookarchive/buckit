@@ -55,6 +55,16 @@ def get_volume_for_current_repo(min_free_bytes, artifacts_dir):
         os.path.join(artifacts_dir, IMAGE_FILE),
         volume_dir,
     ])
+    # We prefer to have the volume owned by the repo user, instead of root:
+    #  - The trusted repo user has to be able to access the built
+    #    subvolumes, but nobody else should be able to (they might contain
+    #    setuid binaries & similar).  Thus, subvols ought to have wrapper
+    #    directories owned by the user, with mode 0700.
+    #  - This reduces the number of places we have to `sudo` to create
+    #    directories inside the subvolume.
+    subprocess.check_call([
+        'sudo', 'chown', f'{os.getuid()}:{os.getgid()}', volume_dir,
+    ])
     return volume_dir
 
 

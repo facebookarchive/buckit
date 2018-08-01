@@ -52,6 +52,7 @@ import pickle
 import pprint
 import subprocess
 import sys
+import tempfile
 import time
 
 from functools import partial
@@ -176,29 +177,13 @@ def _make_demo_sendstreams(temp_dir: bytes):
         return res
 
 
-@contextlib.contextmanager
-def _root_owned_world_viewable_temp_dir(base_dir: bytes):  # yields bytes
-    temp_dir, _ = subprocess.run([
-        'sudo', 'mktemp', '-d', '-p', base_dir
-    ], stdout=subprocess.PIPE, check=True).stdout.rsplit(b'\n', 1)
-    try:
-        subprocess.run(['sudo', 'chmod', 'og+rx', temp_dir], check=True)
-        yield temp_dir
-    except BaseException:  # Yes, even KeyboardInterrupt & SystemExit
-        subprocess.run(['sudo', 'rmdir', temp_dir], check=True)
-        raise
-
-
 # Takes `path_in_repo` because this is part of the library interface, and
 # thus must work in @mode/opt, and thus we cannot use `__file__` here.
 def make_demo_sendstreams(path_in_repo):
-    # We need `root` to create a directory in `buck-image-out/volume`, but
-    # we also need it to be user-accessible so that we can use `cwd=` to
-    # simplify our subprocess invocations.
-    with _root_owned_world_viewable_temp_dir(get_volume_for_current_repo(
+    with tempfile.TemporaryDirectory(dir=get_volume_for_current_repo(
         1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
     )) as temp_dir:
-        return _make_demo_sendstreams(temp_dir)
+        return _make_demo_sendstreams(temp_dir.encode())
 
 
 def _main():
