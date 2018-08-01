@@ -16,7 +16,7 @@ For usage, `buck run .../btrfs_diff:make-demo-sendstreams -- --help`.
 
 Run this:
 
-  buck run .../btrfs_diff:make-demo-sendstreams* \\
+  buck run .../btrfs_diff:make-demo-sendstreams* -- \\
     --write-gold-to-dir btrfs_diff/tests/
 
 You will then need to manually update `uuid_create` and related fields in

@@ -20,12 +20,12 @@ from ..send_stream import (
 
 # Update these constants to make the tests pass again after running
 # `demo_sendstreams` with `--update-gold`.
-UUID_CREATE = b'5351a4f5-b559-7646-9309-f37babed7c89'
-TRANSID_CREATE = 6796
-UUID_MUTATE = b'f34ac12d-d00f-a144-8c6f-1d59fa5b5594'
-TRANSID_MUTATE = 6799
+UUID_CREATE = b'83afe1a2-ddcf-4d49-9d2a-4fe4c7ed82fa'
+TRANSID_CREATE = 2041
+UUID_MUTATE = b'ab879723-5d8b-c94d-92b2-d765d234ae1e'
+TRANSID_MUTATE = 2044
 # Take a `oNUM-NUM-NUM` file from the send-stream, and use the middle number.
-TEMP_PATH_MIDDLES = {'create_ops': 6794, 'mutate_ops': 6798}
+TEMP_PATH_MIDDLES = {'create_ops': 2039, 'mutate_ops': 2043}
 # I have never seen this initial value change. First number in `oN-N-N`.
 TEMP_PATH_COUNTER = 256
 
