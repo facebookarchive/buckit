@@ -68,7 +68,7 @@ RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 
 SANITIZERS = {

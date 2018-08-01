@@ -19,7 +19,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:modules.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
     "fbcode_macros//build_defs:paths_config.bzl",
-    "fbcode_macros//build_defs:platform.bzl",
+    "fbcode_macros//build_defs:platform_utils.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:python_typing.bzl",
     "fbcode_macros//build_defs:third_party.bzl",
@@ -125,8 +125,8 @@ skylark_integration_test(
 )
 
 skylark_integration_test(
-    name = "platform_test",
-    srcs = ["platform_test.py"],
+    name = "platform_utils_test",
+    srcs = ["platform_utils_test.py"],
     deps = [":utils"],
 )
 

@@ -27,7 +27,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
-load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 
 FLAGFILTER = '''\

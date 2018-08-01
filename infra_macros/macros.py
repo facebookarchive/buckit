@@ -61,7 +61,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 # /macros/macros.py
 load('@fbcode_macros//build_defs:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
-load('@fbcode_macros//build_defs:platform.bzl', platform_utils='platform')
+load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')

@@ -29,7 +29,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 VENDOR_PATH = 'third-party-source/go'
 

@@ -1,5 +1,5 @@
 load("@fbcode_macros//build_defs:build_mode.bzl", "build_mode")
-load("@fbcode_macros//build_defs:platform.bzl", "platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 export_file(
     name = "get_build_mode.py",
@@ -19,7 +19,7 @@ export_file(
 genrule(
     name = "parsed_platforms",
     out = "parsed_platforms.py",
-    cmd = "cat > $OUT <<EOF\nplatforms = %r\nEOF" % platform.get_platform_overrides(),
+    cmd = "cat > $OUT <<EOF\nplatforms = %r\nEOF" % platform_utils.get_platform_overrides(),
 )
 
 genrule(

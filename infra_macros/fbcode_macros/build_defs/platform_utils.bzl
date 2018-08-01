@@ -211,7 +211,7 @@ def _get_fbcode_and_buck_platform_for_current_buildfile():
     buck_platform = _to_buck_platform(fbcode_platform, compiler.get_compiler_for_base_path(package))
     return fbcode_platform, buck_platform
 
-platform = struct(
+platform_utils = struct(
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
     get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,
     get_default_platform = _get_default_platform,

@@ -16,7 +16,7 @@ from tests.utils import dedent
 
 
 class PlatformTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:platform.bzl", "platform")]
+    includes = [("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")]
 
     current_arch = platform.machine()
     other_arch = "x86_64" if current_arch == "aarch64" else "aarch64"
@@ -73,7 +73,7 @@ class PlatformTest(tests.utils.TestCase):
             }
         }
         result = root.runUnitTests(
-            self.includes, ["platform.get_platform_overrides()"]
+            self.includes, ["platform_utils.get_platform_overrides()"]
         )
         self.assertSuccess(result, expected)
 
@@ -99,7 +99,7 @@ class PlatformTest(tests.utils.TestCase):
         )
 
         result = root.runUnitTests(
-            self.includes, ["platform.get_platform_overrides()"]
+            self.includes, ["platform_utils.get_platform_overrides()"]
         )
         self.assertFailureWithMessage(
             result,
@@ -129,7 +129,7 @@ class PlatformTest(tests.utils.TestCase):
         )
 
         result = root.runUnitTests(
-            self.includes, ["platform.get_platform_overrides()"]
+            self.includes, ["platform_utils.get_platform_overrides()"]
         )
         self.assertFailureWithMessage(
             result,
@@ -142,7 +142,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         statements = [
-            'platform.get_platform_for_base_path("blah")',
+            'platform_utils.get_platform_for_base_path("blah")',
         ]
         root.updateBuckconfig("fbcode", "require_platform", "true")
 
@@ -158,7 +158,7 @@ class PlatformTest(tests.utils.TestCase):
         self, root
     ):
         statements = [
-            'platform.get_platform_for_base_path("blah")',
+            'platform_utils.get_platform_for_base_path("blah")',
         ]
 
         results = root.runUnitTests(self.includes, statements)
@@ -185,11 +185,11 @@ class PlatformTest(tests.utils.TestCase):
             "build_defs/platform_overrides.bzl", platform_overrides
         )
         statements = [
-            'platform.get_platform_for_base_path("foo/bar")',
-            'platform.get_platform_for_base_path("foo/bar-other")',
-            'platform.get_platform_for_base_path("foo/baz")',
-            'platform.get_platform_for_base_path("foo")',
-            'platform.get_platform_for_base_path("foobar")',
+            'platform_utils.get_platform_for_base_path("foo/bar")',
+            'platform_utils.get_platform_for_base_path("foo/bar-other")',
+            'platform_utils.get_platform_for_base_path("foo/baz")',
+            'platform_utils.get_platform_for_base_path("foo")',
+            'platform_utils.get_platform_for_base_path("foobar")',
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, "gcc5", "gcc6", "gcc6", "gcc6", "gcc7")
@@ -214,7 +214,7 @@ class PlatformTest(tests.utils.TestCase):
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/platform_overrides.bzl", platform_overrides
         )
-        statements = ["platform.get_platform_for_current_buildfile()"]
+        statements = ["platform_utils.get_platform_for_current_buildfile()"]
         result1 = root.runUnitTests(
             self.includes, statements, buckfile="foo/bar/BUCK"
         )
@@ -256,8 +256,8 @@ class PlatformTest(tests.utils.TestCase):
         root.updateBuckconfig("fbcode", "platform", "gcc8")
 
         statements = [
-            'platform.get_platform_for_base_path("foo/bar")',
-            'platform.get_platform_for_base_path("foobar")',
+            'platform_utils.get_platform_for_base_path("foo/bar")',
+            'platform_utils.get_platform_for_base_path("foobar")',
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, "gcc8", "gcc8")

@@ -18,7 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
-load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 
 class OCamlConverter(base.Converter):

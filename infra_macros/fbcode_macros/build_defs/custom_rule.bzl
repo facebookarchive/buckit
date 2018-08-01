@@ -1,7 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:platform.bzl", "platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:common_paths.bzl", "get_gen_path")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
@@ -54,7 +54,7 @@ def _create_main_rule(
     package = native.package_name()
 
     out = _get_output_dir(name)
-    fbcode_platform, buck_platform = platform.get_fbcode_and_buck_platform_for_current_buildfile()
+    fbcode_platform, buck_platform = platform_utils.get_fbcode_and_buck_platform_for_current_buildfile()
     fbcode_dir = paths.join("$GEN_DIR", _get_project_root_from_gen_dir())
     install_dir = '"$OUT"'
 

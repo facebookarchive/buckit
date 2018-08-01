@@ -39,7 +39,7 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
-load("@fbcode_macros//build_defs:platform.bzl", platform_utils="platform")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 
