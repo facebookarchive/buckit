@@ -648,7 +648,8 @@ class TestCase(unittest.TestCase):
     setupPathsConfig = True
     setupThirdPartyConfig = True
     setupPlatformOverrides = True
-    setupBuildOverries = True
+    setupBuildOverrides = True
+    setupCoreToolsTargets = True
 
     def setUpProject(self, root):
         # Setup some defaults for the environment
@@ -658,8 +659,19 @@ class TestCase(unittest.TestCase):
             self.addDummyThirdPartyConfig(root)
         if self.setupPlatformOverrides:
             self.addDummyPlatformOverrides(root)
-        if self.setupBuildOverries:
+        if self.setupBuildOverrides:
             self.addDummyBuildModeOverrides(root)
+        if self.setupCoreToolsTargets:
+            self.addDummyCoreToolsTargets(root)
+
+    def addDummyCoreToolsTargets(self, root):
+        root.project.cells["fbcode_macros"].writeFile(
+            "build_defs/core_tools_targets.bzl",
+            dedent(
+                """
+                load("@bazel_skylib//lib:new_sets.bzl", "sets")
+                core_tools_targets = sets.make([])
+                """))
 
     def addDummyThirdPartyConfig(self, root):
         current_arch = platform.machine()
