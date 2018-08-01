@@ -52,14 +52,10 @@ import pickle
 import pprint
 import subprocess
 import sys
-import tempfile
 import time
 
 from functools import partial
 from typing import Tuple
-
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
-from volume_for_repo import get_volume_for_current_repo
 
 from .btrfs_utils import Subvol, TempSubvolumes
 
@@ -159,31 +155,22 @@ def _populate_sendstream_dict(d):
     d['build_end_time'] = _float_to_sec_nsec_tuple(time.time())
 
 
-def _make_demo_sendstreams(temp_dir: bytes):
-    with TempSubvolumes() as subvols:
+# Takes `path_in_repo` because this is part of the library interface, and
+# thus must work in @mode/opt, and thus we cannot use `__file__` here.
+def make_demo_sendstreams(path_in_repo: bytes):
+    with TempSubvolumes(path_in_repo) as subvols:
         res = {}
 
         with _populate_sendstream_dict(res.setdefault('create_ops', {})) as d:
-            create_ops = _make_create_ops_subvolume(
-                subvols, os.path.join(temp_dir, b'create_ops'),
-            )
+            create_ops = _make_create_ops_subvolume(subvols, b'create_ops')
             d['sendstream'] = create_ops.get_sendstream(no_data=True)
 
         with _populate_sendstream_dict(res.setdefault('mutate_ops', {})) as d:
             d['sendstream'] = _make_mutate_ops_subvolume(
-                subvols, create_ops, os.path.join(temp_dir, b'mutate_ops'),
+                subvols, create_ops, b'mutate_ops',
             ).get_sendstream(parent=create_ops)
 
         return res
-
-
-# Takes `path_in_repo` because this is part of the library interface, and
-# thus must work in @mode/opt, and thus we cannot use `__file__` here.
-def make_demo_sendstreams(path_in_repo):
-    with tempfile.TemporaryDirectory(dir=get_volume_for_current_repo(
-        1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
-    )) as temp_dir:
-        return _make_demo_sendstreams(temp_dir.encode())
 
 
 def _main():

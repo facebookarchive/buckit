@@ -173,6 +173,12 @@ python_library(
         "tests/btrfs_utils.py",
     ],
     base_module = "btrfs_diff",
+    deps = [
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":artifacts_dir",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":volume_for_repo",
+    ],
 )
 
 # If you depend on this, you must set `par_style = "zip"`.  "fastzip" won't
@@ -190,10 +196,6 @@ python_library(
     },
     deps = [
         ":btrfs_utils",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":artifacts_dir",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":volume_for_repo",
     ],
 )
 
