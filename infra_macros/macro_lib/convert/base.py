@@ -67,9 +67,10 @@ RootRuleTarget = fbcode_target.RootRuleTarget
 RuleTarget = fbcode_target.RuleTarget
 ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 SANITIZERS = {
     'address': 'asan',
@@ -2188,3 +2189,52 @@ class Converter(object):
             typing_options=typing_options,
             visibility=visibility,
         ))
+
+    def _gen_tp2_cpp_module(
+            self,
+            base_path,
+            name,
+            module_name,
+            header_dir=None,
+            headers=None,
+            flags=(),
+            dependencies=(),
+            platform=None,
+            visibility=None):
+        """
+        A thin wrapper around `modules.gen_module()`, which performs some deps
+        formatting and adds fbcode build flags (e.g. from BUILD_MODE) (ideally,
+        these features are ported to bazel so that this now longer needs to be
+        here).
+        """
+
+        assert self.is_tp2(base_path)
+
+        # Setup flags.
+        out_flags = []
+        out_flags.extend(flags)
+        out_flags.extend(self.get_extra_cxxppflags())
+
+        # Form platform-specific flags.
+        out_platform_flags = []
+        out_platform_flags.extend(
+            self.get_compiler_flags(base_path)['cxx_cpp_output'])
+
+        # Convert deps to lower-level Buck deps/platform-deps pair.
+        out_deps, out_platform_deps = (
+            self.format_all_deps(
+                dependencies,
+                platform=self.get_tp2_build_dat(base_path)['platform']))
+
+        # Generate the module file.
+        modules.gen_module(
+            name=name,
+            module_name=module_name,
+            headers=headers,
+            header_dir=header_dir,
+            flags=out_flags,
+            platform_flags=out_platform_flags,
+            deps=out_deps,
+            platform_deps=out_platform_deps,
+            visibility=visibility,
+        )

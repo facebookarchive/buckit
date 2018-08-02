@@ -67,6 +67,7 @@ FBCODE_RULES = [
     'cpp_library_external_custom',
     'cpp_lua_extension',
     'cpp_lua_main_module',
+    'cpp_module_external',
     'cpp_node_extension',
     'cpp_precompiled_header',
     'cpp_python_extension',

@@ -61,6 +61,7 @@ cpp_library_external = import_macro_lib('convert/cpp_library_external')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
 )
+cpp_module_external = import_macro_lib('convert/cpp_module_external')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
 d = import_macro_lib('convert/d')
@@ -150,6 +151,7 @@ def convert(context, base_path, rule):
         cpp.CppConverter(context, 'cpp_lua_main_module'),
         cpp.CppConverter(context, 'cpp_node_extension'),
         cpp_jvm_library.CppJvmLibrary(context),
+        cpp_module_external.CppModuleExternalConverter(context),
         cython.Converter(context),
         d.DConverter(context, 'd_binary'),
         d.DConverter(context, 'd_library'),
