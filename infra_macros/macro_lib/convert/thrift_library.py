@@ -294,8 +294,6 @@ class CppThriftConverter(ThriftLangConverter):
         ('_fatal%s.h' % suffix, TYPES_HEADER)
         for suffix in STATIC_REFLECTION_SUFFIXES
     ] + [
-        ('_reflection.h', TYPES_HEADER),
-        ('_reflection.cpp', TYPES_SOURCE),
         ('AsyncClient.h', CLIENTS_HEADER),
         ('_client.cpp', CLIENTS_SOURCE),
         ('_custom_protocol.h', SERVICES_HEADER),
