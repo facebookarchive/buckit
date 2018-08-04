@@ -231,7 +231,7 @@ python_library(
 )
 
 python_library(
-    name = "test_subvolume_utils",
+    name = "testlib_subvolume_utils",
     srcs = ["tests/subvolume_utils.py"],
     base_module = "btrfs_diff",
 )
@@ -247,7 +247,7 @@ python_unittest(
     deps = [
         ":deepcopy_test",
         ":subvolume",
-        ":test_subvolume_utils",
+        ":testlib_subvolume_utils",
     ],
 )
 
@@ -274,7 +274,7 @@ python_unittest(
     )],
     deps = [
         ":subvolume_set",
-        ":test_subvolume_utils",
+        ":testlib_subvolume_utils",
     ],
 )
 
@@ -302,7 +302,7 @@ python_unittest(
         ":freeze",
         ":parse_send_stream",
         ":subvolume_set",
-        ":test_subvolume_utils",
         ":testlib_demo_sendstreams",  # requires `par_style = "zip"`
+        ":testlib_subvolume_utils",
     ],
 )

@@ -139,7 +139,7 @@ class SubvolumeSet(NamedTuple):
     def map(self, fn) -> Mapping[str, RenderedTree]:
         '''
         Applies `fn` to each subvolume. Returns results indexed by a string
-        containign the subvolume name and the minimal unambiguous prefix of
+        containing the subvolume name and the minimal unambiguous prefix of
         its UUID (in the style of `git` or `hg`).
 
         NB: If you map over an un-frozen SubvolumeSet, you will get

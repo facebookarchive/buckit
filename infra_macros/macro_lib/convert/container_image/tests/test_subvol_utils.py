@@ -53,7 +53,7 @@ class SubvolTestCase(unittest.TestCase):
 
         self.assertTrue(not sv.path('.').endswith(b'/.'))
 
-    def test_get_sendstream(self):
+    def test_mark_readonly_and_get_sendstream(self):
         sv = self.temp_subvols.create('subvol')
         sv.run_as_root(['touch', sv.path('abracadabra')])
-        self.assertIn(b'abracadabra', sv.get_sendstream())
+        self.assertIn(b'abracadabra', sv.mark_readonly_and_get_sendstream())

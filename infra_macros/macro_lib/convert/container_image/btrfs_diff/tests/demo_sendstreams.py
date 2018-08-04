@@ -164,12 +164,14 @@ def make_demo_sendstreams(path_in_repo: bytes):
 
         with _populate_sendstream_dict(res.setdefault('create_ops', {})) as d:
             create_ops = _make_create_ops_subvolume(subvols, b'create_ops')
-            d['sendstream'] = create_ops.get_sendstream(no_data=True)
+            d['sendstream'] = create_ops.mark_readonly_and_get_sendstream(
+                no_data=True,
+            )
 
         with _populate_sendstream_dict(res.setdefault('mutate_ops', {})) as d:
             d['sendstream'] = _make_mutate_ops_subvolume(
                 subvols, create_ops, b'mutate_ops',
-            ).get_sendstream(parent=create_ops)
+            ).mark_readonly_and_get_sendstream(parent=create_ops)
 
         return res
 

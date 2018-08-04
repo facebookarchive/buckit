@@ -5,9 +5,6 @@ import tempfile
 
 from typing import Union
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
-from volume_for_repo import get_volume_for_current_repo
-
 # Nibble on unicode strings with the intent of treating them as bytes.
 Bytey = Union[str, bytes]
 
@@ -152,7 +149,7 @@ class Subvol:
     def sync(self):
         self._btrfs_run(['filesystem', 'sync', self.path()])
 
-    def _send(
+    def _mark_readonly_and_send(
         self, *, stdout, no_data: bool=False, parent: 'Subvol'=None,
     ) -> subprocess.CompletedProcess:
         self.set_readonly(True)
@@ -182,7 +179,9 @@ class Subvol:
             self.path(),
         ], stdout=stdout)
 
-    def get_sendstream(self, **kwargs) -> bytes:
-        return self._send(stdout=subprocess.PIPE, **kwargs).stdout
+    def mark_readonly_and_get_sendstream(self, **kwargs) -> bytes:
+        return self._mark_readonly_and_send(
+            stdout=subprocess.PIPE, **kwargs,
+        ).stdout
 
     # Future: write_sendstream_to_file()
