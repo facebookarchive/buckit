@@ -1066,6 +1066,13 @@ class CppConverter(base.Converter):
             self.get_extra_cxxppflags())
         out_lang_preprocessor_flags['assembler_with_cpp'].extend(
             self.get_extra_cxxppflags())
+        # Tell the compiler that C/C++ sources compiled in this rule are
+        # part of the same module as the headers (and so have access to
+        # private headers).
+        if modules.enabled():
+            module_name = modules.get_module_name('fbcode', base_path, name)
+            out_lang_preprocessor_flags['cxx'].append(
+                '-fmodule-name=' + module_name)
         if out_lang_preprocessor_flags:
             attributes['lang_preprocessor_flags'] = out_lang_preprocessor_flags
 
