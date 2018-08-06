@@ -22,6 +22,7 @@ ExplicitBuildInfo = (
     collections.namedtuple(
         'ExplicitBuildInfo',
         ['build_mode',
+         'compiler',
          'package_name',
          'package_release',
          'package_version',
@@ -54,7 +55,8 @@ def get_explicit_build_info(
         base_path,
         name,
         rule_type,
-        platform):
+        platform,
+        compiler):
     """
     Return the build info which can/should affect rule keys (causing rebuilds
     if it changes), and is passed into rules via rule-key-affecting parameters.
@@ -81,6 +83,7 @@ def get_explicit_build_info(
 
     return ExplicitBuildInfo(
         build_mode=config.get_build_mode(),
+        compiler=compiler,
         package_name=package_name,
         package_release=package_release,
         package_version=package_version,

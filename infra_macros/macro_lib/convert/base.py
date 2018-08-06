@@ -182,6 +182,7 @@ CXX_BUILD_INFO_TEMPLATE = """\
 
 const char* const BuildInfo_kBuildMode = "{build_mode}";
 const char* const BuildInfo_kBuildTool = "{build_tool}";
+const char* const BuildInfo_kCompiler = "{compiler}";
 const char* const BuildInfo_kHost = "{host}";
 const char* const BuildInfo_kPackageName = "{package_name}";
 const char* const BuildInfo_kPackageVersion = "{package_version}";
@@ -1183,7 +1184,8 @@ class Converter(object):
             base_path,
             name,
             rule_type,
-            platform):
+            platform,
+            compiler):
         """
         Get the linker flags to configure how the linker embeds build info.
         """
@@ -1208,7 +1210,8 @@ class Converter(object):
                     base_path,
                     name,
                     rule_type,
-                    platform))
+                    platform,
+                    compiler))
             ldflags.append('--build-info-build-mode=' + explicit.build_mode)
             if explicit.package_name:
                 ldflags.append(
@@ -1219,6 +1222,7 @@ class Converter(object):
             if explicit.package_version:
                 ldflags.append(
                     '--build-info-package-version=' + explicit.package_version)
+            ldflags.append('--build-info-compiler=' + explicit.compiler)
             ldflags.append('--build-info-platform=' + explicit.platform)
             ldflags.append('--build-info-rule=' + explicit.rule)
             ldflags.append('--build-info-rule-type=' + explicit.rule_type)
@@ -1378,7 +1382,8 @@ class Converter(object):
                     base_path,
                     name,
                     rule_type,
-                    platform))
+                    platform,
+                    compiler.get_compiler_for_current_buildfile()))
 
         # 5. If enabled, add in LTO linker flags.
         if self.is_lto_enabled():
@@ -1689,6 +1694,7 @@ class Converter(object):
         build_info = collections.OrderedDict()
         build_info['build_tool'] = 'buck'
         build_info['build_mode'] = self._context.mode
+        build_info['compiler'] = compiler.get_compiler_for_current_buildfile()
         build_info['epochtime'] = (
             int(read_config('build_info', 'epochtime', '0')))
         build_info['host'] = read_config('build_info', 'host', '')

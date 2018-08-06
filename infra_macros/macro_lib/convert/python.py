@@ -39,6 +39,7 @@ build_info = import_macro_lib('build_info')
 RootRuleTarget = target.RootRuleTarget
 RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
@@ -401,7 +402,8 @@ class PythonConverter(base.Converter):
                     base_path,
                     name,
                     rule_type,
-                    platform))
+                    platform,
+                    compiler.get_compiler_for_current_buildfile()))
             passthrough_args.append(
                 '--build-info-build-mode=' + info.build_mode)
             passthrough_args.append('--build-info-build-tool=buck')
