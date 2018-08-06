@@ -22,27 +22,13 @@ import os
 import unittest
 
 from ..freeze import freeze
-from ..inode import InodeOwner
-from ..inode_utils import (
-    erase_mode_and_owner, erase_selinux_xattr, erase_utimes_in_range,
-    SELinuxXAttrStats,
-)
-from ..parse_send_stream import parse_send_stream
 from ..rendered_tree import emit_non_unique_traversal_ids
-from ..subvolume_set import SubvolumeSet, SubvolumeSetMutator
+from ..subvolume_set import SubvolumeSet
+
+from . import render_subvols as render_sv
 
 from .demo_sendstreams import gold_demo_sendstreams
-from .subvolume_utils import InodeRepr, expected_subvol_add_traversal_ids
-
-
-def _expected(expected_subvol):
-    return emit_non_unique_traversal_ids(expected_subvol_add_traversal_ids(
-        expected_subvol
-    ))
-
-
-def _render(subvol):
-    return emit_non_unique_traversal_ids(freeze(subvol).render())
+from .subvolume_utils import InodeRepr
 
 
 class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
@@ -57,31 +43,12 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
         stream_dict = gold_demo_sendstreams()
         subvols = SubvolumeSet.new()
         for d in stream_dict.values():
-            parsed = parse_send_stream(io.BytesIO(d['sendstream']))
-            mutator = SubvolumeSetMutator.new(subvols, next(parsed))
-            for i in parsed:
-                mutator.apply_item(i)
-
-        # Check that our sendstreams completely specified the subvolumes.
-        for ino in freeze(subvols).inodes():
-            ino.assert_valid_and_complete()
-
-        # Render the demo subvolumes after stripping all the predictable
-        # metadata to make our "expected" view of the filesystem shorter.
-        selinux_stats = SELinuxXAttrStats(subvols.inodes())
-        for ino in subvols.inodes():
-            erase_mode_and_owner(
-                ino,
-                owner=InodeOwner(uid=0, gid=0),
-                file_mode=0o644,
-                dir_mode=0o755,
-            )
-            erase_utimes_in_range(
-                ino,
-                start=stream_dict['create_ops']['build_start_time'],
-                end=stream_dict['mutate_ops']['build_end_time'],
-            )
-            erase_selinux_xattr(ino, selinux_stats.most_common())
+            render_sv.add_sendstream_to_subvol_set(subvols, d['sendstream'])
+        render_sv.prepare_subvol_set_for_render(
+            subvols,
+            build_start_time=stream_dict['create_ops']['build_start_time'],
+            build_end_time=stream_dict['mutate_ops']['build_end_time'],
+        )
 
         # For ease of maintenance, keep the subsequent filesystem views in
         # the order that `demo_sendstreams.py` performs the operations.
@@ -90,7 +57,7 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
         goodbye_world = InodeRepr('(File)')  # This empty file gets hardlinked
 
         def create_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
-            return _expected(['(Dir)', {
+            return render_sv.expected_rendering(['(Dir)', {
                 'hello': ["(Dir x'user.test_attr'='chickens')", {
                     'world': [goodbye_world],
                 }],
@@ -112,11 +79,13 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
                 mb_nuls_clone=f'create_ops@1MB_nuls:0+{MB}@0',
                 zeros_holes_zeros='d16384h16384d16384',
             ),
-            _render(subvols.get_by_rendered_id('create_ops')),
+            render_sv.render_subvolume(
+                subvols.get_by_rendered_id('create_ops'),
+            ),
         )
 
         def mutate_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
-            return _expected(['(Dir)', {
+            return render_sv.expected_rendering(['(Dir)', {
                 'hello_renamed': ['(Dir)', {"een": ['(File d5)']}],
                 'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
                 'unbuffered': [f'(Char {os.makedev(1337, 31415):x})'],
@@ -137,7 +106,9 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
                 mb_nuls_clone=f'mutate_ops@1MB_nuls:0+{MB}@0',
                 zeros_holes_zeros='d16384h16384d16384',
             ),
-            _render(subvols.get_by_rendered_id('mutate_ops')),
+            render_sv.render_subvolume(
+                subvols.get_by_rendered_id('mutate_ops'),
+            ),
         )
 
         # Rendering both subvolumes together shows all the clones.

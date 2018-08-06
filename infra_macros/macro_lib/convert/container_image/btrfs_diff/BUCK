@@ -289,6 +289,19 @@ python_library(
     ],
 )
 
+python_library(
+    name = "testlib_render_subvols",
+    srcs = ["tests/render_subvols.py"],
+    base_module = "btrfs_diff",
+    deps = [
+        ":freeze",
+        ":inode_utils",
+        ":parse_send_stream",
+        ":subvolume_set",
+        ":testlib_subvolume_utils",
+    ],
+)
+
 python_unittest(
     name = "test-sendstream-to-subvolume-set-integration",
     srcs = ["tests/test_sendstream_to_subvolume_set_integration.py"],
@@ -300,9 +313,9 @@ python_unittest(
     par_style = "zip",  # required by :testlib_demo_sendstreams
     deps = [
         ":freeze",
-        ":parse_send_stream",
         ":subvolume_set",
         ":testlib_demo_sendstreams",  # requires `par_style = "zip"`
+        ":testlib_render_subvols",
         ":testlib_subvolume_utils",
     ],
 )
