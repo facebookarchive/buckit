@@ -325,7 +325,7 @@ class CppThriftConverter(ThriftLangConverter):
         return options
 
     def get_static_reflection(self, options):
-        return 'reflection' in options or 'fatal' in options
+        return 'reflection' in options
 
     def get_generated_sources(
             self,
