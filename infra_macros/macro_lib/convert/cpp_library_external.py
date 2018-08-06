@@ -18,6 +18,9 @@ with allow_unsafe_import():
     import os
     import subprocess
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:modules.bzl", "modules")
+
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
@@ -26,6 +29,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:modules.bzl", "modules")
 
 
 PYTHON = ThirdPartyRuleTarget('python', 'python')
@@ -81,7 +85,7 @@ class CppLibraryExternalConverter(base.Converter):
             versioned_static_lib=None,
             versioned_static_pic_lib=None,
             versioned_shared_lib=None,
-            versioned_header_dirs=None,
+            versioned_header_dirs=(),
             ):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
@@ -94,10 +98,77 @@ class CppLibraryExternalConverter(base.Converter):
             if self.is_tp2(base_path) else None)
 
         # Normalize include dir param.
-
         # TODO: If type == str
         if isinstance(include_dir, basestring):
             include_dir = [include_dir]
+
+        # Parse dependencies.
+        dependencies = []
+        # Support intra-project deps.
+        for dep in deps:
+            assert dep.startswith(':')
+            dependencies.append(
+                ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]))
+        if implicit_project_deps and self.is_tp2(base_path):
+            project = base_path.split(os.sep)[3]
+            dependencies.append(self.get_tp2_project_target(project))
+        for dep in external_deps:
+            dependencies.append(self.normalize_external_dep(dep))
+
+        lang_ppflags = collections.defaultdict(list)
+        versioned_lang_ppflags = []
+
+        # If modules are enabled, automatically build a module from the module
+        # map found in the first include dir, if one exists.
+        if modules.enabled():
+
+            # Add implicit toolchain module deps.
+            dependencies.extend(
+                map(target.parse_target, modules.get_implicit_module_deps()))
+
+            # Set a default module name.
+            module_name = (
+                modules.get_module_name(
+                    'third-party',
+                    self.get_tp2_project_name(base_path),
+                    name))
+
+            def maybe_add_module(name, inc_dirs, ppflags):
+
+                # If the first include dir has a `module.modulemap` file, auto-
+                # generate a module rule for it.
+                if (not inc_dirs or
+                        not native.glob([paths.join(inc_dirs[0],
+                                                    'module.modulemap')])):
+                    return
+
+                # Create the module compilation rule.
+                self._gen_tp2_cpp_module(
+                    base_path,
+                    name=name,
+                    module_name=module_name,
+                    header_dir=inc_dirs[0],
+                    dependencies=dependencies,
+                    flags=propagated_pp_flags,
+                    visibility=['//{}:{}'.format(base_path, name)],
+                )
+
+                # Add module location to exported C++ flags.
+                lang_ppflags.setdefault('cxx', [])
+                lang_ppflags['cxx'].append(
+                    '-fmodule-file={}=$(location :{})'
+                    .format(module_name, name))
+
+            # Add implicit module rule for the main header dir.
+            maybe_add_module(name + '-module', include_dir, lang_ppflags)
+
+            # Add implicit module rules for versioned header dirs.
+            for idx, (constraints, inc_dirs) in enumerate(versioned_header_dirs):
+                versioned_lang_ppflags.append((constraints, {}))
+                maybe_add_module(
+                    name + '-module-v' + str(idx),
+                    inc_dirs,
+                    versioned_lang_ppflags[-1][1])
 
         attributes = collections.OrderedDict()
 
@@ -127,11 +198,6 @@ class CppLibraryExternalConverter(base.Converter):
         attributes['versioned_static_pic_lib'] = versioned_static_pic_lib
         attributes['versioned_shared_lib'] = versioned_shared_lib
         attributes['versioned_header_dirs'] = versioned_header_dirs
-
-        # Parse external deps.
-        out_ext_deps = []
-        for target in external_deps:
-            out_ext_deps.append(self.normalize_external_dep(target))
 
         # Set preferred linkage.
         if force_shared or shared_only:
@@ -163,26 +229,16 @@ class CppLibraryExternalConverter(base.Converter):
         if propagated_pp_flags:
             attributes['exported_preprocessor_flags'] = propagated_pp_flags
 
-        dependencies = []
+        if lang_ppflags:
+            attributes['exported_lang_preprocessor_flags'] = lang_ppflags
 
-        # Parse inter-project deps.
-        for dep in deps:
-            assert dep.startswith(':')
-            dependencies.append(
-                self.get_dep_target(
-                    ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]),
-                    source=dep))
-
-        # Add the implicit dep to our own project rule.
-        if implicit_project_deps and self.is_tp2(base_path):
-            dependencies.append(self.get_tp2_project_dep(base_path))
-
-        # Add external deps.k
-        for dep in out_ext_deps:
-            dependencies.append(self.get_dep_target(dep, platform=platform))
+        if versioned_lang_ppflags:
+            attributes['versioned_exported_lang_preprocessor_flags'] = (
+                versioned_lang_ppflags)
 
         if dependencies:
-            attributes['exported_deps'] = dependencies
+            attributes['exported_deps'] = (
+                self.format_deps(dependencies, platform=platform))
 
         if supports_omnibus is not None:
             attributes['supports_merged_linking'] = supports_omnibus

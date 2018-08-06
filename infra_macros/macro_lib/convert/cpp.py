@@ -921,6 +921,7 @@ class CppConverter(base.Converter):
         build_mode = self.get_build_mode()
         cuda = self.is_cuda(srcs)
         dlopen_info = self.get_dlopen_info(dlopen_enabled)
+        exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
             self.get_platform(
                 base_path
@@ -1266,51 +1267,6 @@ class CppConverter(base.Converter):
                 # Let it throw AttributeError if update() can't be found neither
                 out_headers.update({k: k for k in src_headers})
 
-        # Modularize libraries.
-        if modules.enabled() and self.is_library():
-
-            # If we're using modules, we need to add in the `module.modulemap`
-            # file and make sure it gets installed at the root of the include
-            # tree so that clang can locate it for auto-loading.  To do this,
-            # we need to clear the header namespace (which defaults to the base
-            # path) and instead propagate its value via the keys of the header
-            # dict so that we can make sure it's only applied to the user-
-            # provided headers and not the module map.
-            if base.is_collection(out_headers):
-                out_headers = {paths.join(out_header_namespace, self.get_source_name(h)): h
-                               for h in out_headers}
-            else:
-                out_headers = {paths.join(out_header_namespace, h): s
-                               for h, s in out_headers.items()}
-            out_header_namespace = ""
-
-            # Create rule to generate the implicit `module.modulemap`.
-            module_name = modules.get_module_name('fbcode', base_path, name)
-            mmap_name = name + '-module-map'
-            modules.module_map_rule(
-                mmap_name,
-                module_name,
-                # There are a few header suffixes (e.g. '-inl.h') that indicate a
-                # "private" extension to some library interface. We generally want
-                # to keep these are non modular. So mark them private/textual.
-                {h: ['private', 'textual'] if h.endswith(('-inl.h', '-impl.h', '-pre.h'))
-                 else []
-                 for h in out_headers})
-
-            # Add in module map.
-            out_headers["module.modulemap"] = ":" + mmap_name
-
-        # Write out our output headers.
-        if out_headers:
-            if self.get_buck_rule_type() == 'cxx_library':
-                attributes['exported_headers'] = out_headers
-            else:
-                attributes['headers'] = out_headers
-
-        # Set an explicit header namespace if not the default.
-        if out_header_namespace != base_path:
-            attributes['header_namespace'] = out_header_namespace
-
         # Convert the `srcs` parameter.  If `known_warnings` is set, add in
         # flags to mute errors.
         for src in srcs:
@@ -1505,6 +1461,87 @@ class CppConverter(base.Converter):
         # Add in implicit deps.
         if not nodefaultlibs:
             dependencies.extend(self.get_implicit_deps())
+
+        # Modularize libraries.
+        if modules.enabled() and self.is_library():
+
+            # Add implicit toolchain module deps.
+            dependencies.extend(
+                map(target.parse_target, modules.get_implicit_module_deps()))
+
+            # If we're using modules, we need to add in the `module.modulemap`
+            # file and make sure it gets installed at the root of the include
+            # tree so that clang can locate it for auto-loading.  To do this,
+            # we need to clear the header namespace (which defaults to the base
+            # path) and instead propagate its value via the keys of the header
+            # dict so that we can make sure it's only applied to the user-
+            # provided headers and not the module map.
+            if base.is_collection(out_headers):
+                out_headers = {paths.join(out_header_namespace, self.get_source_name(h)): h
+                               for h in out_headers}
+            else:
+                out_headers = {paths.join(out_header_namespace, h): s
+                               for h, s in out_headers.items()}
+            out_header_namespace = ""
+
+            # Create rule to generate the implicit `module.modulemap`.
+            module_name = modules.get_module_name('fbcode', base_path, name)
+            mmap_name = name + '-module-map'
+            modules.module_map_rule(
+                mmap_name,
+                module_name,
+                # There are a few header suffixes (e.g. '-inl.h') that indicate a
+                # "private" extension to some library interface. We generally want
+                # to keep these are non modular. So mark them private/textual.
+                {h: ['private', 'textual'] if h.endswith(('-inl.h', '-impl.h', '-pre.h'))
+                 else []
+                 for h in out_headers})
+
+            # Add in module map.
+            out_headers["module.modulemap"] = ":" + mmap_name
+
+            # Create module compilation rule.
+            mod_name = name + '-module'
+            module_flags = []
+            module_flags.extend(out_preprocessor_flags)
+            module_flags.extend(out_lang_preprocessor_flags['cxx'])
+            module_flags.extend(exported_lang_pp_flags['cxx'])
+            module_flags.extend(exported_pp_flags)
+            module_platform_flags = []
+            module_platform_flags.extend(out_platform_preprocessor_flags)
+            module_platform_flags.extend(
+                out_lang_plat_compiler_flags['cxx_cpp_output'])
+            module_platform_flags.extend(out_platform_compiler_flags)
+            module_deps, module_platform_deps = (
+                self.format_all_deps(dependencies))
+            modules.gen_module(
+                mod_name,
+                module_name,
+                headers=out_headers,
+                flags=module_flags,
+                platform_flags=module_platform_flags,
+                deps=module_deps,
+                platform_deps=module_platform_deps,
+            )
+
+            # Expose module via C++ preprocessor flags.
+            exported_lang_pp_flags['cxx'].append(
+                '-fmodule-file={}=$(location :{})'
+                .format(module_name, mod_name))
+
+        # Write out our output headers.
+        if out_headers:
+            if self.get_buck_rule_type() == 'cxx_library':
+                attributes['exported_headers'] = out_headers
+            else:
+                attributes['headers'] = out_headers
+
+        # Set an explicit header namespace if not the default.
+        if out_header_namespace != base_path:
+            attributes['header_namespace'] = out_header_namespace
+
+        if exported_lang_pp_flags:
+            attributes['exported_lang_preprocessor_flags'] = exported_lang_pp_flags
 
         # If any deps were specified, add them to the output attrs.  For
         # libraries, we always use make these exported, since this is the

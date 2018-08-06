@@ -1,7 +1,11 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean")
+load(
+    "@fbcode_macros//build_defs/config:read_configs.bzl",
+    "read_boolean",
+    "read_list",
+)
 
 def _enabled():
     enabled = read_boolean('cxx', 'modules', False)
@@ -40,6 +44,13 @@ def _module_map_rule(name, module_name, headers):
         out = 'module.modulemap',
         cmd = 'echo {} > "$OUT"'.format(shell.quote(contents)),
     )
+
+def _get_implicit_module_deps():
+    """
+    A list of targets which should be implicitly added when building modules.
+    Meant to be used for modules built for toolchain headers.
+    """
+    return read_list("fbcode", "implicit_module_deps", [], delimiter = ",")
 
 def _gen_module(
         name,
@@ -148,6 +159,7 @@ def _gen_module(
 modules = struct(
     enabled = _enabled,
     gen_module = _gen_module,
+    get_implicit_module_deps = _get_implicit_module_deps,
     get_module_map = _get_module_map,
     get_module_name = _get_module_name,
     module_map_rule = _module_map_rule,
