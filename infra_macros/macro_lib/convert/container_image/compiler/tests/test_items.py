@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 import os
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
 import unittest.mock
 
 from contextlib import contextmanager
+from io import BytesIO
+
+import btrfs_diff.tests.render_subvols as render_sv
+
+from btrfs_diff.subvolume_set import SubvolumeSet
+from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
     TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
@@ -18,8 +26,16 @@ from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
-
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
+
+def _render_subvol(subvol: 'Subvol'):
+    subvol_set = SubvolumeSet.new()
+    subvolume = render_sv.add_sendstream_to_subvol_set(
+        subvol_set, subvol.mark_readonly_and_get_sendstream(),
+    )
+    subvol.set_readonly(False)
+    render_sv.prepare_subvol_set_for_render(subvol_set)
+    return render_sv.render_subvolume(subvolume)
 
 
 class ItemsTestCase(unittest.TestCase):
@@ -114,6 +130,65 @@ class ItemsTestCase(unittest.TestCase):
                     {require_directory('y')},
                     ['tar', '--directory=y', t.name],
                 )
+
+    def test_tarball_command(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('tar-sv')
+            subvol.run_as_root(['mkdir', subvol.path('d')])
+
+            # Fail on pre-existing files
+            subvol.run_as_root(['touch', subvol.path('d/exists')])
+            with tempfile.NamedTemporaryFile() as t:
+                with tarfile.TarFile(t.name, 'w') as tar_obj:
+                    tar_obj.addfile(tarfile.TarInfo('exists'))
+                with self.assertRaises(subprocess.CalledProcessError):
+                    TarballItem(
+                        from_target='t', into_dir='/d', tarball=t.name,
+                    ).build(subvol)
+
+            # Adding new files & directories works. Overwriting a
+            # pre-existing directory leaves the owner+mode of the original
+            # directory intact.
+            subvol.run_as_root(['mkdir', subvol.path('d/old_dir')])
+            subvol.run_as_root(['chown', '123:456', subvol.path('d/old_dir')])
+            subvol.run_as_root(['chmod', '0301', subvol.path('d/old_dir')])
+            with tempfile.NamedTemporaryFile() as t:
+                with tarfile.TarFile(t.name, 'w') as tar_obj:
+                    tar_obj.addfile(tarfile.TarInfo('new_file'))
+
+                    new_dir = tarfile.TarInfo('new_dir')
+                    new_dir.type = tarfile.DIRTYPE
+                    tar_obj.addfile(new_dir)
+
+                    old_dir = tarfile.TarInfo('old_dir')
+                    old_dir.type = tarfile.DIRTYPE
+                    # These will not be applied because old_dir exists
+                    old_dir.uid = 0
+                    old_dir.gid = 0
+                    old_dir.mode = 0o755
+                    tar_obj.addfile(old_dir)
+
+                # Fail when the destination does not exist
+                with self.assertRaises(subprocess.CalledProcessError):
+                    TarballItem(
+                        from_target='t', into_dir='/no_dir', tarball=t.name,
+                    ).build(subvol)
+
+                # Check the subvolume content before and after unpacking
+                content = ['(Dir)', {'d': ['(Dir)', {
+                    'exists': ['(File)'],
+                    'old_dir': ['(Dir m301 o123:456)', {}],
+                }]}]
+                self.assertEqual(content, _render_subvol(subvol))
+                TarballItem(
+                    from_target='t', into_dir='/d', tarball=t.name,
+                ).build(subvol)
+                content[1]['d'][1].update({
+                    'new_dir': ['(Dir m644)', {}],
+                    'new_file': ['(File)'],
+                })
+                self.assertEqual(content, _render_subvol(subvol))
+
 
     def test_parent_layer(self):
         with self._temp_filesystem() as parent_path:

@@ -71,6 +71,8 @@ python_library(
     deps = [
         ":requires_provides",
         ":subvolume_on_disk",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":subvol_utils",
     ],
 )
 
@@ -82,9 +84,14 @@ python_unittest(
         100,
         ":items",
     )],
+    par_style = "zip",  # "fastzip" would break :volume_for_repo in @mode/opt
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        ":testlib_temp_subvolumes",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        "/btrfs_diff:testlib_render_subvols",
     ],
 )
 

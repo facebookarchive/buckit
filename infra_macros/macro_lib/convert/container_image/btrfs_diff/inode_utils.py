@@ -8,7 +8,7 @@ Similar to `get_frequency_of_selinux_xattrs` and `ItemFilters` from
 '''
 
 from collections import Counter
-from typing import Tuple, Union, Iterator
+from typing import Optional, Tuple, Union, Iterator
 
 from .incomplete_inode import IncompleteInode, IncompleteDir
 
@@ -24,8 +24,10 @@ class SELinuxXAttrStats:
                 for ino in inodes if _SELINUX_XATTR in ino.xattrs
         )
 
-    def most_common(self) -> bytes:
-        return max(self.counter.items(), key=lambda p: p[1])[0]
+    def most_common(self) -> Optional[bytes]:
+        return max(
+            self.counter.items(), key=lambda p: p[1], default=(None, 0),
+        )[0]
 
 
 def erase_mode_and_owner(
@@ -47,6 +49,6 @@ def erase_utimes_in_range(
         ino.utimes = None
 
 
-def erase_selinux_xattr(ino: IncompleteInode, data: bytes):
-    if ino.xattrs.get(_SELINUX_XATTR) == data:
+def erase_selinux_xattr(ino: IncompleteInode, data: Optional[bytes]):
+    if ino.xattrs.get(_SELINUX_XATTR) == data and data is not None:
         del ino.xattrs[_SELINUX_XATTR]

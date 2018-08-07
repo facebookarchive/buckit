@@ -16,6 +16,8 @@ from .provides import ProvidesDirectory, ProvidesFile
 from .requires import require_directory
 from .subvolume_on_disk import SubvolumeOnDisk
 
+from subvol_utils import Subvol
+
 
 class ImageItem(type):
     'A metaclass for the types of items that can be installed into images.'
@@ -52,6 +54,56 @@ class TarballItem(metaclass=ImageItem):
 
     def build_subcommand(self):
         return ['tar', f'--directory={self.into_dir}', self.tarball]
+
+    def build(self, subvol: Subvol):
+        subvol.run_as_root([
+            'tar',
+            '-C', subvol.path(self.into_dir),
+            '-x',
+            # The next option is an extra safeguard that is redundant with
+            # the compiler's prevention of `provides` conflicts.  It has two
+            # consequences:
+            #
+            #  (1) If a file already exists, `tar` will fail with an error.
+            #      It is **not** an error if a directory already exists --
+            #      otherwise, one would never be able to safely untar
+            #      something into e.g. `/usr/local/bin`.
+            #
+            #  (2) Less obviously, the option prevents `tar` from
+            #      overwriting the permissions of `directory`, as it
+            #      otherwise would.
+            #
+            #      Thanks to the compiler's conflict detection, this should
+            #      not come up, but now you know.  Observe us clobber the
+            #      permissions without it:
+            #
+            #        $ mkdir IN OUT
+            #        $ touch IN/file
+            #        $ chmod og-rwx IN
+            #        $ ls -ld IN OUT
+            #        drwx------. 2 lesha users 17 Sep 11 21:50 IN
+            #        drwxr-xr-x. 2 lesha users  6 Sep 11 21:50 OUT
+            #        $ tar -C IN -czf file.tgz .
+            #        $ tar -C OUT -xvf file.tgz
+            #        ./
+            #        ./file
+            #        $ ls -ld IN OUT
+            #        drwx------. 2 lesha users 17 Sep 11 21:50 IN
+            #        drwx------. 2 lesha users 17 Sep 11 21:50 OUT
+            #
+            #      Adding `--keep-old-files` preserves the metadata of `OUT`:
+            #
+            #        $ rm -rf OUT ; mkdir out ; ls -ld OUT
+            #        drwxr-xr-x. 2 lesha users 6 Sep 11 21:53 OUT
+            #        $ tar -C OUT --keep-old-files -xvf file.tgz
+            #        ./
+            #        ./file
+            #        $ ls -ld IN OUT
+            #        drwx------. 2 lesha users 17 Sep 11 21:50 IN
+            #        drwxr-xr-x. 2 lesha users 17 Sep 11 21:54 OUT
+            '--keep-old-files',
+            '-f', self.tarball
+        ])
 
 
 class HasStatOptions:
