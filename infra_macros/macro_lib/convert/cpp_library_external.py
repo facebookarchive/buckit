@@ -85,7 +85,7 @@ class CppLibraryExternalConverter(base.Converter):
             versioned_static_lib=None,
             versioned_static_pic_lib=None,
             versioned_shared_lib=None,
-            versioned_header_dirs=(),
+            versioned_header_dirs=None,
             ):
 
         # We currently have to handle `cpp_library_external` rules in fbcode,
@@ -163,7 +163,7 @@ class CppLibraryExternalConverter(base.Converter):
             maybe_add_module(name + '-module', include_dir, lang_ppflags)
 
             # Add implicit module rules for versioned header dirs.
-            for idx, (constraints, inc_dirs) in enumerate(versioned_header_dirs):
+            for idx, (constraints, inc_dirs) in enumerate(versioned_header_dirs or ()):
                 versioned_lang_ppflags.append((constraints, {}))
                 maybe_add_module(
                     name + '-module-v' + str(idx),
