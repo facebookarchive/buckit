@@ -141,7 +141,7 @@ def _copy_genrule_output(genrule_target, out_genrule_name, out, visibility):
     """
     if native.host_info().os.is_linux:
         cmd = ('mkdir -p `dirname "$OUT"` && ' +
-               'cp -rlT "$(location {genrule_target})/{out}" "$OUT"')
+               'cp -rlTP "$(location {genrule_target})/{out}" "$OUT"')
     elif native.host_info().os.is_macos:
         cmd = ('mkdir -p `dirname "$OUT"` && ' +
                'ln "$(location {genrule_target})/{out}" "$OUT"')

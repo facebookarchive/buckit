@@ -29,7 +29,7 @@ class CustomRuleTest(tests.utils.TestCase):
         else:
             return (
                 'mkdir -p `dirname \\"$OUT\\"` && '
-                'cp -rlT \\"$(location :{main_rule}-outputs)/{output_name}\\" \\"$OUT\\"'
+                'cp -rlTP \\"$(location :{main_rule}-outputs)/{output_name}\\" \\"$OUT\\"'
             ).format(main_rule=main_rule, output_name=output_name)
 
     @tests.utils.with_project()
