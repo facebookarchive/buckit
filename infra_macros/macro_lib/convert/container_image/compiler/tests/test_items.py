@@ -67,6 +67,41 @@ class ItemsTestCase(unittest.TestCase):
             ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd'],
         )
 
+    def test_copy_file_command(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('tar-sv')
+            subvol.run_as_root(['mkdir', subvol.path('d')])
+
+            CopyFileItem(
+                # `dest` has a rsync-convention trailing /
+                from_target='t', source='/dev/null', dest='/d/',
+            ).build(subvol)
+            self.assertEqual(
+                ['(Dir)', {'d': ['(Dir)', {'null': ['(File m755)']}]}],
+                _render_subvol(subvol),
+            )
+
+            # Fail to write to a nonexistent dir
+            with self.assertRaises(subprocess.CalledProcessError):
+                CopyFileItem(
+                    from_target='t', source='/dev/null', dest='/no_dir/',
+                ).build(subvol)
+
+            # Running a second copy to the same destination. This just
+            # overwrites the previous file, because we have a build-time
+            # check for this, and a run-time check would add overhead.
+            CopyFileItem(
+                # Test this works without the rsync-covnvention /, too
+                from_target='t', source='/dev/null', dest='/d/null',
+                # A non-default mode & owner shows that the file was
+                # overwritten, and also exercises HasStatOptions.
+                mode='u+rw', user='12', group='34',
+            ).build(subvol)
+            self.assertEqual(
+                ['(Dir)', {'d': ['(Dir)', {'null': ['(File m600 o12:34)']}]}],
+                _render_subvol(subvol),
+            )
+
     def test_make_dirs(self):
         self._check_item(
             MakeDirsItem(from_target='t', into_dir='x', path_to_make='y/z'),
@@ -207,7 +242,7 @@ class ItemsTestCase(unittest.TestCase):
                 from_target='t',
                 into_dir='x',
                 path_to_make='y/z',
-                mode='0733',
+                mode=0o733,
                 user='cat',
                 group='dog',
             ),

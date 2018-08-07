@@ -108,7 +108,7 @@ image_layer(
             "into_dir": "/foo",
             "user": "nobody",
             "group": "nobody",
-            "mode": "0711",
+            "mode": 0o711,
         },
     ],
     parent_layer = ":parent_layer",

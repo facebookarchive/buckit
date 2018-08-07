@@ -113,14 +113,40 @@ class HasStatOptions:
     image build tool.
     '''
     __slots__ = ()
-    fields = [('mode', '0755'), ('user', 'root'), ('group', 'root')]
+    # `mode` can be an integer fully specifying the bits, or a symbolic
+    # string like `u+rx`.  In the latter case, the changes are applied on
+    # top of mode 0.
+    #
+    # The defaut mode 0755 is good for directories, and OK for files.  I'm
+    # not trying adding logic to vary the default here, since this really
+    # only comes up in tests, and `image_feature` usage should set this
+    # explicitly.
+    fields = [('mode', 0o755), ('user', 'root'), ('group', 'root')]
+
+    def _mode_impl(self):
+        return (  # The symbolic mode must be applied after 0ing all bits.
+            f'{self.mode:04o}' if isinstance(self.mode, int)
+                else f'a-rwxXst,{self.mode}'
+        )
 
     def build_subcommand_stat_options(self):
         return [
             f'--user={self.user}',
             f'--group={self.group}',
-            f'--mode={self.mode}',
+            f'--mode={self._mode_impl()}',
         ]
+
+    def build_stat_options(self, subvol: Subvol, full_target_path: str):
+        # -R is not a problem since it cannot be the case that we are
+        # creating a directory that already has something inside it.  On the
+        # plus side, it helps with nested directory creation.
+        subvol.run_as_root([
+            'chmod', '-R', self._mode_impl(),
+            full_target_path
+        ])
+        subvol.run_as_root([
+            'chown', '-R', f'{self.user}:{self.group}', full_target_path,
+        ])
 
 
 class CopyFileItem(HasStatOptions, metaclass=ImageItem):
@@ -136,8 +162,12 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
             return self.dest, os.path.basename(self.source)
         return os.path.dirname(self.dest), os.path.basename(self.dest)
 
+    def _dest(self):
+        'Returns `self.dest`, normalized to follow the rsync convention.'
+        return os.path.join(*self._dest_dir_and_base())
+
     def provides(self):
-        yield ProvidesFile(path=os.path.join(*self._dest_dir_and_base()))
+        yield ProvidesFile(path=self._dest())
 
     def requires(self):
         yield require_directory(self._dest_dir_and_base()[0])
@@ -149,6 +179,11 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
             self.source,
             self.dest,
         ]
+
+    def build(self, subvol: Subvol):
+        dest = subvol.path(self._dest())
+        subvol.run_as_root(['cp', self.source, dest])
+        self.build_stat_options(subvol, dest)
 
 
 class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
