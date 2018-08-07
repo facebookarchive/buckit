@@ -10,7 +10,7 @@ Simple helpers for reading configurations
 """
 
 def read_boolean(section, field, default):
-    val = read_config(section, field)
+    val = native.read_config(section, field)
     if val != None:
         if val.lower() == "true":
             return True
@@ -24,7 +24,7 @@ def read_boolean(section, field, default):
         fail("`{}:{}`: no value set, requires bool".format(section, field))
 
 def read_list(section, field, default, delimiter):
-    val = read_config(section, field)
+    val = native.read_config(section, field)
     if val != None:
         return [v.strip() for v in val.split(delimiter) if v]
     elif type(default) == type([]):
@@ -33,10 +33,10 @@ def read_list(section, field, default, delimiter):
         fail("`{}:{}`: no value set, requires list delimited by {}".format(section, field, delimiter))
 
 def read_string(section, field, default):
-    return read_config(section, field, default)
+    return native.read_config(section, field, default)
 
 def read_int(section, field, default):
-    val = read_config(section, field)
+    val = native.read_config(section, field)
     if val != None:
         return int(val)
     else:

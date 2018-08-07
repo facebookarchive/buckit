@@ -99,11 +99,11 @@ def _get_platform_overrides():
 
 def _get_default_platform():
     """ Returns the default fbcode platform to use """
-    return read_config("fbcode", "defaut_platform", "default")
+    return native.read_config("fbcode", "defaut_platform", "default")
 
 def _get_platform_override():
     """ Returns the user-specified fbcode platform override """
-    return read_config("fbcode", "platform")
+    return native.read_config("fbcode", "platform")
 
 def _get_platform_for_base_path(base_path):
     """

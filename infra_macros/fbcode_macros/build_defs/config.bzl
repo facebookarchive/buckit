@@ -74,7 +74,7 @@ def _get_allocators():
 def _get_auto_fdo_enabled():
     """ Returns whether or not this build is using AutoFDO profile feedback """
     # cxx.profile is the target containing the AutoFDO profile feedback data
-    return read_config('cxx', 'profile') != None
+    return native.read_config('cxx', 'profile') != None
 
 def _get_auto_pch_blacklist():
     """
@@ -111,7 +111,7 @@ def _get_default_compiler_family():
     """
     family = read_string("fbcode", "default_compiler", None)
     if not family:
-        cxx = read_config("cxx", "cxx", "gcc")
+        cxx = native.read_config("cxx", "cxx", "gcc")
         family = "clang" if "clang" in cxx else "gcc"
     return family
 
