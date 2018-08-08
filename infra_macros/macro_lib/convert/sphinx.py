@@ -129,7 +129,7 @@ with allow_unsafe_import():  # noqa: magic
     import json
     import os
 
-FBSPHINX_WRAPPER = '//fbsphinx:fbsphinx'
+FBSPHINX_WRAPPER = '//fbsphinx:bin'
 SPHINX_WRAPPER = '//fbsphinx:sphinx'
 SPHINXCONFIG_TGT = '//:.sphinxconfig'
 
@@ -256,8 +256,8 @@ class _SphinxConverter(base.Converter):
         python_deps = tuple(python_library_deps) + tuple((
             _dep + '-library'
             for _dep
-            in tuple(python_binary_deps) + (FBSPHINX_WRAPPER,)
-        ))
+            in tuple(python_binary_deps)
+        )) + (FBSPHINX_WRAPPER,)
         fbsphinx_wrapper_target = '%s-fbsphinx-wrapper' % name
         for rule in self._converters['python_binary'].convert(
             base_path,
