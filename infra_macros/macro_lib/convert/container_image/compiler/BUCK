@@ -1,6 +1,8 @@
 # NB: There is no binary here because the image compiler does not get built
 # by Buck, it is executed in-place using the system Python.
 
+load(":defs.bzl", "READ_MY_DOC_image_feature_target", "image_feature_python_unittest", "TEST_TARGET_PREFIX")
+
 python_library(
     name = "subvolume_on_disk",
     srcs = ["subvolume_on_disk.py"],
@@ -127,19 +129,6 @@ python_library(
     deps = [":items"],
 )
 
-def READ_MY_DOC_image_feature_target(name):
-    '''
-    DANGER: If you depend on a feature target for testing, you MUST manually
-    add any `image_feature` targets that it depends on to your `deps = []`.
-    If you fail to do this, Buck will not know to rebuild the the test if
-    one of its indirect `image_feature` dependencies changes.  See
-    `image_feature.py` for an explanation.
-    '''
-    return name + (
-        '_IF_YOU_REFER_TO_THIS_RULE_YOUR_DEPENDENCIES_WILL_BE_BROKEN_'
-        'SO_DO_NOT_DO_THIS_EVER_PLEASE_KTHXBAI'
-    )
-
 # Transitive deps of `tests:feature_dirs_and_copy_tar` --
 
 TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
@@ -149,29 +138,6 @@ TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_copy_dirs_tar"),
     "hello_world.tar",
 ]
-
-TEST_TARGET_PREFIX = (
-    "//tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
-    "compiler/tests:"
-)
-
-def image_feature_python_unittest(**kwargs):
-    kwargs["base_module"] = "compiler"
-    kwargs["env"] = {
-        "test_image_feature_path_to_" + t: "$(location {})".format(
-            TEST_TARGET_PREFIX + t,
-        )
-        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
-    }
-    # The test reads `feature.json`, so we need actual files on disk.
-    kwargs["par_style"] = "zip"
-    kwargs['deps'] = kwargs.pop('deps') + [":sample_items"]
-    # For now cpp_deps is raw buck deps for python_ targets
-    kwargs['cpp_deps'] = [
-        TEST_TARGET_PREFIX + t
-        for t in TEST_IMAGE_FEATURE_TRANSITIVE_DEPS
-    ]
-    return python_unittest(**kwargs)
 
 image_feature_python_unittest(
     name = "test-image-feature",
@@ -183,6 +149,7 @@ image_feature_python_unittest(
         100,
         ":items_for_features",
     )],
+    test_image_feature_transitive_deps = TEST_IMAGE_FEATURE_TRANSITIVE_DEPS,
     deps = [
         ":dep_graph",
         ":items_for_features",
@@ -207,6 +174,7 @@ image_feature_python_unittest(
         100,
         ":compiler",
     )],
+    test_image_feature_transitive_deps = TEST_IMAGE_FEATURE_TRANSITIVE_DEPS,
     deps = [
         ":compiler",
         ":mock_subvolume_from_json_file",
