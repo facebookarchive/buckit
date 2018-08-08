@@ -376,12 +376,6 @@ class CppThriftConverter(ThriftLangConverter):
             [(p, p) for p in
                 [os.path.join('gen-' + lang, path) for path in genfiles]])
 
-    def _uses_mstch(self, options):
-        non_mstch_flags = [
-            'py_generator',
-        ]
-        return set(options.keys()).isdisjoint(non_mstch_flags)
-
     def is_header(self, src):
         _, ext = os.path.splitext(src)
         return ext in ('.h', '.tcc')
@@ -438,37 +432,16 @@ class CppThriftConverter(ThriftLangConverter):
         services_sources = []
         services_headers = []
 
-        # If we're using mstch, we get a client that's separate entirely from
-        # the service (XAsyncClient.h and XAsyncClient.cpp). If we /don't/ have
-        # mstch, then we end up with a client that depends on the service
-        # (XAsyncClient.cpp depends on X.h)
-        # We also keep the client as a dependency of the service. The reason is
-        # this:
-        # Service.h includes ServiceAsyncClient.h. /this/ is because if you have
-        # in non-mustache world, we put the client and service into one file.
-        # We then include DependentService.h. If that dependency is generated
-        # with mustache, we have no idea that the AsyncClient is in its own
-        # file, rather than inside of the service's .h file, as it would be
-        # if everything were generated with non-mustache. Once we're migrated,
-        # the dependency of the service on the client rule can go away
-        has_separate_client = self._uses_mstch(options)
-        if has_separate_client:
-            clients_deps = [
-                self.get_thrift_dep_target('folly/futures', 'core'),
-                self.get_thrift_dep_target('folly/io', 'iobuf'),
-                ':%s%s' % (name, types_suffix),
-            ]
-            services_deps = [
-                # TODO: Once everything is on mustache, remove this 'clients'
-                # dependency
-                ':%s%s' % (name, clients_suffix),
-                ':%s%s' % (name, types_suffix),
-            ]
-        else:
-            clients_deps = [':%s%s' % (name, types_suffix)]
-            services_deps = clients_deps
-            services_sources = clients_sources
-            services_headers = clients_headers
+        clients_deps = [
+            self.get_thrift_dep_target('folly/futures', 'core'),
+            self.get_thrift_dep_target('folly/io', 'iobuf'),
+            ':%s%s' % (name, types_suffix),
+        ]
+        services_deps = [
+            # TODO: Remove this 'clients' dependency
+            ':%s%s' % (name, clients_suffix),
+            ':%s%s' % (name, types_suffix),
+        ]
 
         # Get sources/headers for the -types, -clients and -services rules
         for filename, file_target in sources.iteritems():
@@ -543,28 +516,6 @@ class CppThriftConverter(ThriftLangConverter):
         common_compiler_flags = ['-fno-var-tracking']
         common_compiler_flags.extend(cpp2_compiler_flags)
 
-        clients_and_services_rules = []
-        if not has_separate_client:
-            # Munge everything into a backing rule so that we don't get
-            # duplicate symbol errors if you statically link both -clients and
-            # -servers
-            rule_name = name + clients_and_services_suffix
-            clients_and_services_rules = self._cpp_converter.convert(
-                base_path,
-                name=rule_name,
-                srcs=clients_sources,
-                headers=clients_headers,
-                deps=clients_deps,
-                external_deps=common_external_deps,
-                compiler_flags=common_compiler_flags,
-            )
-            clients_sources = []
-            clients_headers = []
-            clients_deps = [':' + rule_name]
-            services_sources = []
-            services_headers = []
-            services_deps = [':' + rule_name]
-
         # Create the types, services and clients rules
         # Delegate to the C/C++ library converting to add in things like
         # sanitizer and BUILD_MODE flags.
@@ -618,9 +569,7 @@ class CppThriftConverter(ThriftLangConverter):
             ],
             visibility=visibility,
         )
-        return (
-            types_rules + clients_rules + services_rules +
-            clients_and_services_rules + master_rules)
+        return types_rules + clients_rules + services_rules + master_rules
 
 
 class DThriftConverter(ThriftLangConverter):
