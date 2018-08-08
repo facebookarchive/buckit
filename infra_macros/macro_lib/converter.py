@@ -68,6 +68,7 @@ d = import_macro_lib('convert/d')
 discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
+go_library_external = import_macro_lib('convert/go_library_external')
 haskell = import_macro_lib('convert/haskell')
 haskell_external_library = import_macro_lib('convert/haskell_external_library')
 try:
@@ -161,6 +162,7 @@ def convert(context, base_path, rule):
         go.GoConverter(context, 'cgo_library'),
         go.GoConverter(context, 'go_unittest', 'go_test'),
         go_bindgen_library.GoBindgenLibraryConverter(context),
+        go_library_external.GoLibraryExternalConverter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
