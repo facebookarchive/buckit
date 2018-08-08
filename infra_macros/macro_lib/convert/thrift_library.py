@@ -295,7 +295,7 @@ class CppThriftConverter(ThriftLangConverter):
         for suffix in STATIC_REFLECTION_SUFFIXES
     ] + [
         ('AsyncClient.h', CLIENTS_HEADER),
-        ('_client.cpp', CLIENTS_SOURCE),
+        ('AsyncClient.cpp', CLIENTS_SOURCE),
         ('_custom_protocol.h', SERVICES_HEADER),
         ('.tcc', SERVICES_HEADER),
         ('.h', SERVICES_HEADER),
@@ -363,11 +363,11 @@ class CppThriftConverter(ThriftLangConverter):
         genfiles.append('%s_types.tcc' % (thrift_base,))
 
         for service in services:
+            genfiles.append('%sAsyncClient.h' % (service,))
+            genfiles.append('%sAsyncClient.cpp' % (service,))
             genfiles.append('%s.h' % (service,))
             genfiles.append('%s.cpp' % (service,))
-            genfiles.append('%s_client.cpp' % (service,))
             genfiles.append('%s_custom_protocol.h' % (service,))
-            genfiles.append('%sAsyncClient.h' % (service,))
             genfiles.append('%s.tcc' % (service,))
 
         # Everything is in the 'gen-cpp2' directory
@@ -439,9 +439,9 @@ class CppThriftConverter(ThriftLangConverter):
         services_headers = []
 
         # If we're using mstch, we get a client that's separate entirely from
-        # the service (XAsyncClient.h and X_client.cpp). If we /don't/ have
+        # the service (XAsyncClient.h and XAsyncClient.cpp). If we /don't/ have
         # mstch, then we end up with a client that depends on the service
-        # (X_client.cpp depends on X.h)
+        # (XAsyncClient.cpp depends on X.h)
         # We also keep the client as a dependency of the service. The reason is
         # this:
         # Service.h includes ServiceAsyncClient.h. /this/ is because if you have
