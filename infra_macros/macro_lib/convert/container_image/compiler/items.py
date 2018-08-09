@@ -22,21 +22,54 @@ from subvol_utils import Subvol
 class ImageItem(type):
     'A metaclass for the types of items that can be installed into images.'
     def __new__(metacls, classname, bases, dct):
+
+        # Future: `deepfrozen` has a less clunky way of doing this
+        def customize_fields(kwargs):
+            fn = dct.get('customize_fields')
+            if fn:
+                fn(kwargs)
+            return kwargs
+
         return metaclass_new_enriched_namedtuple(
             __class__,
             ['from_target'],
-            metacls, classname, bases, dct
+            metacls, classname, bases, dct,
+            customize_fields
         )
+
+
+def _make_path_normal_relative(orig_d: str) -> str:
+    '''
+    In image-building, we want relative paths that do not start with `..`,
+    so that the effects of ImageItems are confined to their destination
+    paths. For convenience, we accept absolute paths, too.
+    '''
+    # lstrip so we treat absolute paths as image-relative
+    d = os.path.normpath(orig_d).lstrip('/')
+    if d == '..' or d.startswith('../'):
+        raise AssertionError(f'path {orig_d} cannot start with ../')
+    return d
+
+
+def _coerce_path_field_normal_relative(kwargs, field: str):
+    d = kwargs.get(field)
+    if d is not None:
+        kwargs[field] = _make_path_normal_relative(d)
 
 
 class TarballItem(metaclass=ImageItem):
     fields = ['into_dir', 'tarball']
 
+    def customize_fields(kwargs):
+        _coerce_path_field_normal_relative(kwargs, 'into_dir')
+
     def provides(self):
         import tarfile  # Lazy since only this method needs it.
         with tarfile.open(self.tarball, 'r') as f:
             for item in f:
-                path = os.path.join(self.into_dir, item.name.lstrip('/'))
+                path = os.path.join(
+                    self.into_dir, _make_path_normal_relative(item.name),
+                )
                 if item.isdir():
                     # We do NOT provide the installation directory, and the
                     # image build script tarball extractor takes pains (e.g.
@@ -152,25 +185,22 @@ class HasStatOptions:
 class CopyFileItem(HasStatOptions, metaclass=ImageItem):
     fields = ['source', 'dest']
 
-    def _dest_dir_and_base(self):
-        '''
-        rsync convention for the destination: "ends/in/slash/" means "copy
-        into this directory", "does/not/end/with/slash" means "copy with the
-        specified filename".
-        '''
-        if self.dest.endswith('/'):
-            return self.dest, os.path.basename(self.source)
-        return os.path.dirname(self.dest), os.path.basename(self.dest)
-
-    def _dest(self):
-        'Returns `self.dest`, normalized to follow the rsync convention.'
-        return os.path.join(*self._dest_dir_and_base())
+    def customize_fields(kwargs):
+        # rsync convention for the destination: "ends/in/slash/" means "copy
+        # into this directory", "does/not/end/with/slash" means "copy with
+        # the specified filename".
+        kwargs['dest'] = os.path.join(
+            kwargs['dest'], os.path.basename(kwargs['source']),
+        ) if kwargs['dest'].endswith('/') else kwargs['dest']
+        # Normalize after applying the rsync convention, since this would
+        # remove any trailing / in 'dest'.
+        _coerce_path_field_normal_relative(kwargs, 'dest')
 
     def provides(self):
-        yield ProvidesFile(path=self._dest())
+        yield ProvidesFile(path=self.dest)
 
     def requires(self):
-        yield require_directory(self._dest_dir_and_base()[0])
+        yield require_directory(os.path.dirname(self.dest))
 
     def build_subcommand(self):
         return [
@@ -181,7 +211,7 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
         ]
 
     def build(self, subvol: Subvol):
-        dest = subvol.path(self._dest())
+        dest = subvol.path(self.dest)
         subvol.run_as_root(['cp', self.source, dest])
         self.build_stat_options(subvol, dest)
 
@@ -189,12 +219,13 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
 class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
     fields = ['into_dir', 'path_to_make']
 
+    def customize_fields(kwargs):
+        _coerce_path_field_normal_relative(kwargs, 'into_dir')
+        _coerce_path_field_normal_relative(kwargs, 'path_to_make')
+
     def provides(self):
-        outer_dir = os.path.normpath(self.into_dir)
-        inner_dir = os.path.normpath(
-            os.path.join(outer_dir, self.path_to_make.lstrip('/'))
-        )
-        while inner_dir != outer_dir:
+        inner_dir = os.path.join(self.into_dir, self.path_to_make)
+        while inner_dir != self.into_dir:
             yield ProvidesDirectory(path=inner_dir)
             inner_dir = os.path.dirname(inner_dir)
 

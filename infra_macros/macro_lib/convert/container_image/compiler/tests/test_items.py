@@ -58,7 +58,7 @@ class ItemsTestCase(unittest.TestCase):
             CopyFileItem(from_target='t', source='a/b/c', dest='d/'),
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
-            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd/'],
+            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd/c'],
         )
         self._check_item(
             CopyFileItem(from_target='t', source='a/b/c', dest='d'),
@@ -66,6 +66,10 @@ class ItemsTestCase(unittest.TestCase):
             {require_directory('/')},
             ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd'],
         )
+
+    def test_enforce_no_parent_dir(self):
+        with self.assertRaisesRegex(AssertionError, r'cannot start with \.\.'):
+            CopyFileItem(from_target='t', source='a', dest='a/../../b')
 
     def test_copy_file_command(self):
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
