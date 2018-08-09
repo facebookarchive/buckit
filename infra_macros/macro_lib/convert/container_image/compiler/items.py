@@ -240,6 +240,14 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
             self.path_to_make,
         ]
 
+    def build(self, subvol: Subvol):
+        outer_dir = self.path_to_make.split('/', 1)[0]
+        inner_dir = subvol.path(os.path.join(self.into_dir, self.path_to_make))
+        subvol.run_as_root(['mkdir', '-p', inner_dir])
+        self.build_stat_options(
+            subvol, subvol.path(os.path.join(self.into_dir, outer_dir)),
+        )
+
 
 class ParentLayerItem(metaclass=ImageItem):
     fields = ['path']
