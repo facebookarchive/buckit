@@ -15,25 +15,31 @@ def _enabled():
             "clang")
     return enabled
 
+def _sanitize_name(name):
+    """
+    Sanitize input of chars that can't be used in a module map token.
+    """
+
+    for c in '-/.':
+        name = name.replace(c, '_')
+
+    return name
+
 def _get_module_name(cell, base_path, name):
-    module_name = '_'.join([cell, base_path, name])
-
-    # Sanitize input of chars that can't be used in a module map token.
-    for c in '-/':
-        module_name = module_name.replace(c, '_')
-
-    return module_name
+    return _sanitize_name('_'.join([cell, base_path, name]))
 
 def _get_module_map(name, headers):
     lines = []
     lines.append('module {} {{'.format(name))
     for header, attrs in sorted(headers.items()):
-        line = '  '
+        lines.append('  module {} {{'.format(_sanitize_name(header)))
+        header_line = '    '
         for attr in sorted(attrs):
-            line += attr + ' '
-        line += 'header "{}"'.format(header)
-        lines.append(line)
-    lines.append('  export *')
+            header_line += attr + ' '
+        header_line += 'header "{}"'.format(header)
+        lines.append(header_line)
+        lines.append('    export *')
+        lines.append('  }')
     lines.append('}')
     return ''.join([line + '\n' for line in lines])
 

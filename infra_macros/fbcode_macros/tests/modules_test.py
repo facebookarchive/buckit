@@ -36,8 +36,13 @@ class ModulesTest(tests.utils.TestCase):
             textwrap.dedent(
                 """\
                 module name {
-                  private header "header1.h"
-                  header "header2.h"
-                  export *
+                  module header1_h {
+                    private header "header1.h"
+                    export *
+                  }
+                  module header2_h {
+                    header "header2.h"
+                    export *
+                  }
                 }
                 """))
