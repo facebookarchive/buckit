@@ -1076,6 +1076,11 @@ class PythonConverter(base.Converter):
         else:
             library_name = name + '-library'
 
+        if self.is_library() and check_types:
+            raise ValueError(
+                'parameter `check_types` is not supported for libraries, did you mean to specify `typing`?'
+            )
+
         if get_typing_config_target():
             yield self.gen_typing_config(
                 library_name,
