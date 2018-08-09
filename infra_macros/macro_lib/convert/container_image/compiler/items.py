@@ -271,9 +271,12 @@ class ParentLayerItem(metaclass=ImageItem):
         # everything implicitly depends on /, it'll always come first.
         return ['--base-layer-path', self.path]
 
+    def build(self, subvol: Subvol):
+        subvol.snapshot(Subvol(self.path, already_exists=True))
+
 
 class FilesystemRootItem(metaclass=ImageItem):
-    'A trivial item to endow parent-less layers with / directory.'
+    'A simple item to endow parent-less layers with a standard-permissions /'
     fields = []
 
     def provides(self):
@@ -284,6 +287,13 @@ class FilesystemRootItem(metaclass=ImageItem):
 
     def build_subcommand(self):
         return []
+
+    def build(self, subvol: Subvol):
+        subvol.create()
+        # Guarantee standard permissions. This could be made configurable,
+        # but in practice, probably any other choice would be wrong.
+        subvol.run_as_root(['chmod', '0755', subvol.path()])
+        subvol.run_as_root(['chown', 'root:root', subvol.path()])
 
 
 def gen_parent_layer_items(target, parent_layer_filename, subvolumes_dir):

@@ -56,14 +56,24 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         self.subvols.append(dest)
         return dest
 
+    def caller_will_create(self, rel_path: Bytey) -> Subvol:
+        subvol = Subvol(self._rel_path(rel_path))
+        # If the caller fails to create it, our __exit__ is robust enough
+        # to ignore this subvolume.
+        self.subvols.append(subvol)
+        return subvol
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         # If any of subvolumes are nested, and the parents were made
         # read-only, we won't be able to delete them.
         for subvol in self.subvols:
-            subvol.set_readonly(False)
+            try:
+                subvol.set_readonly(False)
+            except:
+                pass
         for subvol in reversed(self.subvols):
             try:
                 subvol.delete()
-            except BaseException:  # Yes, even KeyboardInterrupt & SystemExit
+            except:
                 pass
         self._temp_dir_ctx.__exit__(exc_type, exc_val, exc_tb)

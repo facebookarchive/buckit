@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 import os
 import subprocess
 import sys
@@ -17,7 +18,7 @@ from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
     TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
-    FilesystemRootItem, gen_parent_layer_items,
+    FilesystemRootItem, gen_parent_layer_items, Subvol,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory
@@ -52,6 +53,10 @@ class ItemsTestCase(unittest.TestCase):
             set(),
             [],
         )
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.caller_will_create('fs-root')
+            FilesystemRootItem(from_target='t').build(subvol)
+            self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
 
     def test_copy_file(self):
         self._check_item(
@@ -267,8 +272,9 @@ class ItemsTestCase(unittest.TestCase):
                 })
                 self.assertEqual(content, _render_subvol(subvol))
 
-
     def test_parent_layer(self):
+        # First, get reasonable coverage of enumerating files and
+        # directories without a real btrfs subvol.
         with self._temp_filesystem() as parent_path:
             self._check_item(
                 ParentLayerItem(from_target='t', path=parent_path),
@@ -278,6 +284,27 @@ class ItemsTestCase(unittest.TestCase):
                 set(),
                 ['--base-layer-path', parent_path],
             )
+        # Now exercise actually making a btrfs snapshot.
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            parent = temp_subvolumes.create('parent')
+            MakeDirsItem(
+                from_target='t', into_dir='/', path_to_make='a/b',
+            ).build(parent)
+            parent_content = ['(Dir)', {'a': ['(Dir)', {'b': ['(Dir)', {}]}]}]
+            self.assertEqual(parent_content, _render_subvol(parent))
+
+            # Take a snapshot and add one more directory.
+            child = temp_subvolumes.caller_will_create('child')
+            ParentLayerItem(from_target='t', path=parent.path()).build(child)
+            MakeDirsItem(
+                from_target='t', into_dir='a', path_to_make='c',
+            ).build(child)
+
+            # The parent is unchanged.
+            self.assertEqual(parent_content, _render_subvol(parent))
+            child_content = copy.deepcopy(parent_content)
+            child_content[1]['a'][1]['c'] = ['(Dir)', {}]
+            self.assertEqual(child_content, _render_subvol(child))
 
     def test_stat_options(self):
         self._check_item(
