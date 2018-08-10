@@ -41,17 +41,15 @@ def _render_subvol(subvol: 'Subvol'):
 
 class ItemsTestCase(unittest.TestCase):
 
-    def _check_item(self, i, provides, requires, subcommand):
+    def _check_item(self, i, provides, requires):
         self.assertEqual(provides, set(i.provides()))
         self.assertEqual(requires, set(i.requires()))
-        self.assertEqual(subcommand, i.build_subcommand())
 
     def test_filesystem_root(self):
         self._check_item(
             FilesystemRootItem(from_target='t'),
             {ProvidesDirectory(path='/')},
             set(),
-            [],
         )
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.caller_will_create('fs-root')
@@ -63,13 +61,11 @@ class ItemsTestCase(unittest.TestCase):
             CopyFileItem(from_target='t', source='a/b/c', dest='d/'),
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
-            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd/c'],
         )
         self._check_item(
             CopyFileItem(from_target='t', source='a/b/c', dest='d'),
             {ProvidesFile(path='d')},
             {require_directory('/')},
-            ['copy-file', *DEFAULT_STAT_OPTS, 'a/b/c', 'd'],
         )
 
     def test_enforce_no_parent_dir(self):
@@ -116,7 +112,6 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(from_target='t', into_dir='x', path_to_make='y/z'),
             {ProvidesDirectory(path='x/y'), ProvidesDirectory(path='x/y/z')},
             {require_directory('x')},
-            ['make-dirs', *DEFAULT_STAT_OPTS, '--directory=x', 'y/z'],
         )
 
     def test_make_dirs_command(self):
@@ -211,7 +206,6 @@ class ItemsTestCase(unittest.TestCase):
                     TarballItem(from_target='t', into_dir='y', tarball=t.name),
                     self._temp_filesystem_provides('y'),
                     {require_directory('y')},
-                    ['tar', '--directory=y', t.name],
                 )
 
     def test_tarball_command(self):
@@ -282,7 +276,6 @@ class ItemsTestCase(unittest.TestCase):
                     ProvidesDirectory(path='/'),
                 },
                 set(),
-                ['--base-layer-path', parent_path],
             )
         # Now exercise actually making a btrfs snapshot.
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
@@ -318,11 +311,6 @@ class ItemsTestCase(unittest.TestCase):
             ),
             {ProvidesDirectory(path='x/y'), ProvidesDirectory(path='x/y/z')},
             {require_directory('x')},
-            [
-                'make-dirs',
-                '--user=cat', '--group=dog', '--mode=0733',
-                '--directory=x', 'y/z',
-            ]
         )
 
     def test_parent_layer_items(self):

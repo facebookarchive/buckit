@@ -7,7 +7,6 @@ import unittest.mock
 
 from .. import subvolume_on_disk
 
-
 _MY_HOST = 'my_host'
 
 
@@ -19,7 +18,11 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         return f'test_uuid_of:{subvolume_path}'
 
     def setUp(self):
-        'Configure mocks shared by most of the tests.'
+        # More output for easier debugging
+        unittest.util._MAX_LENGTH = 10e4
+        self.maxDiff = 10e4
+
+        # Configure mocks shared by most of the tests.
         self._mock_uuid_stack = []
 
         self.patch_btrfs_get_volume_props = unittest.mock.patch.object(
@@ -75,8 +78,8 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
             )
 
     def test_from_serializable_dict_and_validation(self):
-        # Note: Unlike test_from_build_buck_plumbing, this test uses a
-        # trailing / -- this gets us better coverage.
+        # Note: Unlike test_from_subvolume_path, this test uses a trailing /
+        # -- this gets us better coverage.
         subvols = '/test_subvols/'
         good_path = os.path.join(subvols, 'test_name:test_ver')
         good_uuid = self._test_uuid(good_path)
@@ -121,31 +124,26 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
             ),
         )
 
-    def test_from_build_buck_plumbing(self):
+    def test_from_subvolume_path(self):
         # Note: Unlike test_from_serializable_dict_and_validation, this test
         # does NOT use a trailing / -- this gets us better coverage.
         subvols = '/test_subvols'
         subvol_path = '/test_subvols/test_name:test_ver'
-        plumbing_output = json.dumps({
-            'btrfs_uuid': 'test_uuid',
-            'hostname': _MY_HOST,
-            'subvolume_path': subvol_path,
-        }).encode()
 
         good_args = {
-            'plumbing_output': plumbing_output,
+            'subvol_path': subvol_path,
             'subvolumes_dir': subvols,
             'subvolume_name': 'test_name',
             'subvolume_version': 'test_ver',
         }
-        subvol = subvolume_on_disk.SubvolumeOnDisk.from_build_buck_plumbing(
+        subvol = subvolume_on_disk.SubvolumeOnDisk.from_subvolume_path(
             **good_args
         )
         self._check(
             subvol,
             subvol_path,
             subvolume_on_disk.SubvolumeOnDisk(
-                btrfs_uuid='test_uuid',
+                btrfs_uuid=self._test_uuid(subvol_path),
                 hostname=_MY_HOST,
                 subvolume_name='test_name',
                 subvolume_version='test_ver',
@@ -162,9 +160,9 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
 
         for bad_args in [bad_subvols, bad_name, bad_ver]:
             with self.assertRaisesRegex(
-                RuntimeError, 'unexpected subvolume_path'
+                RuntimeError, 'Unexpected subvolume_path'
             ):
-                subvolume_on_disk.SubvolumeOnDisk.from_build_buck_plumbing(
+                subvolume_on_disk.SubvolumeOnDisk.from_subvolume_path(
                     **bad_args
                 )
 

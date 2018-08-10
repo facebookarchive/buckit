@@ -7,8 +7,7 @@ from contextlib import contextmanager
 
 from ..subvolume_on_disk import SubvolumeOnDisk
 
-
-FAKE_SUBVOLS_DIR = 'fake subvolumes dir'
+FAKE_SUBVOLS_DIR = '/fake subvolumes dir'
 
 
 @contextmanager

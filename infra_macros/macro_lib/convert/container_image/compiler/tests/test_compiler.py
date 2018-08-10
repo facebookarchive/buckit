@@ -4,31 +4,53 @@ import tempfile
 import unittest
 import unittest.mock
 
+import subvol_utils
+
 from ..compiler import parse_args, build_image
-from ..subvolume_on_disk import SubvolumeOnDisk
+from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
 from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
+def _subvol_mock_is_btrfs_and_run_as_root(fn):
+    '''
+    The purpose of these mocks is to run the compiler while recording
+    what commands we WOULD HAVE run on the subvolume.  This is possible
+    because all subvolume mutations are supposed to go through
+    `Subvol.run_as_root`.  This lets our tests assert that the
+    expected operations would have been executed.
+    '''
+    fn = unittest.mock.patch.object(subvol_utils, '_path_is_btrfs_subvol')(fn)
+    fn = unittest.mock.patch.object(subvol_utils.Subvol, 'run_as_root')(fn)
+    return fn
+
 
 class CompilerTestCase(unittest.TestCase):
 
-    @unittest.mock.patch.object(SubvolumeOnDisk, 'from_build_buck_plumbing')
-    @unittest.mock.patch('subprocess.check_output')
-    def _compile(self, args, check_output, from_build_buck_plumbing):
-        check_output.side_effect = lambda cmd: cmd
-        from_build_buck_plumbing.side_effect = lambda *args: args
+    def setUp(self):  # More output for easier debugging
+        unittest.util._MAX_LENGTH = 10e4
+        self.maxDiff = 10e4
+
+    @_subvol_mock_is_btrfs_and_run_as_root
+    @unittest.mock.patch.object(svod, '_btrfs_get_volume_props')
+    def _compile(
+        self, args, btrfs_get_volume_props, is_btrfs, run_as_root,
+    ):
+        # We don't have an actual btrfs subvolume, so make up a UUID.
+        btrfs_get_volume_props.return_value = {'UUID': 'fake uuid'}
+        # Since we're not making subvolumes, we need this so that
+        # `Subvolume(..., already_exists=True)` will work.
+        is_btrfs.return_value = True
         return build_image(parse_args([
-            '--image-build-command', 'FAKE_BUILD',
             '--subvolumes-dir', FAKE_SUBVOLS_DIR,
             '--subvolume-name', 'NAME',
             '--subvolume-version', 'VERSION',
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
                 si.TARGET_TO_FILENAME[si.mangle(si.T_COPY_DIRS_TAR)],
-        ] + args))
+        ] + args)), run_as_root.call_args_list
 
     def test_child_dependency_errors(self):
         with self.assertRaisesRegex(
@@ -47,61 +69,112 @@ class CompilerTestCase(unittest.TestCase):
         ):
             self._compile([])
 
-    def _test_compile(self, parent_in_args, parent_out_args):
-        res = self._compile([
-            *parent_in_args,
+    def test_subvol_serialization_error(self):
+        with unittest.mock.patch('socket.getfqdn') as getfqdn:
+            getfqdn.side_effect = Exception('NOPE')
+            with self.assertRaisesRegex(RuntimeError, 'Serializing subvolume'):
+                self._compile([
+                    '--child-dependencies',
+                    *itertools.chain.from_iterable(
+                        si.TARGET_TO_FILENAME.items()
+                    ),
+                ])
+
+    def _compiler_run_as_root_calls(self, *, parent_args):
+        '''
+        Invoke the compiler on the targets from the "sample_items" test
+        example, and ensure that the commands that the compiler would run
+        are exactly the same ones that correspond to the expected
+        `ImageItems`.
+
+        In other words, these test assert that the compiler would run the
+        right commands, without verifying their sequencing.  That is OK,
+        since the dependency sort has its own unit test, and moreover
+        `test_image_layer.py` does an end-to-end test that validates the
+        final state of a compiled, live subvolume.
+        '''
+        res, run_as_root_calls = self._compile([
+            *parent_args,
             '--child-dependencies',
             *itertools.chain.from_iterable(si.TARGET_TO_FILENAME.items()),
         ])
-        # The last 3 arguments to our mock `from_build_buck_plumbing`.
-        self.assertEqual((FAKE_SUBVOLS_DIR, 'NAME', 'VERSION'), res[1:])
+        self.assertEqual(svod.SubvolumeOnDisk(**{
+            svod._BTRFS_UUID: 'fake uuid',
+            svod._HOSTNAME: 'fake host',
+            svod._SUBVOLUMES_DIR: FAKE_SUBVOLS_DIR,
+            svod._SUBVOLUME_NAME: 'NAME',
+            svod._SUBVOLUME_VERSION: 'VERSION',
+        }), res._replace(**{svod._HOSTNAME: 'fake host'}))
+        return run_as_root_calls
 
-        # Try to match each of the sample items' subcommands with the last N
-        # elements of the compiler's build command.  This check assumes that
-        # item commands are not suffixes of each other, which I think is
-        # currently true.  This code is big-O inefficient, but no-one cares.
-        cmd = res[0]
-        expected_subcommands = {
-            tuple(item.build_subcommand())
-                for name, item in si.ID_TO_ITEM.items()
-                    # The matcher below doesn't handle 0-length subcommands
-                    if name != '/'
-        }
-        while expected_subcommands:
-            last_subcommand = None
-            for subcommand in expected_subcommands:
-                if tuple(cmd[-len(subcommand):]) == subcommand:
-                    last_subcommand = subcommand
-                    break
-            self.assertIsNot(
-                None, last_subcommand, f'{expected_subcommands} {cmd}'
+    @_subvol_mock_is_btrfs_and_run_as_root  # Mocks from _compile()
+    def _expected_run_as_root_calls(self, is_btrfs, run_as_root):
+        'Get the commands that each of the *expected* sample items would run'
+        is_btrfs.return_value = True
+        subvol = subvol_utils.Subvol(
+            f'{FAKE_SUBVOLS_DIR}/NAME:VERSION',
+            already_exists=True,
+        )
+        for item in si.ID_TO_ITEM.values():
+            item.build(subvol)
+        return run_as_root.call_args_list
+
+    def _assert_equal_call_sets(self, expected, actual):
+        '''
+        Check that the expected & actual sets of commands are identical.
+        Mock `call` objects are unhashable, so we sort.
+        '''
+        for e, a in zip(sorted(expected), sorted(actual)):
+            self.assertEqual(e, a)
+
+    def test_compile(self):
+        # First, test compilation with no parent layer.
+        expected_calls = self._expected_run_as_root_calls()
+        self.assertGreater(  # Sanity check: at least one command per item
+            len(expected_calls), len(si.ID_TO_ITEM),
+        )
+        self._assert_equal_call_sets(
+            expected_calls, self._compiler_run_as_root_calls(parent_args=[]),
+        )
+
+        # Now, add an empty parent layer
+        with tempfile.TemporaryDirectory() as parent, \
+             mock_subvolume_from_json_file(self, path=parent) as parent_json:
+            # Manually add/remove some commands from the "expected" set to
+            # accommodate the fact that we have a parent subvolume.
+            subvol_path = f'{FAKE_SUBVOLS_DIR}/NAME:VERSION'.encode()
+            # Our unittest.mock.call objects are (args, kwargs) pairs.
+            expected_calls_with_parent = [
+                c for c in expected_calls if c not in [
+                    (
+                        (['btrfs', 'subvolume', 'create', subvol_path],),
+                        {'_subvol_exists': False},
+                    ),
+                    ((['chmod', '0755', subvol_path],), {}),
+                    ((['chown', 'root:root', subvol_path],), {}),
+                ]
+            ] + [
+                (
+                    (['test', '!', '-e', subvol_path],),
+                    {'_subvol_exists': False},
+                ),
+                (
+                    ([
+                        'btrfs', 'subvolume', 'snapshot',
+                        parent.encode(), subvol_path,
+                    ],),
+                    {'_subvol_exists': False},
+                ),
+            ]
+            self.assertEqual(  # We should've removed 3, and added 2 commands
+                len(expected_calls_with_parent) + 1, len(expected_calls),
             )
-            expected_subcommands.remove(last_subcommand)
-            del cmd[-len(last_subcommand):]
-
-        # After stripping all the items, we should be left with the preamble.
-        self.assertEqual([
-            'sudo', 'PYTHONDONTWRITEBYTECODE=1', 'FAKE_BUILD', 'build',
-            '--no-pkg', '--no-export', '--no-clean-built-layer',
-            '--print-buck-plumbing',
-            '--image-volume', FAKE_SUBVOLS_DIR,
-            '--prepare-volume', FAKE_SUBVOLS_DIR,
-            '--tmp-volume', FAKE_SUBVOLS_DIR,
-            '--name', 'NAME',
-            '--version', 'VERSION',
-            *parent_out_args,
-        ], cmd)
-
-    def test_compile_no_parent(self):
-        self._test_compile(parent_in_args=[], parent_out_args=[])
-
-    def test_compile_with_parent(self):
-        with tempfile.TemporaryDirectory() as parent:
-            with mock_subvolume_from_json_file(self, path=parent) as json:
-                self._test_compile(
-                    parent_in_args=['--parent-layer-json', json],
-                    parent_out_args=['--base-layer-path', parent],
-                )
+            self._assert_equal_call_sets(
+                expected_calls_with_parent,
+                self._compiler_run_as_root_calls(parent_args=[
+                    '--parent-layer-json', parent_json,
+                ]),
+            )
 
 
 if __name__ == '__main__':

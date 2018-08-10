@@ -85,9 +85,6 @@ class TarballItem(metaclass=ImageItem):
     def requires(self):
         yield require_directory(self.into_dir)
 
-    def build_subcommand(self):
-        return ['tar', f'--directory={self.into_dir}', self.tarball]
-
     def build(self, subvol: Subvol):
         subvol.run_as_root([
             'tar',
@@ -162,13 +159,6 @@ class HasStatOptions:
                 else f'a-rwxXst,{self.mode}'
         )
 
-    def build_subcommand_stat_options(self):
-        return [
-            f'--user={self.user}',
-            f'--group={self.group}',
-            f'--mode={self._mode_impl()}',
-        ]
-
     def build_stat_options(self, subvol: Subvol, full_target_path: str):
         # -R is not a problem since it cannot be the case that we are
         # creating a directory that already has something inside it.  On the
@@ -202,14 +192,6 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
     def requires(self):
         yield require_directory(os.path.dirname(self.dest))
 
-    def build_subcommand(self):
-        return [
-            'copy-file',
-            *self.build_subcommand_stat_options(),
-            self.source,
-            self.dest,
-        ]
-
     def build(self, subvol: Subvol):
         dest = subvol.path(self.dest)
         subvol.run_as_root(['cp', self.source, dest])
@@ -231,14 +213,6 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
 
     def requires(self):
         yield require_directory(self.into_dir)
-
-    def build_subcommand(self):
-        return [
-            'make-dirs',
-            *self.build_subcommand_stat_options(),
-            f'--directory={self.into_dir}',
-            self.path_to_make,
-        ]
 
     def build(self, subvol: Subvol):
         outer_dir = self.path_to_make.split('/', 1)[0]
@@ -266,11 +240,6 @@ class ParentLayerItem(metaclass=ImageItem):
     def requires(self):
         return ()
 
-    def build_subcommand(self):
-        # Hack: This isn't a true subcommand, but since we provide / and
-        # everything implicitly depends on /, it'll always come first.
-        return ['--base-layer-path', self.path]
-
     def build(self, subvol: Subvol):
         subvol.snapshot(Subvol(self.path, already_exists=True))
 
@@ -284,9 +253,6 @@ class FilesystemRootItem(metaclass=ImageItem):
 
     def requires(self):
         return ()
-
-    def build_subcommand(self):
-        return []
 
     def build(self, subvol: Subvol):
         subvol.create()

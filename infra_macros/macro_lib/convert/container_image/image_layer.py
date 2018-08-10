@@ -234,8 +234,6 @@ class ImageLayerConverter(base.Converter):
               # compiler to map the `__BUCK_TARGET`s in the outputs of
               # `image_feature` to those targets' outputs.
               $(location {helper_base}:compiler) \
-                --image-build-command \
-                    $(location {image_build_command_target}) \
                 --subvolumes-dir "$subvolumes_dir" \
                 --subvolume-name {subvolume_name_quoted} \
                 --subvolume-version "$subvolume_version" \
@@ -255,8 +253,6 @@ class ImageLayerConverter(base.Converter):
                 min_free_bytes=int(layer_size_bytes),
                 helper_base='//tools/build/buck/infra_macros/macro_lib/'
                     'convert/container_image',
-                image_build_command_target=
-                    self._context.config.get_image_build_command_target(),
                 parent_layer_json_quoted='$(location {})'.format(parent_layer)
                     if parent_layer else "''",
                 subvolume_name_quoted=quote(name),

@@ -15,6 +15,20 @@ def byteme(s: Bytey) -> bytes:
     return s.encode() if isinstance(s, str) else s
 
 
+# Exposed as a helper so that test_compiler.py can mock it.
+def _path_is_btrfs_subvol(path):
+    'Ensure that there is a btrfs subvolume at this path. As per @kdave at '
+    'https://stackoverflow.com/a/32865333'
+    # You'd think I could just `os.statvfs`, but no, not until Py3.7
+    # https://bugs.python.org/issue32143
+    fs_type = subprocess.run(
+        ['stat', '-f', '--format=%T', path],
+        stdout=subprocess.PIPE,
+    ).stdout.decode().strip()
+    ino = os.stat(path).st_ino
+    return fs_type == 'btrfs' and ino == 256
+
+
 class Subvol:
     '''
     ## What is this for?
@@ -62,21 +76,8 @@ class Subvol:
         '''
         self._path = os.path.abspath(byteme(path))
         self._exists = already_exists
-        # Ensure that there's a btrfs subvolume at this path. As per @kdave --
-        # https://stackoverflow.com/a/32865333
-        if self._exists:
-            # You'd think I could just `os.statvfs`, but no, not until Py3.7
-            # https://bugs.python.org/issue32143
-            fs_type = subprocess.run(
-                ['stat', '-f', '--format=%T', self._path],
-                stdout=subprocess.PIPE,
-            ).stdout.decode().strip()
-            ino = os.stat(self._path).st_ino
-            if fs_type != 'btrfs' or ino != 256:
-                raise AssertionError(
-                    f'No btrfs subvol at {self._path} -- fs type {fs_type}, '
-                    f'inode {ino}.'
-                )
+        if self._exists and not _path_is_btrfs_subvol(self._path):
+            raise AssertionError(f'No btrfs subvol at {self._path}')
 
     def path(self, path_in_subvol: Bytey=b'.') -> bytes:
         p = os.path.normpath(byteme(path_in_subvol))  # before testing for '..'

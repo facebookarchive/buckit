@@ -20,8 +20,7 @@ log = logging.Logger(__name__)
 # These constants can represent both JSON keys for
 # serialization/deserialization, and namedtuple keys.  Legend:
 #  (1) Field in the namedtuple SubvolumeOnDisk
-#  (2) Parsed from the dictionary received from the image build tool's
-#      option `--print-buck-plumbing`
+#  (2) Set when the compiler first constructs us via `from_subvolume_path`
 #  (3) Output into the on-disk dictionary format
 #  (4) Read from the on-disk dictionary format
 _BTRFS_UUID = 'btrfs_uuid'  # (1-4)
@@ -31,12 +30,6 @@ _SUBVOLUME_PATH = 'subvolume_path'  # (2) + SubvolumeOnDisk.subvolume_path()
 _SUBVOLUME_NAME = 'subvolume_name'  # (1, 3-4)
 _SUBVOLUME_VERSION = 'subvolume_version'  # (1, 3-4)
 _DANGER = 'DANGER'  # (3)
-
-
-def _warn_on_unknown_keys(d, known_keys):
-    unknown_keys = known_keys - set(d.keys())
-    if unknown_keys:
-        log.warning(f'Unknown keys {unknown_keys} in {d}')  # pragma: no cover
 
 
 def _btrfs_get_volume_props(subvolume_path):
@@ -101,28 +94,25 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         )
 
     @classmethod
-    def from_build_buck_plumbing(
-        cls, plumbing_output, subvolumes_dir, subvolume_name, subvolume_version
+    def from_subvolume_path(
+        cls,
+        subvol_path: str,
+        subvolumes_dir: str,
+        subvolume_name: str,
+        subvolume_version: str,
     ):
-        d = json.loads(plumbing_output.decode())
-        _warn_on_unknown_keys(d, {
-            _BTRFS_UUID,
-            _HOSTNAME,
-            _SUBVOLUME_PATH,
-        })
         self = cls(**{
-            _BTRFS_UUID: d.pop(_BTRFS_UUID),
-            _HOSTNAME: d.pop(_HOSTNAME),
+            _BTRFS_UUID: _btrfs_get_volume_props(subvol_path)['UUID'],
+            _HOSTNAME: socket.getfqdn(),
             _SUBVOLUMES_DIR: subvolumes_dir,
             _SUBVOLUME_NAME: subvolume_name,
             _SUBVOLUME_VERSION: subvolume_version,
         })
-        subvolume_path = os.path.normpath(d.pop(_SUBVOLUME_PATH))
         expected_subvolume_path = os.path.normpath(self.subvolume_path())
-        if subvolume_path != expected_subvolume_path:
+        if os.path.normpath(subvol_path) != expected_subvolume_path:
             raise RuntimeError(
-                f'Layer build returned unexpected subvolume_path '
-                f'{subvolume_path} != {expected_subvolume_path} from {d}'
+                'Unexpected subvolume_path '
+                f'{subvol_path} != {expected_subvolume_path}'
             )
         # NB: No `._validate_and_return()` here, since it is redundant with
         # the self-test that `to_serializable_dict()` will perform.

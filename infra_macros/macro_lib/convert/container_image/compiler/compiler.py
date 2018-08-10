@@ -7,13 +7,16 @@ This compiler builds a btrfs subvolume in
 
 To do so, it parses `--child-feature-json` and the `--child-dependencies`
 that referred therein, creates `ImageItems`, sorts them in dependency order,
-and emits image builder subcommands for the sorted items.
+and invokes `.build()` to apply each item to actually construct the subvol.
 '''
 
 import argparse
 import itertools
+import os
 import subprocess
 import sys
+
+from subvol_utils import Subvol
 
 from .dep_graph import dependency_order_items
 from .items import gen_parent_layer_items
@@ -45,10 +48,6 @@ def parse_args(args):
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        '--image-build-command', required=True,
-        help='Path to the image builder binary',
     )
     parser.add_argument(
         '--subvolumes-dir', required=True,
@@ -89,53 +88,35 @@ def parse_args(args):
 
 
 def build_image(args):
-    cmd = [
-        # The various btrfs ioctls we will perform most likely all require
-        # root.  Future: look into using more granular capabilities here.
-        'sudo',
-        'PYTHONDONTWRITEBYTECODE=1',  # Avoid root-owned .pyc in buck-out/
-        args.image_build_command,
-        'build',
-        '--no-pkg', '--no-export', '--no-clean-built-layer',
-        '--print-buck-plumbing',
-        # '--image-volume' or `--prepare-volume` are unused but required :/
-        '--image-volume', args.subvolumes_dir,
-        '--prepare-volume', args.subvolumes_dir,
-        '--tmp-volume', args.subvolumes_dir,
-        '--name', args.subvolume_name,
-        '--version', args.subvolume_version,
-        *itertools.chain.from_iterable(
-            item.build_subcommand() for item in dependency_order_items(
-                itertools.chain(
-                    gen_parent_layer_items(
-                        args.child_layer_target,
-                        args.parent_layer_json,
-                        args.subvolumes_dir,
-                    ),
-                    gen_items_for_features(
-                        [args.child_feature_json],
-                        make_target_filename_map(args.child_dependencies),
-                    ),
-                )
-            )
-        ),
-    ]
+    subvol = Subvol(os.path.join(
+        args.subvolumes_dir,
+        f'{args.subvolume_name}:{args.subvolume_version}',
+    ))
+
+    for item in dependency_order_items(
+        itertools.chain(
+            gen_parent_layer_items(
+                args.child_layer_target,
+                args.parent_layer_json,
+                args.subvolumes_dir,
+            ),
+            gen_items_for_features(
+                [args.child_feature_json],
+                make_target_filename_map(args.child_dependencies),
+            ),
+        )
+    ):
+        item.build(subvol)
 
     try:
-        # This throws away the return code, but it's not very useful anyhow.
-        output = subprocess.check_output(cmd)
-    except Exception as ex:  # pragma: no cover
-        raise RuntimeError(f'While running {cmd}') from ex
-
-    try:
-        return SubvolumeOnDisk.from_build_buck_plumbing(
-            output,
+        return SubvolumeOnDisk.from_subvolume_path(
+            subvol.path().decode(),
             args.subvolumes_dir,
             args.subvolume_name,
             args.subvolume_version,
         )
-    except Exception as ex:  # pragma: no cover
-        raise RuntimeError(f'While parsing output {output} of {cmd}') from ex
+    except Exception as ex:
+        raise RuntimeError(f'Serializing subvolume {subvol.path()}') from ex
 
 
 if __name__ == '__main__':  # pragma: no cover
