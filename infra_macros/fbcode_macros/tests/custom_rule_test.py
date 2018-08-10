@@ -158,7 +158,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
               srcs = [
                 "@/third-party:thrift/bin:thrift",
@@ -260,7 +260,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = "''' + expected_cmd + '''",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
               srcs = [
                 "//:src1",
@@ -319,7 +319,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
             )
 
@@ -374,7 +374,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
             )
 
@@ -431,7 +431,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
             )
 
@@ -509,7 +509,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = False,
+              no_remote = False,
               out = "foobar-outputs",
             )
 
@@ -569,7 +569,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = True,
+              no_remote = True,
               out = "foobar-outputs",
             )
 
@@ -696,7 +696,7 @@ class CustomRuleTest(tests.utils.TestCase):
             genrule(
               name = "foobar-outputs",
               cmd = \"''' + expected_cmd + '''\",
-              noRemote = True,
+              no_remote = True,
               out = "foobar-outputs",
             )
 

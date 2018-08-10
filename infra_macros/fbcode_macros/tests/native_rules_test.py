@@ -105,7 +105,7 @@ class NativeRulesTest(tests.utils.TestCase):
 
             python_binary(
               name = "python_binary",
-              mainModule = "python_binary",
+              main_module = "python_binary",
               deps = [
                 ":python_library",
               ],
@@ -166,7 +166,7 @@ class NativeRulesTest(tests.utils.TestCase):
         expected = dedent(r"""
             python_binary(
               name = "python_binary",
-              mainModule = "python_binary",
+              main_module = "python_binary",
               deps = [
                 ":python_library",
               ],

@@ -327,7 +327,7 @@ class UtilsTest(tests.utils.TestCase):
                     """\
                     cxx_library(
                       name = "lib",
-                      exportedHeaders = [
+                      exported_headers = [
                         "lib.h",
                       ],
                       srcs = [
