@@ -40,7 +40,6 @@ class ConfigTest(tests.utils.TestCase):
             "dev",  # get_build_mode
             "gcc",  # get_default_compiler_family
             None,  # get_global_compiler_family
-            "",  # get_core_tools_path
             False,  # get_coverage
             current_os,  # get_coverage
             "fbcode",  # get_current_repo_name
@@ -79,7 +78,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_build_mode()",
             "config.get_default_compiler_family()",
             "config.get_global_compiler_family()",
-            "config.get_core_tools_path()",
             "config.get_coverage()",
             "config.get_current_os()",
             "config.get_current_repo_name()",
@@ -146,8 +144,6 @@ class ConfigTest(tests.utils.TestCase):
                 "opt",
                 "global_compiler":
                 "clang",
-                "core_tools_path":
-                "core_tools/foo.txt",
                 "coverage":
                 "true",
                 "current_repo_name":
@@ -215,7 +211,6 @@ class ConfigTest(tests.utils.TestCase):
             ["/foo", "/bar"],  # get_auto_pch_blacklist
             "opt",  # get_build_mode
             "clang",  # get_global_compiler_family
-            "core_tools/foo.txt",  # get_core_tools_path
             True,  # get_coverage
             current_os,  # get_coverage
             "third-party",  # get_current_repo_name
@@ -256,7 +251,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_global_compiler_family()",
-            "config.get_core_tools_path()",
             "config.get_coverage()",
             "config.get_current_os()",
             "config.get_current_repo_name()",

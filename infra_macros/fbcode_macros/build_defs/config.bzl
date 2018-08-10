@@ -126,19 +126,6 @@ def _get_global_compiler_family():
     """
     return _falsy_as_none(read_string("fbcode", "global_compiler", None))
 
-def _get_core_tools_path():
-    """
-    Get the path to a list of core tools
-
-    If set, the include_def style path to a file that contains a list of core
-    tools. This is only useful in Facebook's repository and is used to reduce
-    rulekey thrashing
-
-    Returns:
-        The path to a list of core tools, or "" if not set
-    """
-    return read_string("fbcode", "core_tools_path", "")
-
 def _get_coverage():
     """
     Whether to gather coverage information or not
@@ -424,7 +411,6 @@ config = struct(
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
-    get_core_tools_path = _get_core_tools_path,
     get_coverage = _get_coverage,
     get_current_os = _get_current_host_os,
     get_current_repo_name = _get_current_repo_name,
