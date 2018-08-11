@@ -200,10 +200,18 @@ class _SphinxConverter(base.Converter):
 
         for target, outdir in genrule_srcs.items():
             rule = fbcode_target.parse_target(target, base_path)
+            if '/' in outdir:
+                root, rest = outdir.split('/', 1)
+            else:
+                root = outdir
+                rest = '.'
             yield Rule('genrule', collections.OrderedDict((
                 ('name', name + '-genrule_srcs-' + rule.name),
-                ('out', outdir),
-                ('bash', 'mkdir -p $OUT && $(exe {}) $OUT'.format(target)),
+                ('out', root),
+                ('bash', 'mkdir -p $OUT/{rest} && $(exe {target}) $OUT/{rest}'.format(
+                    target=target,
+                    rest=rest,
+                )),
             )))
 
     def _gen_apidoc_rules(
