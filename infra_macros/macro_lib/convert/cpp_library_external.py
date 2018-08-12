@@ -133,7 +133,7 @@ class CppLibraryExternalConverter(base.Converter):
                     self.get_tp2_project_name(base_path),
                     name))
 
-            def maybe_add_module(name, inc_dirs, ppflags):
+            def maybe_add_module(module_rule_name, inc_dirs, ppflags):
 
                 # If the first include dir has a `module.modulemap` file, auto-
                 # generate a module rule for it.
@@ -145,7 +145,7 @@ class CppLibraryExternalConverter(base.Converter):
                 # Create the module compilation rule.
                 self._gen_tp2_cpp_module(
                     base_path,
-                    name=name,
+                    name=module_rule_name,
                     module_name=module_name,
                     header_dir=inc_dirs[0],
                     dependencies=dependencies,
@@ -154,10 +154,10 @@ class CppLibraryExternalConverter(base.Converter):
                 )
 
                 # Add module location to exported C++ flags.
-                lang_ppflags.setdefault('cxx', [])
-                lang_ppflags['cxx'].append(
+                ppflags.setdefault('cxx', [])
+                ppflags['cxx'].append(
                     '-fmodule-file={}=$(location :{})'
-                    .format(module_name, name))
+                    .format(module_name, module_rule_name))
 
             # Add implicit module rule for the main header dir.
             maybe_add_module(name + '-module', include_dir, lang_ppflags)
