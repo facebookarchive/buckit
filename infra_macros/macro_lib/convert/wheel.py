@@ -170,6 +170,11 @@ class PyWheel(base.Converter):
             for py_platform, url in sorted(platform_urls.items())
         ]
 
+        # Create the ability to override the platform that wheels use
+        wheel_platform = read_config("python", "wheel_platform_override")
+        if wheel_platform:
+            attrs['platform_deps'] = _override_wheels(attrs['platform_deps'], wheel_platform)
+
         if deps:
             attrs['deps'] = deps
 
@@ -206,3 +211,25 @@ class PyWheel(base.Converter):
         # yield from self.convert_rule(base_path, name, **kwargs)
         for rule in self.convert_rule(base_path, version, platform_urls, visibility=visibility, **kwargs):
             yield rule
+
+
+def _override_wheels(deps, wheel_platform):
+    # For all deps, override the current wheel file with the one corresponding
+    # to the specified wheel platform.
+
+    # We're doing this because platforms in the list of deps are also re.escaped.
+    wheel_platform = re.escape(wheel_platform)
+
+    override_urls = None
+    for platform, urls in deps:
+        if wheel_platform in platform:
+            override_urls = urls
+
+    if not override_urls:
+        return deps
+
+    new_deps = []
+    for platform, _ in deps:
+        new_deps.append((platform, override_urls))
+
+    return new_deps
