@@ -142,14 +142,6 @@ else:
     third_party_config = get_oss_third_party_config()
 
 
-# Add the `util` class supporting fbconfig/fbmake globs.
-class Empty(object):
-    pass
-util = Empty()
-util.files = lambda *patterns: glob(patterns)
-__all__.append('util')
-
-
 CXX_RULES = set([
     'cpp_benchmark',
     'cpp_binary',
