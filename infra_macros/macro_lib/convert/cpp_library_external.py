@@ -64,8 +64,6 @@ class CppLibraryExternalConverter(base.Converter):
             force_shared=None,
             force_static=None,
             header_only=None,
-            lib_name=None,
-            lib_dir='lib',
             include_dir=None,
             deps=(),
             external_deps=[],
