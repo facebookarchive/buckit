@@ -40,6 +40,7 @@ class GoBindgenLibraryConverter(go.GoConverter):
             'srcs',
             'headers',
             'deps',
+            'go_external_deps',
             'preprocessor_flags',
             'platform_preprocessor_flags',
             'cgo_compiler_flags',

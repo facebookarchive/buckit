@@ -69,6 +69,7 @@ class GoConverter(base.Converter):
         base_path,
         name=None,
         srcs=None,
+        go_srcs=None,
         gen_srcs=None,
         deps=None,
         exported_deps=None,
@@ -83,7 +84,6 @@ class GoConverter(base.Converter):
         resources=None,
 
         # cgo
-        cgo=None,
         headers=None,
         preprocessor_flags=None,
         cgo_compiler_flags=None,
@@ -107,8 +107,8 @@ class GoConverter(base.Converter):
             resources = []
 
         # cgo attributes
-        if cgo is None:
-            cgo = []
+        if go_srcs is None:
+            go_srcs = []
         if headers is None:
             headers = []
         if preprocessor_flags is None:
@@ -170,8 +170,8 @@ class GoConverter(base.Converter):
             attributes['exported_deps'] = exported_deps
 
         # cgo options (those should ~copy-pasta from cxx_binary rule)
-        if cgo:
-            attributes['cgo'] = cgo
+        if go_srcs:
+            attributes['go_srcs'] = go_srcs
         if headers:
             attributes['headers'] = headers
         if preprocessor_flags:
