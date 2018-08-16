@@ -80,6 +80,7 @@ class GoConverter(base.Converter):
         tests=None,
         compiler_flags=None,
         linker_flags=None,
+        external_linker_flags=None,
         coverage_mode=None,
         resources=None,
 
@@ -103,6 +104,8 @@ class GoConverter(base.Converter):
             compiler_flags = []
         if linker_flags is None:
             linker_flags = []
+        if external_linker_flags is None:
+            external_linker_flags = []
         if resources is None:
             resources = []
 
@@ -151,6 +154,9 @@ class GoConverter(base.Converter):
 
         if self.is_binary() or (self.is_cgo() and linker_flags):
             attributes['linker_flags'] = linker_flags
+
+        if self.is_binary() or (self.is_cgo() and external_linker_flags):
+            attributes['external_linker_flags'] = external_linker_flags
 
         for ext_dep in go_external_deps:
             # We used to allow a version hash to be specified for a dep inside
