@@ -630,7 +630,7 @@ class CppConverter(base.Converter):
             commands.append(
                 # Sanitize the stack header file's line-markers.
                 'sed -i.bak'
-                r""" -e 's|#\(.*\)YY_YY_[A-Z_]*_FBCODE_|#\1YY_YY_FBCODE_|g' """
+                r""" -e 's|#\(.*\)YY_YY_[A-Z0-9_]*_FBCODE_|#\1YY_YY_FBCODE_|g' """
                 r""" -e 's|#line \([0-9]*\) "/.*/fbcode/|#line \1 "fbcode/|g' """
                 r""" -e 's|\\file /.*/fbcode/|\\file fbcode/|g' """
                 ' "$OUT/{stack_header}"',
