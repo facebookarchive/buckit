@@ -20,16 +20,13 @@ log = logging.Logger(__name__)
 # These constants can represent both JSON keys for
 # serialization/deserialization, and namedtuple keys.  Legend:
 #  (1) Field in the namedtuple SubvolumeOnDisk
-#  (2) Set when the compiler first constructs us via `from_subvolume_path`
-#  (3) Output into the on-disk dictionary format
-#  (4) Read from the on-disk dictionary format
-_BTRFS_UUID = 'btrfs_uuid'  # (1-4)
-_HOSTNAME = 'hostname'  # (1-4)
-_SUBVOLUMES_DIR = 'subvolumes_dir'  # (1)
-_SUBVOLUME_PATH = 'subvolume_path'  # (2) + SubvolumeOnDisk.subvolume_path()
-_SUBVOLUME_NAME = 'subvolume_name'  # (1, 3-4)
-_SUBVOLUME_VERSION = 'subvolume_version'  # (1, 3-4)
-_DANGER = 'DANGER'  # (3)
+#  (2) Written into the on-disk dictionary format
+#  (3) Read from the on-disk dictionary format
+_BTRFS_UUID = 'btrfs_uuid'  # (1-3)
+_HOSTNAME = 'hostname'  # (1-3)
+_SUBVOLUMES_BASE_DIR = 'subvolumes_base_dir'  # (1)
+_SUBVOLUME_REL_PATH = 'subvolume_rel_path'  # (1-3)
+_DANGER = 'DANGER'  # (2)
 
 
 def _btrfs_get_volume_props(subvolume_path):
@@ -66,9 +63,8 @@ def _btrfs_get_volume_props(subvolume_path):
 class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
     _BTRFS_UUID,
     _HOSTNAME,
-    _SUBVOLUMES_DIR,
-    _SUBVOLUME_NAME,
-    _SUBVOLUME_VERSION,
+    _SUBVOLUMES_BASE_DIR,
+    _SUBVOLUME_REL_PATH,
 ])):
     '''
     This class stores a disk path to a btrfs subvolume (built image layer),
@@ -82,31 +78,25 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
     _KNOWN_KEYS = {
         _BTRFS_UUID,
         _HOSTNAME,
-        _SUBVOLUME_NAME,
-        _SUBVOLUME_VERSION,
+        _SUBVOLUME_REL_PATH,
         _DANGER,
     }
 
     def subvolume_path(self):
-        return os.path.join(
-            self.subvolumes_dir,
-            f'{self.subvolume_name}:{self.subvolume_version}'
-        )
+        return os.path.join(self.subvolumes_base_dir, self.subvolume_rel_path)
 
     @classmethod
     def from_subvolume_path(
         cls,
         subvol_path: str,
         subvolumes_dir: str,
-        subvolume_name: str,
-        subvolume_version: str,
+        subvolume_rel_path: str,
     ):
         self = cls(**{
             _BTRFS_UUID: _btrfs_get_volume_props(subvol_path)['UUID'],
             _HOSTNAME: socket.getfqdn(),
-            _SUBVOLUMES_DIR: subvolumes_dir,
-            _SUBVOLUME_NAME: subvolume_name,
-            _SUBVOLUME_VERSION: subvolume_version,
+            _SUBVOLUMES_BASE_DIR: subvolumes_dir,
+            _SUBVOLUME_REL_PATH: subvolume_rel_path,
         })
         expected_subvolume_path = os.path.normpath(self.subvolume_path())
         if os.path.normpath(subvol_path) != expected_subvolume_path:
@@ -125,9 +115,8 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         return cls(**{
             _BTRFS_UUID: d[_BTRFS_UUID],
             _HOSTNAME: d[_HOSTNAME],
-            _SUBVOLUME_NAME: d[_SUBVOLUME_NAME],
-            _SUBVOLUME_VERSION: d[_SUBVOLUME_VERSION],
-            _SUBVOLUMES_DIR: subvolumes_dir,
+            _SUBVOLUMES_BASE_DIR: subvolumes_dir,
+            _SUBVOLUME_REL_PATH: d[_SUBVOLUME_REL_PATH],
         })._validate_and_return()
 
     def to_serializable_dict(self):
@@ -138,14 +127,13 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         d = {
             _BTRFS_UUID: self.btrfs_uuid,
             _HOSTNAME: self.hostname,
-            _SUBVOLUME_NAME: self.subvolume_name,
-            _SUBVOLUME_VERSION: self.subvolume_version,
+            _SUBVOLUME_REL_PATH: self.subvolume_rel_path,
             _DANGER: 'Do NOT edit manually: this can break future builds, or '
                 'break refcounting, causing us to leak or prematurely destroy '
                 'subvolumes.',
         }
         # Self-test -- there should be no way for this assertion to fail
-        new_self = self.from_serializable_dict(d, self.subvolumes_dir)
+        new_self = self.from_serializable_dict(d, self.subvolumes_base_dir)
         assert self == new_self, \
           f'Got {new_self} from {d}, when serializing {self}'
         return d

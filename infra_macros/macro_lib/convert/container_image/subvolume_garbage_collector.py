@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 '''\
-This pre-initializes a Buck-given "$OUT" (`--new-subvolume-json`) with a
-hardlink that serves as a refcount to distinguish subvolumes that are
-referenced by the Buck cache ("live") from ones that are not ("dead").
+Garbage collection deletes subvolumes that are no longer referenced by
+"subvolume JSON" build artifacts tracked by Buck.
 
-We hardlink the "subvolume JSON" outputs from Buck's output directory into a
-directory we own.  Given these hardlinks, we can garbage-collect any
-subvolumes, which do **not** have a hardlink at all, or whose link count
-drops to 1.  This works because in building the output, Buck actually `mv`s
-the new output on top of the old one, which unlinks the previous version --
-but we also try to `unlink "$OUT"`, just in case.
+This script first creates a refcount in a private directory, and shortly
+afterwards makes the subvolume's outer wrapper directory.
+
+To distinguish subvolumes that are referenced by the Buck cache ("live")
+from ones that are not ("dead"), this tool initializes the Buck-supplied
+"$OUT" (`--new-subvolume-json`) with a hardlink into a directory we own.
+
+Given these hardlinks, we can garbage-collect any subvolumes, which do
+**not** have a hardlink at all, or whose link count drops to 1.  This works
+because in building the output, Buck actually `mv`s the new output on top of
+the old one, which unlinks the previous version -- but we also always try to
+`unlink "$OUT"`, just in case Buck's behavior changes.
 
 KEY ASSUMPTIONS:
 
@@ -17,15 +22,19 @@ KEY ASSUMPTIONS:
     as `--refcounts-dir` (which lives in the the source repo).
 
  - Two garbage collector instances NEVER run concurrently with the same
-   (`--new-subvolume-name`, `--new-subvolume-version`) NOR with the same
-   `--new-subvolume-json`.  In practice, the former is assured because
-   `subvolume_version.py` returns a unique number for each new build.  The
-   latter is (hopefully) guaranteed by Buck -- presumably, it does not
-   concurrently start two builds with the same output.  Protecting against
-   this with something like `flock` is too onerous (lockfiles can never be
-   deleted), so we just assume our caller is sane.
+   `--new-subvolume-wrapper-dir` NOR with the same `--new-subvolume-json`.
+   In practice, the former is assured because `subvolume_version.py` returns
+   a unique number for each new build.  The latter is (hopefully) guaranteed
+   by Buck -- presumably, it does not concurrently start two builds with the
+   same output.  Protecting against this with something like `flock` is too
+   onerous (lockfiles can never be deleted), so we just assume our caller is
+   sane.
+
+ - Subvolumes live in wrapper directories, with this directory layout:
+   <subvol_name>:<some unique id>/<subvol name>
 '''
 import argparse
+import contextlib
 import fcntl
 import glob
 import logging
@@ -38,8 +47,26 @@ import sys
 log = logging.Logger(__name__)
 
 
-def list_subvolumes(subvolumes_dir):
-    # Ignore subvolumes that don't match the pattern.
+@contextlib.contextmanager
+def nonblocking_flock(path) -> 'Iterator[bool]':
+    'Yields True if we got the lock, False otherwise.'
+    # We don't set CLOEXEC on this FD because we want e.g. `sudo btrfs` to
+    # inherit it and hold the lock while it does its thing.  It seems OK to
+    # trust that `btrfs` will not be doing shenanigans like daemonizing a
+    # service that runs behind our back.
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            yield True
+        except BlockingIOError:
+            yield False
+    finally:
+        os.close(fd)  # Don't hold the lock any longer than we have to!
+
+
+def list_subvolume_wrappers(subvolumes_dir):
+    # Ignore directories that don't match the <subvol name>:<id> pattern.
     subvolumes = [
         os.path.relpath(p, subvolumes_dir)
             for p in glob.glob(f'{subvolumes_dir}/*:*/')
@@ -74,39 +101,49 @@ def garbage_collect_subvolumes(refcounts_dir, subvolumes_dir):
     # the new refcount.  If we then lose the second part of the race, we
     # would find the subvolume that the other process just created, and
     # delete it.
-    subvols = set(list_subvolumes(subvolumes_dir))
-    subvol_to_nlink = dict(list_refcounts(refcounts_dir))
+    subvol_wrappers = set(list_subvolume_wrappers(subvolumes_dir))
+    subvol_wrapper_to_nlink = dict(list_refcounts(refcounts_dir))
 
-    # Delete subvolumes with insufficient refcounts.
-    for subvol in subvols:
-        nlink = subvol_to_nlink.get(subvol, 0)
+    # Delete subvolumes (& their wrappers) with insufficient refcounts.
+    for subvol_wrapper in subvol_wrappers:
+        nlink = subvol_wrapper_to_nlink.get(subvol_wrapper, 0)
         if nlink >= 2:
             if nlink > 2:
                 # Not sure how this might happen, but it seems non-fatal...
-                log.error(f'{nlink} > 2 links to subvolume {subvol}')
+                log.error(f'{nlink} > 2 links to subvolume {subvol_wrapper}')
             continue
-        refcount_path = os.path.join(refcounts_dir, f'{subvol}.json')
+        refcount_path = os.path.join(refcounts_dir, f'{subvol_wrapper}.json')
         log.warning(
-            f'Deleting {subvol} and its refcount {refcount_path}, since the '
-            f'refcount has {nlink} links'
+            f'Deleting {subvol_wrapper} since its refcount has {nlink} links'
         )
-        # Unlink the refcount first to slightly decrease the chance of
-        # leaving an orphaned refcount file on disk.  Most orphans will come
-        # from us failing to get to the point where we create a subvolume.
+        # Start by unlinking the refcount to dramatically decrease the
+        # chance of leaving an orphaned refcount file on disk.  The most
+        # obvious way to get an orphaned refcount is for this program to
+        # abort between the line that creates the refcount link, and the
+        # next line that creates the subvolume wrapper.
+        #
+        # I do not see a great way to completely eliminate orphan refcount
+        # files.  One could try to have a separate pass that flocks the
+        # refcount file before removing it, and to also flock the refcount
+        # file before creating the wrapper directory.  But, since file
+        # creation & flock cannot be atomic, this leaves us open to a race
+        # where a concurrent GC pass removes the refcount link immediately
+        # after it gets created, so that part of the code would have to be
+        # willing to repeat the race until it wins.  In all, that extra
+        # complexity is far too ugly compared to the slim risk or leaving
+        # some unused refcount files on disk.
         if nlink:
             os.unlink(refcount_path)
         subprocess.check_call([
             'sudo', 'btrfs', 'subvolume', 'delete',
-            os.path.join(subvolumes_dir, subvol)
+            os.path.join(
+                subvolumes_dir,
+                # Subvols are wrapped in a user-owned temporary directory,
+                # following the convention `{name}:{version}/{name}`.
+                subvol_wrapper, subvol_wrapper.rsplit(':', 1)[0]
+            ),
         ])
-
-    # Unfortunately, I see no safe way to delete refcounts that lack
-    # subvolumes, although here would be the right place to do it.  The
-    # reason is that we cannot create the refcount and the subvolume
-    # "atomically" (i.e. under `flock`) due to the way the current aimage
-    # builder works.  So for now, let's just leak the orphan refcounts
-    # -- they shouldn't happen anyway unless a build breaks in the narrow
-    # window between refcount creation & subvolume creation.
+        os.rmdir(os.path.join(subvolumes_dir, subvol_wrapper))
 
 
 def parse_args(argv):
@@ -122,15 +159,14 @@ def parse_args(argv):
     )
     parser.add_argument(
         '--subvolumes-dir', required=True,
-        help='A directory on a btrfs volume'
+        help='A directory on a btrfs volume, where all the subvolume wrapper '
+            'directories reside.',
     )
     parser.add_argument(
-        '--new-subvolume-name',
-        help='The first part of the subvolume directory name',
-    )
-    parser.add_argument(
-        '--new-subvolume-version',
-        help='The second part of the subvolume directory name',
+        '--new-subvolume-wrapper-dir',
+        help='Subvolumes live inside wrapper directories, following the '
+            'convention <name>:<version>/<name>. This parameter should '
+            'consist just of the <name>:<version> part.',
     )
     parser.add_argument(
         '--new-subvolume-json',
@@ -143,15 +179,28 @@ def parse_args(argv):
 
 def has_new_subvolume(args):
     new_subvolume_args = (
-        args.new_subvolume_name,
-        args.new_subvolume_version,
+        args.new_subvolume_wrapper_dir,
         args.new_subvolume_json,
     )
     if None not in new_subvolume_args:
+        if (
+            ':' not in args.new_subvolume_wrapper_dir or
+            '/' in args.new_subvolume_wrapper_dir
+        ):
+            raise RuntimeError(
+                f'--new-subvolume-wrapper-dir must contain : but not /'
+            )
+        wrapper_path = os.path.join(
+            args.subvolumes_dir, args.new_subvolume_wrapper_dir,
+        )
+        if os.path.exists(wrapper_path):
+            raise RuntimeError(
+                f'--new-subvolume-wrapper-dir exists {wrapper_path}'
+            )
         return True
-    if new_subvolume_args != (None,) * 3:
+    if new_subvolume_args != (None,) * 2:
         raise RuntimeError(
-            'Either pass all 3 --new-subvolume-* arguments, or pass none.'
+            'Either pass both --new-subvolume-* arguments, or pass none.'
         )
     return False
 
@@ -161,7 +210,7 @@ def subvolume_garbage_collector(argv):
     IMPORTANT:
 
      - Multiple copies of this function can run concurrently, subject to the
-       MAIN ASSUMPTIONS in the file's docblock.
+       KEY ASSUMPTIONS in the file's docblock.
 
      - The garbage-collection pass must be robust against failures in the
        middle of the code (imagine somebody hitting Ctrl-C, or worse).
@@ -191,37 +240,28 @@ def subvolume_garbage_collector(argv):
     # running concurrently.  The docs of `garbage_collect_subvolumes`
     # explain why a GC pass can safely concurrently run with a build.
     #
-    # We don't set CLOEXEC on this FD because we actually want `sudo btrfs`
-    # to inherit it and hold the lock while it does its thing.  It seems OK
-    # to trust that `btrfs` will not be doing shenanigans like daemonizing a
-    # service that runs behind our back.
-    fd = os.open(args.subvolumes_dir, os.O_RDONLY)
-    try:
-        # Don't block here to avoid serializing the garbage-collection
-        # passes of concurrently running builds.  This may increase disk
-        # usage, but overall, the build speed should be better.  Caveat: I
-        # don't have meaningful benchmarks to substantiate this, so this is
-        # just informed demagoguery ;)
-        #
-        # Future: if disk usage is a problem, we can loop this code until no
-        # deletions are made.  For bonus points, daemonize the loop so that
-        # the build that triggered the GC actually gets to make progress.
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    # We don't want to block here to avoid serializing the
+    # garbage-collection passes of concurrently running builds.  This
+    # may increase disk usage, but overall, the build speed should be
+    # better.  Caveat: I don't have meaningful benchmarks to
+    # substantiate this, so this is just informed demagoguery ;)
+    #
+    # Future: if disk usage is a problem, we can loop this code until no
+    # deletions are made.  For bonus points, daemonize the loop so that
+    # the build that triggered the GC actually gets to make progress.
+    with nonblocking_flock(args.subvolumes_dir) as got_lock:
+        if got_lock:
             garbage_collect_subvolumes(args.refcounts_dir, args.subvolumes_dir)
-        except BlockingIOError:
-            # They probably won't clean up the prior version of the
-            # subvolume we are creating, but we don't rely on that to make
-            # space anyhow, so let's continue.
+        else:
+            # That other build probably won't clean up the prior version of
+            # the subvolume we are creating, but we don't rely on that to
+            # make space anyhow, so let's continue.
             log.warning('A concurrent build is garbage-collecting subvolumes.')
-            pass
-    finally:
-        os.close(fd)  # Don't hold the lock any longer than we have to!
 
     # .json outputs and refcounts are written as an unprivileged user. We
     # only need root for subvolume manipulation (above).
     try:
-        os.mkdir(args.refcounts_dir)
+        os.mkdir(args.refcounts_dir, mode=0o700)
     except FileExistsError:  # Don't fail on races to `mkdir`.
         pass
 
@@ -230,7 +270,7 @@ def subvolume_garbage_collector(argv):
     # exist so that its link count starts at 1.  Finally, make the hardlink
     # that will serve as a refcount for `garbage_collect_subvolumes`.
     #
-    # The `unlink` & `open` below are concurrency-safe per one of MAIN
+    # The `unlink` & `open` below are concurrency-safe per one of KEY
     # ASSUMPTIONS above.  Specifically, Buck's should not ever run 2 build
     # processes with the same output file.
     #
@@ -243,11 +283,10 @@ def subvolume_garbage_collector(argv):
     #     reading refcounts.
     if has_new_subvolume(args):
         new_subvolume_refcount = os.path.join(
-            args.refcounts_dir,
-            f'{args.new_subvolume_name}:{args.new_subvolume_version}.json',
+            args.refcounts_dir, f'{args.new_subvolume_wrapper_dir}.json',
         )
         # This should never happen since the name & version are supposed to
-        # be unique for this one subvolume (MAIN ASSUMPTIONS).
+        # be unique for this one subvolume (KEY ASSUMPTIONS).
         if os.path.exists(new_subvolume_refcount):
             raise RuntimeError(
                 f'Refcount already exists: {new_subvolume_refcount}'
@@ -263,13 +302,23 @@ def subvolume_garbage_collector(argv):
                 os.unlink(p)
             except FileNotFoundError:
                 pass
-        open(args.new_subvolume_json, 'a').close()
+        os.close(os.open(
+            args.new_subvolume_json,
+            flags=os.O_CREAT | os.O_CLOEXEC | os.O_NOCTTY,
+            mode=0o600,
+        ))
 
         # Throws if the Buck output is not on the same device as the
         # refcount dir.  That case has to fail, that's how hardlinks work.
         # However, it's easy enough to make the refcounts dir a symlink to a
         # directory on the appropriate device, so this is a non-issue.
         os.link(args.new_subvolume_json, new_subvolume_refcount)
+        # This should come AFTER refcount link creation, since we enumerate
+        # subvolumes BEFORE enumerating refcounts.
+        os.mkdir(
+            os.path.join(args.subvolumes_dir, args.new_subvolume_wrapper_dir),
+            mode=0o700,
+        )
 
 
 if __name__ == '__main__':

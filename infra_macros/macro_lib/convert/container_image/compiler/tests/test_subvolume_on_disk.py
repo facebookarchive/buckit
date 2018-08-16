@@ -61,7 +61,7 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         self.assertEqual(
             actual_subvol,
             subvolume_on_disk.SubvolumeOnDisk.from_json_file(
-                fake_file, actual_subvol.subvolumes_dir
+                fake_file, actual_subvol.subvolumes_base_dir
             ),
         )
 
@@ -81,13 +81,12 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         # Note: Unlike test_from_subvolume_path, this test uses a trailing /
         # -- this gets us better coverage.
         subvols = '/test_subvols/'
-        good_path = os.path.join(subvols, 'test_name:test_ver')
+        good_path = os.path.join(subvols, 'test_subvol')
         good_uuid = self._test_uuid(good_path)
         good = {
             subvolume_on_disk._BTRFS_UUID: good_uuid,
             subvolume_on_disk._HOSTNAME: _MY_HOST,
-            subvolume_on_disk._SUBVOLUME_NAME: 'test_name',
-            subvolume_on_disk._SUBVOLUME_VERSION: 'test_ver',
+            subvolume_on_disk._SUBVOLUME_REL_PATH: 'test_subvol',
         }
 
         bad_host = good.copy()
@@ -115,26 +114,24 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         self._check(
             good_subvol,
             good_path,
-            subvolume_on_disk.SubvolumeOnDisk(
-                btrfs_uuid=good_uuid,
-                hostname=_MY_HOST,
-                subvolume_name='test_name',
-                subvolume_version='test_ver',
-                subvolumes_dir=subvols,
-            ),
+            subvolume_on_disk.SubvolumeOnDisk(**{
+                subvolume_on_disk._BTRFS_UUID: good_uuid,
+                subvolume_on_disk._HOSTNAME: _MY_HOST,
+                subvolume_on_disk._SUBVOLUME_REL_PATH: 'test_subvol',
+                subvolume_on_disk._SUBVOLUMES_BASE_DIR: subvols,
+            }),
         )
 
     def test_from_subvolume_path(self):
         # Note: Unlike test_from_serializable_dict_and_validation, this test
         # does NOT use a trailing / -- this gets us better coverage.
         subvols = '/test_subvols'
-        subvol_path = '/test_subvols/test_name:test_ver'
+        subvol_path = '/test_subvols/test_subvol'
 
         good_args = {
             'subvol_path': subvol_path,
             'subvolumes_dir': subvols,
-            'subvolume_name': 'test_name',
-            'subvolume_version': 'test_ver',
+            'subvolume_rel_path': 'test_subvol',
         }
         subvol = subvolume_on_disk.SubvolumeOnDisk.from_subvolume_path(
             **good_args
@@ -142,23 +139,20 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
         self._check(
             subvol,
             subvol_path,
-            subvolume_on_disk.SubvolumeOnDisk(
-                btrfs_uuid=self._test_uuid(subvol_path),
-                hostname=_MY_HOST,
-                subvolume_name='test_name',
-                subvolume_version='test_ver',
-                subvolumes_dir=subvols,
-            ),
+            subvolume_on_disk.SubvolumeOnDisk(**{
+                subvolume_on_disk._BTRFS_UUID: self._test_uuid(subvol_path),
+                subvolume_on_disk._HOSTNAME: _MY_HOST,
+                subvolume_on_disk._SUBVOLUME_REL_PATH: 'test_subvol',
+                subvolume_on_disk._SUBVOLUMES_BASE_DIR: subvols,
+            }),
         )
 
         bad_subvols = good_args.copy()
         bad_subvols['subvolumes_dir'] = '/bad_subvols/'
-        bad_name = good_args.copy()
-        bad_name['subvolume_name'] = 'bad_name'
-        bad_ver = good_args.copy()
-        bad_ver['subvolume_version'] = 'bad_ver'
+        bad_path = good_args.copy()
+        bad_path['subvolume_rel_path'] = 'bad_subvol'
 
-        for bad_args in [bad_subvols, bad_name, bad_ver]:
+        for bad_args in [bad_subvols, bad_path]:
             with self.assertRaisesRegex(
                 RuntimeError, 'Unexpected subvolume_path'
             ):

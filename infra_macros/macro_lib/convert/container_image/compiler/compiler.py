@@ -3,7 +3,7 @@
 This is normally invoked by the `image_layer` Buck macro converter.
 
 This compiler builds a btrfs subvolume in
-  <--subvolumes-dir>/<--subvolume-name>:<subvolume-version>
+  <--subvolumes-dir>/<--subvolume-rel-path>
 
 To do so, it parses `--child-feature-json` and the `--child-dependencies`
 that referred therein, creates `ImageItems`, sorts them in dependency order,
@@ -54,13 +54,13 @@ def parse_args(args):
         help='A directory on a btrfs volume to store the compiled subvolume '
             'representing the new layer',
     )
+    # We separate this from `--subvolumes-dir` in order to help keep our
+    # JSON output ignorant of the absolute path of the repo.
     parser.add_argument(
-        '--subvolume-name', required=True,
-        help='The first part of the subvolume directory name',
-    )
-    parser.add_argument(
-        '--subvolume-version', required=True,
-        help='The second part of the subvolume directory name',
+        '--subvolume-rel-path', required=True,
+        help='Path underneath --subvolumes-dir where we should create '
+            'the subvolume. Note that all path components but the basename '
+            'should already exist.',
     )
     parser.add_argument(
         '--parent-layer-json',
@@ -88,10 +88,7 @@ def parse_args(args):
 
 
 def build_image(args):
-    subvol = Subvol(os.path.join(
-        args.subvolumes_dir,
-        f'{args.subvolume_name}:{args.subvolume_version}',
-    ))
+    subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
 
     for item in dependency_order_items(
         itertools.chain(
@@ -112,8 +109,7 @@ def build_image(args):
         return SubvolumeOnDisk.from_subvolume_path(
             subvol.path().decode(),
             args.subvolumes_dir,
-            args.subvolume_name,
-            args.subvolume_version,
+            args.subvolume_rel_path,
         )
     except Exception as ex:
         raise RuntimeError(f'Serializing subvolume {subvol.path()}') from ex

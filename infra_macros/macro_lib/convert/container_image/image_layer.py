@@ -183,7 +183,7 @@ class ImageLayerConverter(base.Converter):
             binary_path=$(location {helper_base}:volume-for-repo)
             volume_dir=\\$("$binary_path" "$artifacts_dir" {min_free_bytes})
             subvolumes_dir="$volume_dir/targets"
-            mkdir -p "$subvolumes_dir"
+            mkdir -m 0700 -p "$subvolumes_dir"
 
             # Capture output to a tempfile to hide logspam on successful runs.
             my_log=`mktemp`
@@ -207,27 +207,38 @@ class ImageLayerConverter(base.Converter):
             trap log_on_error EXIT
 
             (
-              # Future: it is lame that we distinguish name from version.
+              # We want subvolume names to be user-controllable. To permit
+              # this, we wrap each subvolume in a temporary subdirectory.
+              # This also allows us to prevent access to capability-
+              # escalating programs inside the built subvolume by users
+              # other than the repo owner.
+              #
+              # The "version" code here ensures that the wrapper directory
+              # has a unique name.  We could use `mktemp`, but our variant
+              # is a little more predictable (not a security concern since
+              # we own the parent directory) and a lot more debuggable.
+              # Usability is better since our version sorts by build time.
               binary_path=$(location {helper_base}:subvolume-version)
-              subvolume_version=\\$( "$binary_path" )
+              subvolume_ver=\\$( "$binary_path" )
+              subvolume_wrapper_dir={subvolume_name_quoted}":$subvolume_ver"
 
               # IMPORTANT: This invalidates and/or deletes any existing
               # subvolume that was produced by the same target.  This is the
               # point of no return.
               #
-              # This pre-initializes "$OUT" in a special way to support a
-              # form of refcounting that distinguishes between subvolumes
-              # that are referenced from the Buck cache ("live"), and ones
-              # that are no longer referenced ("dead").  We want to create
-              # the refcount file before starting the build to guarantee
-              # that we have refcount files for partially built images --
-              # this makes debugging failed builds a bit more predictable.
+              # This creates the wrapper directory for the subvolume, and
+              # pre-initializes "$OUT" in a special way to support a form of
+              # refcounting that distinguishes between subvolumes that are
+              # referenced from the Buck cache ("live"), and ones that are
+              # no longer referenced ("dead").  We want to create the
+              # refcount file before starting the build to guarantee that we
+              # have refcount files for partially built images -- this makes
+              # debugging failed builds a bit more predictable.
               refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
               $(location {helper_base}:subvolume-garbage-collector) \
                 --refcounts-dir "$refcounts_dir" \
                 --subvolumes-dir "$subvolumes_dir" \
-                --new-subvolume-name {subvolume_name_quoted} \
-                --new-subvolume-version "$subvolume_version" \
+                --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
                 --new-subvolume-json "$OUT"
 
               # Take note of `targets_and_outputs` below -- this enables the
@@ -235,8 +246,8 @@ class ImageLayerConverter(base.Converter):
               # `image_feature` to those targets' outputs.
               $(location {helper_base}:compiler) \
                 --subvolumes-dir "$subvolumes_dir" \
-                --subvolume-name {subvolume_name_quoted} \
-                --subvolume-version "$subvolume_version" \
+                --subvolume-rel-path \
+                  "$subvolume_wrapper_dir/"{subvolume_name_quoted} \
                 --parent-layer-json {parent_layer_json_quoted} \
                 --child-layer-target {current_target_quoted} \
                 --child-feature-json $(location {my_feature_target}) \

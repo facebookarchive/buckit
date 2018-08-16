@@ -36,20 +36,22 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
         with open(os.path.join(*path), 'a'):
             pass
 
-    def test_list_subvolumes(self):
+    def test_list_subvolume_wrappers(self):
         with tempfile.TemporaryDirectory() as td:
-            self.assertEqual([], sgc.list_subvolumes(td))
+            self.assertEqual([], sgc.list_subvolume_wrappers(td))
 
             self._touch(td, 'ba:nana')  # Not a directory
-            self.assertEqual([], sgc.list_subvolumes(td))
+            self.assertEqual([], sgc.list_subvolume_wrappers(td))
 
             os.mkdir(os.path.join(td, 'apple'))  # No colon
-            self.assertEqual([], sgc.list_subvolumes(td))
+            self.assertEqual([], sgc.list_subvolume_wrappers(td))
 
             os.mkdir(os.path.join(td, 'p:i'))
             os.mkdir(os.path.join(td, 'e:'))
             os.mkdir(os.path.join(td, ':x'))
-            self.assertEqual({'p:i', 'e:', ':x'}, set(sgc.list_subvolumes(td)))
+            self.assertEqual(
+                {'p:i', 'e:', ':x'}, set(sgc.list_subvolume_wrappers(td)),
+            )
 
     def test_list_refcounts(self):
         with tempfile.TemporaryDirectory() as td:
@@ -84,30 +86,38 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
     def test_has_new_subvolume(self):
 
         # Instead of creating a fake namespace, actually parse some args
-        def name_ver_json(name, ver, json):
+        def dir_json(wrapper_dir, json):
             return sgc.parse_args([
                 '--refcounts-dir', 'fake',
                 '--subvolumes-dir', 'fake',
-                '--new-subvolume-name', name,
-                '--new-subvolume-version', ver,
+                '--new-subvolume-wrapper-dir', wrapper_dir,
                 '--new-subvolume-json', json,
             ])
 
-        self.assertFalse(sgc.has_new_subvolume(name_ver_json(*[None] * 3)))
-        self.assertTrue(sgc.has_new_subvolume(name_ver_json('x', 'y', 'z')))
+        self.assertFalse(sgc.has_new_subvolume(dir_json(*[None] * 2)))
+        self.assertTrue(sgc.has_new_subvolume(dir_json('x:y', 'z')))
 
-        for bad_example in [
-            ('x', 'y', None),
-            ('x', None, 'z'),
-            (None, 'y', 'z'),
-            (None, None, 'z'),
-            (None, 'y', None),
-            ('x', None, None),
-        ]:
+        for bad_example in [('x:y', None), (None, 'z')]:
             with self.assertRaisesRegex(
-                RuntimeError, 'pass all 3 .* or pass none'
+                RuntimeError, 'pass both .* or pass none',
             ):
-                sgc.has_new_subvolume(name_ver_json(*bad_example))
+                sgc.has_new_subvolume(dir_json(*bad_example))
+
+        for bad_example in [('x/y', 'z'), ('no_colon', 'z')]:
+            with self.assertRaisesRegex(
+                RuntimeError, 'must contain : but not /',
+            ):
+                sgc.has_new_subvolume(dir_json(*bad_example))
+
+        with tempfile.TemporaryDirectory() as td:
+            os.mkdir(os.path.join(td, 'x:y'))
+            with self.assertRaisesRegex(RuntimeError, 'wrapper-dir exists'):
+                sgc.has_new_subvolume(sgc.parse_args([
+                    '--refcounts-dir', 'fake',
+                    '--subvolumes-dir', td,
+                    '--new-subvolume-wrapper-dir', 'x:y',
+                    '--new-subvolume-json', 'fake',
+                ]))
 
     @contextlib.contextmanager
     def _gc_test_case(self):
@@ -123,12 +133,12 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             kept_refs = set()
 
             # Subvolume without a refcount
-            os.mkdir(os.path.join(subs_dir, 'no:refs'))
+            os.makedirs(os.path.join(subs_dir, 'no:refs/no'))
             gcd_subs.add('no:refs')
 
             # Subvolume, whose refcount is 1
             self._touch(refs_dir, '1:link.json')
-            os.mkdir(os.path.join(subs_dir, '1:link'))
+            os.makedirs(os.path.join(subs_dir, '1:link/1'))
             gcd_refs.add('1:link.json')
             gcd_subs.add('1:link')
 
@@ -142,8 +152,8 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             kept_refs.add('2link:2.json')
 
             # Subvolumes for both of the 2-link refcount files
-            os.mkdir(os.path.join(subs_dir, '2link:1'))
-            os.mkdir(os.path.join(subs_dir, '2link:2'))
+            os.makedirs(os.path.join(subs_dir, '2link:1/2link'))
+            os.makedirs(os.path.join(subs_dir, '2link:2/2link'))
             kept_subs.add('2link:1')
             kept_subs.add('2link:2')
 
@@ -157,7 +167,7 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             kept_refs.add('3link:3.json')
 
             # Make a subvolume for 1 of them, it won't get GC'd
-            os.mkdir(os.path.join(subs_dir, '3link:2'))
+            os.makedirs(os.path.join(subs_dir, '3link:2/3link'))
             kept_subs.add('3link:2')
 
             self.assertEqual(kept_refs | gcd_refs, set(os.listdir(refs_dir)))
@@ -205,8 +215,7 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
                         '--refcounts-dir', n.refs_dir,
                         '--subvolumes-dir', n.subs_dir,
                         # This refcount was created by `_gc_test_case`.
-                        '--new-subvolume-name', '3link',
-                        '--new-subvolume-version', '1',
+                        '--new-subvolume-wrapper-dir', '3link:1',
                         '--new-subvolume-json', os.path.join(json_dir, 'OUT'),
                     ])
 
@@ -226,15 +235,16 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             sgc.subvolume_garbage_collector([
                 '--refcounts-dir', n.refs_dir,
                 '--subvolumes-dir', n.subs_dir,
-                '--new-subvolume-name', 'new',
-                '--new-subvolume-version', 'subvol',
+                '--new-subvolume-wrapper-dir', 'new:subvol',
                 '--new-subvolume-json', os.path.join(json_dir, 'OUT'),
             ])
             self.assertEqual(['OUT'], os.listdir(json_dir))
             self.assertEqual(
                 n.kept_refs | {'new:subvol.json'}, set(os.listdir(n.refs_dir)),
             )
-            self.assertEqual(n.kept_subs, set(os.listdir(n.subs_dir)))
+            self.assertEqual(
+                n.kept_subs | {'new:subvol'}, set(os.listdir(n.subs_dir)),
+            )
 
 
 if __name__ == '__main__':

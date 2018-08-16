@@ -45,8 +45,7 @@ class CompilerTestCase(unittest.TestCase):
         is_btrfs.return_value = True
         return build_image(parse_args([
             '--subvolumes-dir', FAKE_SUBVOLS_DIR,
-            '--subvolume-name', 'NAME',
-            '--subvolume-version', 'VERSION',
+            '--subvolume-rel-path', 'SUBVOL',
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
                 si.TARGET_TO_FILENAME[si.mangle(si.T_COPY_DIRS_TAR)],
@@ -101,9 +100,8 @@ class CompilerTestCase(unittest.TestCase):
         self.assertEqual(svod.SubvolumeOnDisk(**{
             svod._BTRFS_UUID: 'fake uuid',
             svod._HOSTNAME: 'fake host',
-            svod._SUBVOLUMES_DIR: FAKE_SUBVOLS_DIR,
-            svod._SUBVOLUME_NAME: 'NAME',
-            svod._SUBVOLUME_VERSION: 'VERSION',
+            svod._SUBVOLUMES_BASE_DIR: FAKE_SUBVOLS_DIR,
+            svod._SUBVOLUME_REL_PATH: 'SUBVOL',
         }), res._replace(**{svod._HOSTNAME: 'fake host'}))
         return run_as_root_calls
 
@@ -112,7 +110,7 @@ class CompilerTestCase(unittest.TestCase):
         'Get the commands that each of the *expected* sample items would run'
         is_btrfs.return_value = True
         subvol = subvol_utils.Subvol(
-            f'{FAKE_SUBVOLS_DIR}/NAME:VERSION',
+            f'{FAKE_SUBVOLS_DIR}/SUBVOL',
             already_exists=True,
         )
         for item in si.ID_TO_ITEM.values():
@@ -142,7 +140,7 @@ class CompilerTestCase(unittest.TestCase):
              mock_subvolume_from_json_file(self, path=parent) as parent_json:
             # Manually add/remove some commands from the "expected" set to
             # accommodate the fact that we have a parent subvolume.
-            subvol_path = f'{FAKE_SUBVOLS_DIR}/NAME:VERSION'.encode()
+            subvol_path = f'{FAKE_SUBVOLS_DIR}/SUBVOL'.encode()
             # Our unittest.mock.call objects are (args, kwargs) pairs.
             expected_calls_with_parent = [
                 c for c in expected_calls if c not in [
