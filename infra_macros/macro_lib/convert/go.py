@@ -158,6 +158,27 @@ class GoConverter(base.Converter):
         if self.is_binary() or (self.is_cgo() and external_linker_flags):
             attributes['external_linker_flags'] = external_linker_flags
 
+        # Add in binary-specific link deps.
+        # TODO: the link deps should be included in go_binary only but since the
+        # CGoLibrary defer linking to go binary, this should be fine.
+        # This would require change in buck code
+        if self.is_cgo():
+            attributes['linker_flags'] = linker_flags
+            d, r = self.get_binary_link_deps(
+                base_path,
+                name,
+                attributes['linker_flags'] if 'linker_flags' in attributes else [],
+            )
+            dependencies.extend(
+                self.format_deps(
+                    d,
+                    platform=platform_utils.get_buck_platform_for_base_path(
+                        base_path
+                    )
+                )
+            )
+            extra_rules.extend(r)
+
         for ext_dep in go_external_deps:
             # We used to allow a version hash to be specified for a dep inside
             # a tuple.  If it exists just ignore it.
