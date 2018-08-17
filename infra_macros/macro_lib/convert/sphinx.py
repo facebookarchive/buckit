@@ -208,7 +208,11 @@ class _SphinxConverter(base.Converter):
             yield Rule('genrule', collections.OrderedDict((
                 ('name', name + '-genrule_srcs-' + rule.name),
                 ('out', root),
-                ('bash', 'mkdir -p $OUT/{rest} && $(exe {target}) $OUT/{rest}'.format(
+                ('bash', ' '.join((
+                    'mkdir -p $OUT/{rest} &&',
+                    'PYTHONWARNINGS=i $(exe {target})',
+                    '$OUT/{rest}',
+                )).format(
                     target=target,
                     rest=rest,
                 )),
@@ -229,7 +233,8 @@ class _SphinxConverter(base.Converter):
 
         for module, outdir in apidoc_modules.items():
             command = ' '.join((
-                'mkdir -p $OUT && $(exe :{fbsphinx_wrapper_target})',
+                'mkdir -p $OUT &&',
+                'PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})',
                 'buck apidoc',
                 module,
                 '$OUT',
@@ -297,7 +302,7 @@ class _SphinxConverter(base.Converter):
 
         command = ' '.join((
             'echo {BUCK_NONCE} >/dev/null &&',
-            '$(exe :{fbsphinx_wrapper_target})',
+            'PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})',
             'buck run',
             '--target {target}',
             '--builder {builder}',
