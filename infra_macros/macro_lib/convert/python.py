@@ -804,6 +804,8 @@ class PythonConverter(base.Converter):
         helper_deps=False,
         visibility=None,
     ):
+        if self.is_test() and par_style is None:
+            par_style = "xar"
         rules = []
         dependencies = []
         platform_deps = []
