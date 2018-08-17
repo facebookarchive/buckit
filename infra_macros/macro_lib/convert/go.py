@@ -84,6 +84,10 @@ class GoConverter(base.Converter):
         coverage_mode=None,
         resources=None,
 
+        # special purpose flag, appends the facebook specific c++ libs to the
+        # go binary (ex. sanitizers)
+        cgo=False,
+
         # cgo
         headers=None,
         preprocessor_flags=None,
@@ -157,6 +161,37 @@ class GoConverter(base.Converter):
 
         if self.is_binary() or (self.is_cgo() and external_linker_flags):
             attributes['external_linker_flags'] = external_linker_flags
+
+        if (self.is_binary() or self.is_test()) and cgo == True:
+            attributes['linker_flags'] = linker_flags
+            d, r = self.get_binary_link_deps(
+                base_path,
+                name,
+                attributes['linker_flags'] if 'linker_flags' in attributes else [],
+            )
+
+            formatted_deps = self.format_deps(
+                d,
+                platform=platform_utils.get_buck_platform_for_base_path(
+                    base_path
+                )
+            )
+
+            r.append(Rule('genrule', {
+                'name' : 'gen-asan-lib',
+                'cmd' : 'echo \'package asan\nimport "C"\' > $OUT',
+                'out' : 'asan.go',
+            }))
+
+            r.append(Rule('cgo_library', {
+                'name' : 'cgo-asan-lib',
+                'package_name' : 'asan',
+                'srcs' : [':gen-asan-lib'],
+                'deps' : formatted_deps,
+            }))
+
+            dependencies.append(":cgo-asan-lib")
+            extra_rules.extend(r)
 
         for ext_dep in go_external_deps:
             # We used to allow a version hash to be specified for a dep inside
