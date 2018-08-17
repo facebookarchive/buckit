@@ -102,8 +102,8 @@ sphinx_manpage
 This utilizes the Sphinx "man" builder to generate a Unix `Manual Page`
 
 Attributes:
-    src: Path
-        The path to the source file (usually .rst or .md)
+    srcs: List[Path]
+        A list of paths to the source file (usually .rst or .md)
 
     description: str
         A one-line description of the program suitable for the NAME section
@@ -256,7 +256,6 @@ class _SphinxConverter(base.Converter):
         genrule_srcs=None,
         python_binary_deps=(),
         python_library_deps=(),
-        src=None,
         srcs=None,
         visibility=None,
         **kwargs
@@ -264,8 +263,6 @@ class _SphinxConverter(base.Converter):
         """
         Entry point for converting sphinx rules
         """
-        if srcs is None:
-            srcs = [src]
         python_deps = tuple(python_library_deps) + tuple((
             _dep + '-library'
             for _dep
@@ -372,7 +369,7 @@ class SphinxManpageConverter(_SphinxConverter):
     def get_allowed_args(self):
         allowed_args = super(SphinxManpageConverter, self).get_allowed_args()
         allowed_args.update({
-            'src',
+            'srcs',
             'author',
             'description',
             'section',
