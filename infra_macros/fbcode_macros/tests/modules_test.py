@@ -25,7 +25,7 @@ class ModulesTest(tests.utils.TestCase):
             root.runUnitTests(
                 self.includes,
                 ['modules.get_module_name("fbcode", "base/path", "short-name")']),
-            "fbcode_base_path_short_name")
+            "fbcode//base/path:short-name")
 
     @tests.utils.with_project()
     def test_get_module_map(self, root):
@@ -35,12 +35,12 @@ class ModulesTest(tests.utils.TestCase):
                 ['modules.get_module_map("name", {"header1.h": ["private"], "header2.h": {}})']),
             textwrap.dedent(
                 """\
-                module name {
-                  module header1_h {
+                module "name" {
+                  module "header1.h" {
                     private header "header1.h"
                     export *
                   }
-                  module header2_h {
+                  module "header2.h" {
                     header "header2.h"
                     export *
                   }

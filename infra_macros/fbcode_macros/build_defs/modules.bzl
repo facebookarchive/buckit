@@ -15,6 +15,15 @@ def _enabled():
             "clang")
     return enabled
 
+def _get_deprecated_auto_module_names():
+    """
+    Return projects (specified via `<cell>//<project>`) that use old-style
+    sanitized module names.
+    """
+
+    projs = read_list("fbcode", "old_style_module_names", [], delimiter = ",")
+    return [tuple(proj.split("//")) for proj in projs]
+
 def _sanitize_name(name):
     """
     Sanitize input of chars that can't be used in a module map token.
@@ -26,13 +35,19 @@ def _sanitize_name(name):
     return name
 
 def _get_module_name(cell, base_path, name):
-    return _sanitize_name('_'.join([cell, base_path, name]))
+    """
+    Return a module name to use for the given cell, base path, and name tuple.
+    """
+
+    if (cell, base_path) in _get_deprecated_auto_module_names():
+        return _sanitize_name('_'.join([cell, base_path, name]))
+    return '{}//{}:{}'.format(cell, base_path, name)
 
 def _get_module_map(name, headers):
     lines = []
-    lines.append('module {} {{'.format(name))
+    lines.append('module "{}" {{'.format(name))
     for header, attrs in sorted(headers.items()):
-        lines.append('  module {} {{'.format(_sanitize_name(header)))
+        lines.append('  module "{}" {{'.format(header))
         header_line = '    '
         for attr in sorted(attrs):
             header_line += attr + ' '
@@ -122,7 +137,7 @@ def _gen_module(
 
     native.cxx_genrule(
         name = name,
-        out = module_name + ".pcm",
+        out = "module.pcm",
         srcs = srcs,
         # TODO(T32246672): Clang currently embeds absolute paths into PCM
         # files, and we're not sure how to avoid this.  Until we do, mark
