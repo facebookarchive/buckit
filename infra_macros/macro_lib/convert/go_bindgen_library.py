@@ -37,7 +37,9 @@ class GoBindgenLibraryConverter(go.GoConverter):
         return set({
             'name',
             'package_name',
+            'import_path',
             'srcs',
+            'go_srcs',
             'headers',
             'deps',
             'go_external_deps',
@@ -182,6 +184,7 @@ class GoBindgenLibraryConverter(go.GoConverter):
             package_name,
             header_includes,
             manifest,
+            import_path=None, # package_name arg equivalent in buck
             srcs=None,
             headers=None,
             **kwargs):
@@ -198,7 +201,7 @@ class GoBindgenLibraryConverter(go.GoConverter):
         return super(GoBindgenLibraryConverter, self).convert(
             base_path,
             name,
-            package_name=package_name,
+            package_name=import_path,
             srcs=srcs + extra_srcs,
             headers=headers + extra_headers,
             **kwargs) + extra_rules
