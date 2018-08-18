@@ -15,6 +15,50 @@ def _enabled():
             "clang")
     return enabled
 
+# Flags to apply to compilations to enabled modules.
+_TOOLCHAIN_FLAGS = [
+    # Enable modules.
+    "-fmodules",
+    # Show what modules are built during compilation.
+    "-Rmodule-build",
+    # Explicitly enable implicit module maps.  This is needed to allow for
+    # automatic translation from `#include ...` lines to the required module
+    # import via searching for `module.modulemap`s when using manual modules
+    # specified on the command-line via `-fmodule-file=...`.
+    "-fimplicit-module-maps",
+    # Normally, clang would auto-load it's builtin module map file,
+    # but since we're explicitly managing the module deps, it's
+    # unnecessary, so disable it so there's less magic going on.
+    "-fno-builtin-module-map",
+    # Don't implicitly build modules, and require all needed modules
+    # to be explicitly added via `-fmodule-file=...`.
+    "-fno-implicit-modules",
+    # We shouldn't be using the builtin clang modules cache since
+    # we're not using implicit modules, but set it to a non-existent
+    # path to make sure (this is the location where clang would place
+    # implicitly built modules).
+    "-fmodules-cache-path=/DOES/NOT/EXIST",
+    # Prevent using global modules index, as this would exist outside
+    # Buck's caching (NOTE(agallagher): I *think* this is just used
+    # for improving error messages, but I'm not sure).
+    "-Xclang",
+    "-fno-modules-global-index",
+    # Warn about using non-module includes inside modules.  This effectively
+    # means tp2 projects w/o `module.modulemap` files cannot be used (but also
+    # helps prevent duplicate definition issues where multiple fbcode modules
+    # pull in the same tp2 header textually).
+    "-Wnon-modular-include-in-module",
+
+    # NOTE(agallagher): Some additional flags which are likely useful
+    # for determinism, but which I'm not entirely sure how yet:
+    #  -fmodules-user-build-path <directory>
+    #  -Xclang -fdisable-module-hash
+    #  -Xclang -fmodules-user-build-path -Xclang <directory>
+]
+
+def _get_toolchain_flags():
+    return _TOOLCHAIN_FLAGS
+
 def _get_deprecated_auto_module_names():
     """
     Return projects (specified via `<cell>//<project>`) that use old-style
@@ -156,6 +200,7 @@ def _gen_module(
              # Add toolchain flags
              "args+=($(cxxppflags :{}))".format(helper_name),
              "args+=($(cxxflags))",
+             "args+=({})".format(' '.join(map(shell.quote, _get_toolchain_flags()))),
 
              # Enable building *.pcm module files.
              'args+=("-Xclang" "-emit-module")',
@@ -183,5 +228,6 @@ modules = struct(
     get_implicit_module_deps = _get_implicit_module_deps,
     get_module_map = _get_module_map,
     get_module_name = _get_module_name,
+    get_toolchain_flags = _get_toolchain_flags,
     module_map_rule = _module_map_rule,
 )

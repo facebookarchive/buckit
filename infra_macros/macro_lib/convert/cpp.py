@@ -1083,6 +1083,8 @@ class CppConverter(base.Converter):
         # part of the same module as the headers (and so have access to
         # private headers).
         if modules.enabled():
+            out_lang_preprocessor_flags['cxx'].extend(
+                modules.get_toolchain_flags())
             module_name = modules.get_module_name('fbcode', base_path, name)
             out_lang_preprocessor_flags['cxx'].append(
                 '-fmodule-name=' + module_name)
