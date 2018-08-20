@@ -39,6 +39,8 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 compiled_wheel = re.compile('-cp[0-9]{2}-')
 
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+
 
 def get_url_basename(url):
     """ Urls will have an #md5 etag remove it and return the wheel name"""
@@ -65,6 +67,32 @@ def gen_prebuilt_target(wheel, remote_target, visibility):
     return Rule('prebuilt_python_library', attrs)
 
 
+def _wheel_override_version_check(name, platform_versions):
+    wheel_platform = read_config("python", "wheel_platform_override")
+    if wheel_platform:
+
+        wheel_platform = "py3-{}".format(wheel_platform)
+        building_platform = "py3-{}".format(
+            platform_utils.get_platform_for_current_buildfile()
+        )
+
+        # Setting defaults to "foo" and "bar" so that they're different in case both return None
+        if platform_versions.get(building_platform, "foo") != platform_versions.get(
+            wheel_platform, "bar"
+        ):
+            print(
+                "You're building for {0} and the default version of {4} for this platform ({2}) "
+                "doesn't match the default version for {1} ({3}). The resulting binary most probably "
+                "won't work on {0}. Update the TARGETS file for {4} to fix this.".format(
+                    wheel_platform,
+                    building_platform,
+                    platform_versions.get(building_platform, "None"),
+                    platform_versions.get(wheel_platform, "None"),
+                    name,
+                )
+            )
+
+
 class PyWheelDefault(base.Converter):
     """
     Produces a RuleTarget named after the base_path that points to the
@@ -80,6 +108,8 @@ class PyWheelDefault(base.Converter):
 
     def convert_rule(self, base_path, platform_versions, visibility):
         name = os.path.basename(base_path)
+
+        _wheel_override_version_check(name, platform_versions)
 
         # If there is no default for either py2 or py3 for the given platform
         # Then we should fail to return a rule, instead of silently building
