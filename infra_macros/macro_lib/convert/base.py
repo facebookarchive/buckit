@@ -222,6 +222,7 @@ ASAN_UBSAN_FLAGS = [
 UBSAN_FLAGS = [
     '-fsanitize=undefined',
     '-fno-sanitize=alignment',
+    '-fno-sanitize=null',
     '-fsanitize-blacklist=$(location //tools/build:ubsan-blacklist)',
 
     # Python extensions are loaded with RTLD_LOCAL which is
