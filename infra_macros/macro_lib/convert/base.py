@@ -1967,8 +1967,9 @@ class Converter(object):
         if build_dat is not None:
             return build_dat
 
-        build_dat_name = os.path.join(base_path, 'build.dat')
-        self._context.buck_ops.add_build_file_dep('//' + build_dat_name)
+        fbsource_root = read_config('fbsource', 'repo_relative_path', '..');
+        build_dat_name = os.path.join(fbsource_root, "fbcode", base_path, 'build.dat')
+        self._context.buck_ops.add_build_file_dep('fbcode//' + build_dat_name)
         with open(build_dat_name) as f:
             build_dat = json.load(f)
 
