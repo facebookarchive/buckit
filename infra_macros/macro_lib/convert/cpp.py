@@ -600,22 +600,21 @@ class CppConverter(base.Converter):
 
             # Sanitize the header and source files of original source line-
             # markers and include guards.
-            'sed -i.bak'
+            'sed -i'
             r""" -e 's|'"$SRCS"'|'{src}'|g' """
             r""" -e 's|YY_YY_.*_INCLUDED|YY_YY_{defn}_INCLUDED|g' """
             ' "$OUT/{base}.c" "$OUT/{base}.h"',
 
             # Sanitize the source file of self-referencing line-markers.
-            'sed -i.bak'
+            'sed -i'
             r""" -e 's|\b{base}\.c\b|{base}.cc|g' """
             r""" -e 's|'"$OUT"'/'{base}'\.cc\b|'{out_cc}'|g' """
             ' "$OUT/{base}.c"',
 
             # Sanitize the header file of self-referencing line-markers.
-            'sed -i.bak'
+            'sed -i'
             r""" -e 's|'"$OUT"'/'{base}'\.h\b|'{out_h}'|g' """
             ' "$OUT/{base}.h"',
-            'rm -f "$OUT/{base}"*.bak',
             'mv "$OUT/{base}.c" "$OUT/{base}.cc"'
         ]
 
@@ -623,13 +622,13 @@ class CppConverter(base.Converter):
             commands.append(
                 # Patch the header file to add include header file prefix
                 # e.g.: thrifty.yy.h => thrift/compiler/thrifty.yy.h
-                'sed -i.bak'
+                'sed -i'
                 r""" -e 's|#include "{base}.h"|#include "{base_path}/{base}.h"|g' """
                 ' "$OUT/{base}.cc"'
             )
             commands.append(
                 # Sanitize the stack header file's line-markers.
-                'sed -i.bak'
+                'sed -i'
                 r""" -e 's|#\(.*\)YY_YY_[A-Z0-9_]*_FBCODE_|#\1YY_YY_FBCODE_|g' """
                 r""" -e 's|#line \([0-9]*\) "/.*/fbcode/|#line \1 "fbcode/|g' """
                 r""" -e 's|\\file /.*/fbcode/|\\file fbcode/|g' """
