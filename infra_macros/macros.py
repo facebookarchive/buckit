@@ -63,9 +63,9 @@ load('@fbcode_macros//build_defs:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
 load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
-include_defs('//{}/global_defns.py'.format(MACRO_LIB_DIR), 'global_defns')
 include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 include_defs('//{}/convert/base.py'.format(MACRO_LIB_DIR), 'base')
@@ -217,11 +217,8 @@ def rule_handler(context, globals, rule_type, **kwargs):
     for converted in results:
         eval(converted.type, globals)(**converted.attributes)
 
-# Export global definitions.
-for key, val in global_defns.__dict__.iteritems():
-    if not key.startswith('_'):
-        globals()[key] = val
-        __all__.append(key)
+globals()["AutoHeaders"] = AutoHeaders
+__all__.append("AutoHeaders")
 
 
 # Helper rule to throw an error when accessing raw Buck rules.

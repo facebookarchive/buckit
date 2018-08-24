@@ -46,9 +46,9 @@ cpp = import_macro_lib('convert/cpp')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
-global_defns = import_macro_lib('global_defns')
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 
 
 def split_matching_extensions(srcs, exts):
@@ -365,7 +365,7 @@ class Converter(base.Converter):
             srcs=list(srcs),  # cpp_library doesn't accept dict sources
             deps=cpp_deps,
             compiler_flags=cpp_compiler_flags,
-            auto_headers=global_defns.AutoHeaders.NONE,
+            auto_headers=AutoHeaders.NONE,
             headers=headers,
             header_namespace=header_namespace,
             external_deps=cpp_external_deps,

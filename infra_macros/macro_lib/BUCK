@@ -19,16 +19,6 @@ python_library(
     base_module = "",
 )
 
-# Export `global_defns.py` for fbbuild.
-python_library(
-    name = "global_defns",
-    srcs = [
-        "global_defns.py",
-    ],
-    # BUILD_MODE files and fbbuild expect this to have no base module.
-    base_module = "",
-)
-
 python_library(
     name = "cxx_sources",
     srcs = [

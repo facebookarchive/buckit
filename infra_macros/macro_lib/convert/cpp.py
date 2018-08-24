@@ -38,7 +38,6 @@ with allow_unsafe_import():
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/global_defns.py".format(macro_root), "global_defns")
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
@@ -50,6 +49,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
@@ -772,7 +772,7 @@ class CppConverter(base.Converter):
         return read_config(
             'cxx',
             'auto_headers',
-            global_defns.AutoHeaders.SOURCES)
+            AutoHeaders.SOURCES)
 
     def get_implicit_deps(self):
         """
@@ -1272,7 +1272,7 @@ class CppConverter(base.Converter):
                 headers,
                 auto_headers,
                 self._context.buck_ops.read_config))
-        if auto_headers == global_defns.AutoHeaders.SOURCES:
+        if auto_headers == AutoHeaders.SOURCES:
             src_headers = set(self.get_headers_from_sources(base_path, srcs))
             src_headers -= set(out_headers)
             if isinstance(out_headers, list):
