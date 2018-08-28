@@ -505,7 +505,7 @@ class CppThriftConverter(ThriftLangConverter):
         if self.get_static_reflection(options):
             common_deps.append(
                 self.get_thrift_dep_target(
-                    'thrift/lib/cpp2/fatal', 'reflection'))
+                    'thrift/lib/cpp2/reflection', 'reflection'))
 
         types_deps.extend(common_deps)
         services_deps.extend(common_deps)
