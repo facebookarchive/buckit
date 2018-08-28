@@ -1025,6 +1025,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
         # Wrap the source zip in a java library rule, with an implicit dep on
         # the thrift library.
         out_deps = []
+        out_deps.extend(deps)
         out_deps.extend(self._get_runtime_dependencies())
         rules.extend(self._java_library_converter.convert(
             base_path,
