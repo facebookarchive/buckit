@@ -40,7 +40,6 @@ try:
     use_internal_java_converters = True
 except ImportError:
     use_internal_java_converters = False
-js = import_macro_lib('convert/js')
 cython = import_macro_lib('convert/cython')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
@@ -1026,7 +1025,6 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
         # Wrap the source zip in a java library rule, with an implicit dep on
         # the thrift library.
         out_deps = []
-        out_deps.extend(deps)
         out_deps.extend(self._get_runtime_dependencies())
         rules.extend(self._java_library_converter.convert(
             base_path,
@@ -1137,7 +1135,6 @@ class JsThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(JsThriftConverter, self).__init__(context, *args, **kwargs)
-        self._js_converter = js.JsConverter(context, 'js_npm_module')
 
     def get_lang(self):
         return 'js'

@@ -50,6 +50,9 @@ load(  # noqa F821
 )
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
+load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
+load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_external")
+load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 
 with allow_unsafe_import():  # noqa: F821
     import sys
@@ -80,7 +83,6 @@ except ImportError:
     use_internal_java_converters = False
 image_feature = import_macro_lib('convert/container_image/image_feature')
 image_layer = import_macro_lib('convert/container_image/image_layer')
-js = import_macro_lib('convert/js')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 ocaml_library_external = import_macro_lib('convert/ocaml_library_external')
@@ -177,9 +179,6 @@ def convert(context, base_path, rule):
         python.PythonConverter(context, 'python_library'),
         python.PythonConverter(context, 'python_binary'),
         python.PythonConverter(context, 'python_unittest'),
-        js.JsConverter(context, 'js_executable'),
-        js.JsConverter(context, 'js_node_module_external'),
-        js.JsConverter(context, 'js_npm_module'),
         custom_unittest.CustomUnittestConverter(context),
         thrift_library.ThriftLibraryConverter(context),
         swig_library.SwigLibraryConverter(context),
@@ -231,7 +230,10 @@ def convert(context, base_path, rule):
         'remote_file': remote_file,  # noqa F821
         'test_suite': test_suite,  # noqa F821
         'buck_command_alias': buck_command_alias,  # noqa F821
-        'custom_rule': custom_rule  # noqa F821
+        'custom_rule': custom_rule,  # noqa F821
+        'js_executable': js_executable,  # noqa F821
+        'js_node_module_external': js_node_module_external,  # noqa F821
+        'js_npm_module': js_npm_module,  # noqa F821
     }
 
     for converter in converters:
