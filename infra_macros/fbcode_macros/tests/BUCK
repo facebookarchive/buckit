@@ -17,6 +17,10 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:js_common.bzl",
+    "fbcode_macros//build_defs:js_executable.bzl",
+    "fbcode_macros//build_defs:js_node_module_external.bzl",
+    "fbcode_macros//build_defs:js_npm_module.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
     "fbcode_macros//build_defs:modules.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
@@ -117,6 +121,24 @@ skylark_integration_test(
 skylark_integration_test(
     name = "export_files_test",
     srcs = ["export_files_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "js_executable_test",
+    srcs = ["js_executable_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "js_node_module_external_test",
+    srcs = ["js_node_module_external_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "js_npm_module_test",
+    srcs = ["js_npm_module_test.py"],
     deps = [":utils"],
 )
 

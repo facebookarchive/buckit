@@ -131,7 +131,7 @@ def _gen_module(
     Compile a module (i.e. `.pcm` file) from a `module.modulemap` file and the
     corresponding headers, specified as either a map or a directory.
 
-    Arguments:
+    Args:
       name: The name of rule that builds the module.  This will also serve as
             a name prefix for any additional rules that need to be created.
       headers: A dictionary of headers to be compiled into a module, mapping
