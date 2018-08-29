@@ -6,6 +6,10 @@ import unittest
 from contextlib import contextmanager
 
 from artifacts_dir import ensure_per_repo_artifacts_dir_exists
+from btrfs_diff.subvolume_set import SubvolumeSet
+from btrfs_diff.tests import render_subvols
+from btrfs_diff.tests.demo_sendstreams_expected import render_demo_subvols
+from subvol_utils import Subvol
 from volume_for_repo import get_volume_for_current_repo
 
 from ..subvolume_on_disk import SubvolumeOnDisk
@@ -37,6 +41,9 @@ class ImageLayerTestCase(unittest.TestCase):
             ),
             'targets',
         )
+        # More output for easier debugging
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
 
     @contextmanager
     def target_subvol(self, target):
@@ -86,3 +93,31 @@ class ImageLayerTestCase(unittest.TestCase):
             self._check_parent(sod.subvolume_path())
         with self.target_subvol('child_layer') as sod:
             self._check_child(sod.subvolume_path())
+
+    def test_layer_from_demo_sendstreams(self):
+        # `btrfs_diff.demo_sendstream` produces a subvolume send-stream with
+        # fairly thorough coverage of filesystem features.  This test grabs
+        # that send-stream, receives it into an `image_layer`, and validates
+        # that the send-stream of the **received** volume has the same
+        # rendering as the original send-stream was supposed to have.
+        #
+        # In other words, besides testing `image_layer`'s `from_sendstream`,
+        # this is also a test of idempotence for btrfs send+receive.
+        #
+        # Notes:
+        #  - `compiler/tests/TARGETS` explains why `mutate_ops` is not here.
+        #  - Currently, `mutate_ops` also uses `--no-data`, which would
+        #    break this test of idempotence.
+        for op in ['create_ops']:
+            with self.target_subvol(op) as sod:
+                subvol_set = SubvolumeSet.new()
+                subvolume = render_subvols.add_sendstream_to_subvol_set(
+                    subvol_set,
+                    Subvol(sod.subvolume_path(), already_exists=True)
+                        .mark_readonly_and_get_sendstream(),
+                )
+                render_subvols.prepare_subvol_set_for_render(subvol_set)
+                self.assertEqual(
+                    render_demo_subvols(**{op: True}),
+                    render_subvols.render_subvolume(subvolume),
+                )

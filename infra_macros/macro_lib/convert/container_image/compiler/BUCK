@@ -9,6 +9,12 @@ python_library(
     base_module = "compiler",
 )
 
+python_binary(
+    name = "subvolume-on-disk",
+    main_module = "compiler.subvolume_on_disk",
+    deps = [":subvolume_on_disk"],
+)
+
 python_unittest(
     name = "test-subvolume-on-disk",
     srcs = ["tests/test_subvolume_on_disk.py"],
@@ -185,6 +191,7 @@ IMAGE_LAYER_DEPS = [
     "child_layer",
     "parent_layer",
     "hello_world_base",
+    "create_ops",
 ]
 
 python_unittest(
@@ -214,5 +221,9 @@ python_unittest(
         ":artifacts_dir",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":volume_for_repo",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        "/btrfs_diff:testlib_demo_sendstreams",
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        "/btrfs_diff:testlib_render_subvols",
     ],
 )

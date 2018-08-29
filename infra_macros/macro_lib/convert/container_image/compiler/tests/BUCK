@@ -120,3 +120,33 @@ image_layer(
         },
     ],
 )
+
+##
+## These few rules help test the `image_layer` `from_sendstream` feature.
+##
+
+python_binary(
+    name = "save-demo-sendstream",
+    srcs = ["save_demo_sendstream.py"],
+    base_module = "",
+    main_module = "save_demo_sendstream",
+    par_style = "zip",  # testlib_demo_sendstreams needs this in @mode/opt
+    deps = [
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        "/btrfs_diff:testlib_demo_sendstreams",
+    ],
+)
+
+# Future: it'd be neat to add `mutate_ops`, but that requires some wrangling
+# with btrfs to get it to find the parent subvolume.
+for op in ['create_ops']:
+    buck_genrule(
+        name = op + ".sendstream",
+        out = op + ".sendstream",
+        bash = "$(exe :save-demo-sendstream) \"$OUT\" " + op,
+    )
+
+    image_layer(
+        name = op,
+        from_sendstream = ":" + op + ".sendstream",
+    )

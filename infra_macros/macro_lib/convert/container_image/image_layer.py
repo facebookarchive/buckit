@@ -4,9 +4,9 @@ An `image_layer` is an `image_feature` with some additional parameters.  Its
 purpose to materialize that `image_feature` as a btrfs subvolume in the
 per-repo `buck-image/out/volume/targets`.
 
-We call the subvolume a "layer" because it can be built on top of a
-snapshot of its `parent_layer`, and thus can be represented as a `btrfs
-send`-style diff for more efficient storage & distribution.
+We call the subvolume a "layer" because it can be built on top of a snapshot
+of its `parent_layer`, and thus can be represented as a btrfs send-stream for
+more efficient storage & distribution.
 
 The Buck output of an `image_layer` target is a JSON file with information
 on how to find the resulting layer in the per-repo
@@ -104,6 +104,8 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 image_feature = import_macro_lib('convert/container_image/image_feature')
 
+HELPER_BASE = '//tools/build/buck/infra_macros/macro_lib/convert/container_image'
+
 
 class ImageLayerConverter(base.Converter):
     'Start by reading the module docstring.'
@@ -126,34 +128,52 @@ class ImageLayerConverter(base.Converter):
         # don't have to change it too much.
         layer_size_bytes=10e10,
         visibility=None,
+        # Path to a target outputting a btrfs send-stream of a subvolume;
+        # mutually exclusive with using any of the image_feature fields.
+        from_sendstream=None,
         **image_feature_kwargs
     ):
-        # For ease of use, a layer takes all the arguments of a feature, so
-        # just make an implicit feature target to implement this.
-        feature_name = name + '-feature'
-        feature_target = \
-            ':' + feature_name + image_feature.DO_NOT_DEPEND_ON_FEATURES_SUFFIX
-        rules = image_feature.ImageFeatureConverter(self._context).convert(
-            base_path,
-            name=feature_name,
-            **image_feature_kwargs
-        )
-
-        parent_layer_feature_query = '''
-            attrfilter(type, image_feature, deps({}))
-        '''.format(parent_layer)
-
-        # We will ask Buck to ensure that the outputs of the direct
-        # dependencies of our `image_feature`s are available on local disk.
-        # See `Implementation notes: Dependency resolution` in `__doc__`.
-        this_layer_feature_query = '''
-            attrfilter(type, image_feature, deps({my_feature}))
-                {minus_parent_features}
-        '''.format(
-            my_feature=feature_target,
-            minus_parent_features=(' - ' + parent_layer_feature_query)
-                if parent_layer else '',
-        )
+        # There are two independent ways to actually populate the resulting
+        # btrfs subvolume.  They live in a single target type for
+        # memorability, and because much of the implementation is shared.
+        if from_sendstream is not None and image_feature_kwargs:
+            raise ValueError(
+                'cannot use `from_sendstream` with `image_feature` args'
+            )
+        elif image_feature_kwargs:
+            rules, make_subvol_cmd = self._compile_image_features(
+                base_path=base_path,
+                rule_name=name,
+                parent_layer=parent_layer,
+                image_feature_kwargs=image_feature_kwargs,
+            )
+        else:
+            if parent_layer is not None:
+                # Mechanistically, applying a send-stream on top of an
+                # existing layer is just a regular `btrfs receive`.
+                # However, the rules in the current `receive` implementation
+                # for matching the parent to the stream are kind of awkward,
+                # and it's not clear whether they are right for us in Buck.
+                raise NotImplementedError()
+            rules = []
+            make_subvol_cmd = '''
+                sendstream_path=$(location {from_sendstream})
+                # CAREFUL: To avoid inadvertently masking errors, we only
+                # perform command substitutions with variable assignments.
+                sendstream_path=\\$(readlink -f "$sendstream_path")
+                subvol_name=\\$(
+                    cd "$subvolumes_dir/$subvolume_wrapper_dir"
+                    sudo btrfs receive -f "$sendstream_path" . >&2
+                    test 1 -eq $(ls | wc -l)  # Expect 1 subvolume
+                    ls
+                )
+                $(location {helper_base}/compiler:subvolume-on-disk) \
+                  "$subvolumes_dir" \
+                  "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
+                '''.format(
+                    from_sendstream=from_sendstream,
+                    helper_base=HELPER_BASE,
+                )
 
         rules.append(Rule('genrule', collections.OrderedDict(
             name=name,
@@ -207,6 +227,8 @@ class ImageLayerConverter(base.Converter):
             trap log_on_error EXIT
 
             (
+              # Log all commands now that stderr is redirected.
+              set -x
               # We want subvolume names to be user-controllable. To permit
               # this, we wrap each subvolume in a temporary subdirectory.
               # This also allows us to prevent access to capability-
@@ -220,7 +242,7 @@ class ImageLayerConverter(base.Converter):
               # Usability is better since our version sorts by build time.
               binary_path=$(location {helper_base}:subvolume-version)
               subvolume_ver=\\$( "$binary_path" )
-              subvolume_wrapper_dir={subvolume_name_quoted}":$subvolume_ver"
+              subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
               # IMPORTANT: This invalidates and/or deletes any existing
               # subvolume that was produced by the same target.  This is the
@@ -241,19 +263,7 @@ class ImageLayerConverter(base.Converter):
                 --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
                 --new-subvolume-json "$OUT"
 
-              # Take note of `targets_and_outputs` below -- this enables the
-              # compiler to map the `__BUCK_TARGET`s in the outputs of
-              # `image_feature` to those targets' outputs.
-              $(location {helper_base}:compiler) \
-                --subvolumes-dir "$subvolumes_dir" \
-                --subvolume-rel-path \
-                  "$subvolume_wrapper_dir/"{subvolume_name_quoted} \
-                --parent-layer-json {parent_layer_json_quoted} \
-                --child-layer-target {current_target_quoted} \
-                --child-feature-json $(location {my_feature_target}) \
-                --child-dependencies \
-                  $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
-                    > "$OUT"
+              {make_subvol_cmd}
 
               # Our hardlink-based refcounting scheme, as well as the fact
               # that we keep subvolumes in a special location, make it a
@@ -262,25 +272,78 @@ class ImageLayerConverter(base.Converter):
             ) &> "$my_log"
             '''.format(
                 min_free_bytes=int(layer_size_bytes),
-                helper_base='//tools/build/buck/infra_macros/macro_lib/'
-                    'convert/container_image',
-                parent_layer_json_quoted='$(location {})'.format(parent_layer)
-                    if parent_layer else "''",
-                subvolume_name_quoted=quote(name),
-                current_target_quoted=quote(self.get_target(
-                    self._context.config.get_current_repo_name(),
-                    base_path,
-                    name,
-                )),
-                my_feature_target=feature_target,
-                my_deps_query=this_layer_feature_query,
+                helper_base=HELPER_BASE,
+                rule_name_quoted=quote(name),
                 refcounts_dir_quoted=os.path.join(
                     '$GEN_DIR',
                     quote(self.get_fbcode_dir_from_gen_dir()),
                     'buck-out/.volume-refcount-hardlinks/',
                 ),
+                make_subvol_cmd=make_subvol_cmd,
             ),
             visibility=visibility,
         )))
 
         return rules
+
+    def _compile_image_features(
+        self,
+        base_path,
+        rule_name,
+        parent_layer,
+        image_feature_kwargs,
+    ):
+        # For ease of use, a layer takes all the arguments of a feature, so
+        # just make an implicit feature target to implement this.
+        feature_name = rule_name + '-feature'
+        feature_target = \
+            ':' + feature_name + image_feature.DO_NOT_DEPEND_ON_FEATURES_SUFFIX
+        rules = image_feature.ImageFeatureConverter(self._context).convert(
+            base_path,
+            name=feature_name,
+            **image_feature_kwargs
+        )
+
+        parent_layer_feature_query = '''
+            attrfilter(type, image_feature, deps({}))
+        '''.format(parent_layer)
+
+        # We will ask Buck to ensure that the outputs of the direct
+        # dependencies of our `image_feature`s are available on local disk.
+        # See `Implementation notes: Dependency resolution` in `__doc__`.
+        this_layer_feature_query = '''
+            attrfilter(type, image_feature, deps({my_feature}))
+                {minus_parent_features}
+        '''.format(
+            my_feature=feature_target,
+            minus_parent_features=(' - ' + parent_layer_feature_query)
+                if parent_layer else '',
+        )
+
+        return rules, '''
+            # Take note of `targets_and_outputs` below -- this enables the
+            # compiler to map the `__BUCK_TARGET`s in the outputs of
+            # `image_feature` to those targets' outputs.
+            $(location {helper_base}:compiler) \
+              --subvolumes-dir "$subvolumes_dir" \
+              --subvolume-rel-path \
+                "$subvolume_wrapper_dir/"{rule_name_quoted} \
+              --parent-layer-json {parent_layer_json_quoted} \
+              --child-layer-target {current_target_quoted} \
+              --child-feature-json $(location {my_feature_target}) \
+              --child-dependencies \
+                $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
+                  > "$OUT"
+            '''.format(
+                helper_base=HELPER_BASE,
+                rule_name_quoted=quote(rule_name),
+                parent_layer_json_quoted='$(location {})'.format(parent_layer)
+                    if parent_layer else "''",
+                current_target_quoted=quote(self.get_target(
+                    self._context.config.get_current_repo_name(),
+                    base_path,
+                    rule_name,
+                )),
+                my_feature_target=feature_target,
+                my_deps_query=this_layer_feature_query,
+            )
