@@ -115,7 +115,14 @@ class CompilerTestCase(unittest.TestCase):
         )
         for item in si.ID_TO_ITEM.values():
             item.build(subvol)
-        return run_as_root.call_args_list
+        return run_as_root.call_args_list + [
+            (
+                ([
+                    'btrfs', 'property', 'set', '-ts',
+                    b'/fake subvolumes dir/SUBVOL', 'ro', 'true',
+                ],),
+            ),
+        ]
 
     def _assert_equal_call_sets(self, expected, actual):
         '''

@@ -104,6 +104,8 @@ def build_image(args):
         )
     ):
         item.build(subvol)
+    # Build artifacts should never change.
+    subvol.set_readonly(True)
 
     try:
         return SubvolumeOnDisk.from_subvolume_path(

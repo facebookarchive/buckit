@@ -164,8 +164,11 @@ class ImageLayerConverter(base.Converter):
                 subvol_name=\\$(
                     cd "$subvolumes_dir/$subvolume_wrapper_dir"
                     sudo btrfs receive -f "$sendstream_path" . >&2
-                    test 1 -eq $(ls | wc -l)  # Expect 1 subvolume
-                    ls
+                    subvol=$(ls)
+                    test 1 -eq $(echo "$subvol" | wc -l)  # Expect 1 subvolume
+                    # Receive should always mark the result read-only.
+                    test $(sudo btrfs property get -ts "$subvol" ro) = ro=true
+                    echo "$subvol"
                 )
                 $(location {helper_base}/compiler:subvolume-on-disk) \
                   "$subvolumes_dir" \
