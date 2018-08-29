@@ -181,6 +181,8 @@ python_library(
         ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
     deps = [
+        ":testlib_render_subvols",
+        ":testlib_subvolume_utils",
         "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
         ":testlib_temp_subvolumes",
     ],
@@ -315,7 +317,5 @@ python_unittest(
         ":freeze",
         ":subvolume_set",
         ":testlib_demo_sendstreams",  # requires `par_style = "zip"`
-        ":testlib_render_subvols",
-        ":testlib_subvolume_utils",
     ],
 )

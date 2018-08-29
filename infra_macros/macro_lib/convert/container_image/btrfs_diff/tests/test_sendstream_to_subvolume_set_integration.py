@@ -28,7 +28,7 @@ from ..subvolume_set import SubvolumeSet
 from . import render_subvols as render_sv
 
 from .demo_sendstreams import gold_demo_sendstreams
-from .subvolume_utils import InodeRepr
+from .demo_sendstreams_expected import render_demo_subvols
 
 
 class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
@@ -50,105 +50,22 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
             build_end_time=stream_dict['mutate_ops']['build_end_time'],
         )
 
-        # For ease of maintenance, keep the subsequent filesystem views in
-        # the order that `demo_sendstreams.py` performs the operations.
-
-        MB = 2 ** 20
-        goodbye_world = InodeRepr('(File)')  # This empty file gets hardlinked
-
-        def create_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
-            return render_sv.expected_rendering(['(Dir)', {
-                'hello': ["(Dir x'user.test_attr'='chickens')", {
-                    'world': [goodbye_world],
-                }],
-                'dir_to_remove': ['(Dir)', {}],
-                'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
-                'unbuffered': [f'(Char {os.makedev(1337, 31415):x})'],
-                'fifo': ['(FIFO)'],
-                'unix_sock': ['(Sock m755)'],  # default mode for sockets
-                'goodbye': [goodbye_world],
-                'bye_symlink': ['(Symlink hello/world)'],
-                '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
-                '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
-                'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
-            }])
-
+        # Rendering the subvolumes individually shows fewer clones than
+        # rendering them together.
         self.assertEqual(
-            create_ops(
-                mb_nuls=f'create_ops@1MB_nuls_clone:0+{MB}@0',
-                mb_nuls_clone=f'create_ops@1MB_nuls:0+{MB}@0',
-                zeros_holes_zeros='d16384h16384d16384',
-            ),
+            render_demo_subvols(create_ops=True),
             render_sv.render_subvolume(
                 subvols.get_by_rendered_id('create_ops'),
             ),
         )
-
-        def mutate_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
-            return render_sv.expected_rendering(['(Dir)', {
-                'hello_renamed': ['(Dir)', {"een": ['(File d5)']}],
-                'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
-                'unbuffered': [f'(Char {os.makedev(1337, 31415):x})'],
-                'fifo': ['(FIFO)'],
-                'unix_sock': ['(Sock m755)'],  # default mode for sockets
-                'farewell': [goodbye_world],
-                'bye_symlink': ['(Symlink hello/world)'],
-                '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
-                '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
-                'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
-            }])
-
-        # This single-subvolume render of `mutate_ops` doesn't show the fact
-        # that all data was cloned from `create_ops`.
         self.assertEqual(
-            mutate_ops(
-                mb_nuls=f'mutate_ops@1MB_nuls_clone:0+{MB}@0',
-                mb_nuls_clone=f'mutate_ops@1MB_nuls:0+{MB}@0',
-                zeros_holes_zeros='d16384h16384d16384',
-            ),
+            render_demo_subvols(mutate_ops=True),
             render_sv.render_subvolume(
                 subvols.get_by_rendered_id('mutate_ops'),
             ),
         )
-
-        # Rendering both subvolumes together shows all the clones.
         self.assertEqual(
-            {
-                'create_ops': create_ops(
-                    mb_nuls=(
-                        f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                    ),
-                    mb_nuls_clone=(
-                        f'create_ops@1MB_nuls:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                    ),
-                    zeros_holes_zeros=(
-                        'd16384(mutate_ops@zeros_hole_zeros:0+16384@0)'
-                        'h16384(mutate_ops@zeros_hole_zeros:16384+16384@0)'
-                        'd16384(mutate_ops@zeros_hole_zeros:32768+16384@0)'
-                    ),
-                ),
-                'mutate_ops': mutate_ops(
-                    mb_nuls=(
-                        f'create_ops@1MB_nuls:0+{MB}@0/'
-                        f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                    ),
-                    mb_nuls_clone=(
-                        f'create_ops@1MB_nuls:0+{MB}@0/'
-                        f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                        f'mutate_ops@1MB_nuls:0+{MB}@0'
-                    ),
-                    zeros_holes_zeros=(
-                        'd16384(create_ops@zeros_hole_zeros:0+16384@0)'
-                        'h16384(create_ops@zeros_hole_zeros:16384+16384@0)'
-                        'd16384(create_ops@zeros_hole_zeros:32768+16384@0)'
-                    ),
-                ),
-            },
+            render_demo_subvols(create_ops=True, mutate_ops=True),
             freeze(subvols).map(
                 lambda sv: emit_non_unique_traversal_ids(sv.render())
             ),

@@ -13,10 +13,14 @@ import os
 
 from typing import List, Sequence, Tuple
 
+from . import render_subvols
+from .subvolume_utils import InodeRepr
+
 from ..send_stream import (
     get_frequency_of_selinux_xattrs, ItemFilters, SendStreamItem,
     SendStreamItems,
 )
+
 
 # Update these constants to make the tests pass again after running
 # `demo_sendstreams` with `--update-gold`.
@@ -216,3 +220,103 @@ def get_filtered_and_expected_items(
         di.truncate(path=p('hello_renamed/een'), size=5),
         *base_metadata('hello_renamed/een'),
     ]
+
+
+def render_demo_subvols(*, create_ops=False, mutate_ops=False):
+    '''
+    Test-friendly renderings of the subvolume contents that should be
+    produced by the commands in `demo_sendstreams.py`.
+
+    Read carefully: the return type depends on the args!
+    '''
+
+    # For ease of maintenance, keep the subsequent filesystem views in
+    # the order that `demo_sendstreams.py` performs the operations.
+
+    MB = 2 ** 20
+    goodbye_world = InodeRepr('(File)')  # This empty file gets hardlinked
+
+    def render_create_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
+        return render_subvols.expected_rendering(['(Dir)', {
+            'hello': ["(Dir x'user.test_attr'='chickens')", {
+                'world': [goodbye_world],
+            }],
+            'dir_to_remove': ['(Dir)', {}],
+            'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
+            'unbuffered': [f'(Char {os.makedev(1337, 31415):x})'],
+            'fifo': ['(FIFO)'],
+            'unix_sock': ['(Sock m755)'],  # default mode for sockets
+            'goodbye': [goodbye_world],
+            'bye_symlink': ['(Symlink hello/world)'],
+            '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
+            '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
+            'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
+        }])
+
+    def render_mutate_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
+        return render_subvols.expected_rendering(['(Dir)', {
+            'hello_renamed': ['(Dir)', {"een": ['(File d5)']}],
+            'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
+            'unbuffered': [f'(Char {os.makedev(1337, 31415):x})'],
+            'fifo': ['(FIFO)'],
+            'unix_sock': ['(Sock m755)'],  # default mode for sockets
+            'farewell': [goodbye_world],
+            'bye_symlink': ['(Symlink hello/world)'],
+            '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
+            '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
+            'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
+        }])
+
+    if create_ops and mutate_ops:
+        # Rendering both subvolumes together shows all the clones.
+        return {
+            'create_ops': render_create_ops(
+                mb_nuls=(
+                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
+                ),
+                mb_nuls_clone=(
+                    f'create_ops@1MB_nuls:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
+                ),
+                zeros_holes_zeros=(
+                    'd16384(mutate_ops@zeros_hole_zeros:0+16384@0)'
+                    'h16384(mutate_ops@zeros_hole_zeros:16384+16384@0)'
+                    'd16384(mutate_ops@zeros_hole_zeros:32768+16384@0)'
+                ),
+            ),
+            'mutate_ops': render_mutate_ops(
+                mb_nuls=(
+                    f'create_ops@1MB_nuls:0+{MB}@0/'
+                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
+                ),
+                mb_nuls_clone=(
+                    f'create_ops@1MB_nuls:0+{MB}@0/'
+                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
+                    f'mutate_ops@1MB_nuls:0+{MB}@0'
+                ),
+                zeros_holes_zeros=(
+                    'd16384(create_ops@zeros_hole_zeros:0+16384@0)'
+                    'h16384(create_ops@zeros_hole_zeros:16384+16384@0)'
+                    'd16384(create_ops@zeros_hole_zeros:32768+16384@0)'
+                ),
+            ),
+        }
+    elif create_ops:
+        return render_create_ops(
+            mb_nuls=f'create_ops@1MB_nuls_clone:0+{MB}@0',
+            mb_nuls_clone=f'create_ops@1MB_nuls:0+{MB}@0',
+            zeros_holes_zeros='d16384h16384d16384',
+        )
+    elif mutate_ops:
+        # This single-subvolume render of `mutate_ops` doesn't show the fact
+        # that all data was cloned from `create_ops`.
+        return render_mutate_ops(
+            mb_nuls=f'mutate_ops@1MB_nuls_clone:0+{MB}@0',
+            mb_nuls_clone=f'mutate_ops@1MB_nuls:0+{MB}@0',
+            zeros_holes_zeros='d16384h16384d16384',
+        )
+    raise AssertionError('Set at least one of {create,mutate}_ops')
