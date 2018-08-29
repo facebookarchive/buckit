@@ -34,8 +34,8 @@ from .demo_sendstreams_expected import render_demo_subvols
 class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
 
     def setUp(self):  # More output for easier debugging
-        unittest.util._MAX_LENGTH = 10e4
-        self.maxDiff = 10e4
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
 
     def test_integration(self):
         # Convert the known-good, version-control-recorded copies of the

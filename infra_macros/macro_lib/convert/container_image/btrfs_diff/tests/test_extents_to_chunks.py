@@ -12,7 +12,7 @@ from ..inode_id import InodeIDMap
 from ..extents_to_chunks import extents_to_chunks_with_clones
 
 # `unittest`'s output shortening makes tests much harder to debug.
-unittest.util._MAX_LENGTH = 10e4
+unittest.util._MAX_LENGTH = 12345
 
 
 def _gen_ranges_from_figure(figure: str):
@@ -121,7 +121,7 @@ class ExtentsToChunksTestCase(unittest.TestCase):
     '''
 
     def setUp(self):
-        self.maxDiff = 10e4
+        self.maxDiff = 12345
         self.id_map = InodeIDMap.new()
 
     def _gen_ids_and_extents_from_figure(

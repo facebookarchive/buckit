@@ -16,8 +16,8 @@ from .deepcopy_test import DeepCopyTestCase
 class InodeIDTestCase(DeepCopyTestCase):
 
     def setUp(self):
-        self.maxDiff = 10e4
-        unittest.util._MAX_LENGTH = 10e4
+        self.maxDiff = 12345
+        unittest.util._MAX_LENGTH = 12345
 
     def _check_id_and_map(self):
         '''

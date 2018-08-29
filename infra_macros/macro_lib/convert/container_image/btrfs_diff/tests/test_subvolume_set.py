@@ -17,8 +17,8 @@ class SubvolumeSetTestCase(unittest.TestCase):
 
     def setUp(self):
         # Print more data to simplify debugging
-        self.maxDiff = 10e4
-        unittest.util._MAX_LENGTH = 10e4
+        self.maxDiff = 12345
+        unittest.util._MAX_LENGTH = 12345
 
     def _check_repr(self, expected, subvol_set: SubvolumeSet):
         self.assertEqual(*[

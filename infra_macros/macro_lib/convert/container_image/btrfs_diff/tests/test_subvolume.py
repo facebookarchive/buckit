@@ -18,12 +18,12 @@ from .deepcopy_test import DeepCopyTestCase
 from .subvolume_utils import InodeRepr, expected_subvol_add_traversal_ids
 
 # `unittest`'s output shortening makes tests much harder to debug.
-unittest.util._MAX_LENGTH = 10e4
+unittest.util._MAX_LENGTH = 12345
 
 
 class SubvolumeTestCase(DeepCopyTestCase):
     def setUp(self):
-        self.maxDiff = 10e4
+        self.maxDiff = 12345
 
     def _check_render(self, expected_ser, subvol: Subvolume, path: str='.'):
         self.assertEqual(*[emit_all_traversal_ids(ser) for ser in (

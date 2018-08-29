@@ -20,7 +20,7 @@ from .demo_sendstreams import make_demo_sendstreams, gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items
 
 # `unittest`'s output shortening makes tests much harder to debug.
-unittest.util._MAX_LENGTH = 10e4
+unittest.util._MAX_LENGTH = 12345
 
 
 def _parse_lines_to_list(s: Sequence[bytes]) -> List[SendStreamItem]:
@@ -29,7 +29,7 @@ def _parse_lines_to_list(s: Sequence[bytes]) -> List[SendStreamItem]:
 
 class ParseBtrfsDumpTestCase(unittest.TestCase):
     def setUp(self):
-        self.maxDiff = 10e4
+        self.maxDiff = 12345
 
     def test_unquote(self):
         self.assertEqual(

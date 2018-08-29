@@ -18,7 +18,7 @@ from ..parse_send_stream import (
 )
 
 # `unittest`'s output shortening makes tests much harder to debug.
-unittest.util._MAX_LENGTH = 10e4
+unittest.util._MAX_LENGTH = 12345
 
 
 def _parse_stream_bytes(s: bytes) -> io.BytesIO:
@@ -28,7 +28,7 @@ def _parse_stream_bytes(s: bytes) -> io.BytesIO:
 class ParseSendStreamTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.maxDiff = 10e4
+        self.maxDiff = 12345
 
     def test_verify_gold_parse(self):
         stream_dict = gold_demo_sendstreams()

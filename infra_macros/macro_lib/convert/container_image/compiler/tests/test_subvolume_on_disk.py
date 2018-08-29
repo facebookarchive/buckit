@@ -20,8 +20,8 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
 
     def setUp(self):
         # More output for easier debugging
-        unittest.util._MAX_LENGTH = 10e4
-        self.maxDiff = 10e4
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
 
         # Configure mocks shared by most of the tests.
         self._mock_uuid_stack = []

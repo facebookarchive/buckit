@@ -10,12 +10,12 @@ from types import SimpleNamespace
 from ..extent import Extent
 
 # `unittest`'s output shortening makes tests much harder to debug.
-unittest.util._MAX_LENGTH = 10e4
+unittest.util._MAX_LENGTH = 12345
 
 
 class ExtentTestCase(unittest.TestCase):
     def setUp(self):
-        self.maxDiff = 10e4
+        self.maxDiff = 12345
 
     def test_write_into_empty(self):
         # Writing at offset 0 does not create a hole.
