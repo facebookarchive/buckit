@@ -217,9 +217,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
     for converted in results:
         eval(converted.type, globals)(**converted.attributes)
 
-globals()["AutoHeaders"] = AutoHeaders
-__all__.append("AutoHeaders")
-
 
 # Helper rule to throw an error when accessing raw Buck rules.
 def invalid_buck_rule(rule_type, *args, **kwargs):
