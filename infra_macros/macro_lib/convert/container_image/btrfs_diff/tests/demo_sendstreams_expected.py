@@ -24,14 +24,19 @@ from ..send_stream import (
 
 # Update these constants to make the tests pass again after running
 # `demo_sendstreams` with `--update-gold`.
-UUID_CREATE = b'83afe1a2-ddcf-4d49-9d2a-4fe4c7ed82fa'
-TRANSID_CREATE = 2041
-UUID_MUTATE = b'ab879723-5d8b-c94d-92b2-d765d234ae1e'
-TRANSID_MUTATE = 2044
+UUID_CREATE = b'6ad7f240-3ae2-7441-aaa0-ec207ee22c80'
+TRANSID_CREATE = 2435
+UUID_MUTATE = b'45310bdc-d438-4143-8e11-ecac9c12b91b'
+TRANSID_MUTATE = 2438
 # Take a `oNUM-NUM-NUM` file from the send-stream, and use the middle number.
-TEMP_PATH_MIDDLES = {'create_ops': 2039, 'mutate_ops': 2043}
+TEMP_PATH_MIDDLES = {'create_ops': 2433, 'mutate_ops': 2437}
 # I have never seen this initial value change. First number in `oN-N-N`.
 TEMP_PATH_COUNTER = 256
+
+# We have a 56KB file, and `btrfs send` emits 48KB writes.
+FILE_SZ1 = 48 * 1024
+FILE_SZ2 = 8 * 1024
+FILE_SZ = FILE_SZ1 + FILE_SZ2
 
 
 def get_filtered_and_expected_items(
@@ -104,6 +109,11 @@ def get_filtered_and_expected_items(
         TEMP_PATH_COUNTER += 1
         return p(f'o{TEMP_PATH_COUNTER}-{TEMP_PATH_MIDDLES[prefix]}-0')
 
+    def write(path, *, offset: int, data: bytes):
+        if dump_mode:
+            return di.update_extent(path=p(path), offset=offset, len=len(data))
+        return di.write(path=p(path), offset=offset, data=data)
+
     return filtered_items, [
         di.subvol(
             path=p('create_ops'), uuid=UUID_CREATE, transid=TRANSID_CREATE,
@@ -154,29 +164,30 @@ def get_filtered_and_expected_items(
         utimes('bye_symlink'),
 
         *and_rename(
-            di.mkfile(path=temp_path('create_ops')), b'1MB_nuls',
+            di.mkfile(path=temp_path('create_ops')), b'56KB_nuls',
         ),
-        di.update_extent(path=p('1MB_nuls'), offset=0, len=2**20),
-        di.truncate(path=p('1MB_nuls'), size=2**20),
-        *base_metadata('1MB_nuls'),
+        write('56KB_nuls', offset=0, data=b'\0' * FILE_SZ1),
+        write('56KB_nuls', offset=FILE_SZ1, data=b'\0' * FILE_SZ2),
+        di.truncate(path=p('56KB_nuls'), size=FILE_SZ),
+        *base_metadata('56KB_nuls'),
 
         *and_rename(
-            di.mkfile(path=temp_path('create_ops')), b'1MB_nuls_clone',
+            di.mkfile(path=temp_path('create_ops')), b'56KB_nuls_clone',
         ),
         di.clone(
-            path=p('1MB_nuls_clone'), offset=0, len=2**20,
+            path=p('56KB_nuls_clone'), offset=0, len=FILE_SZ,
             from_uuid=b'' if dump_mode else UUID_CREATE,
             from_transid=b'' if dump_mode else TRANSID_CREATE,
-            from_path=p('1MB_nuls'), clone_offset=0,
+            from_path=p('56KB_nuls'), clone_offset=0,
         ),
-        di.truncate(path=p('1MB_nuls_clone'), size=2**20),
-        *base_metadata('1MB_nuls_clone'),
+        di.truncate(path=p('56KB_nuls_clone'), size=FILE_SZ),
+        *base_metadata('56KB_nuls_clone'),
 
         *and_rename(
             di.mkfile(path=temp_path('create_ops')), b'zeros_hole_zeros',
         ),
-        di.update_extent(path=p('zeros_hole_zeros'), offset=0, len=16384),
-        di.update_extent(path=p('zeros_hole_zeros'), offset=32768, len=16384),
+        write('zeros_hole_zeros', offset=0, data=b'\0' * 16384),
+        write('zeros_hole_zeros', offset=32768, data=b'\0' * 16384),
         di.truncate(path=p('zeros_hole_zeros'), size=49152),
         *base_metadata('zeros_hole_zeros'),
 
@@ -210,13 +221,8 @@ def get_filtered_and_expected_items(
         *and_rename(
             di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
         ),
-        (
-            di.update_extent(
-                path=p('hello_renamed/een'), offset=0, len=5,
-            ) if dump_mode else di.write(
-                path=p('hello_renamed/een'), offset=0, data=b'push\n',
-            )
-        ),
+        # Not using `write` since we pass `--no-data` for `mutate_ops`.
+        di.update_extent(path=p('hello_renamed/een'), offset=0, len=5),
         di.truncate(path=p('hello_renamed/een'), size=5),
         *base_metadata('hello_renamed/een'),
     ]
@@ -233,10 +239,9 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
     # For ease of maintenance, keep the subsequent filesystem views in
     # the order that `demo_sendstreams.py` performs the operations.
 
-    MB = 2 ** 20
     goodbye_world = InodeRepr('(File)')  # This empty file gets hardlinked
 
-    def render_create_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
+    def render_create_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros):
         return render_subvols.expected_rendering(['(Dir)', {
             'hello': ["(Dir x'user.test_attr'='chickens')", {
                 'world': [goodbye_world],
@@ -248,12 +253,12 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             'unix_sock': ['(Sock m755)'],  # default mode for sockets
             'goodbye': [goodbye_world],
             'bye_symlink': ['(Symlink hello/world)'],
-            '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
-            '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
+            '56KB_nuls': [f'(File d{FILE_SZ}({kb_nuls}))'],
+            '56KB_nuls_clone': [f'(File d{FILE_SZ}({kb_nuls_clone}))'],
             'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
         }])
 
-    def render_mutate_ops(mb_nuls, mb_nuls_clone, zeros_holes_zeros):
+    def render_mutate_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros):
         return render_subvols.expected_rendering(['(Dir)', {
             'hello_renamed': ['(Dir)', {"een": ['(File d5)']}],
             'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
@@ -262,25 +267,42 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             'unix_sock': ['(Sock m755)'],  # default mode for sockets
             'farewell': [goodbye_world],
             'bye_symlink': ['(Symlink hello/world)'],
-            '1MB_nuls': [f'(File d{MB}({mb_nuls}))'],
-            '1MB_nuls_clone': [f'(File d{MB}({mb_nuls_clone}))'],
+            '56KB_nuls': [f'(File d{FILE_SZ}({kb_nuls}))'],
+            '56KB_nuls_clone': [f'(File d{FILE_SZ}({kb_nuls_clone}))'],
             'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
         }])
 
+    # These ChunkClones get repeated a lot below.
+    #
+    # Future: note that in theory, the adjacent ChunkClones could be merged
+    # into a single 56KB clone.  Doing this generically, for all possible
+    # sequences of writes and clones requires some decently complex code.
+    # Doing this specifically for the case of "make a bunch of adjacent
+    # writes, then make clones" is probably easier.  But either approach
+    # requires work, and the cost of uglier subvolume rendering is currently
+    # too low to bother.  When it does bite us, we can fix it.
+    create = (
+        f'create_ops@56KB_nuls:0+{FILE_SZ1}@0/'
+        f'create_ops@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+    )
+    create_clone = (
+        f'create_ops@56KB_nuls_clone:0+{FILE_SZ1}@0/'
+        f'create_ops@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+    )
+    mutate = (
+        f'mutate_ops@56KB_nuls:0+{FILE_SZ1}@0/'
+        f'mutate_ops@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+    )
+    mutate_clone = (
+        f'mutate_ops@56KB_nuls_clone:0+{FILE_SZ1}@0/'
+        f'mutate_ops@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+    )
     if create_ops and mutate_ops:
         # Rendering both subvolumes together shows all the clones.
         return {
             'create_ops': render_create_ops(
-                mb_nuls=(
-                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                ),
-                mb_nuls_clone=(
-                    f'create_ops@1MB_nuls:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                ),
+                kb_nuls=f'{create_clone}/{mutate}/{mutate_clone}',
+                kb_nuls_clone=f'{create}/{mutate}/{mutate_clone}',
                 zeros_holes_zeros=(
                     'd16384(mutate_ops@zeros_hole_zeros:0+16384@0)'
                     'h16384(mutate_ops@zeros_hole_zeros:16384+16384@0)'
@@ -288,16 +310,8 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
                 ),
             ),
             'mutate_ops': render_mutate_ops(
-                mb_nuls=(
-                    f'create_ops@1MB_nuls:0+{MB}@0/'
-                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls_clone:0+{MB}@0'
-                ),
-                mb_nuls_clone=(
-                    f'create_ops@1MB_nuls:0+{MB}@0/'
-                    f'create_ops@1MB_nuls_clone:0+{MB}@0/'
-                    f'mutate_ops@1MB_nuls:0+{MB}@0'
-                ),
+                kb_nuls=f'{create}/{create_clone}/{mutate_clone}',
+                kb_nuls_clone=f'{create}/{create_clone}/{mutate}',
                 zeros_holes_zeros=(
                     'd16384(create_ops@zeros_hole_zeros:0+16384@0)'
                     'h16384(create_ops@zeros_hole_zeros:16384+16384@0)'
@@ -307,16 +321,16 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
         }
     elif create_ops:
         return render_create_ops(
-            mb_nuls=f'create_ops@1MB_nuls_clone:0+{MB}@0',
-            mb_nuls_clone=f'create_ops@1MB_nuls:0+{MB}@0',
+            kb_nuls=create_clone,
+            kb_nuls_clone=create,
             zeros_holes_zeros='d16384h16384d16384',
         )
     elif mutate_ops:
         # This single-subvolume render of `mutate_ops` doesn't show the fact
         # that all data was cloned from `create_ops`.
         return render_mutate_ops(
-            mb_nuls=f'mutate_ops@1MB_nuls_clone:0+{MB}@0',
-            mb_nuls_clone=f'mutate_ops@1MB_nuls:0+{MB}@0',
+            kb_nuls=mutate_clone,
+            kb_nuls_clone=mutate,
             zeros_holes_zeros='d16384h16384d16384',
         )
     raise AssertionError('Set at least one of {create,mutate}_ops')

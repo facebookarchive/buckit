@@ -81,10 +81,10 @@ class ParseBtrfsDumpTestCase(unittest.TestCase):
             *stream_dict['create_ops']['dump'],
             *stream_dict['mutate_ops']['dump'],
         ]
-        self.assertEqual(
-            expected_ops,
-            {l.split(b' ', 1)[0].decode() for l in out_lines if l} - {'write'},
-        )
+        self.assertEqual(expected_ops, {
+            l.split(b' ', 1)[0].decode().replace('write', 'update_extent')
+                for l in out_lines if l
+        })
         items = [
             *_parse_lines_to_list(stream_dict['create_ops']['dump']),
             *_parse_lines_to_list(stream_dict['mutate_ops']['dump']),

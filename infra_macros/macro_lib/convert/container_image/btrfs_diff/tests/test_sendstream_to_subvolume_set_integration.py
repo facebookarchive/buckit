@@ -19,6 +19,7 @@ In effect, we jointly test the Linux kernel, btrfs-progs, and this library.
 '''
 import io
 import os
+import sys
 import unittest
 
 from ..freeze import freeze
@@ -27,7 +28,7 @@ from ..subvolume_set import SubvolumeSet
 
 from . import render_subvols as render_sv
 
-from .demo_sendstreams import gold_demo_sendstreams
+from .demo_sendstreams import make_demo_sendstreams
 from .demo_sendstreams_expected import render_demo_subvols
 
 
@@ -38,9 +39,12 @@ class SendstreamToSubvolumeSetIntegrationTestCase(unittest.TestCase):
         self.maxDiff = 12345
 
     def test_integration(self):
-        # Convert the known-good, version-control-recorded copies of the
-        # demo sendstreams into a `SubvolumeSet`.
-        stream_dict = gold_demo_sendstreams()
+        # Generate brand-new sendstreams instead of using `gold`, since it
+        # is useful for this test to exercise the live btrfs code paths as
+        # new kernels and `btrfs-progs` get rolled out.  Besides checking
+        # the infra, this also indirectly validates that our subvolume
+        # rendering is stable and independent of the send-stream specifics.
+        stream_dict = make_demo_sendstreams(sys.argv[1])
         subvols = SubvolumeSet.new()
         for d in stream_dict.values():
             render_sv.add_sendstream_to_subvol_set(subvols, d['sendstream'])

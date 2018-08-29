@@ -51,4 +51,7 @@ def erase_utimes_in_range(
 
 def erase_selinux_xattr(ino: IncompleteInode, data: Optional[bytes]):
     if ino.xattrs.get(_SELINUX_XATTR) == data and data is not None:
-        del ino.xattrs[_SELINUX_XATTR]
+        # Getting coverage for this line would force us to have a hard
+        # dependency on running this test on an SELinux-enabled filesystem.
+        # Mocking that seems like useless effort, so let's waive coverage.
+        del ino.xattrs[_SELINUX_XATTR]  # pragma: no cover

@@ -86,10 +86,12 @@ def _make_create_ops_subvolume(subvols: TempSubvolumes, path: bytes) -> Subvol:
     run(['ln', 'hello/world', 'goodbye'])           # link
     run(['ln', '-s', 'hello/world', 'bye_symlink'])  # symlink
     run([                                           # update_extent
-        'dd', 'if=/dev/zero', 'of=1MB_nuls', 'bs=1024', 'count=1024',
+        # 56KB was chosen so that `btrfs send` emits more than 1 write,
+        # specifically 48KB + 8KB.
+        'dd', 'if=/dev/zero', 'of=56KB_nuls', 'bs=1024', 'count=56',
     ])
     run([                                           # clone
-        'cp', '--reflink=always', '1MB_nuls', '1MB_nuls_clone',
+        'cp', '--reflink=always', '56KB_nuls', '56KB_nuls_clone',
     ])
 
     # Make a file with a 16KB hole in the middle.
@@ -164,14 +166,18 @@ def make_demo_sendstreams(path_in_repo: bytes):
 
         with _populate_sendstream_dict(res.setdefault('create_ops', {})) as d:
             create_ops = _make_create_ops_subvolume(subvols, b'create_ops')
-            d['sendstream'] = create_ops.mark_readonly_and_get_sendstream(
-                no_data=True,
-            )
+            d['sendstream'] = create_ops.mark_readonly_and_get_sendstream()
 
         with _populate_sendstream_dict(res.setdefault('mutate_ops', {})) as d:
             d['sendstream'] = _make_mutate_ops_subvolume(
                 subvols, create_ops, b'mutate_ops',
-            ).mark_readonly_and_get_sendstream(parent=create_ops)
+            ).mark_readonly_and_get_sendstream(
+                parent=create_ops,
+                # The resulting send-stream will have `update_extent`
+                # instead of `write`, which is one way of making sure that
+                # `update_extent` in `parse_sendstream.py` is covered.
+                no_data=True,
+            )
 
         return res
 
