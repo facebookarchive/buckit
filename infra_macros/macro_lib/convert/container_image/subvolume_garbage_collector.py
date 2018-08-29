@@ -78,6 +78,7 @@ def list_subvolume_wrappers(subvolumes_dir):
 
 
 def list_refcounts(refcounts_dir):
+    # The the first part of the name may contain 0 or more colons.
     reg = re.compile('^(.+):([^:]+).json$')
     for p in glob.glob(f'{refcounts_dir}/*:*.json'):
         m = reg.match(os.path.basename(p))
@@ -134,16 +135,22 @@ def garbage_collect_subvolumes(refcounts_dir, subvolumes_dir):
         # some unused refcount files on disk.
         if nlink:
             os.unlink(refcount_path)
-        subprocess.check_call([
-            'sudo', 'btrfs', 'subvolume', 'delete',
-            os.path.join(
-                subvolumes_dir,
-                # Subvols are wrapped in a user-owned temporary directory,
-                # following the convention `{name}:{version}/{name}`.
-                subvol_wrapper, subvol_wrapper.rsplit(':', 1)[0]
-            ),
-        ])
-        os.rmdir(os.path.join(subvolumes_dir, subvol_wrapper))
+        wrapper_path = os.path.join(subvolumes_dir, subvol_wrapper)
+        wrapper_content = os.listdir(wrapper_path)
+        if len(wrapper_content) > 1:
+            raise RuntimeError(f'{wrapper_path} must contain only the subvol')
+        if len(wrapper_content) == 1:  # Empty wrappers are OK to GC, too.
+            subprocess.check_call([
+                'sudo', 'btrfs', 'subvolume', 'delete',
+                os.path.join(
+                    subvolumes_dir,
+                    # Subvols are wrapped in a user-owned temporary directory,
+                    # following the convention `{rule name}:{version}/{subvol}`.
+                    subvol_wrapper,
+                    wrapper_content[0],
+                ),
+            ])
+        os.rmdir(wrapper_path)
 
 
 def parse_args(argv):

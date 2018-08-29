@@ -109,7 +109,6 @@ def build_image(args):
         return SubvolumeOnDisk.from_subvolume_path(
             subvol.path().decode(),
             args.subvolumes_dir,
-            args.subvolume_rel_path,
         )
     except Exception as ex:
         raise RuntimeError(f'Serializing subvolume {subvol.path()}') from ex

@@ -70,7 +70,7 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             self._touch(banana_json)  # This is a real refcount file now
             self.assertEqual({'ba:nana': 1}, dict(sgc.list_refcounts(td)))
 
-            # This is pathological, but it doesn't seem worth detecting.
+            # The linking is pathological, but it doesn't seem worth detecting.
             os.link(banana_json, os.path.join(td, 'ap:ple.json'))
             self.assertEqual(
                 {'ba:nana': 2, 'ap:ple': 2}, dict(sgc.list_refcounts(td))
@@ -119,6 +119,19 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
                     '--new-subvolume-json', 'fake',
                 ]))
 
+    def test_gc_fails_when_wrapper_has_more_than_one(self):
+        with tempfile.TemporaryDirectory() as refs_dir, \
+             tempfile.TemporaryDirectory() as subs_dir:
+            os.makedirs(os.path.join(subs_dir, 'no:refs/subvol1'))
+            os.makedirs(os.path.join(subs_dir, 'no:refs/subvol2'))
+            with self.assertRaisesRegex(
+                RuntimeError, 'must contain only the subvol'
+            ):
+                sgc.subvolume_garbage_collector([
+                    '--refcounts-dir', refs_dir,
+                    '--subvolumes-dir', subs_dir,
+                ])
+
     @contextlib.contextmanager
     def _gc_test_case(self):
         # NB: I'm too lazy to test that `refs_dir` is created if missing.
@@ -132,9 +145,13 @@ class SubvolumeGarbageCollectorTestCase(unittest.TestCase):
             gcd_refs = set()
             kept_refs = set()
 
-            # Subvolume without a refcount
-            os.makedirs(os.path.join(subs_dir, 'no:refs/no'))
+            # Subvolume without a refcount -- tests "rule name != subvol"
+            os.makedirs(os.path.join(subs_dir, 'no:refs/subvol_name'))
             gcd_subs.add('no:refs')
+
+            # Wrapper without a refcount and without a subvolume
+            os.makedirs(os.path.join(subs_dir, 'no_refs:nor_subvol'))
+            gcd_subs.add('no_refs:nor_subvol')
 
             # Subvolume, whose refcount is 1
             self._touch(refs_dir, '1:link.json')

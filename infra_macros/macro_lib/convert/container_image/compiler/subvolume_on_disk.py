@@ -68,11 +68,9 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
 ])):
     '''
     This class stores a disk path to a btrfs subvolume (built image layer),
-    together with some minimal metadata about the layer.  It knows how to:
-     - parse the JSON output of the image build tool, containing the btrfs
-       subvolume path and some btrfs metadata.
-     - serialize & deserialize this metadata to a similar JSON format that
-       can be safely used as as Buck output representing the subvolume.
+    together with some minimal metadata about the layer.  It knows how to
+    serialize & deserialize this metadata to a JSON format that can be
+    safely used as as Buck output representing the subvolume.
     '''
 
     _KNOWN_KEYS = {
@@ -90,34 +88,67 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         cls,
         subvol_path: str,
         subvolumes_dir: str,
-        subvolume_rel_path: str,
     ):
+        subvol_rel_path = os.path.relpath(subvol_path, subvolumes_dir)
+        pieces = subvol_rel_path.split('/')
+        if pieces[:1] == [''] or '..' in pieces:
+            raise RuntimeError(
+                f'{subvol_path} must be located inside the subvolumes '
+                f'directory {subvolumes_dir}'
+            )
+        # This function deliberately does no validation on the fields it
+        # populates -- that is done only in `from_serializable_dict`.  We
+        # will not commit a buggy structure to disk since
+        # `to_serializable_dict` checks the idepmpotency of our
+        # serialization-deserialization.
         self = cls(**{
             _BTRFS_UUID: _btrfs_get_volume_props(subvol_path)['UUID'],
             _HOSTNAME: socket.getfqdn(),
             _SUBVOLUMES_BASE_DIR: subvolumes_dir,
-            _SUBVOLUME_REL_PATH: subvolume_rel_path,
+            _SUBVOLUME_REL_PATH: subvol_rel_path,
         })
-        expected_subvolume_path = os.path.normpath(self.subvolume_path())
-        if os.path.normpath(subvol_path) != expected_subvolume_path:
-            raise RuntimeError(
-                'Unexpected subvolume_path '
-                f'{subvol_path} != {expected_subvolume_path}'
-            )
-        # NB: No `._validate_and_return()` here, since it is redundant with
-        # the self-test that `to_serializable_dict()` will perform.
-        # Mandatory validation would also slow down any code that might want
-        # to just enumerate & read the refcounts directory.
         return self
 
     @classmethod
     def from_serializable_dict(cls, d, subvolumes_dir):
-        return cls(**{
+        self = cls(**{
             _BTRFS_UUID: d[_BTRFS_UUID],
             _HOSTNAME: d[_HOSTNAME],
             _SUBVOLUMES_BASE_DIR: subvolumes_dir,
             _SUBVOLUME_REL_PATH: d[_SUBVOLUME_REL_PATH],
-        })._validate_and_return()
+        })
+
+        # Check that the relative path is garbage-collectable.
+        inner_dir = os.path.basename(d[_SUBVOLUME_REL_PATH])
+        outer_dir = os.path.basename(os.path.dirname(d[_SUBVOLUME_REL_PATH]))
+        if ':' not in outer_dir or (
+            d[_SUBVOLUME_REL_PATH] != os.path.join(outer_dir, inner_dir)
+        ):
+            raise RuntimeError(
+                'Subvolume must have the form <rule name>:<version>/<subvol>,'
+                f' not {d[_SUBVOLUME_REL_PATH]}'
+            )
+        outer_dir_content = os.listdir(os.path.join(subvolumes_dir, outer_dir))
+        # For GC, the wrapper must contain the subvolume, and nothing else.
+        if outer_dir_content != [inner_dir]:
+            raise RuntimeError(
+                f'Subvolume wrapper {outer_dir} contained {outer_dir_content} '
+                f'instead of {[inner_dir]}'
+            )
+        # Check that the subvolume matches the description.
+        cur_host = socket.getfqdn()
+        if cur_host != self.hostname:
+            raise RuntimeError(
+                f'Subvolume {self} did not come from current host {cur_host}'
+            )
+        # This incidentally checks that the subvolume exists and is btrfs.
+        volume_props = _btrfs_get_volume_props(self.subvolume_path())
+        if volume_props['UUID'] != self.btrfs_uuid:
+            raise RuntimeError(
+                f'UUID in subvolume JSON {self} does not match that of the '
+                f'actual subvolume {volume_props}'
+            )
+        return self
 
     def to_serializable_dict(self):
         # `subvolumes_dir` is an absolute path to a known location inside
@@ -145,7 +176,7 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
             parsed_json = json.load(infile)
             return cls.from_serializable_dict(
                 parsed_json, subvolumes_dir
-            )._validate_and_return()
+            )
         except json.JSONDecodeError as ex:
             raise RuntimeError(
                 f'Parsing subvolume JSON from {infile}: {ex.doc}'
@@ -158,17 +189,3 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
     def to_json_file(self, outfile):
         outfile.write(json.dumps(self.to_serializable_dict()))
 
-    def _validate_and_return(self):
-        cur_host = socket.getfqdn()
-        if cur_host != self.hostname:
-            raise RuntimeError(
-                f'Subvolume {self} did not come from current host {cur_host}'
-            )
-        # This incidentally checks that the subvolume exists and is btrfs.
-        volume_props = _btrfs_get_volume_props(self.subvolume_path())
-        if volume_props['UUID'] != self.btrfs_uuid:
-            raise RuntimeError(
-                f'UUID in subvolume JSON {self} does not match that of the '
-                f'actual subvolume {volume_props}'
-            )
-        return self
