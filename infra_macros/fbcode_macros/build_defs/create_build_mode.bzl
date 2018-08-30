@@ -36,7 +36,8 @@ def create_build_mode(
         ubsan_options = (),
         tsan_options = (),
         lsan_suppressions = (),
-        compiler = None):
+        compiler = None,
+        cxx_modules = None):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -67,6 +68,9 @@ def create_build_mode(
         compiler: Use this compiler for deployable rules under this directory,
                   for build modes which don't globally set the compiler family
                   choice. Example inputs: 'clang', or 'gcc'.
+        cxx_modules: Whether to enable/disable clang modules on the rules
+                     covered by this build mode file by default in modular
+                     builds.
 
     Returns:
         A struct with each of the provided fields, or () if the field was
@@ -92,6 +96,7 @@ def create_build_mode(
         tsan_options = tsan_options,
         lsan_suppressions = lsan_suppressions,
         compiler = compiler,
+        cxx_modules = cxx_modules,
     )
 
 def _combine(lhs, rhs):
@@ -148,7 +153,8 @@ def extend_build_mode(
         ubsan_options = (),
         tsan_options = (),
         lsan_suppressions = (),
-        compiler=None):
+        compiler=None,
+        cxx_modules = None):
     """
     Creates a new build mode struct with the given flags added to it
 
@@ -179,6 +185,9 @@ def extend_build_mode(
         compiler: Use this compiler for deployable rules under this directory,
                   for build modes which don't globally set the compiler family
                   choice. Example inputs: 'clang', or 'gcc'.
+        cxx_modules: Whether to enable/disable clang modules on the rules
+                     covered by this build mode file by default in modular
+                     builds.
 
     Returns:
         A struct with each of the given build mode struct's fields, with the
@@ -188,6 +197,9 @@ def extend_build_mode(
     new_compiler = build_mode.compiler
     if compiler:
         new_compiler = compiler
+    new_cxx_modules = build_mode.cxx_modules
+    if cxx_modules:
+        new_cxx_modules = cxx_modules
     return struct(
         aspp_flags = _combine(build_mode.aspp_flags, aspp_flags),
         cpp_flags = _combine(build_mode.cpp_flags, cpp_flags),
@@ -208,4 +220,5 @@ def extend_build_mode(
         tsan_options = _combine(build_mode.tsan_options, tsan_options),
         lsan_suppressions = _combine(build_mode.lsan_suppressions, lsan_suppressions),
         compiler = new_compiler,
+        cxx_modules = new_cxx_modules,
     )

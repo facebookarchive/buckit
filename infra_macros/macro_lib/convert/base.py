@@ -935,7 +935,7 @@ class Converter(object):
             raise KeyError(
                 '`{}:{}`: no value set'.format(section, field))
 
-    def read_bool(self, section, field, default=None):
+    def read_bool(self, section, field, default=None, required=True):
         """
         Read a `boolean` from `.buckconfig`.
         """
@@ -952,7 +952,7 @@ class Converter(object):
                     .format(section, field, val))
         elif default is not None:
             return default
-        else:
+        elif required:
             raise KeyError(
                 '`{}:{}`: no value set'.format(section, field))
 

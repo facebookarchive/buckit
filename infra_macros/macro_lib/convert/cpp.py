@@ -910,7 +910,8 @@ class CppConverter(base.Converter):
             os_deps=None,
             os_linker_flags=None,
             autodeps_keep=False,
-            undefined_symbols=False):
+            undefined_symbols=False,
+            module=None):
 
         if not isinstance(compiler_flags, (list, tuple)):
             raise TypeError(
@@ -940,6 +941,20 @@ class CppConverter(base.Converter):
                 # Node rules always use the platforms set in the root PLATFORM
                 # file.
                 else ''))
+
+        # Figure out whether this rule should be built using clang modules (in
+        # supporting build modes).
+        out_module = False
+        # Check the global, build mode default.
+        global_modules = self.read_bool('cxx', 'module_rule_default', required=False)
+        if global_modules != None:
+            out_module = global_modules
+        # Check the build mode file override.
+        if build_mode != None and build_mode.cxx_modules != None:
+            out_module = build_mode.cxx_modules
+        # Check the rule override.
+        if module != None:
+            out_module = module
 
         attributes = collections.OrderedDict()
 
@@ -1081,7 +1096,7 @@ class CppConverter(base.Converter):
         # Tell the compiler that C/C++ sources compiled in this rule are
         # part of the same module as the headers (and so have access to
         # private headers).
-        if modules.enabled():
+        if modules.enabled() and out_module:
             out_lang_preprocessor_flags['cxx'].extend(
                 modules.get_toolchain_flags())
             module_name = modules.get_module_name('fbcode', base_path, name)
@@ -1476,7 +1491,7 @@ class CppConverter(base.Converter):
             dependencies.extend(self.get_implicit_deps())
 
         # Modularize libraries.
-        if modules.enabled() and self.is_library():
+        if modules.enabled() and self.is_library() and out_module:
 
             # Add implicit toolchain module deps.
             dependencies.extend(
@@ -1851,6 +1866,7 @@ class CppConverter(base.Converter):
             args.update([
                 'lib_name',
                 'link_whole',
+                'module',
                 'os_deps',
                 'os_linker_flags',
                 'preferred_linkage',
