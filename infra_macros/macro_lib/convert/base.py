@@ -99,10 +99,11 @@ UBSAN_DEFAULT_OPTIONS = {
 
 LSAN_DEFAULT_SUPPRESSIONS = [
     'boost::python::',
-    '/lib/libpython',
-    'libluajit-5.1.so.2',
     'CRYPTO_malloc',
     '_d_run_main',
+    '/lib/libpython',
+    'libluajit-5.1.so.2',
+    '/src/cpython',
 ]
 
 TSAN_DEFAULT_OPTIONS = {
