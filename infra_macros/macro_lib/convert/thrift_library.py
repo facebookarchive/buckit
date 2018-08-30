@@ -2638,6 +2638,7 @@ class ThriftLibraryConverter(base.Converter):
             external_deps=(),
             languages=None,
             visibility=None,
+            plugins=[],
             **kwargs):
         """
         Thrift library conversion implemented purely via macros (i.e. no Buck
@@ -2705,6 +2706,12 @@ class ThriftLibraryConverter(base.Converter):
                 options.update(py_asyncio_options)
             if lang == 'py3':
                 options.update(cpp2_options)
+
+            compiler_args = converter.get_compiler_args(
+                thrift_args,
+                converter.get_options(base_path, options),
+                **kwargs)
+
             all_gen_srcs = collections.OrderedDict()
             for thrift_src, services in thrift_srcs.iteritems():
                 thrift_name = self.get_source_name(thrift_src)
@@ -2716,10 +2723,7 @@ class ThriftLibraryConverter(base.Converter):
                         name,
                         compiler,
                         lang,
-                        converter.get_compiler_args(
-                            thrift_args,
-                            converter.get_options(base_path, options),
-                            **kwargs),
+                        compiler_args,
                         thrift_src,
                         converter.get_postprocess_command(
                             base_path,
@@ -2747,6 +2751,18 @@ class ThriftLibraryConverter(base.Converter):
                         visibility=visibility))
                 all_gen_srcs[thrift_name] = gen_srcs
                 rules.extend(gen_src_rules)
+
+            # Generate rules from Thrift plugins
+            for plugin in plugins:
+                plugin.generate_rules(
+                    plugin,
+                    base_path,
+                    name,
+                    lang,
+                    thrift_srcs,
+                    compiler_args,
+                    self.get_exported_include_tree(':' + name),
+                )
 
             # Generate the per-language rules.
             rules.extend(
@@ -2789,6 +2805,7 @@ class ThriftLibraryConverter(base.Converter):
             'java_swift_maven_coords',
             'languages',
             'name',
+            'plugins',
             'py_asyncio_base_module',
             'py_base_module',
             'py_remote_service_router',
