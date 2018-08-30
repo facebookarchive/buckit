@@ -515,6 +515,10 @@ class CppThriftConverter(ThriftLangConverter):
         common_compiler_flags = ['-fno-var-tracking']
         common_compiler_flags.extend(cpp2_compiler_flags)
 
+        # Support a global config for explicitly opting thrift generated C/C++
+        # rules in to using modules.
+        module = self.read_bool("cxx", "module_thrift_rule_default", required=False)
+
         # Create the types, services and clients rules
         # Delegate to the C/C++ library converting to add in things like
         # sanitizer and BUILD_MODE flags.
@@ -530,6 +534,7 @@ class CppThriftConverter(ThriftLangConverter):
             # and build //thrift/lib/cpp2/test:exceptservice-cpp2-types).
             undefined_symbols=True,
             visibility=visibility,
+            module=module,
         )
         clients_rules = self._cpp_converter.convert(
             base_path,
@@ -543,6 +548,7 @@ class CppThriftConverter(ThriftLangConverter):
             # and build //thrift/lib/cpp2/test:Presult-cpp2-clients).
             undefined_symbols=True,
             visibility=visibility,
+            module=module,
         )
         services_rules = self._cpp_converter.convert(
             base_path,
@@ -553,6 +559,7 @@ class CppThriftConverter(ThriftLangConverter):
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
             visibility=visibility,
+            module=module,
         )
         # Create a master rule that depends on -types, -services and -clients
         # for compatibility
@@ -567,6 +574,7 @@ class CppThriftConverter(ThriftLangConverter):
                 ':' + name + services_suffix,
             ],
             visibility=visibility,
+            module=module,
         )
         return types_rules + clients_rules + services_rules + master_rules
 
