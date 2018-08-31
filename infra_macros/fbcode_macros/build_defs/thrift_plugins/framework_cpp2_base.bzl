@@ -7,14 +7,14 @@ def _invoke_codegen_rule_name(plugin, target_name, thrift_src):
     return "{}-cpp2-{}-{}".format(target_name, plugin.name, thrift_src)
 
 def _generate_invoke_codegen_rule(
-    plugin, codegen_rule_name, target_name, thrift_src, target_base_path
+    plugin, codegen_rule_name, target_name, thrift_src, target_base_path, include_target
 ):
     """Generates a rule that invokes the plugin codegen binary. Returns the name
     of the generated rule.
     """
     rule_name = _invoke_codegen_rule_name(plugin, target_name, thrift_src)
-    cmd = "$(exe {}) --target-base-path {} --out-path $OUT $SRCS".format(
-        codegen_rule_name, target_base_path
+    cmd = "$(exe {}) --target-base-path {} --out-path $OUT $SRCS --include-path $(location {})".format(
+        codegen_rule_name, target_base_path, include_target
     )
 
     native.genrule(name=rule_name, out=".", srcs=[thrift_src], cmd=cmd)
@@ -61,7 +61,9 @@ def _generate_rules(
     thrift_srcs,
     compiler_args,
     include_target,
+    deps,
     additional_target_deps=[],
+    requires_transitive_plugin_build=True,
 ):
     """Generates the list of rules required to build Thrift C++ plugin.
 
@@ -78,7 +80,7 @@ def _generate_rules(
     consumed by plugin users.
     """
     # Will be needed later for arg parsing and include path on the codegen side
-    _ignore = [compiler_args, include_target]
+    _ignore = [compiler_args]
 
     if lang != "cpp2":
         return
@@ -89,7 +91,12 @@ def _generate_rules(
     for thrift_src in thrift_srcs:
         # Rule that invokes the plugin codegen
         _generate_invoke_codegen_rule(
-            plugin, codegen_rule_name, target_name, thrift_src, target_base_path
+            plugin,
+            codegen_rule_name,
+            target_name,
+            thrift_src,
+            target_base_path,
+            include_target,
         )
 
     # Rules that copy out the plugin-generated artifacts
@@ -110,6 +117,10 @@ def _generate_rules(
     generated_target_deps = additional_target_deps + [
         "//{}:{}-{}".format(target_base_path, target_name, lang)
     ]
+
+    if requires_transitive_plugin_build:
+        for dep in deps:
+            generated_target_deps.append("{}-{}-{}".format(dep, lang, plugin.name))
 
     # Master rules that combine the generated artifacts for all .thrift
     # files into a single cpp_library.

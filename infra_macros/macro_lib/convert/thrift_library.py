@@ -2770,6 +2770,7 @@ class ThriftLibraryConverter(base.Converter):
                     thrift_srcs,
                     compiler_args,
                     self.get_exported_include_tree(':' + name),
+                    deps,
                 )
 
             # Generate the per-language rules.
