@@ -81,9 +81,11 @@ def _wheel_override_version_check(name, platform_versions):
             wheel_platform, "bar"
         ):
             print(
-                "You're building for {0} and the default version of {4} for this platform ({2}) "
-                "doesn't match the default version for {1} ({3}). The resulting binary most probably "
-                "won't work on {0}. Update the TARGETS file for {4} to fix this.".format(
+                "We're showing this warning because you're building for {0} "
+                "and the default version of {4} for this platform ({2}) "
+                "doesn't match the default version for {1} ({3}). "
+                "The resulting binary might not work on {0}. "
+                "Make sure there is a {0} wheel for {3} version of {4}.".format(
                     wheel_platform,
                     building_platform,
                     platform_versions.get(building_platform, "None"),
