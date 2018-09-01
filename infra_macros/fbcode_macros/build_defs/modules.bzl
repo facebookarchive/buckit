@@ -218,6 +218,13 @@ def _gen_module(
              'args+=("-I$SRCDIR/headers")',
              'args+=("$SRCDIR/headers/module.modulemap")',
 
+             # NOTE(T32246672): Clang will embed paths as specified on the
+             # command-line so, to avoid baking in absolute paths, sanitize
+             # them here.
+             'for i in "${!args[@]}"; do',
+             '  args[$i]=${args[$i]//$PWD\//}',
+             'done',
+
              'exec "${args[@]}"']),
         visibility = visibility,
     )
