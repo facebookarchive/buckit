@@ -209,14 +209,17 @@ def _gen_module(
              # The inputs to module compilation are C++ headers.
              'args+=("-x" "c++-header")',
 
-             'args+=("-o" "$OUT")',
-
              # Setup the headers as inputs to the compilation by adding the
              # header dir implicitly via an `-I...` flag (for implicit searches
              # for headers specified in the module map) and the
              # `module.modulemap` as the main input arg.
              'args+=("-I$SRCDIR/headers")',
              'args+=("$SRCDIR/headers/module.modulemap")',
+
+             # Output via "-" and redirect to the output file rather than going
+             # directly to the output file.  This makes clang avoid embedding
+             # an absolute path for it's "original pch dir" attribute.
+             'args+=("-o" "-")',
 
              # NOTE(T32246672): Clang will embed paths as specified on the
              # command-line so, to avoid baking in absolute paths, sanitize
@@ -225,7 +228,7 @@ def _gen_module(
              '  args[$i]=${args[$i]//$PWD\//}',
              'done',
 
-             'exec "${args[@]}"']),
+             'exec "${args[@]}" > "$OUT"']),
         visibility = visibility,
     )
 
