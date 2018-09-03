@@ -1322,6 +1322,7 @@ class Converter(object):
         # If it doesn't show up in normal compiles, not much point in
         # showing it here.
         flags.append('-Wno-free-nonheap-object')
+        flags.append('-Wno-error=odr')
 
         # Set the linker that flags that will run LTO.
         flags.append('-fuse-linker-plugin')
