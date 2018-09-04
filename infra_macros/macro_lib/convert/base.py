@@ -1327,6 +1327,9 @@ class Converter(object):
         # Set the linker that flags that will run LTO.
         flags.append('-fuse-linker-plugin')
         flags.append('-flto={}'.format(lto_level))
+        # Reduce link time by potentially increasing the number of
+        # partitions beyond the default of 32
+        flags.append('--param=lto-partitions={}'.format(lto_level * 2))
 
         return flags
 
