@@ -14,7 +14,7 @@ import collections
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
-load("@xplat//configurations/buck:buckconfig.bzl", "read_choice")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice")
 
 
 # Build info settings which affect rule keys.
