@@ -40,12 +40,16 @@ class ConverterTestCase(unittest.TestCase):
         # this is fixed.
         sys.path.insert(0, os.path.join(os.getcwd(), 'tools/build/buck/infra_macros'))
 
-        self._root = tempfile.mkdtemp()
+        self._tmpdir = tempfile.mkdtemp()
+        # The converter logic looks for some files using the path "../fbcode"
+        # so make sure that we put the test data inside a directory named fbcode
+        self._root = os.path.join(self._tmpdir, "fbcode")
+        os.mkdir(self._root)
         self._old_cwd = os.getcwd()
         os.chdir(self._root)
 
     def tearDown(self):
-        shutil.rmtree(self._root, True)
+        shutil.rmtree(self._tmpdir, True)
         os.chdir(self._old_cwd)
         del sys.path[0]
 
