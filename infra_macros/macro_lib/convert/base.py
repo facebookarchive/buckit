@@ -1318,18 +1318,17 @@ class Converter(object):
             if re.search(plat_re, buck_platform):
                 flags.extend(cflags)
 
-        # This warning can fire on unreachable paths after a lot of inlining
-        # If it doesn't show up in normal compiles, not much point in
-        # showing it here.
-        flags.append('-Wno-free-nonheap-object')
-        flags.append('-Wno-error=odr')
+        flags.extend([
+            # Some warnings that only show up at lto time.
+            '-Wno-free-nonheap-object',
+            '-Wno-odr',
+            '-Wno-lto-type-mismatch',
 
-        # Set the linker that flags that will run LTO.
-        flags.append('-fuse-linker-plugin')
-        flags.append('-flto={}'.format(lto_level))
-        # Reduce link time by potentially increasing the number of
-        # partitions beyond the default of 32
-        flags.append('--param=lto-partitions={}'.format(lto_level * 2))
+            # Set the linker that flags that will run LTO.
+            '-fuse-linker-plugin',
+            '-flto={}'.format(lto_level),
+            '--param=lto-partitions={}'.format(lto_level * 2),
+        ])
 
         return flags
 
