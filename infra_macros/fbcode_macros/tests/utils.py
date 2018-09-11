@@ -430,7 +430,7 @@ class Cell:
         buck_file_content += "\n"
         for statement in statements:
             buck_file_content += (
-                'print("TEST_RESULT: %r" % ({}))\n'.format(statement)
+                'print("TEST_RESULT: %s" % repr({}))\n'.format(statement)
             )
 
         cmd = ["buck", "audit", "rules", buckfile]
