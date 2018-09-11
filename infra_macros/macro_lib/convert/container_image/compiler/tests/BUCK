@@ -139,7 +139,7 @@ python_binary(
 
 # Future: it'd be neat to add `mutate_ops`, but that requires some wrangling
 # with btrfs to get it to find the parent subvolume.
-for op in ['create_ops']:
+for op in ["create_ops"]:
     buck_genrule(
         name = op + ".sendstream",
         out = op + ".sendstream",
