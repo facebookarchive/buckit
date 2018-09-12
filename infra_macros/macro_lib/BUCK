@@ -1,10 +1,14 @@
-# We use a `python_binary` rule to package the macro lib into a zip file,
-# but this is not runnable.
 python_library(
     name = "macro_lib",
-    srcs = glob(["**/*.py"]),
-    # Buckification macros must be runnable from source tree and so *cannot*
-    # have any deps.
+    srcs = glob(
+        ["**/*.py"],
+        exclude = ["convert/container_image/**"],
+    ) + [
+        "convert/container_image/image_feature.py",
+        "convert/container_image/image_layer.py",
+    ],
+    # Buck macros must be runnable from source tree and so *cannot* have any
+    # deps.
     deps = [],
     external_deps = [],
 )
