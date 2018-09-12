@@ -203,7 +203,6 @@ def convert(context, base_path, rule):
     ]
     if use_internal_java_converters:
         converters += [
-            java_plugins.ProtocConverter(context),
             java_plugins.ScalaLibraryConverter(context),
             java_plugins.ScalaTestConverter(context),
         ]
