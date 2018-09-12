@@ -20,7 +20,7 @@ import re
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
-
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 class CppJvmLibrary(base.Converter):
 
@@ -40,7 +40,7 @@ class CppJvmLibrary(base.Converter):
             attrs['visibility'] = visibility
 
         def formatter(flags, platform, _):
-            arch = self.get_platform_architecture(platform)
+            arch = platform_utils.get_platform_architecture(platform)
             # Remap arch to JVM-specific names.
             arch = {'x86_64': 'amd64'}.get(arch, arch)
             return [flag.format(arch=arch, platform=platform) for flag in flags]

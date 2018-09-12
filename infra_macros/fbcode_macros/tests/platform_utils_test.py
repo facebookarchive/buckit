@@ -297,3 +297,13 @@ class PlatformTest(tests.utils.TestCase):
             foobar:gcc7
             """) + "\n"
         self.assertEqual(expected, result.stdout)
+
+    @tests.utils.with_project()
+    def test_get_platform_architecture(self, root):
+        self.assertSuccess(
+            root.runUnitTests(
+                self.includes,
+                ['platform_utils.get_platform_architecture("gcc7")']
+            ),
+            platform.machine(),
+        )

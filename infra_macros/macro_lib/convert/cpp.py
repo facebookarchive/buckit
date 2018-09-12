@@ -981,7 +981,7 @@ class CppConverter(base.Converter):
             if link_whole:
                 attributes['link_whole'] = link_whole
             if global_symbols:
-                if self.get_platform_architecture(
+                if platform_utils.get_platform_architecture(
                         self.get_platform(base_path)) == 'aarch64':
                     # On aarch64 we use bfd linker which doesn't support
                     # --export-dynamic-symbol. We force link_whole instead.
@@ -1167,7 +1167,7 @@ class CppConverter(base.Converter):
             if ld_threads and \
                not core_tools.is_core_tool(base_path, name) and \
                '-fuse-ld=lld' not in out_ldflags and \
-               self.get_platform_architecture(self.get_platform(base_path)) \
+               platform_utils.get_platform_architecture(self.get_platform(base_path)) \
                != 'aarch64' and \
                '-fuse-ld=bfd' not in out_ldflags:
                 out_ldflags.extend([

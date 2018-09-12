@@ -99,7 +99,7 @@ def _get_platform_overrides():
 
 def _get_default_platform():
     """ Returns the default fbcode platform to use """
-    return native.read_config("fbcode", "defaut_platform", "default")
+    return native.read_config("fbcode", "default_platform", "default")
 
 def _get_platform_override():
     """ Returns the user-specified fbcode platform override """
@@ -161,8 +161,9 @@ def _get_platform_for_cell_path_and_arch(cell, path, arch):
     # If we require a platform to be found, fail at this point.
     if read_boolean("fbcode", "require_platform", False):
         fail(
-          "Cannot find fbcode platform to use for architecture {}"
-          .format(arch))
+            "Cannot find fbcode platform to use for architecture {}"
+                .format(arch),
+        )
 
     return _get_default_platform()
 
@@ -174,7 +175,7 @@ def _to_buck_platform(platform, compiler):
     """
 
     fmt = read_string("fbcode", "buck_platform_format", "{platform}")
-    return fmt.format(platform=platform, compiler=compiler)
+    return fmt.format(platform = platform, compiler = compiler)
 
 def _get_buck_platform_for_base_path(base_path):
     """
@@ -184,7 +185,8 @@ def _get_buck_platform_for_base_path(base_path):
 
     return _to_buck_platform(
         _get_platform_for_base_path(base_path),
-        compiler.get_compiler_for_base_path(base_path))
+        compiler.get_compiler_for_base_path(base_path),
+    )
 
 def _get_buck_platform_for_current_buildfile():
     return _get_buck_platform_for_base_path(native.package_name())
@@ -211,11 +213,16 @@ def _get_fbcode_and_buck_platform_for_current_buildfile():
     buck_platform = _to_buck_platform(fbcode_platform, compiler.get_compiler_for_base_path(package))
     return fbcode_platform, buck_platform
 
+def _get_platform_architecture(platform):
+    """ Gets the architecture for a specific platform """
+    return third_party_config["platforms"][platform]["architecture"]
+
 platform_utils = struct(
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
     get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,
     get_default_platform = _get_default_platform,
     get_fbcode_and_buck_platform_for_current_buildfile = _get_fbcode_and_buck_platform_for_current_buildfile,
+    get_platform_architecture = _get_platform_architecture,
     get_platform_for_base_path = _get_platform_for_base_path,
     get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
     get_platform_for_current_buildfile = _get_platform_for_current_buildfile,

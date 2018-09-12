@@ -696,6 +696,10 @@ class TestCase(unittest.TestCase):
                         "architecture": "{other_arch}",
                         "tools": {{}},
                     }},
+                    "default": {{
+                        "architecture": "{current_arch}",
+                        "tools": {{}},
+                    }},
                 }},
             }}
         """.format(current_arch=current_arch, other_arch=other_arch)

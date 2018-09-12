@@ -238,14 +238,6 @@ class Converter(object):
         """
         return platform_utils.get_platform_for_base_path(base_path)
 
-    def get_platform_architecture(self, platform):
-        """
-        Return the target architecture for the given platform.
-        """
-
-        platform_configs = self._context.third_party_config['platforms']
-        return platform_configs[platform]['architecture']
-
     def get_platforms(self, native=True):
         """
         Return all fbcode platforms we can build against.
@@ -781,7 +773,7 @@ class Converter(object):
         if sanitizer_label:
             new_labels.append(sanitizer_label)
         new_labels.append(platform)
-        new_labels.append(self.get_platform_architecture(platform))
+        new_labels.append(platform_utils.get_platform_architecture(platform))
         new_labels.extend(labels)
         return new_labels
 
