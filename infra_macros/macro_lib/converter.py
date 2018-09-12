@@ -52,6 +52,7 @@ load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
 load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
 load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_external")
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
@@ -204,7 +205,6 @@ def convert(context, base_path, rule):
             java_plugins.ProtocConverter(context),
             java_plugins.ScalaLibraryConverter(context),
             java_plugins.ScalaTestConverter(context),
-            java.JavaTestConverter(context),
             java.PrebuiltJarConverter(context),
         ]
 
@@ -233,6 +233,7 @@ def convert(context, base_path, rule):
         'custom_rule': custom_rule,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
+        'java_test': java_test,  # noqa F821
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
