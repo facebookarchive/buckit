@@ -62,9 +62,9 @@ class SanitizersTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_get_sanitizer_flags(self, root):
         expected_flags = [
-            "-fsanitize=thread",
             "-fno-sanitize-recover=all",
             "-fno-omit-frame-pointer",
+            "-fsanitize=thread",
         ]
 
         self.assertFailureWithMessage(

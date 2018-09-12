@@ -87,7 +87,7 @@ _SANITIZER_COMMON_FLAGS = [
     "-fno-omit-frame-pointer",
 ]
 
-_FULL_SANITIZER_FLAGS = {k: v + _SANITIZER_COMMON_FLAGS for k, v in _SANITIZER_FLAGS.items()}
+_FULL_SANITIZER_FLAGS = {k: _SANITIZER_COMMON_FLAGS + v for k, v in _SANITIZER_FLAGS.items()}
 
 def _get_sanitizer():
     """
