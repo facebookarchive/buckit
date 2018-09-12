@@ -53,7 +53,6 @@ class ConfigTest(tests.utils.TestCase):
             [],  # get_header_namespace_whitelist
             None,  # get_lto_type
             False,  # get_require_platform
-            None,  # get_sanitizer
             "",  # get_third_party_buck_directory
             "",  # get_third_party_config_path
             False,  # get_third_party_use_build_subdir
@@ -91,7 +90,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_header_namespace_whitelist()",
             "config.get_lto_type()",
             "config.get_require_platform()",
-            "config.get_sanitizer()",
             "config.get_third_party_buck_directory()",
             "config.get_third_party_config_path()",
             "config.get_third_party_use_build_subdir()",
@@ -227,7 +225,6 @@ class ConfigTest(tests.utils.TestCase):
             ],  # get_header_namespace_whitelist
             "thin",  # get_lto_type
             True,  # get_require_platform
-            "asan",  # get_sanitizer
             "third-party-buck",  # get_third_party_buck_directory
             "third-party-buck/config.py",  # get_third_party_config_path
             True,  # get_third_party_use_build_subdir
@@ -264,7 +261,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_header_namespace_whitelist()",
             "config.get_lto_type()",
             "config.get_require_platform()",
-            "config.get_sanitizer()",
             "config.get_third_party_buck_directory()",
             "config.get_third_party_config_path()",
             "config.get_third_party_use_build_subdir()",

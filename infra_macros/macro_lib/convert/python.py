@@ -43,6 +43,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
 
 INTERPS = [
@@ -538,12 +539,12 @@ class PythonConverter(base.Converter):
         deps = []
         rules = []
 
-        sanitizer = self.get_sanitizer()
+        sanitizer = sanitizers.get_sanitizer()
 
         # If we're using sanitizers, add the dep on the sanitizer-specific
         # support library.
         if sanitizer is not None:
-            sanitizer = base.SANITIZERS[sanitizer]
+            sanitizer = sanitizers.get_short_name(sanitizer)
             deps.append(
                 RootRuleTarget(
                     'tools/build/sanitizers',

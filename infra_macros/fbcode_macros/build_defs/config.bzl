@@ -73,8 +73,9 @@ def _get_allocators():
 
 def _get_auto_fdo_enabled():
     """ Returns whether or not this build is using AutoFDO profile feedback """
+
     # cxx.profile is the target containing the AutoFDO profile feedback data
-    return native.read_config('cxx', 'profile') != None
+    return native.read_config("cxx", "profile") != None
 
 def _get_auto_pch_blacklist():
     """
@@ -262,12 +263,6 @@ def _get_require_platform():
     """
     return read_boolean("fbcode", "require_platform", False)
 
-def _get_sanitizer():
-    """
-    The type of sanitizer to try to use. If not set, do not use it
-    """
-    return read_string("fbcode", "sanitizer", None)
-
 def _get_third_party_buck_directory():
     """
     An additional dirctory that is added to all third party paths in a monorepo
@@ -427,7 +422,6 @@ config = struct(
     get_lto_type = _get_lto_type,
     get_pyfi_overrides_path = _get_pyfi_overrides_path,
     get_require_platform = _get_require_platform,
-    get_sanitizer = _get_sanitizer,
     get_third_party_buck_directory = _get_third_party_buck_directory,
     get_third_party_config_path = _get_third_party_config_path,
     get_third_party_use_build_subdir = _get_third_party_use_build_subdir,

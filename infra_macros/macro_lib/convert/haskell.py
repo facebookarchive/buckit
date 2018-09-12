@@ -26,6 +26,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RuleTarget",
      "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
 
 # Flags controlling warnings issued by compiler
@@ -395,7 +396,7 @@ class HaskellConverter(base.Converter):
         if fb_haskell:
             compiler_flags.extend(FB_HASKELL_COMPILER_FLAGS)
 
-        if self.get_sanitizer() == 'address':
+        if sanitizers.get_sanitizer() == 'address':
             compiler_flags.append('-optP-D__SANITIZE_ADDRESS__')
 
         return tuple(compiler_flags)

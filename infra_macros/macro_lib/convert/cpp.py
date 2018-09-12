@@ -50,6 +50,7 @@ load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
@@ -473,7 +474,7 @@ class CppConverter(base.Converter):
         support.
         """
 
-        sanitizer = self.get_sanitizer()
+        sanitizer = sanitizers.get_sanitizer()
         assert sanitizer is not None
 
         flags = []
@@ -490,7 +491,7 @@ class CppConverter(base.Converter):
         Return deps needed when using sanitizers.
         """
 
-        sanitizer = self.get_sanitizer()
+        sanitizer = sanitizers.get_sanitizer()
         assert sanitizer is not None
 
         deps = []
@@ -513,7 +514,7 @@ class CppConverter(base.Converter):
         flags = []
 
         coverage = self.is_coverage_enabled(base_path)
-        if coverage and self.get_sanitizer() is None:
+        if coverage and sanitizers.get_sanitizer() is None:
             # Add flags to enable LLVM's Coverage Mapping.
             flags.append('-fprofile-instr-generate')
             flags.append('-fcoverage-mapping')
@@ -1055,8 +1056,8 @@ class CppConverter(base.Converter):
         # Form preprocessor flags.
         out_preprocessor_flags = []
         if not cuda:
-            if self.get_sanitizer() is not None:
-                out_preprocessor_flags.extend(self.get_sanitizer_flags())
+            if sanitizers.get_sanitizer() is not None:
+                out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
             out_preprocessor_flags.extend(self.get_coverage_flags(base_path))
         self.verify_preprocessor_flags(
             'preprocessor_flags',
@@ -1145,11 +1146,11 @@ class CppConverter(base.Converter):
 
         # Add non-binary sanitizer dependencies.
         if (not self.is_binary(dlopen_info) and
-                self.get_sanitizer() is not None):
+                sanitizers.get_sanitizer() is not None):
             dependencies.extend(self.get_sanitizer_non_binary_deps())
 
         if self.is_binary(dlopen_info):
-            if self.get_sanitizer() is not None:
+            if sanitizers.get_sanitizer() is not None:
                 out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(self.get_coverage_ldflags(base_path))
             if (self._context.buck_ops.read_config('fbcode', 'gdb-index') and
@@ -1346,8 +1347,8 @@ class CppConverter(base.Converter):
         if (self.is_library() and
                 # TODO(T23121628): The way we build shared libs in non-ASAN
                 # sanitizer modes leaves undefined references to *SAN symbols.
-                (self.get_sanitizer() is None or
-                 self.get_sanitizer().startswith('address')) and
+                (sanitizers.get_sanitizer() is None or
+                 sanitizers.get_sanitizer().startswith('address')) and
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
                 # via the link-style and ignore for now.

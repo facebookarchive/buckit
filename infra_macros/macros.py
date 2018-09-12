@@ -264,7 +264,6 @@ def install_converted_rules(globals, **context_kwargs):
         'coverage': config.get_coverage(),
         'link_style': config.get_default_link_style(),
         'mode': config.get_build_mode(),
-        'sanitizer': config.get_sanitizer() if config.get_sanitizer() else None,
         'lto_type': config.get_lto_type(),
     }
     _install_converted_rules(globals, **context_kwargs)

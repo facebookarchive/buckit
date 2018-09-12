@@ -136,7 +136,6 @@ class ConverterTestCase(unittest.TestCase):
                 coverage=False,
                 link_style='shared',
                 mode='opt',
-                sanitizer=None,
                 lto_type=None,
                 third_party_config={
                     'platforms': {

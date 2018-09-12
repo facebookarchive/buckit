@@ -71,48 +71,7 @@ load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-
-SANITIZERS = {
-    'address': 'asan',
-    'address-undefined': 'asan-ubsan',
-    'efficiency-cache': 'esan-cache',
-    'thread': 'tsan',
-    'undefined': 'ubsan',
-    'address-undefined-dev': 'asan-ubsan',
-}
-
-ASAN_DEFAULT_OPTIONS = {
-    'check_initialization_order': '1',
-    'detect_invalid_pointer_pairs': '1',
-    'detect_leaks': '1',
-    'detect_odr_violation': '1',
-    'detect_stack_use_after_return': '1',
-    'print_scariness': '1',
-    'print_suppressions': '0',
-    'strict_init_order': '1',
-}
-
-UBSAN_DEFAULT_OPTIONS = {
-    'print_stacktrace': '1',
-    'report_error_type': '1',
-}
-
-LSAN_DEFAULT_SUPPRESSIONS = [
-    'boost::python::',
-    'CRYPTO_malloc',
-    '_d_run_main',
-    '/lib/libpython',
-    'libluajit-5.1.so.2',
-    '/src/cpython',
-]
-
-TSAN_DEFAULT_OPTIONS = {
-    'detect_deadlocks': '1',
-    'halt_on_error': '1',
-    'second_deadlock_stack': '1',
-    'symbolize': '0',
-}
-
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -140,7 +99,6 @@ Context = collections.namedtuple(
         'coverage',
         'link_style',
         'mode',
-        'sanitizer',
         'lto_type',
         'third_party_config',
         'config',
@@ -204,50 +162,6 @@ const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
 """
 
 GENERATED_LIB_SUFFIX = '__generated-lib__'
-
-ASAN_UBSAN_FLAGS = [
-    '-fno-common',
-    '-fsanitize=address',
-    '-fsanitize-address-use-after-scope',
-    '-fsanitize=nullability',
-    '-fsanitize=undefined',
-
-    '-fno-sanitize=alignment',
-    '-fno-sanitize=function',
-    '-fno-sanitize=null',
-    '-fno-sanitize=object-size',
-    '-fno-sanitize=unsigned-integer-overflow',
-    '-fno-sanitize=vptr',
-]
-
-UBSAN_FLAGS = [
-    '-fsanitize=undefined',
-    '-fno-sanitize=alignment',
-    '-fno-sanitize=null',
-    '-fsanitize-blacklist=$(location //tools/build:ubsan-blacklist)',
-
-    # Python extensions are loaded with RTLD_LOCAL which is
-    # incompatible with vptr & function UBSAN checks.
-    '-fsanitize-recover=function',
-    '-fsanitize-recover=vptr',
-]
-
-SANITIZER_FLAGS = {
-    'address': ASAN_UBSAN_FLAGS,
-    'address-undefined': ASAN_UBSAN_FLAGS + UBSAN_FLAGS,
-    'efficiency-cache': [
-        '-fsanitize=efficiency-cache-frag',
-    ],
-    'undefined': UBSAN_FLAGS,
-    'address-undefined-dev': ASAN_UBSAN_FLAGS,
-    'thread': [
-        '-fsanitize=thread',
-    ],
-}
-SANITIZER_COMMON_FLAGS = [
-    '-fno-sanitize-recover=all',
-    '-fno-omit-frame-pointer',
-]
 
 
 def is_collection(obj):
@@ -863,9 +777,9 @@ class Converter(object):
         new_labels.append('buck')
         new_labels.append(self._context.mode)
         new_labels.append(compiler.get_compiler_for_current_buildfile())
-        sanitizer = self.get_sanitizer()
-        if sanitizer is not None and sanitizer != 'address-undefined-dev':
-            new_labels.append(SANITIZERS[sanitizer])
+        sanitizer_label = sanitizers.get_label()
+        if sanitizer_label:
+            new_labels.append(sanitizer_label)
         new_labels.append(platform)
         new_labels.append(self.get_platform_architecture(platform))
         new_labels.extend(labels)
@@ -1058,9 +972,9 @@ class Converter(object):
 
         # Apply the general sanitizer/coverage flags.
         for lang in c_langs:
-            if self.get_sanitizer() is not None:
+            if sanitizers.get_sanitizer() is not None:
                 compiler_flags[lang].extend(
-                    self.format_platform_param(self.get_sanitizer_flags()))
+                    self.format_platform_param(sanitizers.get_sanitizer_flags()))
             compiler_flags[lang].extend(
                 self.format_platform_param(self.get_coverage_flags(base_path)))
 
@@ -1176,7 +1090,7 @@ class Converter(object):
 
         # If we're using TSAN, we need to build PIEs, which requires PIC deps.
         # So upgrade to `static_pic` if we're building `static`.
-        if self.get_sanitizer() == 'thread' and link_style == 'static':
+        if sanitizers.get_sanitizer() == 'thread' and link_style == 'static':
             link_style = 'static_pic'
 
         return link_style
@@ -1245,7 +1159,7 @@ class Converter(object):
         ldflags = []
 
         # If we're using TSAN, we need to build PIEs.
-        if self.get_sanitizer() == 'thread':
+        if sanitizers.get_sanitizer() == 'thread':
             ldflags.append('-pie')
 
         # It's rare, but some libraries use variables defined in object files
@@ -1425,65 +1339,13 @@ class Converter(object):
 
         return ldflags
 
-    def get_sanitizer(self):
-        """
-        Return the sanitizer mode to use.
-        """
-
-        # TODO(T25416171): ASAN currently isn't well supported on aarch64. so
-        # disable it for now.  We do this by detecting the host platform, but
-        # longer-term, we should implement ASAN purely via Buck's C/C++
-        # platforms to do this correctly.
-        if platmod.machine() == 'aarch64':
-            return None
-
-        return self._context.sanitizer
-
-    def get_sanitizer_binary_deps(self):
-        """
-        Add additional dependencies needed to build with the given sanitizer.
-        """
-
-        sanitizer = self.get_sanitizer()
-        if sanitizer is None:
-            return []
-
-        compiler.require_global_compiler(
-            "can only use sanitizers with build modes that use clang globally",
-            "clang")
-
-        sanitizer = SANITIZERS[sanitizer]
-        deps = [
-            RootRuleTarget('tools/build/sanitizers', '{}-cpp'.format(sanitizer)),
-        ]
-
-        return deps
-
-    def get_sanitizer_flags(self):
-        """
-        Return compiler/preprocessor flags needed to support sanitized
-        builds.
-        """
-
-        sanitizer = self.get_sanitizer()
-        assert sanitizer is not None
-
-        compiler.require_global_compiler(
-            "can only use sanitizers with build modes that use clang globally",
-            "clang")
-        assert sanitizer in SANITIZER_FLAGS
-
-        flags = SANITIZER_COMMON_FLAGS + SANITIZER_FLAGS[sanitizer]
-
-        return flags
-
     def get_coverage_binary_deps(self):
         assert self._context.coverage
         compiler.require_global_compiler(
             "can only use coverage with build modes that use clang globally",
             "clang")
 
-        if self.get_sanitizer() is None:
+        if sanitizers.get_sanitizer() is None:
             return [
                 RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
             ]
@@ -1499,7 +1361,7 @@ class Converter(object):
         flags = []
 
         if self.is_coverage_enabled(base_path):
-            if self.get_sanitizer() is not None:
+            if sanitizers.get_sanitizer() is not None:
                 flags.append('-fsanitize-coverage=bb')
             else:
                 # Add flags to enable LLVM's Source-based Code Coverage
@@ -1566,11 +1428,11 @@ class Converter(object):
         rules = []
 
         # If we're not using a sanitizer add allocator deps.
-        if self.get_sanitizer() is None:
+        if sanitizers.get_sanitizer() is None:
             deps.extend(self.get_allocator_deps(allocator))
 
         # Add in any dependencies required for sanitizers.
-        deps.extend(self.get_sanitizer_binary_deps())
+        deps.extend([RootRuleTarget(*d) for d in sanitizers.get_sanitizer_binary_deps()])
         d, r = self.create_sanitizer_configuration(
             base_path,
             name,
@@ -1738,7 +1600,7 @@ class Converter(object):
         deps = []
         rules = []
 
-        sanitizer = self.get_sanitizer()
+        sanitizer = sanitizers.get_sanitizer()
         build_mode = self.get_build_mode()
 
         configuration_src = []
@@ -1764,19 +1626,19 @@ class Converter(object):
         if sanitizer and sanitizer.startswith('address'):
             configuration_src.append(gen_options_var(
                 'kAsanDefaultOptions',
-                ASAN_DEFAULT_OPTIONS,
+                sanitizers.ASAN_DEFAULT_OPTIONS,
                 build_mode.asan_options if build_mode else None,
             ))
             configuration_src.append(gen_options_var(
                 'kUbsanDefaultOptions',
-                UBSAN_DEFAULT_OPTIONS,
+                sanitizers.UBSAN_DEFAULT_OPTIONS,
                 build_mode.ubsan_options if build_mode else None,
             ))
 
             if build_mode and build_mode.lsan_suppressions:
                 lsan_suppressions = build_mode.lsan_suppressions
             else:
-                lsan_suppressions = LSAN_DEFAULT_SUPPRESSIONS
+                lsan_suppressions = sanitizers.LSAN_DEFAULT_SUPPRESSIONS
             configuration_src.append(
                 sanitizer_variable_format.format(
                     name='kLSanDefaultSuppressions',
@@ -1789,7 +1651,7 @@ class Converter(object):
         if sanitizer and sanitizer == 'thread':
             configuration_src.append(gen_options_var(
                 'kTsanDefaultOptions',
-                TSAN_DEFAULT_OPTIONS,
+                sanitizers.TSAN_DEFAULT_OPTIONS,
                 build_mode.tsan_options if build_mode else None,
             ))
 

@@ -21,7 +21,7 @@ class FbcodeTargetConverterTest(utils.ConverterTestCase):
         super(FbcodeTargetConverterTest, self).setUp()
         try:
             self.setup_with_config({}, set())
-        except:
+        finally:
             super(FbcodeTargetConverterTest, self).tearDown()
 
     def setup_with_config(self, additional_configs, removed_configs):
