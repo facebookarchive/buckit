@@ -764,19 +764,6 @@ class Converter(object):
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
-    def convert_labels(self, platform, *labels):
-        new_labels = []
-        new_labels.append('buck')
-        new_labels.append(self._context.mode)
-        new_labels.append(compiler.get_compiler_for_current_buildfile())
-        sanitizer_label = sanitizers.get_label()
-        if sanitizer_label:
-            new_labels.append(sanitizer_label)
-        new_labels.append(platform)
-        new_labels.append(platform_utils.get_platform_architecture(platform))
-        new_labels.extend(labels)
-        return new_labels
-
     def get_build_mode(self):
         return self._context.build_mode
 

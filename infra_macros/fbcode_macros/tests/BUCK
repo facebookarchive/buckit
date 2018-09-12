@@ -21,6 +21,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:js_executable.bzl",
     "fbcode_macros//build_defs:js_node_module_external.bzl",
     "fbcode_macros//build_defs:js_npm_module.bzl",
+    "fbcode_macros//build_defs:label_utils.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
     "fbcode_macros//build_defs:modules.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
@@ -140,6 +141,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "js_npm_module_test",
     srcs = ["js_npm_module_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "label_utils_test",
+    srcs = ["label_utils_test.py"],
     deps = [":utils"],
 )
 

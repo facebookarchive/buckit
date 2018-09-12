@@ -22,6 +22,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RootRuleTarget",
      "RuleTarget",
      "ThirdPartyRuleTarget")
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 class DConverter(base.Converter):
@@ -65,7 +66,7 @@ class DConverter(base.Converter):
         attributes['srcs'] = srcs
 
         if self.is_test(self.get_buck_rule_type()):
-            attributes['labels'] = self.convert_labels(platform, 'd', *tags)
+            attributes['labels'] = label_utils.convert_labels(platform, 'd', *tags)
 
         # Add in the base ldflags.
         out_ldflags = []

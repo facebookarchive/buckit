@@ -27,6 +27,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 # Flags controlling warnings issued by compiler
@@ -866,7 +867,7 @@ class HaskellConverter(base.Converter):
         attributes['env'] = env
         platform = self.get_platform(base_path)
         attributes['labels'] = (
-            self.convert_labels(platform, 'haskell', 'custom-type-hs', *tags))
+            label_utils.convert_labels(platform, 'haskell', 'custom-type-hs', *tags))
         rules.append(Rule('sh_test', attributes))
 
         return rules

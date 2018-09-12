@@ -25,6 +25,7 @@ load("{}:fbcode_target.py".format(macro_root),
      "RuleTarget",
      "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 DEFAULT_CPP_MAIN = RootRuleTarget('tools/make_lar', 'lua_main')
@@ -509,7 +510,7 @@ class LuaConverter(base.Converter):
         attributes['test'] = ':' + binary_name
         platform = self.get_platform(base_path)
         attributes['labels'] = (
-            self.convert_labels(platform, 'lua', 'custom-type-' + type, *tags))
+            label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags))
         rules.append(Rule('sh_test', attributes))
 
         return rules

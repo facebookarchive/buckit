@@ -20,6 +20,7 @@ import re
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -142,7 +143,7 @@ class CustomUnittestConverter(base.Converter):
 
         if self.is_test(self.get_buck_rule_type()):
             attributes['labels'] = (
-                self.convert_labels(
+                label_utils.convert_labels(
                     platform,
                     'custom',
                     'custom-type-' + type,

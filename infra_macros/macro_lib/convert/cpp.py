@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 LEX = ThirdPartyRuleTarget('flex', 'flex')
@@ -1371,7 +1372,7 @@ class CppConverter(base.Converter):
         attributes['labels'] = list(tags)
 
         if self.is_test(self.get_buck_rule_type()):
-            attributes['labels'].extend(self.convert_labels(platform, 'c++'))
+            attributes['labels'].extend(label_utils.convert_labels(platform, 'c++'))
             if self.is_coverage_enabled(base_path):
                 attributes['labels'].append('coverage')
             attributes['use_default_test_main'] = use_default_test_main

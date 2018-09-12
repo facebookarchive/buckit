@@ -44,6 +44,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 
 
 INTERPS = [
@@ -937,7 +938,7 @@ class PythonConverter(base.Converter):
 
         attributes['labels'] = list(tags)
         if self.is_test():
-            attributes['labels'].extend(self.convert_labels(platform, 'python'))
+            attributes['labels'].extend(label_utils.convert_labels(platform, 'python'))
 
         attributes['tests'] = tests
 
