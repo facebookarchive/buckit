@@ -68,6 +68,7 @@ with allow_unsafe_import():  # noqa: F821
 
 base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
+cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
 cpp_library_external = import_macro_lib('convert/cpp_library_external')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
@@ -82,13 +83,6 @@ go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 go_library_external = import_macro_lib('convert/go_library_external')
 haskell = import_macro_lib('convert/haskell')
 haskell_external_library = import_macro_lib('convert/haskell_external_library')
-try:
-    java = import_macro_lib('convert/java')
-    java_plugins = import_macro_lib('convert/java_plugins')
-    cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
-    use_internal_java_converters = True
-except ImportError:
-    use_internal_java_converters = False
 image_feature = import_macro_lib('convert/container_image/image_feature')
 image_layer = import_macro_lib('convert/container_image/image_layer')
 lua = import_macro_lib('convert/lua')
@@ -203,8 +197,6 @@ def convert(context, base_path, rule):
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
     ]
-    if use_internal_java_converters:
-        converters += []
 
     converters += get_fbonly_converters(context)
 
