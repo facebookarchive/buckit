@@ -215,6 +215,8 @@ def _get_fbcode_and_buck_platform_for_current_buildfile():
 
 def _get_platform_architecture(platform):
     """ Gets the architecture for a specific platform """
+    if platform == "default":  # We're using the native platform, bail!
+        return _current_architecture
     return third_party_config["platforms"][platform]["architecture"]
 
 platform_utils = struct(
