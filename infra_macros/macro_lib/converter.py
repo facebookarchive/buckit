@@ -57,6 +57,7 @@ load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
 load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
 load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_external")
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
+load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 
 with allow_unsafe_import():  # noqa: F821
@@ -202,7 +203,6 @@ def convert(context, base_path, rule):
     ]
     if use_internal_java_converters:
         converters += [
-            java_plugins.JarShadeConverter(context),
             java_plugins.ProtocConverter(context),
             java_plugins.ScalaLibraryConverter(context),
             java_plugins.ScalaTestConverter(context),
@@ -234,6 +234,7 @@ def convert(context, base_path, rule):
         'custom_rule': custom_rule,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
+        'java_shaded_jar': java_shaded_jar,  # noqa F821
         'java_test': java_test,  # noqa F821
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821

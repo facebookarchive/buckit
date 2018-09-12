@@ -22,6 +22,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:java_common.bzl",
     "fbcode_macros//build_defs:java_library.bzl",
     "fbcode_macros//build_defs:java_test.bzl",
+    "fbcode_macros//build_defs:java_shaded_jar.bzl",
     "fbcode_macros//build_defs:js_common.bzl",
     "fbcode_macros//build_defs:js_executable.bzl",
     "fbcode_macros//build_defs:js_node_module_external.bzl",
