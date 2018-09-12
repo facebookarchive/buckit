@@ -285,4 +285,5 @@ java_common = struct(
     duplicate_finder = _duplicate_finder,
     get_extra_annotation_processors_and_deps = _get_extra_annotation_processors_and_deps,
     get_maven_publisher_labels_and_create_rules = _get_maven_publisher_labels_and_create_rules,
+    package_sources = _package_sources,
 )

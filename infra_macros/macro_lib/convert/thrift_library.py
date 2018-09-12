@@ -35,11 +35,6 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 haskell = import_macro_lib('convert/haskell')
-try:
-    java = import_macro_lib('convert/java')
-    use_internal_java_converters = True
-except ImportError:
-    use_internal_java_converters = False
 cython = import_macro_lib('convert/cython')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
@@ -51,7 +46,7 @@ RuleTarget = target.RuleTarget
 ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
-
+load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -981,7 +976,6 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
     def __init__(self, context, *args, **kwargs):
         super(JavaDeprecatedThriftBaseConverter, self).__init__(
             context, *args, **kwargs)
-        self._java_library_converter = java.JavaLibraryConverter(context)
 
     def get_compiler_lang(self):
         return 'java'
@@ -1035,8 +1029,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
         out_deps = []
         out_deps.extend(deps)
         out_deps.extend(self._get_runtime_dependencies())
-        rules.extend(self._java_library_converter.convert(
-            base_path,
+        java_library(
             name=name,
             srcs=out_srcs,
             duplicate_finder_enabled=False,
@@ -1045,7 +1038,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             maven_publisher_enabled=javadeprecated_maven_publisher_enabled,
             maven_publisher_version_prefix=(
                 javadeprecated_maven_publisher_version_prefix),
-            visibility=visibility))
+            visibility=visibility)
 
         return rules
 
@@ -1215,7 +1208,6 @@ class JavaSwiftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(JavaSwiftConverter, self).__init__(context, *args, **kwargs)
-        self._java_library_converter = java.JavaLibraryConverter(context)
 
     def get_lang(self):
         return 'java-swift'
@@ -1329,15 +1321,14 @@ class JavaSwiftConverter(ThriftLangConverter):
                     "When java_swift_maven_coords is specified, you must set"
                     " thrift_java_swift_options = %s" % expected_options)
 
-        rules.extend(self._java_library_converter.convert(
-            base_path,
+        java_library(
             name=name,
             visibility=visibility,
             srcs=out_srcs,
             duplicate_finder_enabled=False,
             exported_deps=out_deps,
             maven_coords=java_swift_maven_coords,
-            maven_publisher_enabled=maven_publisher_enabled))
+            maven_publisher_enabled=maven_publisher_enabled)
 
         return rules
 
@@ -2421,13 +2412,10 @@ class ThriftLibraryConverter(base.Converter):
             LegacyPythonThriftConverter(
                 context,
                 flavor=LegacyPythonThriftConverter.PYI_ASYNCIO),
+            JavaDeprecatedApacheThriftConverter(context),
+            JavaDeprecatedThriftConverter(context),
+            JavaSwiftConverter(context),
         ]
-        if use_internal_java_converters:
-            converters += [
-                JavaDeprecatedApacheThriftConverter(context),
-                JavaDeprecatedThriftConverter(context),
-                JavaSwiftConverter(context),
-            ]
         self._converters = {}
         self._name_to_lang = {}
         for converter in converters:
