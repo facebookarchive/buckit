@@ -48,6 +48,7 @@ load(  # noqa F821
     "test_suite",
     "versioned_alias",
 )
+load("@fbcode_macros//build_defs:antlr3_srcs.bzl", "antlr3_srcs")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
@@ -202,7 +203,6 @@ def convert(context, base_path, rule):
     if use_internal_java_converters:
         converters += [
             java_plugins.JarShadeConverter(context),
-            java_plugins.Antlr3Converter(context),
             java_plugins.ProtocConverter(context),
             java_plugins.ScalaLibraryConverter(context),
             java_plugins.ScalaTestConverter(context),
@@ -212,6 +212,7 @@ def convert(context, base_path, rule):
 
     converter_map = {}
     new_converter_map = {
+        'antlr3_srcs': antlr3_srcs,
         'buck_cxx_binary': buck_cxx_binary,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'buck_cxx_library': buck_cxx_library,  # noqa F821
