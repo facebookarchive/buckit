@@ -1997,22 +1997,15 @@ class Converter(object):
             'cannot match a version universe to constraints: {!r}'
             .format(constraints))
 
-    def get_py2_version(self, platform):
-        conf = self.get_third_party_config(platform)
-        return conf['build']['projects']['python'][0][1]
-
-    def get_py3_version(self, platform):
-        conf = self.get_third_party_config(platform)
-        return conf['build']['projects']['python'][1][1]
-
-    def get_python_platform(self, platform, python_version):
-        return 'py{}-{}'.format(python_version[0], platform)
-
-    def get_py2_platform(self, platform):
-        return self.get_python_platform(platform, self.get_py2_version(platform))
-
-    def get_py3_platform(self, platform):
-        return self.get_python_platform(platform, self.get_py3_version(platform))
+    def get_python_platform(self, platform, major_version, flavor=""):
+        """
+        Constructs a Buck Python platform string from the given parameters.
+        """
+        # See `get_python_platforms_config` in `tools/build/buck/gen_modes.py`:
+        return ('{flavor}py{major}-{platform}'
+                .format(flavor=(flavor + '_' if flavor else ''),
+                        major=major_version,
+                        platform=platform))
 
     def get_allowed_args(self):
         return None

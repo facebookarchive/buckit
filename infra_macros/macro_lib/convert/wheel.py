@@ -119,8 +119,8 @@ class PyWheelDefault(base.Converter):
         # platform deps onto "error" rules that will fail at build time.
         platform_versions = collections.OrderedDict(platform_versions)
         for platform in self.get_platforms():
-            py2_plat = self.get_py2_platform(platform)
-            py3_plat = self.get_py3_platform(platform)
+            py2_plat = self.get_python_platform(platform, major_version=2)
+            py3_plat = self.get_python_platform(platform, major_version=3)
             present_for_any_python_version = (
                 py2_plat in platform_versions or py3_plat in platform_versions
             )
@@ -139,7 +139,7 @@ class PyWheelDefault(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['platform_deps'] = [
-            ('^{}$'.format(re.escape(py_platform)), [':' + version])
+            ('{}$'.format(re.escape(py_platform)), [':' + version])
             for py_platform, version in sorted(platform_versions.items())
         ]
         # TODO: Figure out how to handle typing info from wheels
@@ -198,7 +198,7 @@ class PyWheel(base.Converter):
         # Use platform_deps to rely on the correct wheel target for
         # each platform
         attrs['platform_deps'] = [
-            ('^{}$'.format(re.escape(py_platform)), [wheel_targets[url]])
+            ('{}$'.format(re.escape(py_platform)), [wheel_targets[url]])
             for py_platform, url in sorted(platform_urls.items())
         ]
 

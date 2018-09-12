@@ -92,6 +92,165 @@ sys.modules[__name__] = Manifest()
 """
 
 
+DEFAULT_MAJOR_VERSION = '3'
+VERSION_CONSTRAINT_SHORTCUTS = {
+    2   : '2',
+    '2' : '2',
+    3   : '3',
+    '3' : '3',
+}
+
+
+class PythonVersionConstraint(object):
+    """An abstraction for Python version constraints.
+
+    This class implements the semantics of the `py_version` and `versioned_srcs`
+    parameters of the 'python_xxx' rule types.
+
+    """
+
+    # Bit masks for partial matching:
+    MAJOR = 1
+    MINOR = 2
+    PATCHLEVEL = 4
+    FLAVOR = 8
+
+    def __init__(self, vcstring):
+        self.op = None
+        self.version = None
+        # By default, we allow constraints to place restrictions on flavor, e.g.
+        # constraints such as ">flavor.3" should work as expected:
+        self.flags = PythonVersionConstraint.FLAVOR
+        if vcstring:
+            self.parse(vcstring)
+        else:
+            # No explicit constraint specified, in which case we fallback to a
+            # partial match for DEFAULT_MAJOR_VERSION:
+            self.version = PythonVersion(DEFAULT_MAJOR_VERSION)
+            self.flags |= PythonVersionConstraint.MAJOR
+
+    def enable_flag(self, mask):
+        self.flags |= mask
+
+    def disable_flag(self, mask):
+        self.flags &= ~mask
+
+    def parse(self, vcstring):
+        """
+        Parse the given `vcstring` into callable which tests a `LooseVersion`
+        object.
+        """
+
+        # Constraint shortcuts allow the user to restrict to a particular major
+        # version:
+        if vcstring in VERSION_CONSTRAINT_SHORTCUTS:
+            vstring = VERSION_CONSTRAINT_SHORTCUTS[vcstring]
+            self.flags = PythonVersionConstraint.MAJOR
+        elif vcstring.startswith('<='):
+            vstring = vcstring[2:].lstrip()
+            self.op = operator.le
+        elif vcstring.startswith('>='):
+            vstring = vcstring[2:].lstrip()
+            self.op = operator.ge
+        elif vcstring.startswith('<'):
+            vstring = vcstring[1:].lstrip()
+            self.op = operator.lt
+        elif vcstring.startswith('='):
+            vstring = vcstring[1:].lstrip()
+            self.op = operator.eq
+        elif vcstring.startswith('>'):
+            vstring = vcstring[1:].lstrip()
+            self.op = operator.gt
+        else:
+            vstring = vcstring
+
+        # We parse the version substring using `PythonVersion` so that flavored
+        # versions can be properly handled:
+        self.version = PythonVersion(vstring)
+
+    def matches(self, version, flags=0):
+        """
+        True if this constraint can be satisfied by the given `version`.
+        """
+
+        # A trivial constraint matches everything:
+        if self.version is None:
+            return True
+
+        # Combine explicit and implicit flags:
+        flags |= self.flags
+        # First make sure flavors are compatible:
+        if flags & PythonVersionConstraint.FLAVOR and \
+           not version.supports(self.version.flavor):
+            return False
+
+        # Then perform version number matching...
+        # Operator matching takes precedence:
+        if self.op:
+            return self.op(version, self.version)
+        # followed by partial matching:
+        elif flags ^ PythonVersionConstraint.FLAVOR:
+            return ((not flags & PythonVersionConstraint.MAJOR or
+                     version.major == self.version.major) and
+                    (not flags & PythonVersionConstraint.MINOR or
+                     version.minor == self.version.minor) and
+                    (not flags & PythonVersionConstraint.PATCHLEVEL or
+                     version.patchlevel == self.version.patchlevel))
+        # and finally default to simple equality matching:
+        else:
+            return self.version == version
+
+
+class PythonVersion(LooseVersion):
+    """An abstraction of tp2/python version strings that supports flavor prefixes.
+
+    See `get_python_platforms_config()` in `tools/build/buck/gen_modes.py` for
+    the format of flavored version strings.
+
+    """
+
+    def __init__(self, vstring):
+        LooseVersion.__init__(self, vstring)
+        if not self.version:
+            raise ValueError('{} is not a valid Python version string!'
+                             .format(vstring))
+
+        self.flavor = ""
+        if isinstance(self.version[0], str):
+            self.flavor = self.version[0]
+            self.version = self.version[1:]
+
+        if not self.version or not isinstance(self.version[0], int):
+            raise ValueError("{} is not a valid Python version string!"
+                             .format(vstring))
+
+    @property
+    def major(self):
+        return self.version[0]
+
+    @property
+    def minor(self):
+        return self.version[1] if len(self.version) > 1 else None
+
+    @property
+    def patchlevel(self):
+        return self.version[2] if len(self.version) > 2 else None
+
+    def supports(self, flavor):
+        """
+        True if this version supports the given `flavor`.
+        """
+        return self.flavor.endswith(flavor)
+
+    def satisfies(self, constraint, flags=0):
+        """
+        True if this version can satisfy `constraint`.
+        """
+        if not isinstance(constraint, PythonVersionConstraint):
+            constraint = PythonVersionConstraint(constraint)
+        return constraint.matches(self, flags)
+
+
 class PythonConverter(base.Converter):
 
     RULE_TYPE_MAP = {
@@ -185,74 +344,62 @@ class PythonConverter(base.Converter):
 
         return out_srcs
 
-    def parse_constraint(self, platform, constraint):
+    def matches_major(self, constraint, version):
         """
-        Parse the given constraint into callable which tests a `LooseVersion`
-        object.
+        True if `constraint` can be satisfied by a Python version that is of
+        major `version` on some active platform.
         """
 
-        if constraint is None:
-            return lambda other: True
+        return any(pv.major == version and pv.satisfies(constraint)
+                   for pv in self.get_all_versions())
 
-        # complex Constraints are silly, we only have py2 and py3
-        if constraint in (2, '2'):
-            constraint = self.get_py2_version(platform)
-            op = operator.eq
-        elif constraint in (3, '3'):
-            constraint = self.get_py3_version(platform)
-            op = operator.eq
-        elif constraint.startswith('<='):
-            constraint = constraint[2:].lstrip()
-            op = operator.le
-        elif constraint.startswith('>='):
-            constraint = constraint[2:].lstrip()
-            op = operator.ge
-        elif constraint.startswith('<'):
-            constraint = constraint[1:].lstrip()
-            op = operator.lt
-        elif constraint.startswith('='):
-            constraint = constraint[1:].lstrip()
-            op = operator.eq
-        elif constraint.startswith('>'):
-            constraint = constraint[1:].lstrip()
-            op = operator.gt
-        else:
-            op = operator.eq
+    def get_all_versions(self, platform=None):
+        """
+        Returns a list of `PythonVersion` instances corresponding to the active
+        Python versions for the given `platform`. If `platform` is not
+        specified, then return versions for all platforms.
+        """
 
-        return lambda other: op(other, LooseVersion(constraint))
+        confs = [self.get_third_party_config(p)['build']['projects']['python']
+                 for p in self.get_platforms()
+                 if platform is None or p == platform]
+        versions = set(version_str
+                       for pyconf in confs
+                       # pyconf is a list of pairs:
+                       # (ORIGINAL_TP2_VERSION, ACTUAL_VERSION)
+                       for _, version_str in pyconf)
+        return list(PythonVersion(vstr) for vstr in versions)
 
-    def matches_py2(self, constraint):
-        # We don't match py2 by default anymore. only py3
-        if constraint is None:
-            return False
-        matched, = {
-            self.parse_constraint(p, constraint)
-                (LooseVersion(self.get_py2_version(p)))
-            for p in self.get_platforms()}
-        return matched
+    def get_default_version(self, platform, constraint, flavor=""):
+        """
+        Returns a `PythonVersion` instance corresponding to the first Python
+        version that satisfies `constraint` and `flavor` for the given
+        `platform`.
+        """
 
-    def matches_py3(self, constraint):
-        matched, = {
-            self.parse_constraint(p, constraint)
-                (LooseVersion(self.get_py3_version(p)))
-            for p in self.get_platforms()}
-        return matched
+        pyconf = self.get_third_party_config(platform)['build']['projects']['python']
+        for _, version_str in pyconf:
+            version = PythonVersion(version_str)
+            if version.satisfies(constraint) and version.supports(flavor):
+                return version
+        return None
 
-    def get_python_version(self, platform, constraint):
-        if self.matches_py3(constraint):
-            return self.get_py3_version(platform)
-        if self.matches_py2(constraint):
-            return self.get_py2_version(platform)
-        raise ValueError('invalid python constraint: {!r}'.format(constraint))
+    def platform_has_version(self, platform, version):
+        """
+        True if the Python `version` is configured for `platform`.
+        """
+        pyconf = self.get_third_party_config(platform)['build']['projects']['python']
+        for _, version_str in pyconf:
+            if version_str == version.vstring:
+                return True
+        return False
 
-    def get_interpreter(self, platform, python_version):
-        return '/usr/local/fbcode/{}/bin/python{}'.format(
-            platform,
-            python_version[:3])
+    def get_interpreter(self, platform):
+        return self.read_string('python#' + platform, 'interpreter')
 
     def get_version_universe(self, python_version):
         return super(PythonConverter, self).get_version_universe(
-            [('python', python_version)])
+            [('python', python_version.vstring)])
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
@@ -275,7 +422,7 @@ class PythonConverter(base.Converter):
             name,
             main_module,
             platform,
-            python_version):
+            python_platform):
         """
         Return the build info attributes to install for python rules.
         """
@@ -285,7 +432,7 @@ class PythonConverter(base.Converter):
         py_build_info['main_module'] = main_module
         py_build_info['par_style'] = 'live'
 
-        interp = self.get_interpreter(platform, python_version)
+        interp = self.get_interpreter(python_platform)
         py_build_info['python_home'] = os.path.dirname(os.path.dirname(interp))
         py_build_info['python_command'] = pipes.quote(interp)
 
@@ -314,7 +461,7 @@ class PythonConverter(base.Converter):
             name,
             main_module,
             platform,
-            python_version,
+            python_platform,
             visibility):
         """
         Build the rules that create the `__manifest__` module.
@@ -328,7 +475,7 @@ class PythonConverter(base.Converter):
                 name,
                 main_module,
                 platform,
-                python_version))
+                python_platform))
         manifest = MANIFEST_TEMPLATE.format(
             fbmake='\n        '.join(
                 '{!r}: {!r},'.format(k, v) for k, v in build_info.iteritems()))
@@ -486,8 +633,7 @@ class PythonConverter(base.Converter):
             attrs['main_module'] = interp_main_module
             attrs['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
             attrs['platform'] = python_platform
-            attrs['version_universe'] = (
-                self.get_version_universe(python_version))
+            attrs['version_universe'] = self.get_version_universe(python_version)
             attrs['deps'] = [interp_dep] + deps
             attrs['platform_deps'] = platform_deps
             attrs['preload_deps'] = preload_deps
@@ -629,6 +775,7 @@ class PythonConverter(base.Converter):
         external_deps=[],
         visibility=None,
         cpp_deps=(),
+        py_flavor="",
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -638,12 +785,21 @@ class PythonConverter(base.Converter):
         parsed_srcs.update(self.parse_srcs(base_path, 'srcs', srcs))
         parsed_srcs.update(self.parse_gen_srcs(base_path, gen_srcs))
 
+        # Parse the version constraints and normalize all source paths in
+        # `versioned_srcs`:
+        parsed_versioned_srcs = tuple((PythonVersionConstraint(pvc),
+                                       self.parse_srcs(base_path,
+                                                       'versioned_srcs',
+                                                       vs))
+                                      for pvc, vs in versioned_srcs)
+
         # Contains a mapping of platform name to sources to use for that
         # platform.
         all_versioned_srcs = []
 
         # If we're TP project, install all sources via the `versioned_srcs`
-        # parameter.
+        # parameter. `py_flavor` is ignored since flavored Pythons are only
+        # intended for use by internal projects.
         if self.is_tp2(base_path):
 
             # TP2 projects have multiple "pre-built" source dirs, so we install
@@ -653,11 +809,13 @@ class PythonConverter(base.Converter):
             project_builds = self.get_tp2_project_builds(base_path)
             for build in project_builds.values():
                 build_srcs = [parsed_srcs]
-                if versioned_srcs:
-                    py_vers = build.versions['python']
+                if parsed_versioned_srcs:
+                    py_vers = PythonVersion(build.versions['python'])
                     build_srcs.extend(
-                        [self.parse_srcs(base_path, 'versioned_srcs', vs)
-                         for pv, vs in versioned_srcs if pv[:3] == py_vers])
+                        dict(vs) for vc, vs in parsed_versioned_srcs
+                        if vc.matches(py_vers,
+                                      (PythonVersionConstraint.MAJOR |
+                                       PythonVersionConstraint.MINOR)))
 
                 vsrc = {}
                 for build_src in build_srcs:
@@ -666,39 +824,43 @@ class PythonConverter(base.Converter):
                             vsrc[name] = src
                         else:
                             vsrc[name] = os.path.join(build.subdir, src)
+
                 all_versioned_srcs.append((build.project_deps, vsrc))
 
             # Reset `srcs`, since we're using `versioned_srcs`.
             parsed_srcs = {}
 
-        # If we're an fbcode project, then keep the regular sources parameter
-        # and only use the `versioned_srcs` parameter for the input parameter
-        # of the same name.
+        # If we're an fbcode project, and `py_flavor` is not specified, then
+        # keep the regular sources parameter and only use the `versioned_srcs`
+        # parameter for the input parameter of the same name; if `py_flavor` is
+        # specified, then we have to install all sources via `versioned_srcs`
         else:
-            py2_srcs = {}
-            py3_srcs = {}
-            for constraint, vsrcs in versioned_srcs:
-                vsrcs = self.parse_srcs(base_path, 'versioned_srcs', vsrcs)
-                if self.matches_py2(constraint):
-                    py2_srcs.update(vsrcs)
-                if self.matches_py3(constraint):
-                    py3_srcs.update(vsrcs)
-            if py2_srcs or py3_srcs:
-                py = self.get_tp2_project_target('python')
-                platforms = (
-                    self.get_platforms()
-                    if not self.is_tp2(base_path)
-                    else [self.get_tp2_platform(base_path)])
-                all_versioned_srcs.append(
-                    ({self.get_dep_target(py, platform=p):
-                          self.get_py2_version(p)
-                      for p in platforms},
-                     py2_srcs))
-                all_versioned_srcs.append(
-                    ({self.get_dep_target(py, platform=p):
-                          self.get_py3_version(p)
-                      for p in platforms},
-                     py3_srcs))
+            pytarget = self.get_tp2_project_target('python')
+            platforms = self.get_platforms()
+
+            # Iterate over all potential Python versions and collect srcs for
+            # each version:
+            for pyversion in self.get_all_versions():
+                if not pyversion.supports(py_flavor):
+                    continue
+
+                ver_srcs = {}
+                if py_flavor:
+                    ver_srcs.update(parsed_srcs)
+
+                for constraint, pvsrcs in parsed_versioned_srcs:
+                    if pyversion.satisfies(constraint):
+                        ver_srcs.update(pvsrcs)
+                if ver_srcs:
+                    all_versioned_srcs.append(
+                        ({self.get_dep_target(pytarget, platform=p) :
+                          pyversion.vstring
+                          for p in platforms
+                          if self.platform_has_version(p, pyversion)},
+                         ver_srcs))
+
+            if py_flavor:
+                parsed_srcs = {}
 
         if base_module is not None:
             attributes['base_module'] = base_module
@@ -725,25 +887,24 @@ class PythonConverter(base.Converter):
         # `platform_srcs` and `platform_resources` parameter based on their
         # extension, so that directories with only resources don't end up
         # creating stray `__init__.py` files for in-place binaries.
-        if all_versioned_srcs:
-            out_versioned_srcs = []
-            out_versioned_resources = []
-            for vcollection, ver_srcs in all_versioned_srcs:
-                out_srcs = collections.OrderedDict()
-                out_resources = collections.OrderedDict()
-                for dst, src in (
-                        self.without_platforms(
-                            self.format_source_map(ver_srcs))).items():
-                    if dst.endswith('.py') or dst.endswith('.so'):
-                        out_srcs[dst] = src
-                    else:
-                        out_resources[dst] = src
-                out_versioned_srcs.append((vcollection, out_srcs))
-                out_versioned_resources.append((vcollection, out_resources))
-            if out_versioned_srcs:
-                attributes['versioned_srcs'] = out_versioned_srcs
-            if out_versioned_resources:
-                attributes['versioned_resources'] = out_versioned_resources
+        out_versioned_srcs = []
+        out_versioned_resources = []
+        for vcollection, ver_srcs in all_versioned_srcs:
+            out_srcs = collections.OrderedDict()
+            out_resources = collections.OrderedDict()
+            for dst, src in (
+                    self.without_platforms(
+                        self.format_source_map(ver_srcs))).items():
+                if dst.endswith('.py') or dst.endswith('.so'):
+                    out_srcs[dst] = src
+                else:
+                    out_resources[dst] = src
+            out_versioned_srcs.append((vcollection, out_srcs))
+            out_versioned_resources.append((vcollection, out_resources))
+        if out_versioned_srcs:
+            attributes['versioned_srcs'] = out_versioned_srcs
+        if out_versioned_resources:
+            attributes['versioned_resources'] = out_versioned_resources
 
         dependencies = []
         if self.is_tp2(base_path):
@@ -784,6 +945,7 @@ class PythonConverter(base.Converter):
         library,
         tests=[],
         py_version=None,
+        py_flavor="",
         main_module=None,
         rule_type=None,
         strip_libpar=True,
@@ -813,8 +975,17 @@ class PythonConverter(base.Converter):
         platform_deps = []
         out_preload_deps = []
         platform = self.get_platform(base_path)
-        python_version = self.get_python_version(platform, py_version)
-        python_platform = self.get_python_platform(platform, python_version)
+        python_version = self.get_default_version(platform=platform,
+                                                  constraint=py_version,
+                                                  flavor=py_flavor)
+        if python_version is None:
+            raise ValueError("Unable to find Python version matching constraint"
+                             " '{}' and flavor '{}' on '{}'."
+                             .format(py_version, py_flavor, platform))
+
+        python_platform = self.get_python_platform(platform,
+                                                   major_version=python_version.major,
+                                                   flavor=py_flavor)
 
         if allocator is None:
             allocator = self.get_allocator(allocator)
@@ -923,7 +1094,7 @@ class PythonConverter(base.Converter):
                 name,
                 main_module,
                 platform,
-                python_version,
+                python_platform,
                 visibility))
         rules.extend(manifest_rules)
         if self.get_package_style() == 'inplace':
@@ -931,8 +1102,7 @@ class PythonConverter(base.Converter):
 
         attributes['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         attributes['platform'] = python_platform
-        attributes['version_universe'] = (
-            self.get_version_universe(python_version))
+        attributes['version_universe'] = self.get_version_universe(python_version)
         attributes['linker_flags'] = (
             self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
 
@@ -993,7 +1163,7 @@ class PythonConverter(base.Converter):
             dependencies.extend(
                 ':' + r.attributes['name'] for r in interp_rules)
         if check_types:
-            if not self.matches_py3(python_version):
+            if python_version.major != 3:
                 raise ValueError(
                     'parameter `check_types` is only supported on Python 3.'
                 )
@@ -1004,6 +1174,7 @@ class PythonConverter(base.Converter):
                     main_module,
                     platform,
                     python_platform,
+                    python_version,
                     library,
                     dependencies,
                     platform_deps,
@@ -1029,7 +1200,7 @@ class PythonConverter(base.Converter):
 
         if (
             self.read_bool('fbcode', 'monkeytype', False) and
-            self.matches_py3(python_version)
+            python_version.major == 3
         ):
             rules.extend(
                 self.create_monkeytype_rules(rule_type, attributes, library)
@@ -1042,6 +1213,7 @@ class PythonConverter(base.Converter):
         base_path,
         name=None,
         py_version=None,
+        py_flavor="",
         base_module=None,
         main_module=None,
         strip_libpar=True,
@@ -1113,6 +1285,7 @@ class PythonConverter(base.Converter):
             external_deps=external_deps,
             visibility=visibility,
             cpp_deps=cpp_deps,
+            py_flavor=py_flavor,
         )
 
         # People use -library of unittests
@@ -1134,8 +1307,8 @@ class PythonConverter(base.Converter):
             versions = {}
             platform = self.get_platform(base_path)
             for py_ver in py_version:
-                python_version = self.get_python_version(platform, py_ver)
-                new_name = name + '-' + python_version
+                python_version = self.get_default_version(platform, py_ver)
+                new_name = name + '-' + python_version.vstring
                 versions[py_ver] = new_name
         py_tests = []
         rule_names = set()
@@ -1144,8 +1317,8 @@ class PythonConverter(base.Converter):
             # so we can have the py3 parts type check without a separate target
             if (
                 check_types
-                and self.matches_py2(py_ver)
-                and any(self.matches_py3(v) for v in versions)
+                and self.matches_major(py_ver, version=2)
+                and any(self.matches_major(v, version=3) for v in versions)
             ):
                 _check_types = False
                 print(
@@ -1161,6 +1334,7 @@ class PythonConverter(base.Converter):
                 library,
                 tests=tests,
                 py_version=py_ver,
+                py_flavor=py_flavor,
                 main_module=main_module,
                 strip_libpar=strip_libpar,
                 tags=tags,
@@ -1217,6 +1391,7 @@ class PythonConverter(base.Converter):
         main_module,
         platform,
         python_platform,
+        python_version,
         library,
         deps,
         platform_deps,
@@ -1246,8 +1421,7 @@ class PythonConverter(base.Converter):
             ('package_style', 'inplace'),
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
-            ('version_universe',
-             self.get_version_universe(self.get_py3_version(platform))),
+            ('version_universe', self.get_version_universe(python_version)),
         ))
         if visibility is not None:
             attrs['visibility'] = visibility
