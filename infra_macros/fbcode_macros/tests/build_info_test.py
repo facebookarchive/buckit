@@ -57,6 +57,7 @@ class BuildInfoTest(tests.utils.TestCase):
         expected = [
             self.struct(
                 build_mode="dev",
+                compiler="gcc",
                 rule="fbcode:foo:bar",
                 platform="gcc5",
                 rule_type="cpp_binary",
@@ -89,6 +90,7 @@ class BuildInfoTest(tests.utils.TestCase):
         expected = [
             self.struct(
                 build_mode="dev",
+                compiler="gcc",
                 rule="fbcode:foo:bar",
                 platform="gcc5",
                 rule_type="cpp_binary",
@@ -138,6 +140,7 @@ class BuildInfoTest(tests.utils.TestCase):
         expected = [
             self.struct(
                 build_mode="dev",
+                compiler="gcc",
                 rule="fbcode:foo:bar",
                 platform="gcc5",
                 rule_type="cpp_binary",

@@ -17,6 +17,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:java_binary.bzl",
     "fbcode_macros//build_defs:java_common.bzl",
     "fbcode_macros//build_defs:java_library.bzl",
     "fbcode_macros//build_defs:js_common.bzl",
