@@ -60,6 +60,7 @@ load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
+load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 
 with allow_unsafe_import():  # noqa: F821
     import sys
@@ -203,9 +204,7 @@ def convert(context, base_path, rule):
         wheel.PyWheelDefault(context),
     ]
     if use_internal_java_converters:
-        converters += [
-            java_plugins.ScalaTestConverter(context),
-        ]
+        converters += []
 
     converters += get_fbonly_converters(context)
 
@@ -240,6 +239,7 @@ def convert(context, base_path, rule):
         'js_npm_module': js_npm_module,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'scala_library': scala_library,  # noqa F821
+        'scala_test': scala_test,  # noqa F821
     }
 
     for converter in converters:

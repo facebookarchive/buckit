@@ -38,6 +38,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:prebuilt_jar.bzl",
     "fbcode_macros//build_defs:sanitizers.bzl",
     "fbcode_macros//build_defs:scala_library.bzl",
+    "fbcode_macros//build_defs:scala_test.bzl",
     "fbcode_macros//build_defs:src_and_dep_helpers.bzl",
     "fbcode_macros//build_defs:third_party.bzl",
     "fbcode_macros//build_defs:third_party_config.bzl",
