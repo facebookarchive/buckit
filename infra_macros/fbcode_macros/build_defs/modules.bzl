@@ -8,11 +8,12 @@ load(
 )
 
 def _enabled():
-    enabled = read_boolean('cxx', 'modules', False)
+    enabled = read_boolean("cxx", "modules", False)
     if enabled:
         compiler.require_global_compiler(
             "C/C++ modules are only supported when using clang globally",
-            "clang")
+            "clang",
+        )
     return enabled
 
 # Flags to apply to compilations to enabled modules.
@@ -73,8 +74,8 @@ def _sanitize_name(name):
     Sanitize input of chars that can't be used in a module map token.
     """
 
-    for c in '-/.':
-        name = name.replace(c, '_')
+    for c in "-/.":
+        name = name.replace(c, "_")
 
     return name
 
@@ -84,29 +85,29 @@ def _get_module_name(cell, base_path, name):
     """
 
     if (cell, base_path) in _get_deprecated_auto_module_names():
-        return _sanitize_name('_'.join([cell, base_path, name]))
-    return '{}//{}:{}'.format(cell, base_path, name)
+        return _sanitize_name("_".join([cell, base_path, name]))
+    return "{}//{}:{}".format(cell, base_path, name)
 
 def _get_module_map(name, headers):
     lines = []
     lines.append('module "{}" {{'.format(name))
     for header, attrs in sorted(headers.items()):
         lines.append('  module "{}" {{'.format(header))
-        header_line = '    '
+        header_line = "    "
         for attr in sorted(attrs):
-            header_line += attr + ' '
+            header_line += attr + " "
         header_line += 'header "{}"'.format(header)
         lines.append(header_line)
-        lines.append('    export *')
-        lines.append('  }')
-    lines.append('}')
-    return ''.join([line + '\n' for line in lines])
+        lines.append("    export *")
+        lines.append("  }")
+    lines.append("}")
+    return "".join([line + "\n" for line in lines])
 
 def _module_map_rule(name, module_name, headers):
     contents = _get_module_map(module_name, headers)
     native.genrule(
         name = name,
-        out = 'module.modulemap',
+        out = "module.modulemap",
         cmd = 'echo {} > "$OUT"'.format(shell.quote(contents)),
     )
 
@@ -120,13 +121,13 @@ def _get_implicit_module_deps():
 def _gen_module(
         name,
         module_name,
-        headers=None,
-        header_dir=None,
-        flags=(),
-        platform_flags=(),
-        deps=(),
-        platform_deps=(),
-        visibility=None):
+        headers = None,
+        header_dir = None,
+        flags = (),
+        platform_flags = (),
+        deps = (),
+        platform_deps = (),
+        visibility = None):
     """
     Compile a module (i.e. `.pcm` file) from a `module.modulemap` file and the
     corresponding headers, specified as either a map or a directory.
@@ -153,7 +154,7 @@ def _gen_module(
 
     # Must set exactly one of `headers` and `header_dir`.
     if ((headers == None and header_dir == None) or
-            (headers != None and header_dir != None)):
+        (headers != None and header_dir != None)):
         fail("must specify exactly on of `headers` or `headers_dir`")
 
     # Header dicts require a `module.modulemap` file at the root.
@@ -188,47 +189,49 @@ def _gen_module(
         # module compilation as uncacheable.
         cacheable = False,
         cmd = "\n".join(
-            [# TODO(T32246582): This is gross, but we currently need to run the
-             # C/C++ compilers from the root of fbcode, so search up the dir
-             # tree to find it.
-             "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done",
+            [
+                # TODO(T32246582): This is gross, but we currently need to run the
+                # C/C++ compilers from the root of fbcode, so search up the dir
+                # tree to find it.
+                "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done",
 
-             # Set up the args for module compilation.
-             "args=()",
-             "args+=($(cxx))",
+                # Set up the args for module compilation.
+                "args=()",
+                "args+=($(cxx))",
 
-             # Add toolchain flags
-             "args+=($(cxxppflags :{}))".format(helper_name),
-             "args+=($(cxxflags))",
-             "args+=({})".format(' '.join(map(shell.quote, _get_toolchain_flags()))),
+                # Add toolchain flags
+                "args+=($(cxxppflags :{}))".format(helper_name),
+                "args+=($(cxxflags))",
+                "args+=({})".format(" ".join(map(shell.quote, _get_toolchain_flags()))),
 
-             # Enable building *.pcm module files.
-             'args+=("-Xclang" "-emit-module")',
-             # Set the name of the module we're building.
-             'args+=("-fmodule-name="{})'.format(shell.quote(module_name)),
-             # The inputs to module compilation are C++ headers.
-             'args+=("-x" "c++-header")',
+                # Enable building *.pcm module files.
+                'args+=("-Xclang" "-emit-module")',
+                # Set the name of the module we're building.
+                'args+=("-fmodule-name="{})'.format(shell.quote(module_name)),
+                # The inputs to module compilation are C++ headers.
+                'args+=("-x" "c++-header")',
 
-             # Setup the headers as inputs to the compilation by adding the
-             # header dir implicitly via an `-I...` flag (for implicit searches
-             # for headers specified in the module map) and the
-             # `module.modulemap` as the main input arg.
-             'args+=("-I$SRCDIR/headers")',
-             'args+=("$SRCDIR/headers/module.modulemap")',
+                # Setup the headers as inputs to the compilation by adding the
+                # header dir implicitly via an `-I...` flag (for implicit searches
+                # for headers specified in the module map) and the
+                # `module.modulemap` as the main input arg.
+                'args+=("-I$SRCDIR/headers")',
+                'args+=("$SRCDIR/headers/module.modulemap")',
 
-             # Output via "-" and redirect to the output file rather than going
-             # directly to the output file.  This makes clang avoid embedding
-             # an absolute path for it's "original pch dir" attribute.
-             'args+=("-o" "-")',
+                # Output via "-" and redirect to the output file rather than going
+                # directly to the output file.  This makes clang avoid embedding
+                # an absolute path for it's "original pch dir" attribute.
+                'args+=("-o" "-")',
 
-             # NOTE(T32246672): Clang will embed paths as specified on the
-             # command-line so, to avoid baking in absolute paths, sanitize
-             # them here.
-             'for i in "${!args[@]}"; do',
-             '  args[$i]=${args[$i]//$PWD\//}',
-             'done',
-
-             'exec "${args[@]}" > "$OUT"']),
+                # NOTE(T32246672): Clang will embed paths as specified on the
+                # command-line so, to avoid baking in absolute paths, sanitize
+                # them here.
+                'for i in "${!args[@]}"; do',
+                "  args[$i]=${args[$i]//$PWD\//}",
+                "done",
+                'exec "${args[@]}" > "$OUT"',
+            ],
+        ),
         visibility = visibility,
     )
 

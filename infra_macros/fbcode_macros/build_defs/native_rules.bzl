@@ -109,7 +109,7 @@ def buck_sh_binary(name, main = None, *args, **kwargs):
         **kwargs: Rest of kwargs to pass to sh_binary
     """
     main = main or name
-    native.sh_binary(name=name, main=main, *args, **kwargs)
+    native.sh_binary(name = name, main = main, *args, **kwargs)
 
 def buck_sh_test(*args, **kwargs):
     """ Wrapper to access Buck's native sh_test rule """
@@ -138,10 +138,11 @@ def buck_filegroup(*args, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """
     native.filegroup(*args, **kwargs)
 
-def test_suite(name, visibility=None, *args, **kwargs):
+def test_suite(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native test_suite rule """
     native.test_suite(
-        name=name,
-        visibility=get_visibility(visibility, name),
+        name = name,
+        visibility = get_visibility(visibility, name),
         *args,
-        **kwargs)
+        **kwargs
+    )

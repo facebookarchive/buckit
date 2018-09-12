@@ -2,7 +2,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
 
-def js_node_module_external(name, node_module_name=None, deps=(), external_deps=(), visibility=None):
+def js_node_module_external(name, node_module_name = None, deps = (), external_deps = (), visibility = None):
     """
     Creates a javascript rule that points at a third-party library
 
@@ -36,7 +36,7 @@ def js_node_module_external(name, node_module_name=None, deps=(), external_deps=
 
     js_common.generate_modules_tree(
         name,
-        srcs=out_srcs,
-        deps=js_common.combine_deps(deps, external_deps, platform),
-        visibility=visibility,
+        srcs = out_srcs,
+        deps = js_common.combine_deps(deps, external_deps, platform),
+        visibility = visibility,
     )

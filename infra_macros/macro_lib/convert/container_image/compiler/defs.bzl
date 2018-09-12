@@ -26,6 +26,7 @@ def image_feature_python_unittest(test_image_feature_transitive_deps, deps = Non
         for t in test_image_feature_transitive_deps
     }
     deps = (deps or []) + [":sample_items"]
+
     # For now cpp_deps is raw buck deps for python_ targets
     cpp_deps = [
         TEST_TARGET_PREFIX + t

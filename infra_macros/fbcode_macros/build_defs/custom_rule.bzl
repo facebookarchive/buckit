@@ -36,21 +36,21 @@ def _get_project_root_from_gen_dir():
     Returns: Something like '../../../' if the buck-out directory is configured
              to buck-out/dev. This can be appended to $GEN_DIR in genrules
     """
+
     # paths.relativize doesn't work with things that traverse upward...
     return ".." + get_gen_path().count("/") * "/.."
 
 def _create_main_rule(
         name,
         build_script_dep,
-        build_args=None,
-        tools=(),
-        srcs=(),
-        deps=(),
-        strict=True,
-        env=None,
-        no_remote=False,
-        build_script_visibility=None):
-
+        build_args = None,
+        tools = (),
+        srcs = (),
+        deps = (),
+        strict = True,
+        env = None,
+        no_remote = False,
+        build_script_visibility = None):
     package = native.package_name()
 
     out = _get_output_dir(name)
@@ -74,27 +74,28 @@ def _create_main_rule(
     # Setup the environment properly
     env = dict(env) if env else {}
     if not strict:
-        env['FBCODE_DIR'] = fbcode_dir
-    env['INSTALL_DIR'] = install_dir
-    env['PATH'] = path_sep.join(new_path)
-    env['FBCODE_BUILD_MODE'] = config.get_build_mode()
-    env['FBCODE_BUILD_TOOL'] = 'buck'
-    env['FBCODE_PLATFORM'] = fbcode_platform
-    env['BUCK_PLATFORM'] = buck_platform
-    env['SRCDIR'] = '"$SRCDIR"'
+        env["FBCODE_DIR"] = fbcode_dir
+    env["INSTALL_DIR"] = install_dir
+    env["PATH"] = path_sep.join(new_path)
+    env["FBCODE_BUILD_MODE"] = config.get_build_mode()
+    env["FBCODE_BUILD_TOOL"] = "buck"
+    env["FBCODE_PLATFORM"] = fbcode_platform
+    env["BUCK_PLATFORM"] = buck_platform
+    env["SRCDIR"] = '"$SRCDIR"'
 
     # Add in the tool rules to the environment.  They won't be consumed by
     # the script/user, but they will affect the rule key.
-    env['FBCODE_THIRD_PARTY_TOOLS'] = ':'.join([
-        '$(location {})'.format(r)
+    env["FBCODE_THIRD_PARTY_TOOLS"] = ":".join([
+        "$(location {})".format(r)
         for r in tool_bin_rules
     ])
     cmd += (
-        'env ' +
-        ' '.join(['{}={}'.format(k, v) for k, v in sorted(env.items())]) +
-        ' ')
+        "env " +
+        " ".join(["{}={}".format(k, v) for k, v in sorted(env.items())]) +
+        " "
+    )
 
-    cmd += '$(exe {})'.format(third_party.replace_third_party_repo(build_script_dep, fbcode_platform))
+    cmd += "$(exe {})".format(third_party.replace_third_party_repo(build_script_dep, fbcode_platform))
     if not strict:
         cmd += " --fbcode_dir=" + fbcode_dir
     cmd += " --install_dir=" + install_dir
@@ -117,14 +118,15 @@ def _create_main_rule(
         cmd += " #"
         for dep in deps:
             cmd += " $(location {})".format(
-                third_party.replace_third_party_repo(dep, fbcode_platform))
+                third_party.replace_third_party_repo(dep, fbcode_platform),
+            )
 
     native.genrule(
-        name=out,
-        out=out,
-        cmd=cmd,
-        srcs=srcs,
-        no_remote=no_remote,
+        name = out,
+        out = out,
+        cmd = cmd,
+        srcs = srcs,
+        no_remote = no_remote,
     )
     return out
 
@@ -145,15 +147,16 @@ def _copy_genrule_output(genrule_target, out_genrule_name, out, visibility):
     elif native.host_info().os.is_macos:
         cmd = ('mkdir -p `dirname "$OUT"` && ' +
                'ln "$(location {genrule_target})/{out}" "$OUT"')
-    # TODO: Windows support
+        # TODO: Windows support
+
     else:
         fail("Unknown OS in custom_rule")
 
     native.genrule(
-        name=out_genrule_name,
-        out=out,
-        cmd=cmd.format(genrule_target=genrule_target, out=out),
-        visibility=visibility,
+        name = out_genrule_name,
+        out = out,
+        cmd = cmd.format(genrule_target = genrule_target, out = out),
+        visibility = visibility,
     )
 
 def copy_genrule_output_file(name_prefix, genrule_target, filename, visibility):
@@ -174,17 +177,16 @@ def copy_genrule_output_file(name_prefix, genrule_target, filename, visibility):
 def custom_rule(
         name,
         build_script_dep,
-        build_args=None,
-        output_gen_files=(),
-        output_bin_files=(),
-        tools=(),
-        srcs=(),
-        deps=(),
-        strict=True,
-        env=None,
-        no_remote=False,
-        visibility=None,
-        ):
+        build_args = None,
+        output_gen_files = (),
+        output_bin_files = (),
+        tools = (),
+        srcs = (),
+        deps = (),
+        strict = True,
+        env = None,
+        no_remote = False,
+        visibility = None):
     """
     Creates rules to run a script and allow other rules to access that scripts outputs
 
@@ -268,17 +270,18 @@ def custom_rule(
     # Add the main rule which runs the custom rule and stores its outputs in
     # a single directory
     main_rule_name = _create_main_rule(
-        name=name,
-        build_script_dep=build_script_dep,
-        build_args=build_args,
-        tools=tools,
-        srcs=srcs,
-        deps=deps,
-        strict=strict,
-        env=env,
-        no_remote=no_remote,
-        build_script_visibility=visibility)
-    main_rule_target = ':' + main_rule_name
+        name = name,
+        srcs = srcs,
+        build_args = build_args,
+        build_script_dep = build_script_dep,
+        build_script_visibility = visibility,
+        env = env,
+        no_remote = no_remote,
+        strict = strict,
+        tools = tools,
+        deps = deps,
+    )
+    main_rule_target = ":" + main_rule_name
 
     # For each output, create a `=<out>` rule which pulls it from the main
     # output directory so that consuming rules can use use one of the
@@ -296,7 +299,7 @@ def custom_rule(
         # Otherwise, use a dummy empty Python library to force runtime
         # dependencies to propagate onto all of the outputs of the custom rule.
         native.python_library(
-            name=name,
-            visibility=visibility,
-            deps=[":{}={}".format(name, o) for o in outs],
+            name = name,
+            visibility = visibility,
+            deps = [":{}={}".format(name, o) for o in outs],
         )

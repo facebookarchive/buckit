@@ -7,24 +7,31 @@ def _invoke_codegen_rule_name(plugin, target_name, thrift_src):
     return "{}-cpp2-{}-{}".format(target_name, plugin.name, thrift_src)
 
 def _generate_invoke_codegen_rule(
-    plugin, codegen_rule_name, target_name, thrift_src, target_base_path, include_target
-):
+        plugin,
+        codegen_rule_name,
+        target_name,
+        thrift_src,
+        target_base_path,
+        include_target):
     """Generates a rule that invokes the plugin codegen binary. Returns the name
     of the generated rule.
     """
     rule_name = _invoke_codegen_rule_name(plugin, target_name, thrift_src)
     cmd = "$(exe {}) --target-base-path {} --out-path $OUT $SRCS --include-path $(location {})".format(
-        codegen_rule_name, target_base_path, include_target
+        codegen_rule_name,
+        target_base_path,
+        include_target,
     )
 
-    native.genrule(name=rule_name, out=".", srcs=[thrift_src], cmd=cmd)
+    native.genrule(name = rule_name, out = ".", srcs = [thrift_src], cmd = cmd)
 
     return rule_name
 
 def _copy_from_codegen_rule_name(plugin, target_name, thrift_src, file):
     """Returns the name of the rule of the copied out artifact."""
     return "{}={}".format(
-        _invoke_codegen_rule_name(plugin, target_name, thrift_src), file
+        _invoke_codegen_rule_name(plugin, target_name, thrift_src),
+        file,
     )
 
 def _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, file):
@@ -32,7 +39,9 @@ def _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, file):
     directory out into its own target. Returns the name of the generated rule.
     """
     invoke_codegen_rule_name = _invoke_codegen_rule_name(
-        plugin, target_name, thrift_src
+        plugin,
+        target_name,
+        thrift_src,
     )
     plugin_path_prefix = "gen-cpp2-{}".format(plugin.name)
     rule_name = _copy_from_codegen_rule_name(plugin, target_name, thrift_src, file)
@@ -41,30 +50,31 @@ def _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, file):
         [
             "mkdir `dirname $OUT`",
             "cp $(location :{})/{} $OUT".format(invoke_codegen_rule_name, file),
-        ]
+        ],
     )
 
     native.genrule(
-        name=rule_name, out="{}/{}".format(plugin_path_prefix, file), cmd=cmd
+        name = rule_name,
+        out = "{}/{}".format(plugin_path_prefix, file),
+        cmd = cmd,
     )
 
     return rule_name
 
 def _generate_rules(
-    plugin,
-    codegen_rule_name,
-    expected_out_headers,
-    expected_out_srcs,
-    target_base_path,
-    target_name,
-    lang,
-    thrift_srcs,
-    compiler_args,
-    include_target,
-    deps,
-    additional_target_deps=[],
-    requires_transitive_plugin_build=True,
-):
+        plugin,
+        codegen_rule_name,
+        expected_out_headers,
+        expected_out_srcs,
+        target_base_path,
+        target_name,
+        lang,
+        thrift_srcs,
+        compiler_args,
+        include_target,
+        deps,
+        additional_target_deps = [],
+        requires_transitive_plugin_build = True):
     """Generates the list of rules required to build Thrift C++ plugin.
 
     Three types of rules will be generated:
@@ -79,6 +89,7 @@ def _generate_rules(
     generated source and header files. This final cpp_library can then be
     consumed by plugin users.
     """
+
     # Will be needed later for arg parsing and include path on the codegen side
     _ignore = [compiler_args]
 
@@ -104,18 +115,21 @@ def _generate_rules(
         for header in headers:
             header_targets.append(
                 _generate_copy_from_codegen_rule(
-                    plugin, target_name, thrift_src, header
-                )
+                    plugin,
+                    target_name,
+                    thrift_src,
+                    header,
+                ),
             )
 
     for thrift_src, srcs in expected_out_srcs.items():
         for src in srcs:
             src_targets.append(
-                _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, src)
+                _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, src),
             )
 
     generated_target_deps = additional_target_deps + [
-        "//{}:{}-{}".format(target_base_path, target_name, lang)
+        "//{}:{}-{}".format(target_base_path, target_name, lang),
     ]
 
     if requires_transitive_plugin_build:
@@ -125,10 +139,10 @@ def _generate_rules(
     # Master rules that combine the generated artifacts for all .thrift
     # files into a single cpp_library.
     cpp_library(
-        name="{}-{}-{}".format(target_name, lang, plugin.name),
-        srcs=[":{}".format(src) for src in src_targets],
-        headers=[":{}".format(header) for header in header_targets],
-        deps=generated_target_deps,
+        name = "{}-{}-{}".format(target_name, lang, plugin.name),
+        srcs = [":{}".format(src) for src in src_targets],
+        headers = [":{}".format(header) for header in header_targets],
+        deps = generated_target_deps,
     )
 
 framework_cpp2_base = struct(generate_rules = _generate_rules)

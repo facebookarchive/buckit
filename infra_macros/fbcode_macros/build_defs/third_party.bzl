@@ -143,8 +143,12 @@ def _get_tool_target(project, subpath, target_name, platform):
     if paths_config.use_platforms_and_build_subdirs:
         subpath_fragment = "/" + subpath if subpath else ""
         return "//{}/{}/tools/{}{}:{}".format(
-            paths_config.third_party_root, platform, project, subpath_fragment,
-            target_name)
+            paths_config.third_party_root,
+            platform,
+            project,
+            subpath_fragment,
+            target_name,
+        )
     else:
         return "{}//{}:{}".format(project, subpath, target_name)
 
@@ -156,7 +160,10 @@ def _get_tool_bin_target(project, platform):
     """
     if paths_config.use_platforms_and_build_subdirs:
         return "//{}/{}/tools:{}/bin".format(
-            paths_config.third_party_root, platform, project)
+            paths_config.third_party_root,
+            platform,
+            project,
+        )
     else:
         return "{}//{}:{}".format(project, project, project)
 
@@ -193,12 +200,17 @@ def _replace_third_party_repo(string, platform):
     Returns:
         The original string with @/third-party: properly replaced
     """
+
     # TODO: OSS
     if platform == None:
         platform = platform_utils.get_default_platform()
     return string.replace(
-        "@/third-party-tools:", _get_tools_target_prefix(platform)).replace(
-        "@/third-party:", _get_build_target_prefix(platform))
+        "@/third-party-tools:",
+        _get_tools_target_prefix(platform),
+    ).replace(
+        "@/third-party:",
+        _get_build_target_prefix(platform),
+    )
 
 third_party = struct(
     external_dep_target = _external_dep_target,

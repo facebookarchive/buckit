@@ -10,10 +10,10 @@ def _get_fbcode_platform():
 def _combine_deps(deps, external_deps, platform):
     """ Combines deps and external deps (for the current platform) into one list """
     return [
-        third_party.replace_third_party_repo(dep, platform=platform)
+        third_party.replace_third_party_repo(dep, platform = platform)
         for dep in deps
     ] + [
-        third_party.external_dep_target(dep, platform=platform)
+        third_party.external_dep_target(dep, platform = platform)
         for dep in external_deps
     ]
 

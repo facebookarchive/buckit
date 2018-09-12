@@ -21,16 +21,19 @@ def missing_tp2_project(name, platform, project):
         platform: The name of the platform that the project is unavailable for
     """
     msg = 'ERROR: {}: project "{}" does not exist for platform "{}"'.format(
-        name, project, platform)
+        name,
+        project,
+        platform,
+    )
     error_rule = name + "-error"
     native.cxx_genrule(
-        name=error_rule,
-        out="out.cpp",
-        cmd=_CMD_TEMPLATE.format(shell.quote(msg)),
+        name = error_rule,
+        out = "out.cpp",
+        cmd = _CMD_TEMPLATE.format(shell.quote(msg)),
     )
     native.cxx_library(
-        name=name,
-        srcs=[":" + error_rule],
-        exported_headers=[":" + error_rule],
-        visibility=["PUBLIC"],
+        name = name,
+        srcs = [":" + error_rule],
+        exported_headers = [":" + error_rule],
+        visibility = ["PUBLIC"],
     )

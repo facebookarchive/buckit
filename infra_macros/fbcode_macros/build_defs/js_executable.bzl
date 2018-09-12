@@ -6,6 +6,7 @@ load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
 def _get_node_path(platform):
     """ Gets the path to the node binary to embed in jsars """
     path_template = "/usr/local/fbcode/{}/bin/node-{}"
+
     # TODO: OSS friendly
     node_version = third_party_config["platforms"][platform]["build"]["projects"].get("node", None)
     if node_version:
@@ -16,10 +17,10 @@ def _get_node_path(platform):
 def js_executable(
         name,
         index,
-        srcs=(),
-        deps=(),
-        external_deps=(),
-        visibility=None):
+        srcs = (),
+        deps = (),
+        external_deps = (),
+        visibility = None):
     """
     Create an executable .jsar javascript rule
 
@@ -34,6 +35,7 @@ def js_executable(
     """
 
     visibility = get_visibility(visibility, name)
+
     # Use the default platform for all of js rules
     platform = js_common.get_fbcode_platform()
     package = native.package_name()

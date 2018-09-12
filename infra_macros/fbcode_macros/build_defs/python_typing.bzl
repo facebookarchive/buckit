@@ -137,12 +137,12 @@ def gen_typing_config(
         Nothing
     """
     attrs = gen_typing_config_attrs(
-        target_name = target_name,
-        base_path = base_path,
         srcs = srcs,
-        deps = deps,
+        base_path = base_path,
+        target_name = target_name,
         typing = typing,
         typing_options = typing_options,
         visibility = visibility,
+        deps = deps,
     )
     native.genrule(**attrs)

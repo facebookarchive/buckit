@@ -5,7 +5,7 @@ Helpers to related to C/C++ compiler families used for the build.
 load("@fbcode_macros//build_defs:build_mode.bzl", "build_mode")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 
-def _require_global_compiler(msg, compiler=None):
+def _require_global_compiler(msg, compiler = None):
     """
     Assert that a global compiler is set.
     """
@@ -14,9 +14,8 @@ def _require_global_compiler(msg, compiler=None):
     if compiler == None:
         if global_compiler == None:
             fail(msg)
-    else:
-        if global_compiler != compiler:
-            fail(msg)
+    elif global_compiler != compiler:
+        fail(msg)
 
 def _get_compiler_for_base_path(base_path):
     """
@@ -32,8 +31,8 @@ def _get_compiler_for_base_path(base_path):
     mode_compiler = mode.compiler if mode != None else None
 
     if (mode_compiler != None and
-            global_compiler != None and
-            mode_compiler != global_compiler):
+        global_compiler != None and
+        mode_compiler != global_compiler):
         fail("BUILD_MODE file trying to override fixed global compiler")
 
     # If a global compiler is set, use that.
@@ -44,7 +43,7 @@ def _get_compiler_for_base_path(base_path):
     if mode_compiler != None:
         return mode_compiler
 
-     # Lastly, fallback to the default.
+    # Lastly, fallback to the default.
     return default_compiler
 
 def _get_compiler_for_current_buildfile():

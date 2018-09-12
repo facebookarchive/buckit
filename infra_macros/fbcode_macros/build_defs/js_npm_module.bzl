@@ -6,10 +6,10 @@ load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
 def js_npm_module(
         name,
         srcs,
-        node_module_name=None,
-        deps=(),
-        external_deps=(),
-        visibility=None):
+        node_module_name = None,
+        deps = (),
+        external_deps = (),
+        visibility = None):
     """
     Creates a javascript rule that points at a third-party library
 
@@ -32,7 +32,6 @@ def js_npm_module(
                     to PUBLIC
     """
 
-
     visibility = get_visibility(visibility, name)
     platform = js_common.get_fbcode_platform()
 
@@ -45,7 +44,7 @@ def js_npm_module(
 
     js_common.generate_modules_tree(
         name,
-        srcs=out_srcs,
-        deps=js_common.combine_deps(deps, external_deps, platform),
-        visibility=visibility,
+        srcs = out_srcs,
+        deps = js_common.combine_deps(deps, external_deps, platform),
+        visibility = visibility,
     )
