@@ -1496,7 +1496,7 @@ class PythonConverter(base.Converter):
     ):
         rules = []
         name = attributes['name']
-        visibility = attributes['visibility']
+        visibility = attributes.get('visibility', None)
         lib_main_module_attrs_name = None
         if 'main_module' in attributes:
             # we need to preserve the original main_module, so we inject a
