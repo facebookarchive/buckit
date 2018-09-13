@@ -12,3 +12,17 @@ python_library(
     deps = [],
     external_deps = [],
 )
+
+# A similar dummy rule used by the Java tests.
+java_library(
+    name = "infra_macros_java",
+    resources = (
+        glob([
+            "macro_lib/**/*.py",
+            "macros.py",
+        ]) + [
+            "fbcode_macros//build_defs:all_bzl_files",
+        ]
+    ),
+    resources_root = ".",
+)

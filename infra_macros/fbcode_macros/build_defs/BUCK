@@ -1,5 +1,13 @@
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
 
+files = glob(["*.bzl"])
+
 export_files(
-    glob(["*.bzl"]),
+    files,
+)
+
+zip_file(
+    name = "all_bzl_files",
+    srcs = files,
+    visibility = ["PUBLIC"],
 )
