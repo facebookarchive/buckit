@@ -216,7 +216,7 @@ class PythonVersion(LooseVersion):
                              .format(vstring))
 
         self.flavor = ""
-        if isinstance(self.version[0], str):
+        if isinstance(self.version[0], basestring):
             self.flavor = self.version[0]
             self.version = self.version[1:]
 
