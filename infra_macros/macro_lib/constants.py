@@ -35,6 +35,7 @@ BUCK_RULES = [
     'cgo_library',
     'prebuilt_go_library',
     'go_test',
+    'jar_genrule',
     'java_binary',
     'java_library',
     'java_test',
