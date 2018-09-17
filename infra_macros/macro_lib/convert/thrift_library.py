@@ -1309,7 +1309,7 @@ class JavaSwiftConverter(ThriftLangConverter):
 
         maven_publisher_enabled = False
         if java_swift_maven_coords is not None:
-            maven_publisher_enabled = True
+            maven_publisher_enabled = False  # TODO(T34003348)
             expected_coords_prefix = "com.facebook.thrift:"
             if not java_swift_maven_coords.startswith(expected_coords_prefix):
                 raise ValueError(
