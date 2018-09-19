@@ -54,6 +54,7 @@ class GoBindgenLibraryConverter(go.GoConverter):
             'link_style',
             'raw_headers',
             'visibility',
+            'link_style',
 
             'manifest',
             'header_includes',

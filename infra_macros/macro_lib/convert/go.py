@@ -162,7 +162,13 @@ class GoConverter(base.Converter):
         if self.is_binary() or (self.is_cgo() and external_linker_flags):
             attributes['external_linker_flags'] = external_linker_flags
 
+        if self.is_cgo() and link_style == None:
+            link_style = self.get_link_style()
+
         if (self.is_binary() or self.is_test()) and cgo == True:
+            if link_style == None:
+                link_style = self.get_link_style()
+
             attributes['linker_flags'] = linker_flags
             d, r = self.get_binary_link_deps(
                 base_path,
@@ -188,6 +194,7 @@ class GoConverter(base.Converter):
                 'package_name' : 'asan',
                 'srcs' : [':gen-asan-lib'],
                 'deps' : formatted_deps,
+                'link_style' : link_style,
             }))
 
             dependencies.append(":cgo-asan-lib")
