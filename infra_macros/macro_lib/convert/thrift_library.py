@@ -393,6 +393,7 @@ class CppThriftConverter(ThriftLangConverter):
             cpp2_deps=(),
             cpp2_external_deps=(),
             cpp2_compiler_flags=(),
+            cpp2_compiler_specific_flags=None,
             visibility=None,
             **kwargs):
         """
@@ -510,6 +511,10 @@ class CppThriftConverter(ThriftLangConverter):
         common_compiler_flags = ['-fno-var-tracking']
         common_compiler_flags.extend(cpp2_compiler_flags)
 
+        common_compiler_specific_flags = (
+            cpp2_compiler_specific_flags if cpp2_compiler_specific_flags else {}
+        )
+
         # Support a global config for explicitly opting thrift generated C/C++
         # rules in to using modules.
         module = self.read_bool("cxx", "module_thrift_rule_default", required=False)
@@ -525,6 +530,7 @@ class CppThriftConverter(ThriftLangConverter):
             deps=types_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            compiler_specific_flags=common_compiler_specific_flags,
             # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
             # and build //thrift/lib/cpp2/test:exceptservice-cpp2-types).
             undefined_symbols=True,
@@ -539,6 +545,7 @@ class CppThriftConverter(ThriftLangConverter):
             deps=clients_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            compiler_specific_flags=common_compiler_specific_flags,
             # TODO(T23121628): Some rules have undefined symbols (e.g. uncomment
             # and build //thrift/lib/cpp2/test:Presult-cpp2-clients).
             undefined_symbols=True,
@@ -553,6 +560,7 @@ class CppThriftConverter(ThriftLangConverter):
             deps=services_deps,
             external_deps=common_external_deps,
             compiler_flags=common_compiler_flags,
+            compiler_specific_flags=common_compiler_specific_flags,
             visibility=visibility,
             module=module,
         )
@@ -2781,6 +2789,7 @@ class ThriftLibraryConverter(base.Converter):
 
         allowed_args = set([
             'cpp2_compiler_flags',
+            'cpp2_compiler_specific_flags',
             'cpp2_deps',
             'cpp2_external_deps',
             'cpp2_headers',
