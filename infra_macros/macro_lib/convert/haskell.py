@@ -55,7 +55,8 @@ VALID_COMPILER_FLAGS_RE = re.compile(
     '^-j\d*$|'
     '^-with-rtsopts=.*$|'
     '^-g[0-2]?$|'
-    '^-threaded$')
+    '^-threaded$|'
+    '^-no-hs-main$')
 
 # Regexp matching valid language option flags
 LANG_OPT_RE = re.compile(
