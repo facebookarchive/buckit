@@ -33,7 +33,10 @@ def _get_compiler_for_base_path(base_path):
     if (mode_compiler != None and
         global_compiler != None and
         mode_compiler != global_compiler):
-        fail("BUILD_MODE file trying to override fixed global compiler")
+        # T34130018: If a BUILD_MODE file attempts to set a different compiler
+        # than the global compiler set by the build mode, we silently ignore
+        # the BUILD_MODE file.
+        return global_compiler
 
     # If a global compiler is set, use that.
     if global_compiler != None:
