@@ -75,11 +75,27 @@ class Manifest(object):
             modules = set()
             for root, dirs, files in os.walk(sys.path[0]):
                 rel_root = os.path.relpath(root, sys.path[0])
+                if rel_root == '.':
+                    package_prefix = ''
+                else:
+                    package_prefix = rel_root.replace(os.sep, '.') + '.'
+
                 for name in files:
                     base, ext = os.path.splitext(name)
+                    # Note that this loop includes all *.so files, regardless
+                    # of whether they are actually python modules or just
+                    # regular dynamic libraries
                     if ext in ('.py', '.pyc', '.pyo', '.so'):
-                        modules.add(
-                            os.path.join(rel_root, base).replace(os.sep, '.'))
+                        if rel_root == "." and base == "__manifest__":
+                            # The manifest generation logic for normal pars
+                            # does not include the __manifest__ module itself
+                            continue
+                        modules.add(package_prefix + base)
+                # Skip __pycache__ directories
+                try:
+                    dirs.remove("__pycache__")
+                except ValueError:
+                    pass
             self._modules = sorted(modules)
         return self._modules
 
