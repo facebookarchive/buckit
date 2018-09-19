@@ -30,15 +30,10 @@ def _get_compiler_for_base_path(base_path):
     mode = build_mode.get_build_mode_for_base_path(base_path)
     mode_compiler = mode.compiler if mode != None else None
 
-    if (mode_compiler != None and
-        global_compiler != None and
-        mode_compiler != global_compiler):
-        # T34130018: If a BUILD_MODE file attempts to set a different compiler
-        # than the global compiler set by the build mode, we silently ignore
-        # the BUILD_MODE file.
-        return global_compiler
-
     # If a global compiler is set, use that.
+    # T34130018: Even if a BUILD_MODE file attempts to set a different compiler
+    # than the global compiler set by the build mode, we use the global compiler
+    # and silently ignore the BUILD_MODE file.
     if global_compiler != None:
         return global_compiler
 
