@@ -706,27 +706,31 @@ class CppConverter(base.Converter):
 
         return False
 
-    def is_cuda(self, srcs):
+    def is_cuda_src(self, src):
+        """
+        Return whether this `srcs` entry is a CUDA source file.
+        """
+        # If this is a generated rule reference, then extract the source
+        # name.
+        if '=' in src:
+            src = src.rsplit('=', 1)[1]
+
+        # Assume generated sources without explicit extensions are non-CUDA
+        if src.startswith(('@', ':', '//')):
+            return False
+
+        # If the source extension is `.cu` it's cuda.
+        _, ext = os.path.splitext(src)
+        return ext == '.cu'
+
+    def has_cuda_srcs(self, srcs):
         """
         Return whether this rule has CUDA sources.
         """
 
         for src in srcs:
-
-            # If this is a generated rule reference, then extract the source
-            # name.
-            if '=' in src:
-                src = src.rsplit('=', 1)[1]
-
-            # Assume generated sources without explicit extensions are non-CUDA
-            if src.startswith(('@', ':', '//')):
-                continue
-
-            # If the source extension is `.cu` it's cuda.
-            _, ext = os.path.splitext(src)
-            if ext == '.cu':
+            if self.is_cuda_src(src):
                 return True
-
         return False
 
     def get_lua_base_module_parts(self, base_path, base_module):
@@ -933,7 +937,6 @@ class CppConverter(base.Converter):
         os_linker_flags = os_linker_flags or []
         out_link_style = self.get_link_style()
         build_mode = self.get_build_mode()
-        cuda = self.is_cuda(srcs)
         dlopen_info = self.get_dlopen_info(dlopen_enabled)
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
@@ -943,6 +946,52 @@ class CppConverter(base.Converter):
                 # Node rules always use the platforms set in the root PLATFORM
                 # file.
                 else ''))
+
+        cuda = self.has_cuda_srcs(srcs)
+
+        # TODO(lucian, pbrady, T24109997): temp hack until platform007 has full CUDA support.
+        # Until then unblock migration to p007 for projects that don't really need CUDA,
+        # but depend on CUDA through convenience transitive dependencies.
+        # Once platform007 supports CUDA cuda_deps should be merged back into deps.
+        if platform.startswith('platform007'):
+            def filter_flags(flags):
+                banned_flags = ['-DUSE_CUDNN=1', '-DUSE_CUDNN', '-DCAFFE2_USE_CUDNN']
+                return [f for f in flags if f not in banned_flags]
+
+            def filter_flags_dict(flags_dict):
+                if flags_dict is None:
+                    return None
+                ret = {}
+                for compiler, flags in flags_dict.items():
+                    ret[compiler] = filter_flags(flags)
+                return ret
+
+            compiler_flags = filter_flags(compiler_flags)
+            preprocessor_flags = filter_flags(preprocessor_flags)
+            propagated_pp_flags = filter_flags(propagated_pp_flags)
+            nvcc_flags = filter_flags(nvcc_flags)
+            arch_compiler_flags = filter_flags_dict(arch_compiler_flags)
+            arch_preprocessor_flags = filter_flags_dict(arch_preprocessor_flags)
+
+            banned_cuda_srcs_re = [re.compile(pattern) for pattern in [
+                "caffe2/caffe2/.*cudnn.cc",
+                "caffe2/caffe2/.*gpu.cc",
+                "caffe2/caffe2/contrib/nervana/.*gpu.cc",
+                "caffe2/caffe2/operators/.*cudnn.cc",
+                "caffe2/caffe2/fb/operators/scale_gradient_op_gpu.cc",
+                "caffe2/caffe2/fb/predictor/PooledPredictor.cpp",
+                "caffe2/caffe2/fb/predictor/PredictorGPU.cpp",
+            ]]
+
+            def is_banned_src(src):
+                return any(r.match(src) for r in banned_cuda_srcs_re)
+
+            cuda_srcs = [s for s in srcs if self.is_cuda_src(s) or is_banned_src(base_path + '/' + s)]
+            srcs = [s for s in srcs if s not in cuda_srcs]
+            cuda = False
+            if cuda_srcs:
+                print('Warning: no CUDA on platform007: rule {}:{} ignoring cuda_srcs: {}'
+                      .format(base_path, name, cuda_srcs))
 
         # Figure out whether this rule should be built using clang modules (in
         # supporting build modes).
