@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 
@@ -24,27 +21,28 @@ class BuildModeTest(tests.utils.TestCase):
     ]
 
     def _create_mode_struct(
-            self,
-            aspp_flags=(),
-            cpp_flags=(),
-            cxxpp_flags=(),
-            c_flags=(),
-            cxx_flags=(),
-            ld_flags=(),
-            clang_flags=(),
-            gcc_flags=(),
-            java_flags=(),
-            dmd_flags=(),
-            gdc_flags=(),
-            ldc_flags=(),
-            par_flags=(),
-            ghc_flags=(),
-            asan_options=(),
-            ubsan_options=(),
-            tsan_options=(),
-            lsan_suppressions=(),
-            cxx_modules=None,
-            compiler=None):
+        self,
+        aspp_flags=(),
+        cpp_flags=(),
+        cxxpp_flags=(),
+        c_flags=(),
+        cxx_flags=(),
+        ld_flags=(),
+        clang_flags=(),
+        gcc_flags=(),
+        java_flags=(),
+        dmd_flags=(),
+        gdc_flags=(),
+        ldc_flags=(),
+        par_flags=(),
+        ghc_flags=(),
+        asan_options=(),
+        ubsan_options=(),
+        tsan_options=(),
+        lsan_suppressions=(),
+        cxx_modules=None,
+        compiler=None,
+    ):
         return self.struct(
             aspp_flags=aspp_flags,
             cpp_flags=cpp_flags,
@@ -65,13 +63,14 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=tsan_options,
             lsan_suppressions=lsan_suppressions,
             cxx_modules=cxx_modules,
-            compiler=compiler)
+            compiler=compiler,
+        )
 
     @tests.utils.with_project()
     def test_creates_proper_build_modes(self, root):
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            "build_mode_overrides = {}")
+            "build_defs/build_mode_overrides.bzl", "build_mode_overrides = {}"
+        )
 
         statements = [
             'create_build_mode(aspp_flags=["-DFLAG"])',
@@ -92,7 +91,7 @@ class BuildModeTest(tests.utils.TestCase):
             'create_build_mode(ubsan_options={"b":"2"})',
             'create_build_mode(tsan_options={"c":"3"})',
             'create_build_mode(lsan_suppressions=["a/b/c"])',
-            'create_build_mode(cxx_modules=True)',
+            "create_build_mode(cxx_modules=True)",
         ]
         expected = [
             self._create_mode_struct(aspp_flags=["-DFLAG"]),
@@ -109,9 +108,9 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(ldc_flags=["-DFLAG"]),
             self._create_mode_struct(ld_flags=["-DFLAG"]),
             self._create_mode_struct(par_flags=["-DFLAG"]),
-            self._create_mode_struct(asan_options={"a":"1"}),
-            self._create_mode_struct(ubsan_options={"b":"2"}),
-            self._create_mode_struct(tsan_options={"c":"3"}),
+            self._create_mode_struct(asan_options={"a": "1"}),
+            self._create_mode_struct(ubsan_options={"b": "2"}),
+            self._create_mode_struct(tsan_options={"c": "3"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c"]),
             self._create_mode_struct(cxx_modules=True),
         ]
@@ -121,8 +120,8 @@ class BuildModeTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_extends_proper_build_modes(self, root):
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            "build_mode_overrides = {}")
+            "build_defs/build_mode_overrides.bzl", "build_mode_overrides = {}"
+        )
 
         statements = [
             'extend_build_mode(create_build_mode(aspp_flags=["-DFLAG"]), aspp_flags=["-DFLAG_TWO"])',
@@ -143,7 +142,7 @@ class BuildModeTest(tests.utils.TestCase):
             'extend_build_mode(create_build_mode(ubsan_options={"b":"2"}), ubsan_options={"y":"99"})',
             'extend_build_mode(create_build_mode(tsan_options={"c":"3"}), tsan_options={"x":"98"})',
             'extend_build_mode(create_build_mode(lsan_suppressions=["a/b/c"]), lsan_suppressions=["z/y/x"])',
-            'extend_build_mode(create_build_mode(cxx_modules=False), cxx_modules=True)',
+            "extend_build_mode(create_build_mode(cxx_modules=False), cxx_modules=True)",
             'extend_build_mode(create_build_mode(asan_options={"a":"1"}), cxx_flags=["-DFLAG"])',
             'extend_build_mode(create_build_mode(compiler="foo"), cxx_flags=["-DFLAG"])',
             'extend_build_mode(create_build_mode(compiler="foo"), compiler="bar")',
@@ -163,13 +162,13 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(ldc_flags=["-DFLAG", "-DFLAG_TWO"]),
             self._create_mode_struct(ld_flags=["-DFLAG", "-DFLAG_TWO"]),
             self._create_mode_struct(par_flags=["-DFLAG", "-DFLAG_TWO"]),
-            self._create_mode_struct(asan_options={"a":"1", "z":"100"}),
-            self._create_mode_struct(ubsan_options={"b":"2", "y":"99"}),
-            self._create_mode_struct(tsan_options={"c":"3", "x":"98"}),
+            self._create_mode_struct(asan_options={"a": "1", "z": "100"}),
+            self._create_mode_struct(ubsan_options={"b": "2", "y": "99"}),
+            self._create_mode_struct(tsan_options={"c": "3", "x": "98"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c", "z/y/x"]),
             self._create_mode_struct(cxx_modules=True),
-            self._create_mode_struct(cxx_flags=("-DFLAG",),asan_options={"a":"1"}),
-            self._create_mode_struct(compiler="foo",cxx_flags=("-DFLAG",)),
+            self._create_mode_struct(cxx_flags=("-DFLAG",), asan_options={"a": "1"}),
+            self._create_mode_struct(compiler="foo", cxx_flags=("-DFLAG",)),
             self._create_mode_struct(compiler="bar"),
         ]
         result = root.runUnitTests(self.includes, statements)
@@ -177,7 +176,8 @@ class BuildModeTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_get_correct_build_mode_for_current_build_file(self, root):
-        build_mode_override = dedent("""
+        build_mode_override = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
                 "create_build_mode",
@@ -200,25 +200,26 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo": opt,
             }}
 
-        """)
+        """
+        )
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            build_mode_override)
+            "build_defs/build_mode_overrides.bzl", build_mode_override
+        )
 
         result1 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
-            buckfile="foo/bar/baz/BUCK"
+            buckfile="foo/bar/baz/BUCK",
         )
         result2 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
-            buckfile="foo/bar/BUCK"
+            buckfile="foo/bar/BUCK",
         )
         result3 = root.runUnitTests(
             self.includes,
             ["build_mode.get_build_modes_for_current_buildfile()"],
-            buckfile="foo/bar-other/BUCK"
+            buckfile="foo/bar-other/BUCK",
         )
         result4 = root.runUnitTests(
             self.includes,
@@ -256,7 +257,8 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=(),
             lsan_suppressions=(),
             cxx_modules=None,
-            compiler=None)
+            compiler=None,
+        )
 
         self.assertSuccess(result1, {"dev": expected})
         self.assertSuccess(result2, {"dev": expected})
@@ -267,7 +269,8 @@ class BuildModeTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_get_correct_build_mode_for_base_path(self, root):
-        build_mode_override = dedent("""
+        build_mode_override = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
                 "create_build_mode",
@@ -289,19 +292,23 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo/bar-other": dbg,
                 "foo": opt,
             }}
-        """)
+        """
+        )
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            build_mode_override)
+            "build_defs/build_mode_overrides.bzl", build_mode_override
+        )
 
-        result = root.runUnitTests(self.includes, [
-            'build_mode.get_build_modes_for_base_path("foo/bar/baz")',
-            'build_mode.get_build_modes_for_base_path("foo/bar")',
-            'build_mode.get_build_modes_for_base_path("foo/bar-other")',
-            'build_mode.get_build_modes_for_base_path("foo/baz")',
-            'build_mode.get_build_modes_for_base_path("foo")',
-            'build_mode.get_build_modes_for_base_path("foobar")',
-        ])
+        result = root.runUnitTests(
+            self.includes,
+            [
+                'build_mode.get_build_modes_for_base_path("foo/bar/baz")',
+                'build_mode.get_build_modes_for_base_path("foo/bar")',
+                'build_mode.get_build_modes_for_base_path("foo/bar-other")',
+                'build_mode.get_build_modes_for_base_path("foo/baz")',
+                'build_mode.get_build_modes_for_base_path("foo")',
+                'build_mode.get_build_modes_for_base_path("foobar")',
+            ],
+        )
 
         expected = self.struct(
             aspp_flags=(),
@@ -323,7 +330,8 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=(),
             lsan_suppressions=(),
             cxx_modules=None,
-            compiler=None)
+            compiler=None,
+        )
 
         self.assertSuccess(
             result,
@@ -337,7 +345,8 @@ class BuildModeTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_get_build_mode_overrides(self, root):
-        build_mode_override = dedent("""
+        build_mode_override = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
                 "create_build_mode",
@@ -359,35 +368,30 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo/bar-other": dbg,
                 "foo": opt,
             }}
-        """)
+        """
+        )
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            build_mode_override)
+            "build_defs/build_mode_overrides.bzl", build_mode_override
+        )
 
         expected = {
             "fbcode": {
-                "foo/bar": {
-                    "dev": self._create_mode_struct(c_flags=["-DDEBUG"]),
-                },
-                "foo/bar-other": {
-                    "dbg": self._create_mode_struct(c_flags=["-DDEBUG"]),
-                },
-                "foo": {
-                    "opt": self._create_mode_struct(c_flags=["-DDEBUG"]),
-                },
+                "foo/bar": {"dev": self._create_mode_struct(c_flags=["-DDEBUG"])},
+                "foo/bar-other": {"dbg": self._create_mode_struct(c_flags=["-DDEBUG"])},
+                "foo": {"opt": self._create_mode_struct(c_flags=["-DDEBUG"])},
             }
         }
 
         result = root.runUnitTests(
-            self.includes,
-            ["build_mode.get_build_mode_overrides()"],
+            self.includes, ["build_mode.get_build_mode_overrides()"]
         )
 
         self.assertSuccess(result, expected)
 
     @tests.utils.with_project()
     def test_helper_util_runs_properly(self, root):
-        build_mode_override = dedent("""
+        build_mode_override = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
                 "create_build_mode",
@@ -409,22 +413,27 @@ class BuildModeTest(tests.utils.TestCase):
                 "foo/bar-other": dbg,
                 "foo": opt,
             }}
-        """)
+        """
+        )
         root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl",
-            build_mode_override)
+            "build_defs/build_mode_overrides.bzl", build_mode_override
+        )
 
-        result = root.run([
-            "buck",
-            "run",
-            "fbcode_macros//tools:get_build_mode",
-            "foo/bar/baz",
-            "foo/bar",
-            "foo/bar-other",
-            "foo/baz",
-            "foo",
-            "foobar",
-        ], {}, {})
+        result = root.run(
+            [
+                "buck",
+                "run",
+                "fbcode_macros//tools:get_build_mode",
+                "foo/bar/baz",
+                "foo/bar",
+                "foo/bar-other",
+                "foo/baz",
+                "foo",
+                "foobar",
+            ],
+            {},
+            {},
+        )
 
         expected_mode = {
             "aspp_flags": [],

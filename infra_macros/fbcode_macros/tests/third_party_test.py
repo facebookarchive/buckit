@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 from tests.utils import dedent
@@ -23,45 +20,37 @@ class ThirdPartyTest(tests.utils.TestCase):
             root, third_party_root="", use_platforms_and_build_subdirs=False
         )
 
-        commands = [
-            'third_party.third_party_target("unused", "project", "rule")',
-        ]
+        commands = ['third_party.third_party_target("unused", "project", "rule")']
         expected = ["project//project:rule"]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected
-        )
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_third_party_target_works(self, root):
-        commands = [
-            'third_party.third_party_target("platform", "project", "rule")',
-        ]
+        commands = ['third_party.third_party_target("platform", "project", "rule")']
         expected = ["//third-party-buck/platform/build/project:rule"]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected
-        )
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_external_dep_target_fails_on_wrong_tuple_size(self, root):
         commands = [
-            'third_party.external_dep_target(' +
-            '("foo", "bar", "baz", "other"), "platform")',
+            "third_party.external_dep_target("
+            + '("foo", "bar", "baz", "other"), "platform")'
         ]
         self.assertFailureWithMessage(
             root.runUnitTests(self.includes, commands),
-            'illegal external dependency ',
-            'must have 1, 2, or 3 elements'
+            "illegal external dependency ",
+            "must have 1, 2, or 3 elements",
         )
 
     @tests.utils.with_project()
     def test_external_dep_target_fails_on_bad_raw_target(self, root):
         commands = [
             'third_party.external_dep_target({"not_a_string": "or_tuple"}, '
-            '"platform")',
+            '"platform")'
         ]
         self.assertFailureWithMessage(
             root.runUnitTests(self.includes, commands),
-            "external dependency should be a tuple or string"
+            "external dependency should be a tuple or string",
         )
 
     @tests.utils.with_project()
@@ -86,9 +75,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "//third-party-buck/platform/build/foo:bar",
             "//third-party-buck/platform/build/foo:bar",
         ]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected
-        )
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_external_dep_for_oss(self, root):
@@ -113,9 +100,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "foo//foo:bar",
             "foo//foo:bar",
         ]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected
-        )
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_replace_third_party_repo_works(self, root):
@@ -162,8 +147,7 @@ class ThirdPartyTest(tests.utils.TestCase):
             "//third-party-buck/gcc7/tools/ld/bin:ldd",
             "//third-party-buck/gcc7/tools:ld/bin",
         ]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected)
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_tool_paths_without_use_platforms_and_build_subdirs(self, root):
@@ -185,5 +169,4 @@ class ThirdPartyTest(tests.utils.TestCase):
             "ld//bin:ldd",
             "ld//ld:ld",
         ]
-        self.assertSuccess(
-            root.runUnitTests(self.includes, commands), *expected)
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

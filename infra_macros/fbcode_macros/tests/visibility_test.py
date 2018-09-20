@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 
@@ -18,16 +15,13 @@ class VisibilityTest(tests.utils.TestCase):
         (
             "@fbcode_macros//build_defs:visibility.bzl",
             "get_visibility",
-            "get_visibility_for_base_path"
+            "get_visibility_for_base_path",
         )
     ]
 
     @tests.utils.with_project()
     def test_returns_default_visibility_or_original_visibility(self, root):
-        statements = [
-            'get_visibility(None, "foo")',
-            'get_visibility(["//..."], "foo")',
-        ]
+        statements = ['get_visibility(None, "foo")', 'get_visibility(["//..."], "foo")']
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, ["PUBLIC"], ["//..."])
 
@@ -40,28 +34,35 @@ class VisibilityTest(tests.utils.TestCase):
             'get_visibility(["//..."], "foo")',
         ]
         result = root.runUnitTests(
-            self.includes,
-            statements,
-            buckfile="experimental/deeplearning/BUCK")
+            self.includes, statements, buckfile="experimental/deeplearning/BUCK"
+        )
         self.assertSuccess(
             result,
             ["PUBLIC"],
             ["//experimental/..."],
             ["//..."],
-            ["//experimental/..."])
+            ["//experimental/..."],
+        )
 
     @tests.utils.with_project()
     def test_returns_experimental_visibility_for_experimental_things(self, root):
         statements = [
-            ('get_visibility_for_base_path(None, "other", '
-                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
-            ('get_visibility_for_base_path(None, "lib", '
-                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
-            ('get_visibility_for_base_path(["//..."], "lib", '
-                '"experimental/deeplearning/ntt/detection_caffe2/lib")'),
+            (
+                'get_visibility_for_base_path(None, "other", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'
+            ),
+            (
+                'get_visibility_for_base_path(None, "lib", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'
+            ),
+            (
+                'get_visibility_for_base_path(["//..."], "lib", '
+                '"experimental/deeplearning/ntt/detection_caffe2/lib")'
+            ),
             'get_visibility_for_base_path(None, "target", "other_dir")',
             'get_visibility_for_base_path(["//..."], "target", "target_dir")',
         ]
         result = root.runUnitTests(self.includes, statements)
-        self.assertSuccess(result, ["//experimental/..."], ["PUBLIC"],
-                           ["//..."], ["PUBLIC"], ["//..."])
+        self.assertSuccess(
+            result, ["//experimental/..."], ["PUBLIC"], ["//..."], ["PUBLIC"], ["//..."]
+        )

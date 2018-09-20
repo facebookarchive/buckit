@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 from tests.utils import dedent
@@ -16,7 +13,8 @@ from tests.utils import dedent
 
 class NativeRulesTest(tests.utils.TestCase):
 
-    import_lines = dedent("""
+    import_lines = dedent(
+        """
         load("@fbcode_macros//build_defs:native_rules.bzl",
             "buck_command_alias",
             "buck_filegroup",
@@ -33,11 +31,17 @@ class NativeRulesTest(tests.utils.TestCase):
             "buck_cxx_test",
             "test_suite",
         )
-        """)
+        """
+    )
 
     @tests.utils.with_project()
     def test_ungated_rules_propagate_properly(self, root):
-        root.addFile("BUCK", self.import_lines + "\n" + dedent("""
+        root.addFile(
+            "BUCK",
+            self.import_lines
+            + "\n"
+            + dedent(
+                """
             buck_command_alias(name="command_alias", exe=":sh_binary")
             buck_filegroup(name="filegroup", srcs=["python_library.py"])
             cxx_genrule(name="cxx_genrule", out="out.h", cmd="echo > $OUT")
@@ -60,9 +64,12 @@ class NativeRulesTest(tests.utils.TestCase):
                     "1.1": ":sh_binary",
                 },
             )
-        """))
+        """
+            ),
+        )
 
-        expected = dedent("""
+        expected = dedent(
+            """
             test_suite(
               name = "all_tests",
               tests = [
@@ -141,14 +148,20 @@ class NativeRulesTest(tests.utils.TestCase):
               },
             )
 
-        """)
+        """
+        )
         results = root.runAudit(["BUCK"])
 
         self.validateAudit({"BUCK": expected}, results)
 
     @tests.utils.with_project()
     def test_python_library_generates_typing_file(self, root):
-        root.addFile("BUCK", self.import_lines + "\n" + dedent("""
+        root.addFile(
+            "BUCK",
+            self.import_lines
+            + "\n"
+            + dedent(
+                """
             buck_python_binary(
                 name="python_binary",
                 deps=[":python_library"],
@@ -161,9 +174,12 @@ class NativeRulesTest(tests.utils.TestCase):
                     "python_library.py",
                 ],
             )
-        """))
+        """
+            ),
+        )
 
-        expected = dedent(r"""
+        expected = dedent(
+            r"""
             python_binary(
               name = "python_binary",
               main_module = "python_binary",
@@ -187,7 +203,8 @@ class NativeRulesTest(tests.utils.TestCase):
                 "PUBLIC",
               ],
             )
-        """)
+        """
+        )
         root.updateBuckconfig("python", "typing_config", "//python:typing")
 
         results = root.runAudit(["BUCK"])
@@ -201,16 +218,16 @@ class NativeRulesTest(tests.utils.TestCase):
             "cxx_library=foo:bar_bin,"
             "cxx_test=foo:bar_test"
         )
-        root.updateBuckconfig(
-            "fbcode", "forbid_raw_buck_rules", "true")
-        root.updateBuckconfig(
-            "fbcode", "whitelisted_raw_buck_rules", whitelist)
-        prefix = dedent("""
+        root.updateBuckconfig("fbcode", "forbid_raw_buck_rules", "true")
+        root.updateBuckconfig("fbcode", "whitelisted_raw_buck_rules", whitelist)
+        prefix = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:native_rules.bzl",
                 "buck_cxx_binary", "buck_cxx_library", "buck_cxx_test"
             )
-        """)
+        """
+        )
         target1 = prefix + '\nbuck_cxx_binary(name="bin", srcs=["main.cpp"])'
         target2 = prefix + '\nbuck_cxx_library(name="lib", srcs=["lib.cpp"])'
         target3 = prefix + '\nbuck_cxx_test(name="test", srcs=["test.cpp"])'
@@ -226,28 +243,28 @@ class NativeRulesTest(tests.utils.TestCase):
         self.assertFailureWithMessage(
             result1,
             "Unsupported access to Buck rules!",
-            "cxx_binary(): native rule target1:bin is not whitelisted")
+            "cxx_binary(): native rule target1:bin is not whitelisted",
+        )
         self.assertFailureWithMessage(
             result2,
             "Unsupported access to Buck rules!",
-            "cxx_library(): native rule target2:bin is not whitelisted")
+            "cxx_library(): native rule target2:bin is not whitelisted",
+        )
         self.assertFailureWithMessage(
             result3,
             "Unsupported access to Buck rules!",
-            "cxx_test(): native rule target3:bin is not whitelisted")
+            "cxx_test(): native rule target3:bin is not whitelisted",
+        )
 
     @tests.utils.with_project()
     def test_gated_rules_accept_on_whitelisted(self, root):
         whitelist = (
-            "cxx_binary=foo:bar_bin,"
-            "cxx_library=foo:bar_lib,"
-            "cxx_test=foo:bar_test"
+            "cxx_binary=foo:bar_bin," "cxx_library=foo:bar_lib," "cxx_test=foo:bar_test"
         )
-        root.updateBuckconfig(
-            "fbcode", "forbid_raw_buck_rules", "true")
-        root.updateBuckconfig(
-            "fbcode", "whitelisted_raw_buck_rules", whitelist)
-        contents = dedent("""
+        root.updateBuckconfig("fbcode", "forbid_raw_buck_rules", "true")
+        root.updateBuckconfig("fbcode", "whitelisted_raw_buck_rules", whitelist)
+        contents = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:native_rules.bzl",
                 "buck_cxx_binary", "buck_cxx_library", "buck_cxx_test"
@@ -255,10 +272,12 @@ class NativeRulesTest(tests.utils.TestCase):
             buck_cxx_binary(name="bar_bin", srcs=["main.cpp"])
             buck_cxx_library(name="bar_lib", srcs=["lib.cpp"])
             buck_cxx_test(name="bar_test", srcs=["test.cpp"])
-        """)
+        """
+        )
         root.addFile("foo/BUCK", contents)
 
-        expected = dedent("""
+        expected = dedent(
+            """
             cxx_binary(
               name = "bar_bin",
               srcs = [
@@ -279,7 +298,8 @@ class NativeRulesTest(tests.utils.TestCase):
                 "test.cpp",
               ],
             )
-        """)
+        """
+        )
         result = root.runAudit(["foo/BUCK"])
 
         self.validateAudit({"foo/BUCK": expected}, result)
@@ -287,14 +307,12 @@ class NativeRulesTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_gated_rules_accepted_on_non_whitelisted_if_forbid_disabled(self, root):
         whitelist = (
-            "cxx_binary=foo:bar_bin,"
-            "cxx_library=foo:bar_lib,"
-            "cxx_test=foo:bar_test"
+            "cxx_binary=foo:bar_bin," "cxx_library=foo:bar_lib," "cxx_test=foo:bar_test"
         )
-        root.updateBuckconfig(
-            "fbcode", "whitelisted_raw_buck_rules", whitelist)
+        root.updateBuckconfig("fbcode", "whitelisted_raw_buck_rules", whitelist)
         # don't forbid raw_rules by default
-        contents = dedent("""
+        contents = dedent(
+            """
             load(
                 "@fbcode_macros//build_defs:native_rules.bzl",
                 "buck_cxx_binary", "buck_cxx_library", "buck_cxx_test"
@@ -302,10 +320,12 @@ class NativeRulesTest(tests.utils.TestCase):
             buck_cxx_binary(name="bar_bin", srcs=["main.cpp"])
             buck_cxx_library(name="bar_lib", srcs=["lib.cpp"])
             buck_cxx_test(name="bar_test", srcs=["test.cpp"])
-        """)
+        """
+        )
         root.addFile("not_foo/BUCK", contents)
 
-        expected = dedent("""
+        expected = dedent(
+            """
             cxx_binary(
               name = "bar_bin",
               srcs = [
@@ -326,7 +346,8 @@ class NativeRulesTest(tests.utils.TestCase):
                 "test.cpp",
               ],
             )
-        """)
+        """
+        )
         result = root.runAudit(["not_foo/BUCK"])
 
         self.validateAudit({"not_foo/BUCK": expected}, result)

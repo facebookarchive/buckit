@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
 import platform as _platform
@@ -34,68 +31,91 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_fails_if_output_gen_files_is_wrong_type(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
         load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
         custom_rule(name="foobar", build_script_dep=":ignore", output_gen_files="not a list")
-        """))
+        """
+            ),
+        )
 
         result = root.runAudit(["BUCK"])
 
         self.assertFailureWithMessage(
-            result,
-            "output_gen_files and output_bin_files must be lists of filenames")
+            result, "output_gen_files and output_bin_files must be lists of filenames"
+        )
 
     @tests.utils.with_project()
     def test_fails_if_no_output_gen_files_provided(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
         load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
         custom_rule(name="foobar", build_script_dep=":ignore")
-        """))
+        """
+            ),
+        )
 
         result = root.runAudit(["BUCK"])
 
         self.assertFailureWithMessage(
-            result,
-            "neither output_gen_files nor output_bin_files were specified")
+            result, "neither output_gen_files nor output_bin_files were specified"
+        )
 
     @tests.utils.with_project()
     def test_fails_if_build_args_is_wrong_type(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
         load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
         custom_rule(name="foobar", build_script_dep=":ignore", build_args=["arg1", "arg2"])
-        """))
+        """
+            ),
+        )
 
         result = root.runAudit(["BUCK"])
 
-        self.assertFailureWithMessage(
-            result,
-            "build_args must be a string or None")
+        self.assertFailureWithMessage(result, "build_args must be a string or None")
 
     @tests.utils.with_project()
     def test_fails_if_two_dots_in_output_gen_files(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(name="foobar", build_script_dep=":ignore", output_gen_files=("../foobar",))
-        """))
+        """
+            ),
+        )
 
         result = root.runAudit(["BUCK"])
 
         self.assertFailureWithMessage(
-            result,
-            "output file ../foobar cannot contain '..'")
+            result, "output file ../foobar cannot contain '..'"
+        )
 
     @tests.utils.with_project()
     def test_fails_if_two_dots_in_output_bin_files(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(name="foobar", build_script_dep=":ignore", output_bin_files=("../foobar",))
-        """))
+        """
+            ),
+        )
 
         result = root.runAudit(["BUCK"])
 
         self.assertFailureWithMessage(
-            result,
-            "output file ../foobar cannot contain '..'")
+            result, "output file ../foobar cannot contain '..'"
+        )
 
     @tests.utils.with_project()
     def test_converts_third_party_paths(self, root):
@@ -107,7 +127,10 @@ class CustomRuleTest(tests.utils.TestCase):
         # - build_script_dep
         # - build_args
         # - deps[]
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
@@ -121,34 +144,39 @@ class CustomRuleTest(tests.utils.TestCase):
                     "@/third-party-tools:project:straggler2",
                 ],
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS='
-            '$(location //third-party-buck/default/tools:protobufs/bin):'
-            '$(location //third-party-buck/default/tools:cc/bin) '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS="
+            "$(location //third-party-buck/default/tools:protobufs/bin):"
+            "$(location //third-party-buck/default/tools:cc/bin) "
             'INSTALL_DIR=\\"$OUT\\" '
-            'PATH='
-            '$GEN_DIR/../../third-party-buck/default/tools/protobufs/bin:'
-            '$GEN_DIR/../../third-party-buck/default/tools/cc/bin:'
+            "PATH="
+            "$GEN_DIR/../../third-party-buck/default/tools/protobufs/bin:"
+            "$GEN_DIR/../../third-party-buck/default/tools/cc/bin:"
             '\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //third-party-buck/default/build/proj:some_genrule) '
+            "$(exe //third-party-buck/default/build/proj:some_genrule) "
             '--install_dir=\\"$OUT\\" '
-            '--flag '
-            '$(location //third-party-buck/default/build/boost:data_file) '
-            '# $(location //third-party-buck/default/build/project:straggler) '
-            '$(location //third-party-buck/default/tools/project:straggler2)'
+            "--flag "
+            "$(location //third-party-buck/default/build/boost:data_file) "
+            "# $(location //third-party-buck/default/build/project:straggler) "
+            "$(location //third-party-buck/default/tools/project:straggler2)"
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -157,7 +185,9 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = False,
               out = "foobar-outputs",
               srcs = [
@@ -167,14 +197,17 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
 
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -182,7 +215,10 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_fails_if_tool_rule_does_not_exist(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
             buck_sh_binary(name="main.sh", main="main.sh")
@@ -192,8 +228,10 @@ class CustomRuleTest(tests.utils.TestCase):
                 tools=["cc"],
                 output_gen_files=["out1"],
             )
-        """))
-        root.addFile("main.sh", "touch \"$OUT\"; exit 0;", executable=True)
+        """
+            ),
+        )
+        root.addFile("main.sh", 'touch "$OUT"; exit 0;', executable=True)
 
         result = root.run(["buck", "build", "//:foobar"], {}, {})
         self.assertFailureWithMessage(
@@ -202,11 +240,15 @@ class CustomRuleTest(tests.utils.TestCase):
             "resolving target //third-party-buck/default/tools:cc/bin",
             "This error happened while trying to get dependency "
             "'//third-party-buck/default/tools:cc/bin' of target "
-            "'//:foobar-outputs'")
+            "'//:foobar-outputs'",
+        )
 
     @tests.utils.with_project()
     def test_adds_fbcode_env_var_and_flag_if_not_strict(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
@@ -221,36 +263,41 @@ class CustomRuleTest(tests.utils.TestCase):
                 output_gen_files=["out1"],
                 strict=False,
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_DIR=$GEN_DIR/../.. '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS='
-            '$(location //third-party-buck/default/tools:protobufs/bin):'
-            '$(location //third-party-buck/default/tools:cc/bin) '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_DIR=$GEN_DIR/../.. "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS="
+            "$(location //third-party-buck/default/tools:protobufs/bin):"
+            "$(location //third-party-buck/default/tools:cc/bin) "
             'INSTALL_DIR=\\"$OUT\\" '
-            'PATH='
-            '$GEN_DIR/../../third-party-buck/default/tools/protobufs/bin:'
-            '$GEN_DIR/../../third-party-buck/default/tools/cc/bin:'
+            "PATH="
+            "$GEN_DIR/../../third-party-buck/default/tools/protobufs/bin:"
+            "$GEN_DIR/../../third-party-buck/default/tools/cc/bin:"
             '\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
-            '--fbcode_dir=$GEN_DIR/../.. '
+            "$(exe //:main_script) "
+            "--fbcode_dir=$GEN_DIR/../.. "
             '--install_dir=\\"$OUT\\" '
-            '--flag '
-            '$(location //:arg_dep) '
-            '# $(location //:old_dep1) '
-            '$(location //:old_dep2)'
+            "--flag "
+            "$(location //:arg_dep) "
+            "# $(location //:old_dep1) "
+            "$(location //:old_dep2)"
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -259,7 +306,9 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = "''' + expected_cmd + '''",
+              cmd = "'''
+            + expected_cmd
+            + '''",
               no_remote = False,
               out = "foobar-outputs",
               srcs = [
@@ -270,13 +319,16 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -284,32 +336,40 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_handles_defaults(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
                 build_script_dep="//:main_script",
                 output_gen_files=["out1"],
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\"'
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -318,20 +378,25 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = False,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -339,32 +404,40 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_creates_main_rule_as_output_with_only_one_out(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
                 build_script_dep="//:main_script",
                 output_gen_files=["out1"],
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\"'
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -373,20 +446,25 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = False,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -394,29 +472,35 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_creates_main_rule_as_python_lib_with_more_than_one_out(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
                 build_script_dep="//:main_script",
                 output_gen_files=["out1","out2"],
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\"'
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             python_library(
               name = "foobar",
               deps = [
@@ -430,14 +514,18 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = False,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -446,13 +534,16 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar=out2",
-              cmd = "''' + self._getCopyCommand("foobar", "out2") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out2")
+            + """",
               out = "out2",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -460,23 +551,36 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_gets_correct_visibility(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
                 build_script_dep="//:main_script",
                 output_gen_files=["out1"],
             )
-        """))
-        root.addFile("experimental/test/BUCK", dedent("""
+        """
+            ),
+        )
+        root.addFile(
+            "experimental/test/BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
                 build_script_dep="//:main_script",
                 output_gen_files=["out1"],
             )
-        """))
-        root.addFile("other/BUCK", dedent("""
+        """
+            ),
+        )
+        root.addFile(
+            "other/BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
@@ -484,56 +588,74 @@ class CustomRuleTest(tests.utils.TestCase):
                 output_gen_files=["out1"],
                 visibility=[],
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\"'
         )
-        expected_template = dedent('''
+        expected_template = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",{vis}
             )
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = False,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",{vis}
             )
-        ''')
+        """
+        )
         default_vis = '\n  visibility = [\n    "PUBLIC",\n  ],'
         experimental_vis = '\n  visibility = [\n    "//experimental/...",\n  ],'
-        other_vis = ''
+        other_vis = ""
 
         result = root.runAudit(["BUCK", "experimental/test/BUCK", "other/BUCK"])
 
-        self.validateAudit({
-            "BUCK": expected_template.format(vis=default_vis),
-            "experimental/test/BUCK": expected_template.format(vis=experimental_vis),
-            "other/BUCK": expected_template.format(vis=other_vis),
-        }, result)
+        self.validateAudit(
+            {
+                "BUCK": expected_template.format(vis=default_vis),
+                "experimental/test/BUCK": expected_template.format(
+                    vis=experimental_vis
+                ),
+                "other/BUCK": expected_template.format(vis=other_vis),
+            },
+            result,
+        )
 
     @tests.utils.with_project()
     def test_passes_no_remote(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
@@ -541,25 +663,30 @@ class CustomRuleTest(tests.utils.TestCase):
                 output_gen_files=["out1"],
                 no_remote=True,
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\"'
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -568,20 +695,25 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = True,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 
@@ -589,15 +721,23 @@ class CustomRuleTest(tests.utils.TestCase):
 
     @tests.utils.with_project()
     def test_copy_genrule_output_file_creates_correct_rule(self, root):
-        root.addFile("other/BUCK", dedent("""
+        root.addFile(
+            "other/BUCK",
+            dedent(
+                """
             genrule(
                 name="main",
                 cmd='mkdir -p "$OUT" && echo 1 > $OUT/out1; echo 2 > $OUT/out2',
                 out="outdir",
                 visibility=["PUBLIC"],
             )
-        """))
-        root.addFile("BUCK", dedent("""
+        """
+            ),
+        )
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "copy_genrule_output_file")
             copy_genrule_output_file(
                 name_prefix="main",
@@ -605,7 +745,9 @@ class CustomRuleTest(tests.utils.TestCase):
                 filename="out1",
                 visibility=["PUBLIC"],
             )
-        """))
+        """
+            ),
+        )
 
         result = root.run(["buck", "build", "--show-output", "//:"], {}, {})
 
@@ -617,12 +759,15 @@ class CustomRuleTest(tests.utils.TestCase):
 
         self.assertTrue(os.path.exists(outputs["//:main=out1"]))
         with open(outputs["//:main=out1"]) as fin:
-            self.assertEqual("1", fin.read().decode('utf-8').strip())
+            self.assertEqual("1", fin.read().decode("utf-8").strip())
 
     @tests.utils.with_project()
     def test_output_can_be_used(self, root):
         # Quick integration test
-        root.addFile("gen.sh", dedent("""
+        root.addFile(
+            "gen.sh",
+            dedent(
+                """
             cat > $INSTALL_DIR/main.h <<EOF
             #pragma once
             struct Printer { static void print(); };
@@ -634,8 +779,14 @@ class CustomRuleTest(tests.utils.TestCase):
             void Printer::print() { cout << "Hello, world" << endl; }
             int main() { Printer::print(); return 0; }
             EOF
-        """), executable=True)
-        root.addFile("BUCK", dedent("""
+        """
+            ),
+            executable=True,
+        )
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             load("@fbcode_macros//build_defs:native_rules.bzl", "buck_sh_binary")
             buck_sh_binary(name = "gen.sh", main = "gen.sh")
@@ -649,16 +800,21 @@ class CustomRuleTest(tests.utils.TestCase):
                 srcs = [":foo=main.cpp"],
                 headers = [":foo=main.h"],
             )
-        """))
+        """
+            ),
+        )
 
         result = root.run(["buck", "run", "//:main"], {}, {})
 
         self.assertSuccess(result)
-        self.assertEquals("Hello, world", result.stdout.decode('utf-8').strip())
+        self.assertEquals("Hello, world", result.stdout.decode("utf-8").strip())
 
     @tests.utils.with_project(use_skylark=False)
     def test_build_args_work_with_unicode_strings(self, root):
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
             load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
             custom_rule(
                 name="foobar",
@@ -667,26 +823,31 @@ class CustomRuleTest(tests.utils.TestCase):
                 output_gen_files=["out1"],
                 no_remote=True,
             )
-        """))
+        """
+            ),
+        )
         expected_cmd = (
             'mkdir -p \\"$OUT\\" && '
-            'env '
-            'BUCK_PLATFORM=default-gcc '
-            'FBCODE_BUILD_MODE=dev '
-            'FBCODE_BUILD_TOOL=buck '
-            'FBCODE_PLATFORM=default '
-            'FBCODE_THIRD_PARTY_TOOLS= '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
             'SRCDIR=\\"$SRCDIR\\" '
-            '$(exe //:main_script) '
+            "$(exe //:main_script) "
             '--install_dir=\\"$OUT\\" '
-            'foo'
+            "foo"
         )
-        expected = dedent('''
+        expected = dedent(
+            '''
             genrule(
               name = "foobar",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -695,20 +856,25 @@ class CustomRuleTest(tests.utils.TestCase):
 
             genrule(
               name = "foobar-outputs",
-              cmd = \"''' + expected_cmd + '''\",
+              cmd = \"'''
+            + expected_cmd
+            + '''\",
               no_remote = True,
               out = "foobar-outputs",
             )
 
             genrule(
               name = "foobar=out1",
-              cmd = "''' + self._getCopyCommand("foobar", "out1") + '''",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
               out = "out1",
               visibility = [
                 "PUBLIC",
               ],
             )
-        ''')
+        """
+        )
 
         result = root.runAudit(["BUCK"])
 

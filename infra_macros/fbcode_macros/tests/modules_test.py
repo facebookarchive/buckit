@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import textwrap
 
@@ -24,15 +21,20 @@ class ModulesTest(tests.utils.TestCase):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes,
-                ['modules.get_module_name("fbcode", "base/path", "short-name")']),
-            "fbcode//base/path:short-name")
+                ['modules.get_module_name("fbcode", "base/path", "short-name")'],
+            ),
+            "fbcode//base/path:short-name",
+        )
 
     @tests.utils.with_project()
     def test_get_module_map(self, root):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes,
-                ['modules.get_module_map("name", {"header1.h": ["private"], "header2.h": {}})']),
+                [
+                    'modules.get_module_map("name", {"header1.h": ["private"], "header2.h": {}})'
+                ],
+            ),
             textwrap.dedent(
                 """\
                 module "name" {
@@ -45,4 +47,6 @@ class ModulesTest(tests.utils.TestCase):
                     export *
                   }
                 }
-                """))
+                """
+            ),
+        )

@@ -5,38 +5,34 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import functools
-import pkg_resources
-import copy
 import collections
-import subprocess
-import os
-import tempfile
-import shutil
+import copy
+import functools
 import logging
+import os
 import platform
 import re
+import shutil
 import stat
 import StringIO
+import subprocess
+import tempfile
 import textwrap
 import unittest
 
+import pkg_resources
 import six
 from future.utils import raise_with_traceback
+
 
 try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
 
-RunResult = collections.namedtuple(
-    "RunResult", ["returncode", "stdout", "stderr"]
-)
+RunResult = collections.namedtuple("RunResult", ["returncode", "stdout", "stderr"])
 UnitTestResult = collections.namedtuple(
     "UnitTestResult", ["returncode", "stdout", "stderr", "debug_lines"]
 )
@@ -58,10 +54,9 @@ def __recursively_get_files_contents(base):
     Returns:
         Map of relative path to a string of the file's contents
     """
-    is_file = (
-        pkg_resources.resource_exists(__name__, base) and
-        not pkg_resources.resource_isdir(__name__, base)
-    )
+    is_file = pkg_resources.resource_exists(
+        __name__, base
+    ) and not pkg_resources.resource_isdir(__name__, base)
     if is_file:
         return {base: pkg_resources.resource_string(__name__, base)}
 
@@ -89,7 +84,7 @@ def recursively_get_files_contents(base, strip_base):
     ret = __recursively_get_files_contents(base)
     if strip_base:
         # + 1 is for the /
-        ret = {path[len(base) + 1:]: ret[path] for path in ret.keys()}
+        ret = {path[len(base) + 1 :]: ret[path] for path in ret.keys()}
     return ret
 
 
@@ -182,8 +177,10 @@ class Cell:
                 buckconfig["cxx"]["cc"] = cc
                 buckconfig["cxx"]["cpp"] = cc
                 buckconfig["cxx"]["aspp"] = cc
-        if ("fbcode" not in buckconfig or
-                "buck_platform_format" not in buckconfig["fbcode"]):
+        if (
+            "fbcode" not in buckconfig
+            or "buck_platform_format" not in buckconfig["fbcode"]
+        ):
             buckconfig["fbcode"]["buck_platform_format"] = "{platform}-{compiler}"
 
         parser = configparser.ConfigParser()
@@ -359,7 +356,7 @@ class Cell:
             returncode=ret.returncode,
             stdout=ret.stdout,
             stderr=ret.stderr,
-            files=audit_files
+            files=audit_files,
         )
 
     def runUnitTests(
@@ -429,24 +426,20 @@ class Cell:
         buck_file_content += extra_declarations or ""
         buck_file_content += "\n"
         for statement in statements:
-            buck_file_content += (
-                'print("TEST_RESULT: %s" % repr({}))\n'.format(statement)
+            buck_file_content += 'print("TEST_RESULT: %s" % repr({}))\n'.format(
+                statement
             )
 
         cmd = ["buck", "audit", "rules", buckfile]
-        result = self.run(
-            cmd, {buckfile: buck_file_content}, environment_overrides
-        )
+        result = self.run(cmd, {buckfile: buck_file_content}, environment_overrides)
         debug_lines = []
         for line in result.stderr.split("\n"):
             # python. Sample line: | TEST_RESULT: {}
             if line.startswith("| TEST_RESULT:"):
-                debug_lines.append(
-                    self._convertDebug(line.split(":", 1)[-1].strip()))
+                debug_lines.append(self._convertDebug(line.split(":", 1)[-1].strip()))
             # Sample line: DEBUG: /Users/user/temp/BUCK:1:1: TEST_RESULT: "hi"
             elif line.startswith("DEBUG: ") and "TEST_RESULT:" in line:
-                debug_lines.append(
-                    self._convertDebug(line.split(":", 5)[-1].strip()))
+                debug_lines.append(self._convertDebug(line.split(":", 5)[-1].strip()))
         return UnitTestResult(
             returncode=result.returncode,
             stdout=result.stdout,
@@ -462,25 +455,25 @@ class Cell:
         """
 
         def struct(**kwargs):
-            return collections.namedtuple("struct",
-                                          sorted(kwargs.keys()))(**kwargs)
+            return collections.namedtuple("struct", sorted(kwargs.keys()))(**kwargs)
 
         def function(name):
             return collections.namedtuple("function", ["name"])(name)
 
-        string = re.sub(r'<function (\w+)>', r'function("\1")', string)
+        string = re.sub(r"<function (\w+)>", r'function("\1")', string)
         # Yup, eval.... this lets us have nested struct objects easily so we
         # can do stricter type checking
         return eval(
-            string, {
-                "__builtins__":
-                    {
-                        "struct": struct,
-                        "function": function,
-                        "True": True,
-                        "False": False,
-                    }
-            }, {}
+            string,
+            {
+                "__builtins__": {
+                    "struct": struct,
+                    "function": function,
+                    "True": True,
+                    "False": False,
+                }
+            },
+            {},
         )
 
 
@@ -495,7 +488,7 @@ class Project:
         remove_files=None,
         add_fbcode_macros_cell=True,
         add_skylib_cell=True,
-        run_buckd=False
+        run_buckd=False,
     ):
         """
         Create an instance of Project
@@ -510,7 +503,7 @@ class Project:
         """
 
         if remove_files is None:
-            remove_files = os.environ.get('FBCODE_MACROS_KEEP_DIRS') != '1'
+            remove_files = os.environ.get("FBCODE_MACROS_KEEP_DIRS") != "1"
 
         self.root_cell = None
         self.project_path = None
@@ -538,9 +531,7 @@ class Project:
                 shutil.rmtree(self.project_path)
             else:
                 logging.info(
-                    "Not deleting temporary files at {}".format(
-                        self.project_path
-                    )
+                    "Not deleting temporary files at {}".format(self.project_path)
                 )
 
     def killBuckd(self):
@@ -567,9 +558,7 @@ class Project:
         return new_cell
 
 
-def with_project(
-    use_skylark=True, use_python=True, *project_args, **project_kwargs
-):
+def with_project(use_skylark=True, use_python=True, *project_args, **project_kwargs):
     """
     Annotation that makes a project available to a test. This passes the root
     cell to the function being annotated and tears down the temporary
@@ -598,7 +587,7 @@ def with_project(
                 raise ValueError("Unknown parser type: %s" % suffix)
 
             with Project(*project_args, **project_kwargs) as project:
-                new_args = args + (project.root_cell, )
+                new_args = args + (project.root_cell,)
                 if isinstance(new_args[0], TestCase):
                     new_args[0].setUpProject(project.root_cell)
                 project.root_cell.updateBuckconfig(
@@ -671,7 +660,9 @@ class TestCase(unittest.TestCase):
                 """
                 load("@bazel_skylib//lib:new_sets.bzl", "sets")
                 core_tools_targets = sets.make([])
-                """))
+                """
+            ),
+        )
 
     def addDummyThirdPartyConfig(self, root):
         current_arch = platform.machine()
@@ -702,7 +693,9 @@ class TestCase(unittest.TestCase):
                     }},
                 }},
             }}
-        """.format(current_arch=current_arch, other_arch=other_arch)
+        """.format(
+                current_arch=current_arch, other_arch=other_arch
+            )
         )
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", third_party_config
@@ -757,7 +750,7 @@ class TestCase(unittest.TestCase):
         self,
         root,
         third_party_root="third-party-buck",
-        use_platforms_and_build_subdirs=True
+        use_platforms_and_build_subdirs=True,
     ):
         paths_config = dedent(
             """
@@ -765,7 +758,8 @@ class TestCase(unittest.TestCase):
                 third_party_root="%s",
                 use_platforms_and_build_subdirs=%r,
             )
-            """ % (third_party_root, use_platforms_and_build_subdirs)
+            """
+            % (third_party_root, use_platforms_and_build_subdirs)
         )
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/paths_config.bzl", paths_config
@@ -774,17 +768,16 @@ class TestCase(unittest.TestCase):
     def assertSuccess(self, result, *expected_results):
         """ Make sure that the command ran successfully """
         self.assertEqual(
-            0, result.returncode,
+            0,
+            result.returncode,
             "Expected zero return code\nSTDOUT:\n{}\nSTDERR:\n{}\n".format(
                 result.stdout, result.stderr
-            )
+            ),
         )
         if expected_results:
             self.assertEqual(list(expected_results), result.debug_lines)
 
-    def assertFailureWithMessage(
-        self, result, expected_message, *other_messages
-    ):
+    def assertFailureWithMessage(self, result, expected_message, *other_messages):
         """ Make sure that we failed with a substring in stderr """
         self.assertNotEqual(0, result.returncode)
         try:
@@ -792,7 +785,7 @@ class TestCase(unittest.TestCase):
         except AssertionError as e:
             # If we get a parse error, it's a lot easier to read as multiple
             # lines, rather than a single line witn \n in it
-            e.args = (e.args[0].replace(r'\n', '\n'),) + e.args[1:]
+            e.args = (e.args[0].replace(r"\n", "\n"),) + e.args[1:]
             raise e
         for message in expected_message:
             self.assertIn(message, result.stderr)
@@ -818,20 +811,20 @@ class TestCase(unittest.TestCase):
         except AssertionError as e:
             raise_with_traceback(
                 AssertionError(
-                    "Got a list of files that had empty contents: {!r}\n{}".
-                    format(empty_results, str(e))
+                    "Got a list of files that had empty contents: {!r}\n{}".format(
+                        empty_results, str(e)
+                    )
                 )
             )
 
         try:
             self.assertEqual(
-                sorted(expected_results.keys()),
-                sorted(result.files.keys()))
+                sorted(expected_results.keys()), sorted(result.files.keys())
+            )
         except AssertionError as e:
             raise_with_traceback(
                 AssertionError(
-                    "Parsed list of files != expected list of files:\n{}".
-                    format(str(e))
+                    "Parsed list of files != expected list of files:\n{}".format(str(e))
                 )
             )
 
@@ -840,9 +833,7 @@ class TestCase(unittest.TestCase):
                 self.assertEqual(expected_results[file], contents)
             except AssertionError as e:
                 raise_with_traceback(
-                    AssertionError(
-                        "Content of {} differs:\n{}".format(file, str(e))
-                    )
+                    AssertionError("Content of {} differs:\n{}".format(file, str(e)))
                 )
 
     def struct(self, **kwargs):

@@ -5,12 +5,10 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import platform
+
 import tests.utils
 
 
@@ -33,7 +31,7 @@ class ConfigTest(tests.utils.TestCase):
                 "jemalloc": ["jemalloc//jemalloc:jemalloc"],
                 "jemalloc_debug": ["jemalloc//jemalloc:jemalloc_debug"],
                 "tcmalloc": ["tcmalloc//tcmalloc:tcmalloc"],
-                "malloc": []
+                "malloc": [],
             },  # get_allocators
             False,  # get_auto_fdo_enabled
             [],  # get_auto_pch_blacklist
@@ -122,71 +120,38 @@ class ConfigTest(tests.utils.TestCase):
             current_os = "windows"
 
         buckconfig = {
-            "cxx": {
-                "profile": "//tools:profile",
-            },
+            "cxx": {"profile": "//tools:profile"},
             "fbcode": {
-                "add_auto_headers_glob":
-                "true",
-                "allocators.jemalloc":
-                "//foo:jemalloc,//foo:jemalloc_other",
-                "allocators.jemalloc_debug":
-                "//foo:jemalloc_debug",
-                "allocators.tcmalloc":
-                "//foo:tcmalloc",
-                "allocators.malloc":
-                "//foo:malloc",
-                "auto_pch_blacklist":
-                "/foo,/bar",
-                "build_mode":
-                "opt",
-                "global_compiler":
-                "clang",
-                "coverage":
-                "true",
-                "current_repo_name":
-                "third-party",
-                "default_allocator":
-                "jemalloc",
-                "fbcode_style_deps":
-                "true",
-                "fbcode_style_deps_are_third_party":
-                "false",
-                "gtest_lib_dependencies":
-                "//third-party/gtest:gtest",
-                "gtest_main_dependency":
-                "//third-party/gtest:gtest_main",
-                "header_namespace_whitelist":
-                "//package:rule, //package2:rule3",
-                "lto_type":
-                "thin",
-                "require_platform":
-                "true",
-                "sanitizer":
-                "asan",
-                "third_party_buck_directory":
-                "third-party-buck",
-                "third_party_config_path":
-                "third-party-buck/config.py",
-                "third_party_use_build_subdir":
-                "true",
-                "third_party_use_platform_subdir":
-                "true",
-                "third_party_use_tools_subdir":
-                "true",
-                "unknown_cells_are_third_party":
-                "true",
-                "use_build_info_linker_flags":
-                "true",
-                "use_custom_par_args":
-                "true",
+                "add_auto_headers_glob": "true",
+                "allocators.jemalloc": "//foo:jemalloc,//foo:jemalloc_other",
+                "allocators.jemalloc_debug": "//foo:jemalloc_debug",
+                "allocators.tcmalloc": "//foo:tcmalloc",
+                "allocators.malloc": "//foo:malloc",
+                "auto_pch_blacklist": "/foo,/bar",
+                "build_mode": "opt",
+                "global_compiler": "clang",
+                "coverage": "true",
+                "current_repo_name": "third-party",
+                "default_allocator": "jemalloc",
+                "fbcode_style_deps": "true",
+                "fbcode_style_deps_are_third_party": "false",
+                "gtest_lib_dependencies": "//third-party/gtest:gtest",
+                "gtest_main_dependency": "//third-party/gtest:gtest_main",
+                "header_namespace_whitelist": "//package:rule, //package2:rule3",
+                "lto_type": "thin",
+                "require_platform": "true",
+                "sanitizer": "asan",
+                "third_party_buck_directory": "third-party-buck",
+                "third_party_config_path": "third-party-buck/config.py",
+                "third_party_use_build_subdir": "true",
+                "third_party_use_platform_subdir": "true",
+                "third_party_use_tools_subdir": "true",
+                "unknown_cells_are_third_party": "true",
+                "use_build_info_linker_flags": "true",
+                "use_custom_par_args": "true",
             },
-            "cython": {
-                "cython_compiler": "//tools:cython",
-            },
-            "defaults.cxx_library": {
-                "type": "shared",
-            },
+            "cython": {"cython_compiler": "//tools:cython"},
+            "defaults.cxx_library": {"type": "shared"},
             "thrift": {
                 "compiler": "//thrift/compiler:thrift",
                 "compiler2": "//thrift/compiler/py:thrift",
@@ -284,13 +249,9 @@ class ConfigTest(tests.utils.TestCase):
         self.assertEqual(expected, ret.debug_lines)
 
     @tests.utils.with_project()
-    def test_compiler_family_uses_cxx_cxx_if_fbcode_compiler_family_missing(
-        self, root
-    ):
+    def test_compiler_family_uses_cxx_cxx_if_fbcode_compiler_family_missing(self, root):
         root.updateBuckconfig("cxx", "cxx", "test-clang")
-        ret = root.runUnitTests(
-            self.includes, ["config.get_default_compiler_family()"]
-        )
+        ret = root.runUnitTests(self.includes, ["config.get_default_compiler_family()"])
 
         self.assertSuccess(ret)
         self.assertEqual("clang", ret.debug_lines[0])

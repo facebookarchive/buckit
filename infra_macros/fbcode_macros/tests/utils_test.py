@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
 import re
@@ -16,13 +13,14 @@ import shutil
 import stat
 import subprocess
 
+import tests.utils
+from tests.utils import dedent
+
+
 try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
-
-import tests.utils
-from tests.utils import dedent
 
 
 class UtilsTest(tests.utils.TestCase):
@@ -48,28 +46,29 @@ class UtilsTest(tests.utils.TestCase):
                 def get_struct(**kwargs):
                     return struct(**kwargs)
                 """
-                )
+                ),
             )
             root.addResourcesFrom("testdata/utils_test/sample.txt")
             root.updateBuckconfig("foo", "bar", "baz")
             root.updateBuckconfig("foo", "foobar", "baz")
             root.updateBuckconfigWithDict(
                 {
-                    "foo": {
-                        "bar": "foobar1",
-                        "baz": "foobar2"
-                    },
-                    "foo2": {
-                        "bar2": ["baz2", "baz3"],
-                    }
+                    "foo": {"bar": "foobar1", "baz": "foobar2"},
+                    "foo2": {"bar2": ["baz2", "baz3"]},
                 }
             )
             ret = root.runUnitTests(
-                [("//testing:file.bzl", "identity", "get_struct")], [
-                    "identity(1)", "identity(True)", 'get_struct(a="b")',
-                    'identity(identity)', 'identity({"a": "b"})',
-                    'identity([1,2,3])', 'identity(X)'
-                ], 'X = "test_string"'
+                [("//testing:file.bzl", "identity", "get_struct")],
+                [
+                    "identity(1)",
+                    "identity(True)",
+                    'get_struct(a="b")',
+                    "identity(identity)",
+                    'identity({"a": "b"})',
+                    "identity([1,2,3])",
+                    "identity(X)",
+                ],
+                'X = "test_string"',
             )
 
             # Make sure our FS looks reasonable
@@ -87,26 +86,22 @@ class UtilsTest(tests.utils.TestCase):
                 def get_struct(**kwargs):
                     return struct(**kwargs)
                 """
-                    ), fin.read()
+                    ),
+                    fin.read(),
                 )
 
-            sample_txt = os.path.join(
-                root_dir, "testdata", "utils_test", "sample.txt"
-            )
+            sample_txt = os.path.join(root_dir, "testdata", "utils_test", "sample.txt")
             self.assertTrue(os.path.isfile(sample_txt))
             with open(sample_txt, "r") as fin:
                 self.assertEqual("This is a sample file", fin.read().strip())
             self.assertTrue(os.path.isdir(macros_dir))
             self.assertTrue(
-                os.path.
-                isfile(os.path.join(macros_dir, "build_defs", "config.bzl"))
+                os.path.isfile(os.path.join(macros_dir, "build_defs", "config.bzl"))
             )
             self.assertEqual(
                 os.path.join(project.project_path, "root"), root.fullPath()
             )
-            self.assertTrue(
-                os.path.isdir(os.path.join(root_dir, "foo", "bar", "dir"))
-            )
+            self.assertTrue(os.path.isdir(os.path.join(root_dir, "foo", "bar", "dir")))
 
             # Double check buckconfig
             parser = configparser.ConfigParser()
@@ -115,9 +110,7 @@ class UtilsTest(tests.utils.TestCase):
             self.assertEqual(
                 "SKYLARK", parser.get("parser", "default_build_file_syntax")
             )
-            self.assertEqual(
-                "true", parser.get("parser", "polyglot_parsing_enabled")
-            )
+            self.assertEqual("true", parser.get("parser", "polyglot_parsing_enabled"))
             self.assertEqual("foobar1", parser.get("foo", "bar"))
             self.assertEqual("foobar2", parser.get("foo", "baz"))
             self.assertEqual("baz", parser.get("foo", "foobar"))
@@ -126,12 +119,17 @@ class UtilsTest(tests.utils.TestCase):
             # Check the output and parsing
             self.assertSuccess(ret)
             debug_pattern = r'^DEBUG:.* TEST_RESULT: "test_string"$'
-            debug_pattern_found = next(
-                (
-                    line for line in ret.stderr.split("\n")
-                    if re.match(debug_pattern, line)
-                ), None
-            ) is not None
+            debug_pattern_found = (
+                next(
+                    (
+                        line
+                        for line in ret.stderr.split("\n")
+                        if re.match(debug_pattern, line)
+                    ),
+                    None,
+                )
+                is not None
+            )
 
             self.assertTrue(debug_pattern_found)
             self.assertEqual(7, len(ret.debug_lines))
@@ -198,8 +196,7 @@ class UtilsTest(tests.utils.TestCase):
             self.assertEqual(1, result.debug_lines[0])
             self.assertFalse(
                 os.path.isfile(
-                    os.path.
-                    join(temp_dir, "fbcode_macros", "rule_defs", "config.bzl")
+                    os.path.join(temp_dir, "fbcode_macros", "rule_defs", "config.bzl")
                 )
             )
         self.assertFalse(os.path.isdir(temp_dir))
@@ -213,40 +210,33 @@ class UtilsTest(tests.utils.TestCase):
 
         with self.assertRaises(AssertionError) as e:
             result = tests.utils.AuditTestResult(
-                0, "", "", {"foo/BUCK": None,
-                            "bar/BUCK": ""}
+                0, "", "", {"foo/BUCK": None, "bar/BUCK": ""}
             )
             expected = {"foo/BUCK": "", "bar/BUCK": ""}
             self.validateAudit(expected, result)
-        self.assertIn(
-            "Got a list of files that had empty contents: ", str(e.exception)
-        )
+        self.assertIn("Got a list of files that had empty contents: ", str(e.exception))
         self.assertIn("foo/BUCK", str(e.exception))
 
         with self.assertRaises(AssertionError) as e:
             result = tests.utils.AuditTestResult(
-                0, "", "", {"foo/BUCK": "",
-                            "bar/BUCK": ""}
+                0, "", "", {"foo/BUCK": "", "bar/BUCK": ""}
             )
             expected = {"foo/BUCK": "", "baz/BUCK": ""}
             self.validateAudit(expected, result)
         self.assertTrue(
-            "Parsed list of files != expected list of files" in
-            str(e.exception)
+            "Parsed list of files != expected list of files" in str(e.exception)
         )
         self.assertIn("bar/BUCK", str(e.exception))
         self.assertIn("baz/BUCK", str(e.exception))
 
         with self.assertRaises(AssertionError) as e:
             result = tests.utils.AuditTestResult(
-                0, "", "",
-                {"foo/BUCK": "foo\nbar\nbaz\n",
-                 "bar/BUCK": "baz\nfoo\nbar\n"}
+                0,
+                "",
+                "",
+                {"foo/BUCK": "foo\nbar\nbaz\n", "bar/BUCK": "baz\nfoo\nbar\n"},
             )
-            expected = {
-                "foo/BUCK": "foo\nbar\nbaz\n",
-                "bar/BUCK": "foo\nbar\nbaz\n"
-            }
+            expected = {"foo/BUCK": "foo\nbar\nbaz\n", "bar/BUCK": "foo\nbar\nbaz\n"}
             self.validateAudit(expected, result)
         self.assertIn("Content of bar/BUCK differs:", str(e.exception))
         self.assertIn("bar/BUCK", str(e.exception))
@@ -261,7 +251,7 @@ class UtilsTest(tests.utils.TestCase):
             #include "bar/lib.h"
             int main() { bar::f(); return 0; } }
             """
-                )
+                ),
             )
             root.addFile(
                 "bar/lib.h",
@@ -270,7 +260,7 @@ class UtilsTest(tests.utils.TestCase):
             #pragma once
             namespace bar { void f(); }
             """
-                )
+                ),
             )
             root.addFile(
                 "bar/lib.cpp",
@@ -279,7 +269,7 @@ class UtilsTest(tests.utils.TestCase):
             #include "bar/lib.h"
             namespace bar { void f() { return; } }
             """
-                )
+                ),
             )
             root.addFile(
                 "bar/BUCK",
@@ -292,7 +282,7 @@ class UtilsTest(tests.utils.TestCase):
                 visibility=["PUBLIC"],
             )
             """
-                )
+                ),
             )
             root.addFile(
                 "foo/BUCK",
@@ -304,12 +294,11 @@ class UtilsTest(tests.utils.TestCase):
                 deps=["//bar:lib"],
             )
             """
-                )
+                ),
             )
 
             expected = {
-                "foo/BUCK":
-                dedent(
+                "foo/BUCK": dedent(
                     """\
                     cxx_binary(
                       name = "main",
@@ -322,8 +311,7 @@ class UtilsTest(tests.utils.TestCase):
                     )
                     """
                 ),
-                "bar/BUCK":
-                dedent(
+                "bar/BUCK": dedent(
                     """\
                     cxx_library(
                       name = "lib",
@@ -338,7 +326,7 @@ class UtilsTest(tests.utils.TestCase):
                       ],
                     )
                     """
-                )
+                ),
             }
 
             ret = root.runAudit(["foo/BUCK", "bar/BUCK"])
@@ -377,9 +365,7 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            ret = root.runUnitTests(
-                [], ['"string1"', '"string3"'], 'fail("WTF")'
-            )
+            ret = root.runUnitTests([], ['"string1"', '"string3"'], 'fail("WTF")')
             self.assertFailureWithMessage(ret, "WTF")
 
     def test_adding_executable_file_makes_it_executable(self):
@@ -390,13 +376,10 @@ class UtilsTest(tests.utils.TestCase):
             remove_files=True, add_fbcode_macros_cell=True
         ) as project:
             root = project.root_cell
-            root.addFile('foo.sh', 'echo "foo"', executable=True)
-            root.addFile('bar.sh', 'echo "bar"', executable=False)
-            root.addFile('baz.sh', 'echo "baz"', executable=False)
+            root.addFile("foo.sh", 'echo "foo"', executable=True)
+            root.addFile("bar.sh", 'echo "bar"', executable=False)
+            root.addFile("baz.sh", 'echo "baz"', executable=False)
             root.setupAllFilesystems()
-            self.assertTrue(
-                is_executable(os.path.join(root.fullPath(), 'foo.sh')))
-            self.assertFalse(
-                is_executable(os.path.join(root.fullPath(), 'bar.sh')))
-            self.assertFalse(
-                is_executable(os.path.join(root.fullPath(), 'baz.sh')))
+            self.assertTrue(is_executable(os.path.join(root.fullPath(), "foo.sh")))
+            self.assertFalse(is_executable(os.path.join(root.fullPath(), "bar.sh")))
+            self.assertFalse(is_executable(os.path.join(root.fullPath(), "baz.sh")))

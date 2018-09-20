@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 
@@ -21,33 +18,37 @@ class CompilerTest(tests.utils.TestCase):
     def test_require_global_compiler_no_global_compiler(self, root):
         self.assertFailureWithMessage(
             root.runUnitTests(
-                self.includes,
-                ['compiler.require_global_compiler("ERROR")']),
-            "ERROR")
+                self.includes, ['compiler.require_global_compiler("ERROR")']
+            ),
+            "ERROR",
+        )
 
     @tests.utils.with_project()
     def test_require_global_compiler_wrong_global_compiler(self, root):
         root.updateBuckconfig("fbcode", "global_compiler", "gcc")
         self.assertFailureWithMessage(
             root.runUnitTests(
-                self.includes,
-                ['compiler.require_global_compiler("ERROR", "clang")']),
-            "ERROR")
+                self.includes, ['compiler.require_global_compiler("ERROR", "clang")']
+            ),
+            "ERROR",
+        )
 
     @tests.utils.with_project()
     def test_require_global_compiler_any_compiler(self, root):
         root.updateBuckconfig("fbcode", "global_compiler", "gcc")
         self.assertSuccess(
             root.runUnitTests(
-                self.includes,
-                ['compiler.require_global_compiler("ERROR")']),
-            None)
+                self.includes, ['compiler.require_global_compiler("ERROR")']
+            ),
+            None,
+        )
 
     @tests.utils.with_project()
     def test_require_global_compiler_specific_compiler(self, root):
         root.updateBuckconfig("fbcode", "global_compiler", "gcc")
         self.assertSuccess(
             root.runUnitTests(
-                self.includes,
-                ['compiler.require_global_compiler("ERROR", "gcc")']),
-            None)
+                self.includes, ['compiler.require_global_compiler("ERROR", "gcc")']
+            ),
+            None,
+        )

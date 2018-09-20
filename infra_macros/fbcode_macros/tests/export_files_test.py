@@ -5,16 +5,13 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 from tests.utils import dedent
 
-class ExportFilesTest(tests.utils.TestCase):
 
+class ExportFilesTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_buck_export_file_handles_visibility(self, root):
         root.addFile("file1.sh", "echo file1")
@@ -31,7 +28,7 @@ class ExportFilesTest(tests.utils.TestCase):
             buck_export_file(name="file2.sh", visibility=["//..."])
             buck_export_file(name="file3.sh", visibility=None)
         """
-            )
+            ),
         )
 
         expected = dedent(
@@ -78,7 +75,7 @@ class ExportFilesTest(tests.utils.TestCase):
             buck_export_file(name="file2.sh", mode="reference")
             buck_export_file(name="file3.sh", mode="copy")
         """
-            )
+            ),
         )
 
         expected = dedent(
@@ -111,7 +108,6 @@ class ExportFilesTest(tests.utils.TestCase):
         result = root.runAudit(["BUCK"])
         self.validateAudit({"BUCK": expected}, result)
 
-
     @tests.utils.with_project()
     def test_export_file_handles_visibility(self, root):
         root.addFile("file1.sh", "echo file1")
@@ -127,7 +123,7 @@ class ExportFilesTest(tests.utils.TestCase):
             export_file(name="file2.sh", visibility=["//..."])
             export_file(name="file3.sh", visibility=None)
         """
-            )
+            ),
         )
 
         expected = dedent(
@@ -176,7 +172,7 @@ class ExportFilesTest(tests.utils.TestCase):
             export_file(name="file2.sh", mode="reference")
             export_file(name="file3.sh", mode="copy")
         """
-            )
+            ),
         )
 
         expected = dedent(
@@ -227,7 +223,7 @@ class ExportFilesTest(tests.utils.TestCase):
             export_files(["file3.sh", "file4.sh"], visibility=[])
             export_files(["file5.sh", "file6.sh"], visibility=[], mode="copy")
         """
-            )
+            ),
         )
         expected = dedent(
             """\
@@ -286,7 +282,7 @@ class ExportFilesTest(tests.utils.TestCase):
             export_file(name="file1.sh")
             export_file(name="file2.sh", create_typing_rule=False)
         """
-            )
+            ),
         )
 
         expected = dedent(

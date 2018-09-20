@@ -5,10 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
 from tests.utils import dedent
@@ -16,33 +13,35 @@ from tests.utils import dedent
 
 class PythonTypingTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:python_typing.bzl",
-            "get_typing_config_target", "gen_typing_config_attrs"),
+        (
+            "@fbcode_macros//build_defs:python_typing.bzl",
+            "get_typing_config_target",
+            "gen_typing_config_attrs",
+        )
     ]
 
     @tests.utils.with_project(run_buckd=True)
     def test_get_typing_config_target_obeys_buckconfig(self, root):
         self.assertSuccess(
             root.runUnitTests(
-                includes=self.includes,
-                statements=["get_typing_config_target()"],
+                includes=self.includes, statements=["get_typing_config_target()"]
             ),
-            None
+            None,
         )
 
         root.updateBuckconfig("python", "typing_config", "//python:typing")
         self.assertSuccess(
             root.runUnitTests(
-                includes=self.includes,
-                statements=["get_typing_config_target()"],
+                includes=self.includes, statements=["get_typing_config_target()"]
             ),
-            "//python:typing"
+            "//python:typing",
         )
 
     @tests.utils.with_project()
     def test_gen_typing_config_attrs_returns_expected_results(self, root):
         statements = [
-            dedent("""
+            dedent(
+                """
                 gen_typing_config_attrs(
                     target_name="foobar",
                     base_path="foo.bar",
@@ -55,13 +54,17 @@ class PythonTypingTest(tests.utils.TestCase):
                     typing_options="--do --the --thing",
                     visibility=["//..."],
                 )
-            """),
-            dedent("""
+            """
+            ),
+            dedent(
+                """
                 gen_typing_config_attrs(
                     target_name="foobar",
                 )
-            """),
-            dedent("""
+            """
+            ),
+            dedent(
+                """
                 gen_typing_config_attrs(
                     target_name="foobar",
                     base_path="foo.bar",
@@ -74,8 +77,8 @@ class PythonTypingTest(tests.utils.TestCase):
                     typing_options="--do --the --thing",
                     visibility=["//..."],
                 )
-            """),
-
+            """
+            ),
         ]
 
         expected = [
@@ -83,16 +86,19 @@ class PythonTypingTest(tests.utils.TestCase):
                 "name": "foobar-typing",
                 "visibility": ["PUBLIC"],
                 "out": "root",
-                "cmd": dedent("""
+                "cmd": dedent(
+                    """
                     mkdir -p "$OUT"
                     rsync -a "$(location //other:dep-typing)/" "$OUT/"
                     rsync -a "$(location :sibling-typing)/" "$OUT/"
                     mkdir -p `dirname $OUT/foo/bar/foobar`
                     {}
-                """).format(
+                """
+                ).format(
                     '$(exe //python:typing) part --options="--do --the '
                     '--thing" $OUT/foo/bar/foobar foo/bar/test.py '
-                    'foo/bar/subdir/test2.py foo/bar/:rule')
+                    "foo/bar/subdir/test2.py foo/bar/:rule"
+                ),
             },
             {
                 "name": "foobar-typing",
@@ -104,11 +110,13 @@ class PythonTypingTest(tests.utils.TestCase):
                 "name": "foobar-typing",
                 "visibility": ["PUBLIC"],
                 "out": "root",
-                "cmd": dedent("""
+                "cmd": dedent(
+                    """
                     mkdir -p "$OUT"
                     rsync -a "$(location //other:dep-typing)/" "$OUT/"
                     rsync -a "$(location :sibling-typing)/" "$OUT/"
-                """),
+                """
+                ),
             },
         ]
         root.updateBuckconfig("python", "typing_config", "//python:typing")
@@ -119,7 +127,10 @@ class PythonTypingTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_gen_typing_config_attrs_creates_genrules(self, root):
         root.updateBuckconfig("python", "typing_config", "//python:typing")
-        root.addFile("BUCK", dedent("""
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
         load("@fbcode_macros//build_defs:python_typing.bzl",
             "gen_typing_config")
 
@@ -150,9 +161,12 @@ class PythonTypingTest(tests.utils.TestCase):
             typing_options="--do --the --thing",
             visibility=["//..."],
         )
-        """))
+        """
+            ),
+        )
 
-        expected = dedent(r"""
+        expected = dedent(
+            r"""
             genrule(
               name = "foobar-typing",
               cmd = "{cmd1}",
@@ -179,7 +193,8 @@ class PythonTypingTest(tests.utils.TestCase):
                 "PUBLIC",
               ],
             )
-            """).format(
+            """
+        ).format(
             cmd1=(
                 r"mkdir -p \"$OUT\"\nrsync -a \"$(location "
                 r"//other:dep-typing)/\" \"$OUT/\"\nrsync -a \"$(location "
@@ -192,7 +207,7 @@ class PythonTypingTest(tests.utils.TestCase):
                 r"mkdir -p \"$OUT\"\nrsync -a \"$(location "
                 r"//other:dep-typing)/\" \"$OUT/\"\nrsync -a "
                 r"\"$(location :sibling-typing)/\" \"$OUT/\""
-            )
+            ),
         )
 
         result = root.runAudit(["BUCK"])

@@ -5,12 +5,10 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import platform
+
 import tests.utils
 from tests.utils import dedent
 
@@ -39,7 +37,9 @@ class PlatformTest(tests.utils.TestCase):
                     }},
                 }},
             }}
-        """.format(current_arch=current_arch, other_arch=other_arch)
+        """.format(
+            current_arch=current_arch, other_arch=other_arch
+        )
     )
 
     @tests.utils.with_project()
@@ -63,13 +63,8 @@ class PlatformTest(tests.utils.TestCase):
         )
         expected = {
             "fbcode": {
-                "foo/bar": {
-                    self.other_arch: "gcc5-other",
-                    self.current_arch: "gcc5"
-                },
-                "foo": {
-                    self.current_arch: "gcc7"
-                }
+                "foo/bar": {self.other_arch: "gcc5-other", self.current_arch: "gcc5"},
+                "foo": {self.current_arch: "gcc7"},
             }
         }
         result = root.runUnitTests(
@@ -78,9 +73,7 @@ class PlatformTest(tests.utils.TestCase):
         self.assertSuccess(result, expected)
 
     @tests.utils.with_project()
-    def test_transform_platform_overrides_fails_with_invalid_platform(
-        self, root
-    ):
+    def test_transform_platform_overrides_fails_with_invalid_platform(self, root):
         # This should be a load time error
         platform_overrides = dedent(
             """\
@@ -104,7 +97,7 @@ class PlatformTest(tests.utils.TestCase):
         self.assertFailureWithMessage(
             result,
             "Path foo/bar has invalid platform invalid-platform. Must be one "
-            "of gcc5, gcc5-other, gcc6, gcc7"
+            "of gcc5, gcc5-other, gcc6, gcc7",
         )
 
     @tests.utils.with_project()
@@ -133,33 +126,26 @@ class PlatformTest(tests.utils.TestCase):
         )
         self.assertFailureWithMessage(
             result,
-            "Path foo/bar has both platform gcc5 and gcc7 for architecture %s" %
-            self.current_arch
+            "Path foo/bar has both platform gcc5 and gcc7 for architecture %s"
+            % self.current_arch,
         )
 
     @tests.utils.with_project()
-    def test_get_platform_fails_when_platform_required(
-        self, root
-    ):
-        statements = [
-            'platform_utils.get_platform_for_base_path("blah")',
-        ]
+    def test_get_platform_fails_when_platform_required(self, root):
+        statements = ['platform_utils.get_platform_for_base_path("blah")']
         root.updateBuckconfig("fbcode", "require_platform", "true")
 
         results = root.runUnitTests(self.includes, statements)
         self.assertFailureWithMessage(
             results,
-            "Cannot find fbcode platform to use for architecture {}"
-            .format(self.current_arch),
+            "Cannot find fbcode platform to use for architecture {}".format(
+                self.current_arch
+            ),
         )
 
     @tests.utils.with_project()
-    def test_get_platform_default_when_platform_not_required(
-        self, root
-    ):
-        statements = [
-            'platform_utils.get_platform_for_base_path("blah")',
-        ]
+    def test_get_platform_default_when_platform_not_required(self, root):
+        statements = ['platform_utils.get_platform_for_base_path("blah")']
 
         results = root.runUnitTests(self.includes, statements)
         self.assertSuccess(results, "default")
@@ -195,9 +181,7 @@ class PlatformTest(tests.utils.TestCase):
         self.assertSuccess(result, "gcc5", "gcc6", "gcc6", "gcc6", "gcc7")
 
     @tests.utils.with_project()
-    def test_gets_correct_platform_for_various_directories_and_archs(
-        self, root
-    ):
+    def test_gets_correct_platform_for_various_directories_and_archs(self, root):
         platform_overrides = dedent(
             """\
             platform_overrides = {"fbcode": {
@@ -215,21 +199,13 @@ class PlatformTest(tests.utils.TestCase):
             "build_defs/platform_overrides.bzl", platform_overrides
         )
         statements = ["platform_utils.get_platform_for_current_buildfile()"]
-        result1 = root.runUnitTests(
-            self.includes, statements, buckfile="foo/bar/BUCK"
-        )
+        result1 = root.runUnitTests(self.includes, statements, buckfile="foo/bar/BUCK")
         result2 = root.runUnitTests(
             self.includes, statements, buckfile="foo/bar-other/BUCK"
         )
-        result3 = root.runUnitTests(
-            self.includes, statements, buckfile="foo/baz/BUCK"
-        )
-        result4 = root.runUnitTests(
-            self.includes, statements, buckfile="foo/BUCK"
-        )
-        result5 = root.runUnitTests(
-            self.includes, statements, buckfile="foobar/BUCK"
-        )
+        result3 = root.runUnitTests(self.includes, statements, buckfile="foo/baz/BUCK")
+        result4 = root.runUnitTests(self.includes, statements, buckfile="foo/BUCK")
+        result5 = root.runUnitTests(self.includes, statements, buckfile="foobar/BUCK")
 
         self.assertSuccess(result1, "gcc5")
         self.assertSuccess(result2, "gcc6")
@@ -278,32 +254,40 @@ class PlatformTest(tests.utils.TestCase):
             "build_defs/platform_overrides.bzl", platform_overrides
         )
 
-        result = root.run([
-            "buck",
-            "run",
-            "fbcode_macros//tools:get_platform",
-            "foo/bar",
-            "foo/bar-other",
-            "foo/baz",
-            "foo",
-            "foobar",
-        ], {}, {})
+        result = root.run(
+            [
+                "buck",
+                "run",
+                "fbcode_macros//tools:get_platform",
+                "foo/bar",
+                "foo/bar-other",
+                "foo/baz",
+                "foo",
+                "foobar",
+            ],
+            {},
+            {},
+        )
         self.assertSuccess(result)
-        expected = dedent("""
+        expected = (
+            dedent(
+                """
             foo/bar:gcc5
             foo/bar-other:gcc6
             foo/baz:gcc6
             foo:gcc6
             foobar:gcc7
-            """) + "\n"
+            """
+            )
+            + "\n"
+        )
         self.assertEqual(expected, result.stdout)
 
     @tests.utils.with_project()
     def test_get_platform_architecture(self, root):
         self.assertSuccess(
             root.runUnitTests(
-                self.includes,
-                ['platform_utils.get_platform_architecture("gcc7")']
+                self.includes, ['platform_utils.get_platform_architecture("gcc7")']
             ),
             platform.machine(),
         )
