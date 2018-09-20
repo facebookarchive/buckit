@@ -39,6 +39,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:sanitizers.bzl",
     "fbcode_macros//build_defs:scala_library.bzl",
     "fbcode_macros//build_defs:scala_test.bzl",
+    "fbcode_macros//build_defs:shell.bzl",
     "fbcode_macros//build_defs:src_and_dep_helpers.bzl",
     "fbcode_macros//build_defs:third_party.bzl",
     "fbcode_macros//build_defs:third_party_config.bzl",
@@ -196,8 +197,17 @@ skylark_integration_test(
 )
 
 skylark_integration_test(
+    name = "shell_test",
+    srcs = ["shell_test.py"],
+)
+
+skylark_integration_test(
     name = "src_and_dep_helpers_test",
     srcs = ["src_and_dep_helpers_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(
