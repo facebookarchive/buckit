@@ -59,7 +59,7 @@ class GoConverter(base.Converter):
             ('go_binary', 'go_unittest',)
 
     def is_cgo(self):
-        return self.get_fbconfig_rule_type() == 'cgo_library'
+        return self.get_fbconfig_rule_type() in ['cgo_library', 'go_bindgen_library']
 
     def is_test(self):
         return self.get_fbconfig_rule_type() == 'go_unittest'
