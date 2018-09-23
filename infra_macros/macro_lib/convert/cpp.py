@@ -998,13 +998,13 @@ class CppConverter(base.Converter):
         out_module = False
         # Check the global, build mode default.
         global_modules = self.read_bool('cxx', 'module_rule_default', required=False)
-        if global_modules != None:
+        if global_modules is not None:
             out_module = global_modules
         # Check the build mode file override.
-        if build_mode != None and build_mode.cxx_modules != None:
+        if build_mode is not None and build_mode.cxx_modules is not None:
             out_module = build_mode.cxx_modules
         # Check the rule override.
-        if module != None:
+        if module is not None:
             out_module = module
 
         attributes = collections.OrderedDict()
