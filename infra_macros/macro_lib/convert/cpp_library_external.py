@@ -118,7 +118,7 @@ class CppLibraryExternalConverter(base.Converter):
 
         # If modules are enabled, automatically build a module from the module
         # map found in the first include dir, if one exists.
-        if modules.enabled():
+        if modules.enabled() and self.is_tp2(base_path):
 
             # Add implicit toolchain module deps.
             dependencies.extend(
