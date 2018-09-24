@@ -58,17 +58,10 @@ def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
         regex_args.append("'%s'" % regex)
 
     # TODO(T22498401): java-swift Constants causes duplicate classes
-    regex_args.append("'.*.Constants.class'")
-
-    # TODO(T22498405): logging impl libraries cause duplicate classes
-    regex_args.append("'org/apache/log4j/.*'")
+    regex_args.append("'.*/Constants\\.class'")
 
     # Java 9 may include module-info.class in a module
     regex_args.append("'module-info\\.class'")
-
-    # This class is in both jasper-runtime and jasper-compiler, but they
-    # are identical and the duplication is harmless.
-    regex_args.append("'org/apache/jasper/compiler/Localizer\\.class'")
 
     # Those classes are in both powermock-api-mockito-common and
     # powermock-api-mockito2, and the latter depends on the former. They
