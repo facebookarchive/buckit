@@ -9,6 +9,21 @@
 Simple helpers for reading configurations
 """
 
+load("@fbcode_macros//build_defs:shell.bzl", "shell")
+
+def read_flags(section, field, default = None):
+    """
+    Read a list of quoted flags from `.buckconfig`.
+    """
+
+    val = native.read_config(section, field)
+    if val != None:
+        return shell.split(val)
+    elif default != None:
+        return default
+    else:
+        fail("`{}:{}`: no value set".format(section, field))
+
 def read_boolean(section, field, default):
     val = native.read_config(section, field)
     if val != None:

@@ -71,6 +71,7 @@ load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
 # Support the `allocators` parameter, which uses a keyword to select
@@ -849,20 +850,6 @@ class Converter(object):
             raise KeyError(
                 '`{}:{}`: no value set'.format(section, field))
 
-    def read_flags(self, section, field, default=None):
-        """
-        Read a list of quoted flags from `.buckconfig`.
-        """
-
-        val = self._context.buck_ops.read_config(section, field)
-        if val is not None:
-            return shlex.split(val)
-        elif default is not None:
-            return default
-        else:
-            raise KeyError(
-                '`{}:{}`: no value set'.format(section, field))
-
     def read_int(self, section, field, default=None):
         """
         Read an `int` from `.buckconfig`.
@@ -1029,35 +1016,35 @@ class Converter(object):
         Get extra C compiler flags to build with.
         """
 
-        return self.read_flags('cxx', 'extra_cflags', default=())
+        return read_flags('cxx', 'extra_cflags', default=())
 
     def get_extra_cxxflags(self):
         """
         Get extra C++ compiler flags to build with.
         """
 
-        return self.read_flags('cxx', 'extra_cxxflags', default=())
+        return read_flags('cxx', 'extra_cxxflags', default=())
 
     def get_extra_cppflags(self):
         """
         Get extra C preprocessor flags to build with.
         """
 
-        return self.read_flags('cxx', 'extra_cppflags', default=())
+        return read_flags('cxx', 'extra_cppflags', default=())
 
     def get_extra_cxxppflags(self):
         """
         Get extra C++ preprocessor flags to build with.
         """
 
-        return self.read_flags('cxx', 'extra_cxxppflags', default=())
+        return read_flags('cxx', 'extra_cxxppflags', default=())
 
     def get_extra_ldflags(self):
         """
         Get extra linker flags to build with.
         """
 
-        return self.read_flags('cxx', 'extra_ldflags', default=())
+        return read_flags('cxx', 'extra_ldflags', default=())
 
     def get_link_style(self):
         """
@@ -1202,11 +1189,11 @@ class Converter(object):
         buck_platform = platform_utils.to_buck_platform(platform, 'gcc')
         compiler_flags = self.get_compiler_flags(base_path)
         section = 'cxx#{}'.format(buck_platform)
-        flags.extend(self.read_flags(section, 'cflags', []))
+        flags.extend(read_flags(section, 'cflags', []))
         for plat_re, cflags in compiler_flags['c_cpp_output']:
             if re.search(plat_re, buck_platform):
                 flags.extend(cflags)
-        flags.extend(self.read_flags(section, 'cxxflags', []))
+        flags.extend(read_flags(section, 'cxxflags', []))
         for plat_re, cflags in compiler_flags['cxx_cpp_output']:
             if re.search(plat_re, buck_platform):
                 flags.extend(cflags)
