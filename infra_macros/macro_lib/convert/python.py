@@ -983,6 +983,7 @@ class PythonConverter(base.Converter):
         typing_options='',
         helper_deps=False,
         visibility=None,
+        analyze_imports=False,
     ):
         if self.is_test() and par_style is None:
             par_style = "xar"
@@ -1202,7 +1203,22 @@ class PythonConverter(base.Converter):
             attributes['tests'] = (
                 list(attributes['tests']) + [':{}-typecheck'.format(name)]
             )
-
+        if analyze_imports:
+            rules.extend(
+                self.create_analyze_imports(
+                    base_path,
+                    name,
+                    main_module,
+                    platform,
+                    python_platform,
+                    library,
+                    dependencies,
+                    platform_deps,
+                    preload_deps,
+                    typing_options,
+                    visibility
+                )
+            )
         if self.is_test():
             if not dependencies:
                 dependencies = []
@@ -1261,6 +1277,7 @@ class PythonConverter(base.Converter):
         runtime_deps=(),
         cpp_deps=(),  # ctypes targets
         helper_deps=False,
+        analyze_imports=False,
     ):
         # for binary we need a separate library
         if self.is_library():
@@ -1371,6 +1388,7 @@ class PythonConverter(base.Converter):
                 typing_options=check_types_options,
                 helper_deps=helper_deps,
                 visibility=visibility,
+                analyze_imports=analyze_imports,
             )
             if self.is_test():
                 py_tests.append(rules[0])
@@ -1399,6 +1417,87 @@ class PythonConverter(base.Converter):
                 cmds.append('echo $(location {})'.format(test.target_name))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
+
+    def create_analyze_imports(
+        self,
+        base_path,
+        name,
+        main_module,
+        platform,
+        python_platform,
+        library,
+        deps,
+        platform_deps,
+        preload_deps,
+        typing_options,
+        visibility,
+    ):
+        generate_imports_deps = deps[:]
+        if ':generate_par_imports' not in generate_imports_deps:
+            generate_imports_deps.append('//libfb/py:generate_par_imports')
+
+        if ':parutil' not in generate_imports_deps:
+            generate_imports_deps.append('//libfb/py:parutil')
+
+        import_attrs = collections.OrderedDict((
+            ('name', name + '-generate-imports'),
+            ('main_module', 'libfb.py.generate_par_imports'),
+            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
+            ('platform', python_platform),
+            ('deps', generate_imports_deps),
+            ('platform_deps', platform_deps),
+            ('preload_deps', preload_deps),
+            # TODO(ambv): labels here shouldn't be hard-coded.
+            ('labels', ['buck', 'python']),
+            ('version_universe',
+             self.get_version_universe(self.get_py3_version(platform))),
+        ))
+        if visibility is not None:
+            import_attrs['visibility'] = visibility
+        generate_par = Rule('python_binary', import_attrs)
+        yield generate_par
+
+        rule_attrs = collections.OrderedDict((
+            ('name', "{}-gen-rule".format(name)),
+            ('srcs', ["//" + base_path + ":" + name + "-generate-imports"]),
+            ('out', '{}-imports_file.py'.format(name)),
+            ('cmd', '$(exe {}) >"$OUT"'.format(generate_par.target_name)),
+        ))
+        gen_rule = Rule('genrule', rule_attrs)
+        yield gen_rule
+
+        lib_attrs = collections.OrderedDict((
+            ('name', name + '-analyze-lib'),
+            ('srcs', {'imports_file.py': '//' + base_path + ':' + rule_attrs['name']}),
+            ('base_module', ''),
+            ('deps', [gen_rule.target_name])
+        ))
+        lib_rule = Rule('python_library', lib_attrs)
+        yield lib_rule
+
+        analyze_deps = deps[:]
+        analyze_deps.append('//' + base_path + ':' + lib_attrs['name'])
+
+        if ':analyze_par_imports' not in analyze_deps:
+            analyze_deps.append('//libfb/py:analyze_par_imports')
+
+        analyze_attrs = collections.OrderedDict((
+            ('name', name + '-analyze-imports'),
+            ('main_module', 'libfb.py.analyze_par_imports'),
+            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
+            ('platform', python_platform),
+            ('deps', analyze_deps),
+            ('platform_deps', platform_deps),
+            ('preload_deps', preload_deps),
+            # TODO(ambv): labels here shouldn't be hard-coded.
+            ('labels', ['buck', 'python']),
+            ('version_universe',
+             self.get_version_universe(self.get_py3_version(platform))),
+        ))
+
+        if visibility is not None:
+            analyze_attrs['visibility'] = visibility
+        yield Rule('python_binary', analyze_attrs)
 
     def create_typecheck(
         self,
