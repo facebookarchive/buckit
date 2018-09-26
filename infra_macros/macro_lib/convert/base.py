@@ -1286,6 +1286,8 @@ class Converter(object):
                 # HACK(marksan): don't break HFSort/"Hot Text" (t19644410)
                 ldflags.append('-Wl,-plugin-opt,-function-sections')
                 ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
+                # Equivalent of -fdebug-types-section for LLVM backend
+                ldflags.append('-Wl,-plugin-opt,-generate-type-units')
             else:
                 assert self._context.global_compiler == 'gcc'
                 if self._context.lto_type != 'fat':
