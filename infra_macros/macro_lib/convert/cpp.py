@@ -483,7 +483,7 @@ class CppConverter(base.Converter):
         if sanitizer.startswith('address'):
             flags.append(
                 '-Wl,--dynamic-list='
-                '$(location //tools/build/buck:asan_dynamic_list.txt)')
+                '$(location fbcode//tools/build/buck:asan_dynamic_list.txt)')
 
         return flags
 
