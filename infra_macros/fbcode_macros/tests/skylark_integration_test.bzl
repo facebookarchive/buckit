@@ -71,6 +71,7 @@ def skylark_integration_test(name, deps = None, resources = None, **kwargs):
     deps = deps or []
     resources = resources or []
     deps.append("fbcode_macros//tests:utils")
+    deps.append("fbcode_macros//tests/facebook:utils")
     if type(resources) == type(list):
         resources = {
             target_to_resource_path(target): target

@@ -61,6 +61,8 @@ BUILD_DEFS = [
     "bazel_skylib//lib:structs.bzl",
     "bazel_skylib//lib:types.bzl",
     "bazel_skylib//lib:versions.bzl",
+    "xplat//tools/build_defs:type_defs.bzl",
+    "fbsource//tools/build_defs:type_defs.bzl",
 ]
 
 UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)

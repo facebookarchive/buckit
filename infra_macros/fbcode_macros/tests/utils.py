@@ -488,6 +488,8 @@ class Project:
         remove_files=None,
         add_fbcode_macros_cell=True,
         add_skylib_cell=True,
+        add_xplat_cell=True,
+        add_fbsource_cell=True,
         run_buckd=False,
     ):
         """
@@ -510,6 +512,8 @@ class Project:
         self.remove_files = remove_files
         self.add_fbcode_macros_cell = add_fbcode_macros_cell
         self.add_skylib_cell = add_skylib_cell
+        self.add_xplat_cell = add_xplat_cell
+        self.add_fbsource_cell = add_fbsource_cell
         self.cells = {}
         self.run_buckd = run_buckd
 
@@ -522,6 +526,10 @@ class Project:
             self.addCell("fbcode_macros")
         if self.add_skylib_cell:
             self.addCell("bazel_skylib")
+        if self.add_xplat_cell:
+            self.addCell("xplat")
+        if self.add_fbsource_cell:
+            self.addCell("fbsource")
         return self
 
     def __exit__(self, type, value, traceback):
