@@ -106,6 +106,7 @@ FBCODE_RULES = [
     'java_binary',
     'java_library',
     'java_test',
+    'java_protoc_library',
     'java_shaded_jar',
     'js_executable',
     'js_library',
