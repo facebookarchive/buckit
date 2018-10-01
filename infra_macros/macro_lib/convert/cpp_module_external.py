@@ -39,6 +39,7 @@ class CppModuleExternalConverter(base.Converter):
             include_dir='include',
             external_deps=[],
             propagated_pp_flags=[],
+            modules_local_submodule_visibility=False,
             implicit_project_dep=True,
             visibility=None):
 
@@ -65,6 +66,7 @@ class CppModuleExternalConverter(base.Converter):
             name=module_rule_name,
             module_name=module_name,
             header_dir=include_dir,
+            local_submodule_visibility=modules_local_submodule_visibility,
             flags=propagated_pp_flags,
             dependencies=dependencies,
             visibility=["//{}:{}".format(base_path, name)],

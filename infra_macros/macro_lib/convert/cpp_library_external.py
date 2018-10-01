@@ -74,6 +74,7 @@ class CppLibraryExternalConverter(base.Converter):
             shared_only=None,  # TODO: Deprecate?
             imports=None,
             implicit_project_deps=True,
+            modules_local_submodule_visibility=False,
             supports_omnibus=None,
             visibility=None,
             link_without_soname=False,
@@ -147,6 +148,7 @@ class CppLibraryExternalConverter(base.Converter):
                     module_name=module_name,
                     header_dir=inc_dirs[0],
                     dependencies=dependencies,
+                    local_submodule_visibility=modules_local_submodule_visibility,
                     flags=propagated_pp_flags,
                     visibility=['//{}:{}'.format(base_path, name)],
                 )

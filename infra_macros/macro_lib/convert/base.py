@@ -2035,6 +2035,7 @@ class Converter(object):
             flags=(),
             dependencies=(),
             platform=None,
+            local_submodule_visibility=False,
             visibility=None):
         """
         A thin wrapper around `modules.gen_module()`, which performs some deps
@@ -2047,6 +2048,8 @@ class Converter(object):
 
         # Setup flags.
         out_flags = []
+        if local_submodule_visibility:
+            out_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
         out_flags.extend(flags)
         out_flags.extend(self.get_extra_cxxppflags())
 
