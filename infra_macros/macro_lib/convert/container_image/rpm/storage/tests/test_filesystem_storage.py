@@ -14,7 +14,7 @@ class FilesystemStorageTestCase(StorageBaseTestCase):
     @contextmanager
     def _temp_storage(self):
         with tempfile.TemporaryDirectory() as td:
-            yield Storage.make(name='filesystem', base_dir=td)
+            yield Storage.make(key='test', kind='filesystem', base_dir=td)
 
     def test_write_and_read_back(self):
         expected_content_count = Counter()

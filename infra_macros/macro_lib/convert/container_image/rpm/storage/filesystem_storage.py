@@ -9,7 +9,7 @@ from typing import ContextManager
 from .storage import _CommitCallback, Storage, StorageInput, StorageOutput
 
 
-class FilesystemStorage(Storage, plugin_name='filesystem'):
+class FilesystemStorage(Storage, plugin_kind='filesystem'):
     '''
     Stores blobs on the local filesystem. This is great if you initially
     just want to commit RPMs to a local SVN (or similar) repo.
@@ -19,7 +19,8 @@ class FilesystemStorage(Storage, plugin_name='filesystem'):
     distributed store, and migrate there.
     '''
 
-    def __init__(self, *, base_dir: str):
+    def __init__(self, *, key: str, base_dir: str):
+        self.key = key
         self.base_dir = base_dir
 
     def _path_for_storage_id(self, sid: str) -> str:
@@ -61,11 +62,11 @@ class FilesystemStorage(Storage, plugin_name='filesystem'):
 
     @contextmanager
     def reader(self, sid: str) -> ContextManager[StorageInput]:
-        with open(self._path_for_storage_id(sid), 'rb') as input:
-            yield StorageInput(input=input)
+        with open(self._path_for_storage_id(self.strip_key(sid)), 'rb') as inp:
+            yield StorageInput(input=inp)
 
     def remove(self, sid: str) -> None:
-        sid_path = self._path_for_storage_id(sid)
+        sid_path = self._path_for_storage_id(self.strip_key(sid))
         assert sid_path.startswith(self.base_dir + '/')
         os.remove(sid_path)
         # Remove any empty directories up to `self.filesystem_path`.
