@@ -6,7 +6,7 @@ import uuid
 from contextlib import contextmanager
 from typing import ContextManager
 
-from .storage import Storage, StorageInput, StorageOutput
+from .storage import _CommitCallback, Storage, StorageInput, StorageOutput
 
 
 class FilesystemStorage(Storage, storage_name='filesystem'):
@@ -38,16 +38,39 @@ class FilesystemStorage(Storage, storage_name='filesystem'):
             os.makedirs(os.path.dirname(sid_path))
         except FileExistsError:  # pragma: no cover
             pass
+
         with os.fdopen(os.open(
             sid_path,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
             mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH,
         ), 'wb') as outfile:
-            output = StorageOutput(output=outfile)
-            yield output
-        output.id = sid
+
+            @contextmanager
+            def get_id_and_release_resources():
+                yield sid
+                # This `close()` flushes, making the written data readable,
+                # and prevents more writes via `StorageOutput`.
+                outfile.close()
+
+            # `_CommitCallback` has a `try` to clean up on error. This
+            # placement of the context assumes that `os.fdopen` cannot fail.
+            with _CommitCallback(self, get_id_and_release_resources) as commit:
+                yield StorageOutput(output=outfile, commit_callback=commit)
 
     @contextmanager
     def reader(self, sid: str) -> ContextManager[StorageInput]:
         with open(self._path_for_storage_id(sid), 'rb') as input:
             yield StorageInput(input=input)
+
+    def remove(self, sid: str) -> None:
+        sid_path = self._path_for_storage_id(sid)
+        assert sid_path.startswith(self.base_dir + '/')
+        os.remove(sid_path)
+        # Remove any empty directories up to `self.filesystem_path`.
+        dir_path = os.path.dirname(sid_path)
+        while dir_path != self.base_dir:
+            try:
+                os.rmdir(dir_path)
+            except OSError:  # pragma: no cover
+                break
+            dir_path = os.path.dirname(dir_path)

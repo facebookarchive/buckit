@@ -1,5 +1,5 @@
-# NB: For anything that runs at Facebook, depend on facebook:storage. We'll
-# shim the OSS version to work with that once shipping.
+# NB: For anything that runs at Facebook, depend on `facebook:storage`, but
+# import the outer `rpm.storage` module.
 python_library(
     name = "base_storage",
     srcs = ["storage.py"],
