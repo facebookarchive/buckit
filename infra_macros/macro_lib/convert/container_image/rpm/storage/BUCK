@@ -1,0 +1,43 @@
+# NB: For anything that runs at Facebook, depend on facebook:storage. We'll
+# shim the OSS version to work with that once shipping.
+python_library(
+    name = "base_storage",
+    srcs = ["storage.py"],
+    base_module = "rpm.storage",
+)
+
+python_library(
+    name = "filesystem_storage",
+    srcs = ["filesystem_storage.py"],
+    base_module = "rpm.storage",
+)
+
+# Depend on this rather than on e.g. :base_storage or :filesystem_storage above
+python_library(
+    name = "storage",
+    srcs = ["__init__.py"],
+    base_module = "rpm.storage",
+    deps = [
+        ":base_storage",
+        ":filesystem_storage",
+    ],
+)
+
+python_library(
+    name = "testlib_storage_base_test",
+    srcs = ["tests/storage_base_test.py"],
+    base_module = "rpm.storage",
+    deps = [":storage"],
+)
+
+python_unittest(
+    name = "test-storage",
+    srcs = ["tests/test_filesystem_storage.py"],
+    base_module = "rpm.storage",
+    needed_coverage = [
+        (100, ":storage"),
+        (100, ":base_storage"),
+        (100, ":filesystem_storage"),
+    ],
+    deps = [":testlib_storage_base_test"],
+)
