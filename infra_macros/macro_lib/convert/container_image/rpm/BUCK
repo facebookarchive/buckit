@@ -3,3 +3,9 @@ python_library(
     srcs = ["pluggable.py"],
     base_module = "rpm",
 )
+
+python_library(
+    name = "common",
+    srcs = ["common.py"],
+    base_module = "rpm",
+)
