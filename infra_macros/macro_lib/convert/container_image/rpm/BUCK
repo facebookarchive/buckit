@@ -1,0 +1,5 @@
+python_library(
+    name = "pluggable",
+    srcs = ["pluggable.py"],
+    base_module = "rpm",
+)

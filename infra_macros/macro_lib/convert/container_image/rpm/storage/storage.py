@@ -11,12 +11,12 @@ distributed large blob storage, in a transparent way.
 Then, the only thing we then need to version is an index of "repo file" to
 "storage ID", which is quite VCS-friendly when emitted as e.g. sorted JSON.
 '''
-
-import json
 import logging
 
 from contextlib import AbstractContextManager
-from typing import Callable, ContextManager, IO, Mapping
+from typing import Callable, ContextManager, IO
+
+from rpm.pluggable import Pluggable
 
 log = logging.getLogger(__name__)
 
@@ -69,14 +69,14 @@ class StorageInput:
         return self._input.read() if size is None else self._input.read(size)
 
 
-class Storage:
+class Storage(Pluggable):
     '''
-    Base class for all storage implementations. See FilesystemStorage for
+    Base class for all storage implementations. See `FilesystemStorage` for
     a simple implementation. Usage:
 
         # Storage engines should take only plain-old-data keyword arguments,
-        # so that they can be configured from outside Python code via
-        # `parse_config`.  Parameters other than 'name' are engine-specific.
+        # so that they can be constructed from outside Python code via
+        # `from_json`.  Parameters other than 'name' are engine-specific.
         storage = Storage.make('filesystem', base_dir=path)
 
         with storage.writer() as out:
@@ -91,23 +91,7 @@ class Storage:
         # NB: removed IDs may remain readable for some time if cleanup is lazy
         storage.remove(sid)
     '''
-
-    NAME_TO_CLS: Mapping[str, 'Storage'] = {}
-
-    def __init_subclass__(cls, storage_name: str, **kwargs):
-        super().__init_subclass__(**kwargs)
-        Storage.NAME_TO_CLS[storage_name] = cls
-
-    @classmethod
-    def parse_config(cls, json_cfg):
-        'Uniform parsing for Storage configs e.g. on the command-line.'
-        cfg = json.loads(json_cfg)
-        cfg['name']  # KeyError if not set, or if not a dict
-        return cfg
-
-    @classmethod
-    def make(cls, name, **kwargs):
-        return cls.NAME_TO_CLS[name](**kwargs)
+    pass
 
 
 class _CommitCallback(AbstractContextManager):

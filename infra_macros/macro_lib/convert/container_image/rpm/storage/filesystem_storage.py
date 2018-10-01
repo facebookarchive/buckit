@@ -9,7 +9,7 @@ from typing import ContextManager
 from .storage import _CommitCallback, Storage, StorageInput, StorageOutput
 
 
-class FilesystemStorage(Storage, storage_name='filesystem'):
+class FilesystemStorage(Storage, plugin_name='filesystem'):
     '''
     Stores blobs on the local filesystem. This is great if you initially
     just want to commit RPMs to a local SVN (or similar) repo.
