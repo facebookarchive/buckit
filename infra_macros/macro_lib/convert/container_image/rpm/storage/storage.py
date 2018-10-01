@@ -102,11 +102,13 @@ class _CommitCallback(AbstractContextManager):
 
         @contextmanager
         def get_id_and_release_resources():
-            yield compute_id()
-            # Delay clean-up until after the ID is known, so that clean-up
-            # errors do not prevent us from learning the ID, which may be
-            # needed to later remove the already-written blob.
-            release_resources_that_were_held_for_the_blob_write()
+            try:
+                yield compute_id()
+            finally:
+                # Delay clean-up until after the ID is known, so that clean-up
+                # errors do not prevent us from learning the ID, which may be
+                # needed to later remove the already-written blob.
+                release_resources_that_were_held_for_the_blob_write()
     '''
 
     def __init__(

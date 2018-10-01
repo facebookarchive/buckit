@@ -47,10 +47,12 @@ class FilesystemStorage(Storage, plugin_name='filesystem'):
 
             @contextmanager
             def get_id_and_release_resources():
-                yield sid
-                # This `close()` flushes, making the written data readable,
-                # and prevents more writes via `StorageOutput`.
-                outfile.close()
+                try:
+                    yield sid
+                finally:
+                    # This `close()` flushes, making the written data readable,
+                    # and prevents more writes via `StorageOutput`.
+                    outfile.close()
 
             # `_CommitCallback` has a `try` to clean up on error. This
             # placement of the context assumes that `os.fdopen` cannot fail.
