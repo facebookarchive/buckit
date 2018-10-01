@@ -1868,6 +1868,7 @@ class Python3ThriftConverter(ThriftLangConverter):
         """
 
         def generated(src, thrift_src):
+            thrift_src = self.get_source_name(thrift_src)
             thrift_name = self.thrift_name(thrift_src)
             thrift_package = os.path.join(thrift_name, src)
             if src in self.CXX_RPC_GENFILES:
