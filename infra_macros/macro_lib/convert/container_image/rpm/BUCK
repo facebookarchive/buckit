@@ -9,3 +9,18 @@ python_library(
     srcs = ["common.py"],
     base_module = "rpm",
 )
+
+# NB: For anything that runs at Facebook, add `facebook:db_connection` to
+# your `deps`, but import this regular `rpm.db_connection` module.
+python_library(
+    name = "db_connection",
+    srcs = ["db_connection.py"],
+    base_module = "rpm",
+)
+
+python_library(
+    name = "repo_db",
+    srcs = ["repo_db.py"],
+    base_module = "rpm",
+    deps = [":common"],
+)
