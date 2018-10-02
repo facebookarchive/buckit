@@ -57,25 +57,8 @@ def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
             fail("single quote not allowed in duplicate_finder regexes. Got " + regex)
         regex_args.append("'%s'" % regex)
 
-    # TODO(T22498401): java-swift Constants causes duplicate classes
-    regex_args.append("'.*/Constants\\.class'")
-
     # Java 9 may include module-info.class in a module
     regex_args.append("'module-info\\.class'")
-
-    # Those classes are in both powermock-api-mockito-common and
-    # powermock-api-mockito2, and the latter depends on the former. They
-    # are identical and the duplication is harmless.
-    regex_args.append("'org/powermock/api/mockito/expectation/With(out)?ExpectedArguments\\.class'")
-
-    # These classes are in both jline v2 and hawtjni.  Releases of jline v3
-    # do not have these classes, but v2 and v3 are incompatible, so we can't
-    # remap v2 to v3.
-    # These classes are identical between jline v2 and hawtjni, and harmless.
-    regex_args.append("'org/fusesource/hawtjni/runtime/Library\\.class'")
-    regex_args.append("'org/fusesource/hawtjni/runtime/PointerMath\\.class'")
-    regex_args.append("'org/fusesource/hawtjni/runtime/JNIEnv\\.class'")
-    regex_args.append("'org/fusesource/hawtjni/runtime/Callback\\.class'")
 
     native.genrule(
         name = name,
