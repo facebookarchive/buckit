@@ -1543,12 +1543,13 @@ class CppConverter(base.Converter):
         if not nodefaultlibs:
             dependencies.extend(self.get_implicit_deps())
 
-        # Modularize libraries.
-        if modules.enabled() and self.is_library() and out_module:
-
-            # Add implicit toolchain module deps.
+        # Add implicit toolchain module deps.
+        if modules.enabled():
             dependencies.extend(
                 map(target.parse_target, modules.get_implicit_module_deps()))
+
+        # Modularize libraries.
+        if modules.enabled() and self.is_library() and out_module:
 
             # If we're using modules, we need to add in the `module.modulemap`
             # file and make sure it gets installed at the root of the include
