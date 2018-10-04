@@ -200,6 +200,17 @@ class GoConverter(base.Converter):
             dependencies.append(":cgo-asan-lib")
             extra_rules.extend(r)
 
+        if self.is_test():
+            # add benchmark rule to targets
+            extra_rules.append(Rule('command_alias', {
+                'name': name + "-bench",
+                'exe': ":" + name,
+                'args': [
+                    '-test.bench=.',
+                    '-test.benchmem',
+                ],
+            }))
+
         for ext_dep in go_external_deps:
             # We used to allow a version hash to be specified for a dep inside
             # a tuple.  If it exists just ignore it.
