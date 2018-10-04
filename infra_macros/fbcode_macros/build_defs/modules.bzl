@@ -49,6 +49,10 @@ _TOOLCHAIN_FLAGS = [
     # helps prevent duplicate definition issues where multiple fbcode modules
     # pull in the same tp2 header textually).
     "-Wnon-modular-include-in-module",
+    # Don't store the module directory path as an absolute path, as this is
+    # different depending on repo location.
+    "-Xclang",
+    "-fno-absolute-module-directory",
 
     # NOTE(agallagher): Some additional flags which are likely useful
     # for determinism, but which I'm not entirely sure how yet:
@@ -184,10 +188,6 @@ def _gen_module(
         name = name,
         out = "module.pcm",
         srcs = srcs,
-        # TODO(T32246672): Clang currently embeds absolute paths into PCM
-        # files, and we're not sure how to avoid this.  Until we do, mark
-        # module compilation as uncacheable.
-        cacheable = False,
         cmd = "\n".join(
             [
                 # TODO(T32246582): This is gross, but we currently need to run the
