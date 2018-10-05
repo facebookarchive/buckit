@@ -74,6 +74,26 @@ python_unittest(
 )
 
 python_library(
+    name = "parse_repodata",
+    srcs = ["parse_repodata.py"],
+    base_module = "rpm",
+    deps = [":repo_objects"],
+)
+
+python_unittest(
+    name = "test-parse-repodata",
+    srcs = ["tests/test_parse_repodata.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":parse_repodata"),
+    ],
+    deps = [
+        ":parse_repodata",
+        ":test_repos",
+    ],
+)
+
+python_library(
     name = "yum_conf",
     srcs = ["yum_conf.py"],
     base_module = "rpm",
