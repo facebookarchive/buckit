@@ -1197,7 +1197,8 @@ class PythonConverter(base.Converter):
                     platform_deps,
                     out_preload_deps,
                     typing_options,
-                    visibility
+                    visibility,
+                    emails,
                 ),
             )
             attributes['tests'] = (
@@ -1513,6 +1514,7 @@ class PythonConverter(base.Converter):
         preload_deps,
         typing_options,
         visibility,
+        emails,
     ):
 
         typing_config = get_typing_config_target()
@@ -1537,6 +1539,7 @@ class PythonConverter(base.Converter):
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
             ('version_universe', self.get_version_universe(python_version)),
+            ('contacts', emails),
         ))
         if visibility is not None:
             attrs['visibility'] = visibility
