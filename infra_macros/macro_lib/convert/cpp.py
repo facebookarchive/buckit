@@ -917,7 +917,8 @@ class CppConverter(base.Converter):
             os_linker_flags=None,
             autodeps_keep=False,
             undefined_symbols=False,
-            module=None):
+            module=None,
+            compile_with_modules=None):
 
         if not isinstance(compiler_flags, (list, tuple)):
             raise TypeError(
@@ -993,9 +994,9 @@ class CppConverter(base.Converter):
                 print('Warning: no CUDA on platform007: rule {}:{} ignoring cuda_srcs: {}'
                       .format(base_path, name, cuda_srcs))
 
-        # Figure out whether this rule should be built using clang modules (in
-        # supporting build modes).
-        out_module = False
+        # Figure out whether this rule's headers should be built into a clang
+        # module (in supporting build modes).
+        out_module = True
         # Check the global, build mode default.
         global_modules = self.read_bool('cxx', 'module_rule_default', required=False)
         if global_modules is not None:
@@ -1006,6 +1007,25 @@ class CppConverter(base.Converter):
         # Check the rule override.
         if module is not None:
             out_module = module
+
+        # Figure out whether this rule should be built using clang modules (in
+        # supporting build modes).
+        out_compile_with_modules = True
+        # Check the global, build mode default.
+        global_compile_with_modules = (
+            self.read_bool('cxx', 'compile_with_modules', required=False))
+        if global_compile_with_modules is not None:
+            compile_with_modules = global_compile_with_modules
+        # Check the build mode file override.
+        if (build_mode is not None and
+                build_mode.cxx_compile_with_modules is not None):
+            out_compile_with_modules = build_mode.cxx_compile_with_modules
+        # Check the rule override.
+        if compile_with_modules is not None:
+            out_compile_with_modules = compile_with_modules
+        # Don't build precompiled headers with modules.
+        if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
+            out_compile_with_modules = False
 
         attributes = collections.OrderedDict()
 
@@ -1144,7 +1164,7 @@ class CppConverter(base.Converter):
             self.get_extra_cxxppflags())
         out_lang_preprocessor_flags['assembler_with_cpp'].extend(
             self.get_extra_cxxppflags())
-        if modules.enabled():
+        if modules.enabled() and out_compile_with_modules:
             # Add module toolchain flags.
             out_lang_preprocessor_flags['cxx'].extend(
                 modules.get_toolchain_flags())
@@ -1854,6 +1874,7 @@ class CppConverter(base.Converter):
             'auto_headers',
             'compiler_flags',
             'compiler_specific_flags',
+            'compile_with_modules',
             'deps',
             'external_deps',
             'global_symbols',

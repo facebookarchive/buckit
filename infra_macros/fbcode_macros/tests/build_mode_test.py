@@ -41,6 +41,7 @@ class BuildModeTest(tests.utils.TestCase):
         tsan_options=(),
         lsan_suppressions=(),
         cxx_modules=None,
+        cxx_compile_with_modules=None,
         compiler=None,
     ):
         return self.struct(
@@ -63,6 +64,7 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=tsan_options,
             lsan_suppressions=lsan_suppressions,
             cxx_modules=cxx_modules,
+            cxx_compile_with_modules=cxx_compile_with_modules,
             compiler=compiler,
         )
 
@@ -92,6 +94,7 @@ class BuildModeTest(tests.utils.TestCase):
             'create_build_mode(tsan_options={"c":"3"})',
             'create_build_mode(lsan_suppressions=["a/b/c"])',
             "create_build_mode(cxx_modules=True)",
+            "create_build_mode(cxx_compile_with_modules=True)",
         ]
         expected = [
             self._create_mode_struct(aspp_flags=["-DFLAG"]),
@@ -113,6 +116,7 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(tsan_options={"c": "3"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c"]),
             self._create_mode_struct(cxx_modules=True),
+            self._create_mode_struct(cxx_compile_with_modules=True),
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)
@@ -143,6 +147,7 @@ class BuildModeTest(tests.utils.TestCase):
             'extend_build_mode(create_build_mode(tsan_options={"c":"3"}), tsan_options={"x":"98"})',
             'extend_build_mode(create_build_mode(lsan_suppressions=["a/b/c"]), lsan_suppressions=["z/y/x"])',
             "extend_build_mode(create_build_mode(cxx_modules=False), cxx_modules=True)",
+            "extend_build_mode(create_build_mode(cxx_compile_with_modules=False), cxx_compile_with_modules=True)",
             'extend_build_mode(create_build_mode(asan_options={"a":"1"}), cxx_flags=["-DFLAG"])',
             'extend_build_mode(create_build_mode(compiler="foo"), cxx_flags=["-DFLAG"])',
             'extend_build_mode(create_build_mode(compiler="foo"), compiler="bar")',
@@ -167,6 +172,7 @@ class BuildModeTest(tests.utils.TestCase):
             self._create_mode_struct(tsan_options={"c": "3", "x": "98"}),
             self._create_mode_struct(lsan_suppressions=["a/b/c", "z/y/x"]),
             self._create_mode_struct(cxx_modules=True),
+            self._create_mode_struct(cxx_compile_with_modules=True),
             self._create_mode_struct(cxx_flags=("-DFLAG",), asan_options={"a": "1"}),
             self._create_mode_struct(compiler="foo", cxx_flags=("-DFLAG",)),
             self._create_mode_struct(compiler="bar"),
@@ -257,6 +263,7 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=(),
             lsan_suppressions=(),
             cxx_modules=None,
+            cxx_compile_with_modules=None,
             compiler=None,
         )
 
@@ -330,6 +337,7 @@ class BuildModeTest(tests.utils.TestCase):
             tsan_options=(),
             lsan_suppressions=(),
             cxx_modules=None,
+            cxx_compile_with_modules=None,
             compiler=None,
         )
 
@@ -455,6 +463,7 @@ class BuildModeTest(tests.utils.TestCase):
             "ubsan_options": [],
             "lsan_suppressions": [],
             "cxx_modules": None,
+            "cxx_compile_with_modules": None,
             "compiler": None,
         }
         expected = [

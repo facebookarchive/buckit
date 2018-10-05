@@ -37,7 +37,8 @@ def create_build_mode(
         tsan_options = (),
         lsan_suppressions = (),
         compiler = None,
-        cxx_modules = None):
+        cxx_modules = None,
+        cxx_compile_with_modules = None):
     """
     Creates a new build mode struct that can modify flags for a specific path
 
@@ -68,9 +69,10 @@ def create_build_mode(
         compiler: Use this compiler for deployable rules under this directory,
                   for build modes which don't globally set the compiler family
                   choice. Example inputs: 'clang', or 'gcc'.
-        cxx_modules: Whether to enable/disable clang modules on the rules
-                     covered by this build mode file by default in modular
-                     builds.
+        cxx_modules: Whether to build a rule's C/C++ headers into clang modules
+                     by default in modular builds.
+        cxx_compile_with_modules: Whether to build a rule's C/C++ sources using
+                                  clang modules by default in modular builds.
 
     Returns:
         A struct with each of the provided fields, or () if the field was
@@ -85,6 +87,7 @@ def create_build_mode(
         cpp_flags = cpp_flags,
         cxx_flags = cxx_flags,
         cxx_modules = cxx_modules,
+        cxx_compile_with_modules = cxx_compile_with_modules,
         cxxpp_flags = cxxpp_flags,
         dmd_flags = dmd_flags,
         gcc_flags = gcc_flags,
@@ -154,7 +157,8 @@ def extend_build_mode(
         tsan_options = (),
         lsan_suppressions = (),
         compiler = None,
-        cxx_modules = None):
+        cxx_modules = None,
+        cxx_compile_with_modules = None):
     """
     Creates a new build mode struct with the given flags added to it
 
@@ -188,6 +192,8 @@ def extend_build_mode(
         cxx_modules: Whether to enable/disable clang modules on the rules
                      covered by this build mode file by default in modular
                      builds.
+        cxx_compile_with_modules: Whether to build a rule's C/C++ sources using
+                                  clang modules by default in modular builds.
 
     Returns:
         A struct with each of the given build mode struct's fields, with the
@@ -198,8 +204,11 @@ def extend_build_mode(
     if compiler:
         new_compiler = compiler
     new_cxx_modules = build_mode.cxx_modules
-    if cxx_modules:
+    if cxx_modules != None:
         new_cxx_modules = cxx_modules
+    new_cxx_compile_with_modules = build_mode.cxx_compile_with_modules
+    if cxx_compile_with_modules != None:
+        new_cxx_compile_with_modules = cxx_compile_with_modules
     return struct(
         asan_options = _combine(build_mode.asan_options, asan_options),
         aspp_flags = _combine(build_mode.aspp_flags, aspp_flags),
@@ -209,6 +218,7 @@ def extend_build_mode(
         cpp_flags = _combine(build_mode.cpp_flags, cpp_flags),
         cxx_flags = _combine(build_mode.cxx_flags, cxx_flags),
         cxx_modules = new_cxx_modules,
+        cxx_compile_with_modules = new_cxx_compile_with_modules,
         cxxpp_flags = _combine(build_mode.cxxpp_flags, cxxpp_flags),
         dmd_flags = _combine(build_mode.dmd_flags, dmd_flags),
         gcc_flags = _combine(build_mode.gcc_flags, gcc_flags),
