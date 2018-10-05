@@ -57,6 +57,23 @@ python_unittest(
 )
 
 python_library(
+    name = "repo_sizer",
+    srcs = ["repo_sizer.py"],
+    base_module = "rpm",
+    deps = [":repo_objects"],
+)
+
+python_unittest(
+    name = "test-repo-sizer",
+    srcs = ["tests/test_repo_sizer.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":repo_sizer"),
+    ],
+    deps = [":repo_sizer"],
+)
+
+python_library(
     name = "yum_conf",
     srcs = ["yum_conf.py"],
     base_module = "rpm",
