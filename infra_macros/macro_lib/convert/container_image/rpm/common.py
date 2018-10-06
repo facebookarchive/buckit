@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 'Utilities to make Python systems programming more palatable.'
 import hashlib
+import logging
 import os
 import subprocess
 import stat
 
 from typing import AnyStr, NamedTuple
+
+
+def init_logging(*, debug: bool=False):
+    logging.basicConfig(
+        format='%(levelname)s %(name)s %(asctime)s %(message)s',
+        level=logging.DEBUG if debug else logging.INFO,
+    )
 
 
 # Bite me, Python3.
@@ -37,6 +45,13 @@ def open_ro(path, mode):
             mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH,
         )
     return open(path, mode, opener=ro_opener)
+
+
+def set_new_key(d, k, v):
+    '`d[k] = v` that raises if it would it would overwrite an existing value'
+    if k in d:
+        raise KeyError(f'{k} was already set')
+    d[k] = v
 
 
 def check_popen_returncode(proc: subprocess.Popen):

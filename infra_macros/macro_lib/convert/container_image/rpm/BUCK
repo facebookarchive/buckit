@@ -1,3 +1,5 @@
+BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
+
 python_library(
     name = "pluggable",
     srcs = ["pluggable.py"],
@@ -111,6 +113,38 @@ python_unittest(
         (100, ":repo_snapshot"),
     ],
     deps = [":repo_snapshot"],
+)
+
+python_library(
+    name = "repo_server",
+    srcs = ["repo_server.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        ":repo_objects",
+        ":repo_snapshot",
+        BASE_DIR + "/rpm/storage/facebook:storage",
+    ],
+)
+
+python_unittest(
+    name = "test-repo-server",
+    srcs = ["tests/test_repo_server.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":repo_server"),
+    ],
+    deps = [
+        ":repo_server",
+        ":test_repos",
+    ],
+    external_deps = ["python-requests"],
+)
+
+python_binary(
+    name = "repo-server",
+    main_module = "rpm.repo_server",
+    deps = [":repo_server"],
 )
 
 python_library(
