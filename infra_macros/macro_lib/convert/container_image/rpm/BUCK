@@ -94,6 +94,26 @@ python_unittest(
 )
 
 python_library(
+    name = "repo_snapshot",
+    srcs = ["repo_snapshot.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        ":repo_objects",
+    ],
+)
+
+python_unittest(
+    name = "test-repo-snapshot",
+    srcs = ["tests/test_repo_snapshot.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":repo_snapshot"),
+    ],
+    deps = [":repo_snapshot"],
+)
+
+python_library(
     name = "yum_conf",
     srcs = ["yum_conf.py"],
     base_module = "rpm",

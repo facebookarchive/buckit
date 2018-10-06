@@ -1,8 +1,42 @@
 #!/usr/bin/env python3
+'Utilities to make Python systems programming more palatable.'
 import hashlib
+import os
 import subprocess
+import stat
 
-from typing import NamedTuple
+from typing import AnyStr, NamedTuple
+
+
+# Bite me, Python3.
+def byteme(s: AnyStr) -> bytes:
+    'Byte literals are tiring, just promote strings as needed.'
+    return s.encode() if isinstance(s, str) else s
+
+
+# `pathlib` refuses to operate on `bytes`, which is the only sane way on Linux.
+class Path(bytes):
+    'A byte path that supports joining via the / operator.'
+
+    def __new__(cls, arg, *args, **kwargs):
+        return super().__new__(cls, byteme(arg), *args, **kwargs)
+
+    def __truediv__(self, right: AnyStr) -> bytes:
+        return Path(os.path.join(self, byteme(right)))
+
+    def __rtruediv__(self, left: AnyStr) -> bytes:
+        return Path(os.path.join(byteme(left), self))
+
+
+def open_ro(path, mode):
+    '`open` that creates (and never overwrites) a file with mode `a+r`.'
+    def ro_opener(path, flags):
+        return os.open(
+            path,
+            (flags & ~os.O_TRUNC) | os.O_CREAT | os.O_CLOEXEC,
+            mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH,
+        )
+    return open(path, mode, opener=ro_opener)
 
 
 def check_popen_returncode(proc: subprocess.Popen):
