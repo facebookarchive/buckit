@@ -35,6 +35,22 @@ class Path(bytes):
     def __rtruediv__(self, left: AnyStr) -> bytes:
         return Path(os.path.join(byteme(left), self))
 
+    def decode(self):  # Future: add other args as needed.
+        # Python uses `surrogateescape` when the filesystem contains invalid
+        # utf-8. Test:
+        #   $ mkdir -p test/$'\xc3('
+        #   $ python3 -c 'import os;print(os.listdir("test"))'
+        #   ['\udcc3(']
+        return super().decode(errors='surrogateescape')
+
+    @classmethod
+    def from_argparse(cls, s: str) -> 'Path':
+        # Python uses `surrogateescape` for `sys.argv`. Test:
+        #   $ python3 -c 'import sys;print(repr(sys.argv[1]),' \
+        #       'repr(sys.argv[1].encode(errors="surrogateescape")))' $'\xc3('
+        #   '\udcc3(' b'\xc3('
+        return Path(s.encode(errors='surrogateescape'))
+
 
 def open_ro(path, mode):
     '`open` that creates (and never overwrites) a file with mode `a+r`.'

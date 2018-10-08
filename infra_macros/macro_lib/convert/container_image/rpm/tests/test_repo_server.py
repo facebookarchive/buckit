@@ -23,9 +23,21 @@ def _checksum(algo: str, data: bytes) -> Checksum:
     return Checksum(algorithm=algo, hexdigest=h.hexdigest())
 
 
+def _no_date(headers: 'Mapping[str, str]') -> 'Mapping[str, str]':
+    '''
+    Comparing headers between two adjacent requests can break if they
+    straddle a 00:00:01 boundary. So, ignore the date.
+    '''
+    return {k.lower(): v for k, v in headers.items() if k.lower != 'date'}
+
+
 class RepoServerTestCase(unittest.TestCase):
 
     def setUp(self):
+        # More output for easier debugging
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
+
         self.storage_dir_ctx = tempfile.TemporaryDirectory()  # noqa: P201
         storage_dir = self.storage_dir_ctx.__enter__()
         self.addCleanup(self.storage_dir_ctx.__exit__, None, None, None)
@@ -90,7 +102,7 @@ class RepoServerTestCase(unittest.TestCase):
             req_head = requests.head(f'http://{host}:{port}/bad_blob')
             req = requests.get(f'http://{host}:{port}/bad_blob')
             self.assertEqual(req_head.status_code, req.status_code)
-            self.assertEqual(req_head.headers, req.headers)
+            self.assertEqual(_no_date(req_head.headers), _no_date(req.headers))
             # You'd think that `requests` would error on this, but, no...
             # https://blog.petrzemek.net/2018/04/22/
             #   on-incomplete-http-reads-and-the-requests-library-in-python/
@@ -205,6 +217,9 @@ class RepoServerTestCase(unittest.TestCase):
                     error_mutable_rpm: rpm_mutable,
                 },
             ).to_directory(repo_dir)
+            os.mkdir(repo_dir / 'gpg_keys')
+            with open(repo_dir / 'gpg_keys' / 'RPM-GPG-safekey', 'wb') as outf:
+                outf.write(b'public key')
             with self.repo_server_thread(read_snapshot_dir(td)) as (h, p):
                 # A vanilla 404 doesn't affect the server's operation
                 req = requests.get(f'http://{h}:{p}//DOES_NOT_EXIST')
@@ -217,6 +232,10 @@ class RepoServerTestCase(unittest.TestCase):
                 req = requests.get(f'http://{h}:{p}/mine/repodata/the_only')
                 req.raise_for_status()
                 self.assertEqual(repodata_bytes, req.content)
+
+                req = requests.get(f'http://{h}:{p}/mine/RPM-GPG-safekey')
+                req.raise_for_status()
+                self.assertEqual(b'public key', req.content)
 
                 req = requests.get(f'http://{h}:{p}/mine/pkgs/good.rpm')
                 req.raise_for_status()
