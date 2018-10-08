@@ -207,8 +207,13 @@ class PyWheel(base.Converter):
         if wheel_platform:
             attrs['platform_deps'] = _override_wheels(attrs['platform_deps'], wheel_platform)
 
-        if deps:
-            attrs['deps'] = deps
+        # This is to work around how buck instantiates toolchains. Without this,
+        # we don't always end up properly instantiating the c++ toolchains if
+        # the compiler is a python script. T34675852
+        cpp_genrule_name = version + "-genrule-hack"
+        native.cxx_genrule(name = cpp_genrule_name, out="dummy", cmd="echo '' > $OUT")
+        deps = (deps or []) + [":" + cpp_genrule_name]
+        attrs['deps'] = deps
 
         if external_deps:
             if compiled:
