@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 from configparser import ConfigParser
-from typing import Mapping
+from typing import Iterator, List, NamedTuple, Tuple
+
+
+class YumConfRepo(NamedTuple):
+    name: str
+    base_url: str
+    gpg_key_urls: Tuple[str]
+
+    @classmethod
+    def from_config_section(cls, name, cfg_sec):
+        assert '/' not in name and '\0' not in name, f'Bad repo name {name}'
+        return YumConfRepo(
+            name=name,
+            base_url=cfg_sec['baseurl'],
+            gpg_key_urls=tuple(cfg_sec['gpgkey'].split('\n'))
+                if 'gpgkey' in cfg_sec else (),
+        )
 
 
 class YumConfParser:
@@ -15,29 +31,27 @@ class YumConfParser:
         self._cp = ConfigParser()
         self._cp.read_file(yum_conf)
 
-    def get_repo_to_baseurl(self) -> Mapping[str, str]:
+    def gen_repos(self) -> Iterator[YumConfRepo]:
         'Raises if repo names cannot be used as directory names.'
-        repo_to_baseurl = {
-            repo: cfg['baseurl']
-                for repo, cfg in self._cp.items()
-                    if repo not in self._NON_REPO_SECTIONS
-        }
-        for repo in repo_to_baseurl:
-            assert '/' not in repo and '\0' not in repo, f'Bad repo {repo}'
-        return repo_to_baseurl
+        for repo, cfg in self._cp.items():
+            if repo not in self._NON_REPO_SECTIONS:
+                yield YumConfRepo.from_config_section(repo, cfg)
 
-    def replace_repo_baseurls(
-        self, repo_to_baseurl: Mapping[str, str], out: 'TextIO',
-    ):
+    def modify_repo_configs(self, repos: List[YumConfRepo], out: 'TextIO'):
         '''
-        Outputs a new `yum.conf` file which has the same configuration
-        data as the file consumed by `self.__init__`, except that in the
-        specified repos, `baseurl` is replaced by the provided values.
+        Outputs a new `yum.conf` file which has the same configuration data
+        as the file consumed by `self.__init__`, except that the given repos
+        get new config values from the specified YumConfRepo.  Any config
+        keys we do not parse are left unchanged.
+
+        WATCH OUT: Passing an empty repo list will leve the configuration
+        UNCHANGED -- it will not delete repos from the configuration.  To
+        turn off repos, you would instead want to set `enabled=0`.
         '''
-        for non_repo_sec in self._NON_REPO_SECTIONS:
-            assert non_repo_sec not in repo_to_baseurl
         cp_copy = ConfigParser()
         cp_copy.read_dict(self._cp)
-        for repo, baseurl in repo_to_baseurl.items():
-            cp_copy[repo]['baseurl'] = baseurl
+        for repo in repos:
+            assert repo.name not in self._NON_REPO_SECTIONS
+            cp_copy[repo.name]['baseurl'] = repo.base_url
+            cp_copy[repo.name]['gpgkey'] = '\n'.join(repo.gpg_key_urls)
         cp_copy.write(out)
