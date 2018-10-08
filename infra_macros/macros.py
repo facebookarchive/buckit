@@ -161,7 +161,7 @@ def require_default_headers_rule():
     if get_base_path() not in HEADERS_RULE_CACHE:
         HEADERS_RULE_CACHE.add(get_base_path())
         buck_platform = platform_utils.get_buck_platform_for_current_buildfile()
-        cxx_library(
+        native.cxx_library(
             name=name,
             default_platform=buck_platform,
             defaults={'platform': buck_platform},
@@ -215,7 +215,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
     results = converter.convert(base.Context(**context), base_path, rule)
     # Instantiate the Buck rules that got converted successfully.
     for converted in results:
-        eval(converted.type, globals)(**converted.attributes)
+        eval("native." + converted.type, globals)(**converted.attributes)
 
 
 # Helper rule to throw an error when accessing raw Buck rules.

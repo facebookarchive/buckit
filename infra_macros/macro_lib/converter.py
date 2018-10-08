@@ -44,6 +44,7 @@ load(  # noqa F821
     "buck_python_library",
     "buck_sh_binary",
     "buck_sh_test",
+    "buck_zip_file",
     "remote_file",
     "test_suite",
     "versioned_alias",
@@ -215,6 +216,7 @@ def convert(context, base_path, rule):
         'buck_python_library': buck_python_library,  # noqa F821
         'buck_sh_binary': buck_sh_binary,  # noqa F821
         'buck_sh_test': buck_sh_test,  # noqa F821
+        'buck_zip_file': buck_zip_file,  # noqa F821
         'dewey_artifact': dewey_artifact,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821

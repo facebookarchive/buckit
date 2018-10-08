@@ -138,6 +138,10 @@ def buck_filegroup(*args, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """
     native.filegroup(*args, **kwargs)
 
+def buck_zip_file(**kwargs):
+    """ Wrapper ot access Buck's native zip_file rule """
+    native.zip_file(**kwargs)
+
 def test_suite(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native test_suite rule """
     native.test_suite(

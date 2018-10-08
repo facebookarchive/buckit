@@ -57,6 +57,7 @@ BUCK_RULES = [
     'sh_test',
     'thrift_library',
     'test_suite',
+    'zip_file',
 ]
 
 FBCODE_RULES = [
