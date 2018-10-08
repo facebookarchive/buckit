@@ -141,5 +141,7 @@ class OCamlConverter(base.Converter):
 
         if "-flto" in ldflags:
             attributes['compiler_flags'].extend(["-ccopt", "-flto", "-cclib", "-flto"])
+        if "-flto=thin" in ldflags:
+            attributes['compiler_flags'].extend(["-ccopt", "-flto=thin", "-cclib", "-flto=thin"])
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
