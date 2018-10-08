@@ -955,8 +955,25 @@ class CppConverter(base.Converter):
         # but depend on CUDA through convenience transitive dependencies.
         # Once platform007 supports CUDA cuda_deps should be merged back into deps.
         if platform.startswith('platform007'):
+            cuda = False
+
+            # Any target that depends on this can't be built, just drop it.
+            super_banned_cuda_targets = {
+                "//deeplearning/projects/faiss:gpu_faiss",
+            }
+            if any(dep in super_banned_cuda_targets for dep in deps):
+                print('Warning: no CUDA on platform007: ignoring target {}:{}'
+                      .format(base_path, name))
+                return []
+
             def filter_flags(flags):
-                banned_flags = ['-DUSE_CUDNN=1', '-DUSE_CUDNN', '-DCAFFE2_USE_CUDNN']
+                banned_flags = [
+                    "-DUSE_CUDNN=1",
+                    "-DUSE_CUDNN",
+                    "-DCAFFE2_USE_CUDNN",
+                    "-DUSE_CUDA",
+                    "-DUSE_CUDA_FUSER_FBCODE=1",
+                ]
                 return [f for f in flags if f not in banned_flags]
 
             def filter_flags_dict(flags_dict):
@@ -974,6 +991,21 @@ class CppConverter(base.Converter):
             arch_compiler_flags = filter_flags_dict(arch_compiler_flags)
             arch_preprocessor_flags = filter_flags_dict(arch_preprocessor_flags)
 
+            # These targets we keep (for headers, flags etc), but drop all their cpp files wholesale.
+            banned_cuda_targets = {
+                "caffe2/aten:ATen-cu",
+                "caffe2/caffe2:caffe2_cu",
+                "caffe2/caffe2:caffe2_gpu",
+                "caffe2/torch/lib/c10d:c10d",
+                "caffe2/torch/lib/THD:THD",
+                "gloo:gloo-cuda",
+            }
+            if "{}:{}".format(base_path, name) in banned_cuda_targets:
+                print('Warning: no CUDA on platform007: rule {}:{} ignoring all srcs: {}'
+                      .format(base_path, name, srcs))
+                srcs = []
+
+            # More granular cpp blacklist.
             banned_cuda_srcs_re = [re.compile(pattern) for pattern in [
                 "caffe2/caffe2/.*cudnn.cc",
                 "caffe2/caffe2/.*gpu.cc",
@@ -982,6 +1014,10 @@ class CppConverter(base.Converter):
                 "caffe2/caffe2/fb/operators/scale_gradient_op_gpu.cc",
                 "caffe2/caffe2/fb/predictor/PooledPredictor.cpp",
                 "caffe2/caffe2/fb/predictor/PredictorGPU.cpp",
+                "caffe2/:generate-code=THCUNN.cpp",
+                "caffe2/torch/csrc/jit/fusers/cuda/.*.cpp",
+                "caffe2/torch/csrc/cuda/.*.cpp",
+                "caffe2/torch/csrc/distributed/c10d/ddp.cpp"
             ]]
 
             def is_banned_src(src):
@@ -989,7 +1025,6 @@ class CppConverter(base.Converter):
 
             cuda_srcs = [s for s in srcs if self.is_cuda_src(s) or is_banned_src(base_path + '/' + s)]
             srcs = [s for s in srcs if s not in cuda_srcs]
-            cuda = False
             if cuda_srcs:
                 print('Warning: no CUDA on platform007: rule {}:{} ignoring cuda_srcs: {}'
                       .format(base_path, name, cuda_srcs))
