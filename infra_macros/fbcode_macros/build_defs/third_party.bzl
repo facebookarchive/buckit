@@ -243,6 +243,23 @@ def _is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
     """
     return getattr(src, "repo", None) in _THIRD_PARTY_REPOS
 
+# The short name of the implicit TP2 project target.
+_TP2_PROJECT_TARGET_NAME = "__project__"
+
+def _get_tp2_project_name(base_path):
+    """
+    Return the name of the TP2 project at the given base path.
+    """
+
+    # third-party-buck/platform/{build,tools}/<project>
+    return base_path.split("/")[3]
+
+def _get_tp2_project_target(project):
+    """
+    Return a RuleTarget for the given TP2 project
+    """
+    return rule_target_types.ThirdPartyRuleTarget(project, _TP2_PROJECT_TARGET_NAME)
+
 third_party = struct(
     external_dep_target = _external_dep_target,
     get_build_path = _get_build_path,
@@ -252,6 +269,8 @@ third_party = struct(
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,
     get_tools_path = _get_tools_path,
+    get_tp2_project_name = _get_tp2_project_name,
+    get_tp2_project_target = _get_tp2_project_target,
     is_tp2 = _is_tp2,
     is_tp2_src_dep = _is_tp2_src_dep,
     is_tp2_target = _is_tp2_target,

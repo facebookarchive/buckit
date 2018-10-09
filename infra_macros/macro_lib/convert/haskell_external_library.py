@@ -147,7 +147,7 @@ class HaskellExternalLibraryConverter(base.Converter):
                 raise TypeError(
                     'haskell_external_library(): expected to find a single '
                     'inlined build for tp2 project "{}"'
-                    .format(self.get_tp2_project_name(base_path)))
+                    .format(third_party.get_tp2_project_name(base_path)))
 
         dependencies = []
 

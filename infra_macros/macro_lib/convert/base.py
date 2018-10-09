@@ -1497,29 +1497,6 @@ class Converter(object):
 
         return self.get_tp2_build_dat(base_path)['platform']
 
-    def get_tp2_project_target_name(self):
-        """
-        Return the short name of the implicit TP2 project target.
-        """
-
-        return '__project__'
-
-    def get_tp2_project_name(self, base_path):
-        """
-        Return the name of the TP2 project at the given base path.
-        """
-
-        return base_path.split(os.sep)[3]
-
-    def get_tp2_project_target(self, project):
-        """
-        Return the TP2 project target for the given project.
-        """
-
-        return target_utils.ThirdPartyRuleTarget(
-            project,
-            self.get_tp2_project_target_name())
-
     def get_tp2_project_builds(self, base_path, relevant_deps=None):
         """
         Return the implicit project deps and their corresponding versions for
@@ -1564,7 +1541,7 @@ class Converter(object):
 
                 pdep = (
                     target_utils.target_to_label(
-                        self.get_tp2_project_target(project),
+                        third_party.get_tp2_project_target(project),
                         platform=build_dat['platform']))
                 build_deps[pdep] = version
 
@@ -1594,7 +1571,7 @@ class Converter(object):
         project = base_path.split(os.sep)[3]
         platform = self.get_tp2_platform(base_path)
         return target_utils.target_to_label(
-            self.get_tp2_project_target(project),
+            third_party.get_tp2_project_target(project),
             platform=platform)
 
     def create_error_rules(self, name, msg, visibility=None):

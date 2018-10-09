@@ -341,13 +341,13 @@ class LuaConverter(base.Converter):
                 raise TypeError(
                     'lua_library(): expected to find a single inlined build '
                     'for tp2 project "{}"'
-                    .format(self.get_tp2_project_name(base_path)))
+                    .format(third_party.get_tp2_project_name(base_path)))
 
         dependencies = []
         if third_party.is_tp2(base_path):
             dependencies.append(
-                self.get_tp2_project_target(
-                    self.get_tp2_project_name(base_path)))
+                third_party.get_tp2_project_target(
+                    third_party.get_tp2_project_name(base_path)))
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:

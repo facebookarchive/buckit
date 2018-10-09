@@ -106,7 +106,7 @@ class CppLibraryExternalConverter(base.Converter):
                 target_utils.ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]))
         if implicit_project_deps and third_party.is_tp2(base_path):
             project = base_path.split(os.sep)[3]
-            dependencies.append(self.get_tp2_project_target(project))
+            dependencies.append(third_party.get_tp2_project_target(project))
         for dep in external_deps:
             dependencies.append(self.normalize_external_dep(dep))
 
@@ -125,7 +125,7 @@ class CppLibraryExternalConverter(base.Converter):
             module_name = (
                 modules.get_module_name(
                     'third-party',
-                    self.get_tp2_project_name(base_path),
+                    third_party.get_tp2_project_name(base_path),
                     name))
 
             def maybe_add_module(module_rule_name, inc_dirs, ppflags):

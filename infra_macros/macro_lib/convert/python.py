@@ -850,7 +850,7 @@ class PythonConverter(base.Converter):
         # parameter for the input parameter of the same name; if `py_flavor` is
         # specified, then we have to install all sources via `versioned_srcs`
         else:
-            pytarget = self.get_tp2_project_target('python')
+            pytarget = third_party.get_tp2_project_target('python')
             platforms = platform_utils.get_platforms_for_host_architecture()
 
             # Iterate over all potential Python versions and collect srcs for

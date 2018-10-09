@@ -20,6 +20,7 @@ with allow_unsafe_import():
 
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -49,14 +50,14 @@ class CppModuleExternalConverter(base.Converter):
             module_name = (
                 modules.get_module_name(
                     'third-party',
-                    self.get_tp2_project_name(base_path),
+                    third_party.get_tp2_project_name(base_path),
                     name))
 
         # Setup dependencies.
         dependencies = []
         if implicit_project_dep:
             project = base_path.split(os.sep)[3]
-            dependencies.append(self.get_tp2_project_target(project))
+            dependencies.append(third_party.get_tp2_project_target(project))
         for dep in external_deps:
             dependencies.append(self.normalize_external_dep(dep))
 
