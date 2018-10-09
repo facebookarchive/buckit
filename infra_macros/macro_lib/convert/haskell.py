@@ -28,6 +28,7 @@ load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 
 
 # Flags controlling warnings issued by compiler
@@ -649,14 +650,14 @@ class HaskellConverter(base.Converter):
         if ghci_init is not None:
             attributes['ghci_init'] = src_and_dep_helpers.convert_source(base_path, ghci_init)
 
-        if self.read_hs_profile():
+        if haskell_common.read_hs_profile():
             attributes['enable_profiling'] = True
         elif enable_profiling is not None:
             attributes['enable_profiling'] = enable_profiling
 
-        if self.read_hs_eventlog():
+        if haskell_common.read_hs_eventlog():
             out_linker_flags.append('-eventlog')
-        if self.read_hs_debug():
+        if haskell_common.read_hs_debug():
             out_linker_flags.append('-debug')
 
         if self.get_fbconfig_rule_type() == 'haskell_library':
@@ -699,7 +700,7 @@ class HaskellConverter(base.Converter):
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         if build_mode is not None:
             out_compiler_flags.extend(build_mode.ghc_flags)
-        out_compiler_flags.extend(self.read_extra_ghc_compiler_flags())
+        out_compiler_flags.extend(haskell_common.read_extra_ghc_compiler_flags())
         if out_compiler_flags:
             attributes['compiler_flags'] = out_compiler_flags
 
@@ -798,7 +799,7 @@ class HaskellConverter(base.Converter):
             attributes['deps_query'] = ' union '.join(out_dep_queries)
             attributes['link_deps_query_whole'] = True
 
-        out_linker_flags.extend(self.read_extra_ghc_linker_flags())
+        out_linker_flags.extend(haskell_common.read_extra_ghc_linker_flags())
         if out_linker_flags:
             attributes['linker_flags'] = out_linker_flags
 

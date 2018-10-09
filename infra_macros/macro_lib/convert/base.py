@@ -544,21 +544,6 @@ class Converter(object):
             return default
         return val.split()
 
-    def read_hs_debug(self):
-        return self.read_bool('fbcode', 'hs_debug', False)
-
-    def read_hs_eventlog(self):
-        return self.read_bool('fbcode', 'hs_eventlog', False)
-
-    def read_hs_profile(self):
-        return self.read_bool('fbcode', 'hs_profile', False)
-
-    def read_extra_ghc_compiler_flags(self):
-        return self.read_list('haskell', 'extra_compiler_flags', [])
-
-    def read_extra_ghc_linker_flags(self):
-        return self.read_list('haskell', 'extra_linker_flags', [])
-
     def get_strip_mode(self, base_path, name):
         """
         Return a flag to strip debug symbols from binaries, or `None` if

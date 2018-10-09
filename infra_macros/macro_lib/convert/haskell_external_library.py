@@ -24,6 +24,7 @@ load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 
 
 class HaskellExternalLibraryConverter(base.Converter):
@@ -95,9 +96,9 @@ class HaskellExternalLibraryConverter(base.Converter):
             out_linker_flags.append(flag)
         attributes['exported_linker_flags'] = out_linker_flags
 
-        prof = self.read_hs_profile()
-        dbug = self.read_hs_debug()
-        eventlog = self.read_hs_eventlog()
+        prof = haskell_common.read_hs_profile()
+        dbug = haskell_common.read_hs_debug()
+        eventlog = haskell_common.read_hs_eventlog()
 
         # GHC's RTS requires linking against a different library depending
         # on what functionality is desired. We default to using the threaded

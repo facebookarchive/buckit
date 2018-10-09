@@ -22,6 +22,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
+    "fbcode_macros//build_defs:haskell_common.bzl",
     "fbcode_macros//build_defs:lex.bzl",
     "fbcode_macros//build_defs:go_external_library.bzl",
     "fbcode_macros//build_defs:java_binary.bzl",
@@ -187,6 +188,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "js_executable_test",
     srcs = ["js_executable_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "haskell_common_test",
+    srcs = ["haskell_common_test.py"],
     deps = [":utils"],
 )
 

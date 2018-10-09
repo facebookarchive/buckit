@@ -46,6 +46,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -968,7 +969,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         attrs['deps'], attrs['platform_deps'] = (
             src_and_dep_helpers.format_all_deps(dependencies))
-        if self.read_hs_profile():
+        if haskell_common.read_hs_profile():
             attrs['enable_profiling'] = True
 
         return [Rule('haskell_library', attrs)]
