@@ -231,11 +231,51 @@ def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
         partial.make(__format_platform_deps_gen, deps, deprecated_auxiliary_deps),
     )
 
+def _format_all_deps(deps, platform = None):
+    """
+    Formats a list of `RuleTarget` structs for both `deps` and `platform_deps`
+
+    Args:
+        deps: A list of `RuleTarget` structs
+        platform: If provided, the platform to use for third-party dependencies. These
+                  dependencies will then be added to the `deps` list, rather than
+                  `platform_deps`. If None, `platform_deps` will be populated with
+                  third party dependencies for all platforms
+
+    Returns:
+        A tuple of ([buck labels], [(buck platform regex, [buck labels])]). The first
+        entry should be used for `deps`, the second one for `platform_deps` in cxx*
+        rules.
+    """
+
+    out_deps = [
+        target_utils.target_to_label(d)
+        for d in deps
+        if not third_party.is_tp2_target(d)
+    ]
+    out_platform_deps = []
+
+    # If we have an explicit platform (as is the case with tp2 projects),
+    # we can pass the tp2 deps using the `deps` parameter.
+    if platform != None:
+        out_deps.extend([
+            target_utils.target_to_label(d, platform = platform)
+            for d in deps
+            if third_party.is_tp2_target(d)
+        ])
+    else:
+        out_platform_deps = _format_platform_deps(
+            [d for d in deps if third_party.is_tp2_target(d)],
+        )
+
+    return out_deps, out_platform_deps
+
 src_and_dep_helpers = struct(
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
     convert_source_map = _convert_source_map,
     extract_source_name = _extract_source_name,
+    format_all_deps = _format_all_deps,
     format_deps = _format_deps,
     format_platform_deps = _format_platform_deps,
     format_platform_param = _format_platform_param,

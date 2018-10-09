@@ -268,3 +268,50 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         self.assertSuccess(result)
         sorted_result = [sorted(lines) for lines in result.debug_lines]
         self.assertEqual(expected, sorted_result)
+
+    @tests.utils.with_project()
+    def test_format_all_deps_works(self, root):
+        commands = [
+            (
+                "src_and_dep_helpers.format_all_deps(["
+                'target_utils.RootRuleTarget("foo/bar", "baz"),'
+                'target_utils.RuleTarget("xplat", "foo/bar", "baz"),'
+                'target_utils.ThirdPartyRuleTarget("foo", "baz"),'
+                "])"
+            ),
+            (
+                "src_and_dep_helpers.format_all_deps(["
+                'target_utils.RootRuleTarget("foo/bar", "baz"),'
+                'target_utils.RuleTarget("xplat", "foo/bar", "baz"),'
+                'target_utils.ThirdPartyRuleTarget("foo", "baz"),'
+                '], platform="gcc5")'
+            ),
+        ]
+        expected = [
+            (
+                ["//foo/bar:baz", "xplat//foo/bar:baz"],
+                [
+                    ("^default-clang$", ["//third-party-buck/default/build/foo:baz"]),
+                    ("^default-gcc$", ["//third-party-buck/default/build/foo:baz"]),
+                    ("^gcc5-clang$", ["//third-party-buck/gcc5/build/foo:baz"]),
+                    ("^gcc5-gcc$", ["//third-party-buck/gcc5/build/foo:baz"]),
+                    ("^gcc6-clang$", ["//third-party-buck/gcc6/build/foo:baz"]),
+                    ("^gcc6-gcc$", ["//third-party-buck/gcc6/build/foo:baz"]),
+                    ("^gcc7-clang$", ["//third-party-buck/gcc7/build/foo:baz"]),
+                    ("^gcc7-gcc$", ["//third-party-buck/gcc7/build/foo:baz"]),
+                ],
+            ),
+            (
+                [
+                    "//foo/bar:baz",
+                    "xplat//foo/bar:baz",
+                    "//third-party-buck/gcc5/build/foo:baz",
+                ],
+                [],
+            ),
+        ]
+
+        result = root.runUnitTests(self.includes, commands)
+        self.assertSuccess(result)
+        sorted_result = [(lines[0], sorted(lines[1])) for lines in result.debug_lines]
+        self.assertEqual(expected, sorted_result)

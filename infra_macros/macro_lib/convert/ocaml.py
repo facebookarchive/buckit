@@ -123,7 +123,7 @@ class OCamlConverter(base.Converter):
         # If any deps were specified, add them to the output attrs.
         if dependencies:
             attributes['deps'], attributes['platform_deps'] = (
-                self.format_all_deps(dependencies))
+                src_and_dep_helpers.format_all_deps(dependencies))
 
         # Translate visibility
         if visibility is not None:

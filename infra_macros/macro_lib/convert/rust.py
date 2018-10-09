@@ -277,7 +277,7 @@ class RustConverter(base.Converter):
         # If any deps were specified, add them to the output attrs.
         if dependencies:
             attributes['deps'], attributes['platform_deps'] = (
-                self.format_all_deps(dependencies))
+                src_and_dep_helpers.format_all_deps(dependencies))
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
 
@@ -368,7 +368,7 @@ class RustConverter(base.Converter):
         rules.extend(r)
 
         test_attributes['deps'], test_attributes['platform_deps'] = (
-            self.format_all_deps(deps))
+            src_and_dep_helpers.format_all_deps(deps))
 
         return Rule('rust_test', test_attributes), rules
 

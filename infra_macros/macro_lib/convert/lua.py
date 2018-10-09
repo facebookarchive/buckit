@@ -300,7 +300,7 @@ class LuaConverter(base.Converter):
 
         # Set the deps attr.
         cpp_main_attrs['deps'], cpp_main_attrs['platform_deps'] = (
-            self.format_all_deps(out_deps))
+            src_and_dep_helpers.format_all_deps(out_deps))
 
         rules.append(Rule('cxx_library', cpp_main_attrs))
 
@@ -356,7 +356,7 @@ class LuaConverter(base.Converter):
                 self.get_tp2_platform(base_path)
                 if self.is_tp2(base_path) else None)
             attributes['deps'], attributes['platform_deps'] = (
-                self.format_all_deps(dependencies, platform=platform))
+                src_and_dep_helpers.format_all_deps(dependencies, platform=platform))
 
         return [Rule('lua_library', attributes)]
 
@@ -469,7 +469,7 @@ class LuaConverter(base.Converter):
 
         if dependencies:
             attributes['deps'], attributes['platform_deps'] = (
-                self.format_all_deps(dependencies))
+                src_and_dep_helpers.format_all_deps(dependencies))
 
         return [Rule('lua_binary', attributes)] + rules
 

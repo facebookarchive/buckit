@@ -21,12 +21,12 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 # Flags controlling warnings issued by compiler
@@ -479,7 +479,7 @@ class HaskellConverter(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['preferred_linkage'] = 'static'
-        attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        attrs['deps'], attrs['platform_deps'] = src_and_dep_helpers.format_all_deps(deps)
         # Setup platform default for compilation DB, and direct building.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         attrs['default_platform'] = buck_platform
@@ -622,7 +622,7 @@ class HaskellConverter(base.Converter):
             # Mark binary_link_deps to be preloaded
             d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['preload_deps'], attributes['platform_preload_deps'] = \
-                self.format_all_deps(d)
+                src_and_dep_helpers.format_all_deps(d)
 
             attributes['extra_script_templates'] = map(
                 lambda template : src_and_dep_helpers.convert_source(base_path, template),
@@ -822,12 +822,12 @@ class HaskellConverter(base.Converter):
             # Mark binary_link_deps to be preloaded
             d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
-                self.format_all_deps(d)
+                src_and_dep_helpers.format_all_deps(d)
             if self.get_fbconfig_rule_type() == 'haskell_library':
                 rules.extend(r)
 
         attributes['deps'], attributes['platform_deps'] = (
-            self.format_all_deps(dependencies))
+            src_and_dep_helpers.format_all_deps(dependencies))
 
         rules.append(Rule(self.get_buck_rule_type(), attributes))
 

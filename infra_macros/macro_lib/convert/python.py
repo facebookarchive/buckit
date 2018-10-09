@@ -684,7 +684,7 @@ class PythonConverter(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
-        attrs['deps'], attrs['platform_deps'] = self.format_all_deps(deps)
+        attrs['deps'], attrs['platform_deps'] = src_and_dep_helpers.format_all_deps(deps)
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         attrs['default_platform'] = buck_platform
         attrs['defaults'] = {'platform': buck_platform}

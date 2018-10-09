@@ -967,7 +967,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         attrs['deps'], attrs['platform_deps'] = (
-            self.format_all_deps(dependencies))
+            src_and_dep_helpers.format_all_deps(dependencies))
         if self.read_hs_profile():
             attrs['enable_profiling'] = True
 
@@ -1704,7 +1704,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         dependencies.extend(self.THRIFT_OCAML_LIBS)
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        attrs['deps'] = (self.format_all_deps(dependencies))[0]
+        attrs['deps'] = (src_and_dep_helpers.format_all_deps(dependencies))[0]
 
         return [Rule('ocaml_library', attrs)]
 

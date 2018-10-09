@@ -1654,7 +1654,7 @@ class CppConverter(base.Converter):
                 out_lang_plat_compiler_flags['cxx_cpp_output'])
             module_platform_flags.extend(out_platform_compiler_flags)
             module_deps, module_platform_deps = (
-                self.format_all_deps(dependencies))
+                src_and_dep_helpers.format_all_deps(dependencies))
             modules.gen_module(
                 mod_name,
                 module_name,
@@ -1692,7 +1692,7 @@ class CppConverter(base.Converter):
                 ('exported_deps', 'exported_platform_deps')
                 if self.is_library()
                 else ('deps', 'platform_deps'))
-            out_deps, out_plat_deps = self.format_all_deps(dependencies)
+            out_deps, out_plat_deps = src_and_dep_helpers.format_all_deps(dependencies)
             attributes[deps_param] = out_deps
             if out_plat_deps:
                 attributes[plat_deps_param] = out_plat_deps
