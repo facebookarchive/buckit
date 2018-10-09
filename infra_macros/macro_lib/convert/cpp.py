@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -939,7 +940,7 @@ class CppConverter(base.Converter):
         os_deps = os_deps or []
         os_linker_flags = os_linker_flags or []
         out_link_style = self.get_link_style()
-        build_mode = self.get_build_mode()
+        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         dlopen_info = self.get_dlopen_info(dlopen_enabled)
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (

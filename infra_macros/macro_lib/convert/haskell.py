@@ -21,6 +21,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -695,7 +696,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags.extend(validated_compiler_flags)
         out_compiler_flags.extend(
             self.get_language_options(lang_opts,fb_haskell))
-        build_mode = self.get_build_mode()
+        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         if build_mode is not None:
             out_compiler_flags.extend(build_mode.ghc_flags)
         out_compiler_flags.extend(self.read_extra_ghc_compiler_flags())

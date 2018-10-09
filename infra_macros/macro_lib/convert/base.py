@@ -62,6 +62,7 @@ def import_macro_lib(path):
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 build_info = import_macro_lib('build_info')
+load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
@@ -450,9 +451,6 @@ class Converter(object):
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
-    def get_build_mode(self):
-        return self._context.build_mode
-
     def get_parsed_src_name(self, src):
         """
         Get the logical name of the given source.
@@ -607,7 +605,7 @@ class Converter(object):
             compiler_flags[lang].extend(per_platform_coverage_flags)
 
         # Apply flags from the build mode file.
-        build_mode = self.get_build_mode()
+        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         if build_mode is not None:
             compiler_partial = partial.make(_get_compiler_flags_partial, build_mode)
 
@@ -901,7 +899,7 @@ class Converter(object):
         ldflags = []
 
         # 1. Add in build-mode ldflags.
-        build_mode = self.get_build_mode()
+        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         if build_mode is not None:
             ldflags.extend(build_mode.ld_flags)
 
@@ -1223,7 +1221,7 @@ class Converter(object):
         rules = []
 
         sanitizer = sanitizers.get_sanitizer()
-        build_mode = self.get_build_mode()
+        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
 
         configuration_src = []
 
