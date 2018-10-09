@@ -55,6 +55,7 @@ load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
+load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
@@ -87,7 +88,6 @@ discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
-haskell_external_library = import_macro_lib('convert/haskell_external_library')
 image_feature = import_macro_lib('convert/container_image/image_feature')
 image_layer = import_macro_lib('convert/container_image/image_layer')
 lua = import_macro_lib('convert/lua')
@@ -168,7 +168,6 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_ghci'),
         haskell.HaskellConverter(context, 'haskell_haddock'),
-        haskell_external_library.HaskellExternalLibraryConverter(context),
         image_feature.ImageFeatureConverter(context),
         image_layer.ImageLayerConverter(context),
         lua.LuaConverter(context, 'lua_library'),
@@ -218,6 +217,7 @@ def convert(context, base_path, rule):
         'buck_command_alias': buck_command_alias,  # noqa F821
         'custom_rule': custom_rule,  # noqa F821
         'go_external_library': go_external_library,  # noqa F821
+        'haskell_external_library': haskell_external_library,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
         'java_protoc_library': java_protoc_library,  # noqa F821

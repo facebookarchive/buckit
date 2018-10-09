@@ -690,23 +690,43 @@ class TestCase(unittest.TestCase):
                 "platforms": {{
                     "gcc5": {{
                         "architecture": "{current_arch}",
-                        "tools": {{}},
+                        "tools": {{
+                            "projects": {{
+                                "ghc": "8.0.2",
+                            }},
+                        }},
                     }},
                     "gcc6": {{
                         "architecture": "{current_arch}",
-                        "tools": {{}},
+                        "tools": {{
+                            "projects": {{
+                                "ghc": "8.0.2",
+                            }},
+                        }},
                     }},
                     "gcc7": {{
                         "architecture": "{current_arch}",
-                        "tools": {{}},
+                        "tools": {{
+                            "projects": {{
+                                "ghc": "8.0.2",
+                            }},
+                        }},
                     }},
                     "gcc5-other": {{
                         "architecture": "{other_arch}",
-                        "tools": {{}},
+                        "tools": {{
+                            "projects": {{
+                                "ghc": "8.0.2",
+                            }},
+                        }},
                     }},
                     "default": {{
                         "architecture": "{current_arch}",
-                        "tools": {{}},
+                        "tools": {{
+                            "projects": {{
+                                "ghc": "8.0.2",
+                            }},
+                        }},
                     }},
                 }},
             }}

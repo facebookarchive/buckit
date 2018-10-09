@@ -176,7 +176,10 @@ class ThirdPartyTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_third_party_config_for_platform(self, root):
         commands = ['third_party.get_third_party_config_for_platform("gcc5")']
-        expected = {"architecture": platform.machine(), "tools": {}}
+        expected = {
+            "architecture": platform.machine(),
+            "tools": {"projects": {"ghc": "8.0.2"}},
+        }
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected)
 
