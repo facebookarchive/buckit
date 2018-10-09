@@ -204,3 +204,10 @@ class ThirdPartyTest(tests.utils.TestCase):
         expected = [False, False, True]
 
         self.assertSuccess(root.runUnitTests(includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_get_tp2_platform(self, root):
+        commands = [
+            'third_party.get_tp2_platform("third-party-buck/some_plat/tools/foo")'
+        ]
+        self.assertSuccess(root.runUnitTests(self.includes, commands), "some_plat")

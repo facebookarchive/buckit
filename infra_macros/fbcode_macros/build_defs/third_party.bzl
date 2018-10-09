@@ -260,6 +260,20 @@ def _get_tp2_project_target(project):
     """
     return rule_target_types.ThirdPartyRuleTarget(project, _TP2_PROJECT_TARGET_NAME)
 
+def _get_tp2_platform(base_path):
+    """
+    Get the TP2 platform based on the package
+
+    Args:
+        base_path: The package that the build file is in
+
+    Returns:
+        The fbcode platform as a string
+    """
+
+    # third-party-buck/<platform>/{build,tools}/<project>
+    return base_path.split("/")[1]
+
 third_party = struct(
     external_dep_target = _external_dep_target,
     get_build_path = _get_build_path,
@@ -269,6 +283,7 @@ third_party = struct(
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,
     get_tools_path = _get_tools_path,
+    get_tp2_platform = _get_tp2_platform,
     get_tp2_project_name = _get_tp2_project_name,
     get_tp2_project_target = _get_tp2_project_target,
     is_tp2 = _is_tp2,
