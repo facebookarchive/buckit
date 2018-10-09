@@ -1,4 +1,7 @@
+load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 
 def _extract_name_from_custom_rule(src):
     parts = src.split("=")
@@ -117,11 +120,37 @@ def _parse_source_map(base_path, raw_srcs):
 
     return {name: _parse_source(base_path, src) for name, src in raw_srcs.items()}
 
+def _format_platform_param(value):
+    """
+    Takes a value or callable and constructs a list of 'platform' tuples for buck to consume
+
+    Args:
+        value: Either a "partial" struct (from skylib) or a value. If a partial, it
+               will be called for each platform and compiler available, and the result
+               used. If a value, it will just be assigned for each combination.
+
+    Returns:
+        A list of (<buck platform regex>, <value>) tuples.
+    """
+    out = []
+    is_partial = hasattr(value, "function")
+    for platform in platform_utils.get_platforms_for_host_architecture():
+        for _compiler in compiler.get_supported_compilers():
+            result = partial.call(value, platform, _compiler) if is_partial else value
+            if result:
+                # Buck expects the platform name as a regex, so anchor it.
+                # re.escape is not supported in skylark, however there should not be
+                # any collisions in the names we have selected.
+                buck_platform = platform_utils.to_buck_platform(platform, _compiler)
+                out.append(("^{}$".format(buck_platform), result))
+    return out
+
 src_and_dep_helpers = struct(
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
     convert_source_map = _convert_source_map,
     extract_source_name = _extract_source_name,
+    format_platform_param = _format_platform_param,
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,
     parse_source_map = _parse_source_map,

@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
+from tests.utils import dedent
 
 
 class SrcAndDepHelpersTest(tests.utils.TestCase):
@@ -119,3 +120,50 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_format_platform_param_works(self, root):
+        includes = self.includes + [
+            (":defs.bzl", "a_func"),
+            ("@bazel_skylib//lib:partial.bzl", "partial"),
+        ]
+        root.addFile(
+            "defs.bzl",
+            dedent(
+                """
+        def a_func(prepend, platform, compiler):
+            return "{}-{}-{}".format(prepend, platform, compiler)
+        """
+            ),
+        )
+        commands = [
+            'src_and_dep_helpers.format_platform_param(partial.make(a_func, "foo"))',
+            'src_and_dep_helpers.format_platform_param("some_stuff")',
+        ]
+        expected = [
+            [
+                ("^default-clang$", "foo-default-clang"),
+                ("^default-gcc$", "foo-default-gcc"),
+                ("^gcc5-clang$", "foo-gcc5-clang"),
+                ("^gcc5-gcc$", "foo-gcc5-gcc"),
+                ("^gcc6-clang$", "foo-gcc6-clang"),
+                ("^gcc6-gcc$", "foo-gcc6-gcc"),
+                ("^gcc7-clang$", "foo-gcc7-clang"),
+                ("^gcc7-gcc$", "foo-gcc7-gcc"),
+            ],
+            [
+                ("^default-clang$", "some_stuff"),
+                ("^default-gcc$", "some_stuff"),
+                ("^gcc5-clang$", "some_stuff"),
+                ("^gcc5-gcc$", "some_stuff"),
+                ("^gcc6-clang$", "some_stuff"),
+                ("^gcc6-gcc$", "some_stuff"),
+                ("^gcc7-clang$", "some_stuff"),
+                ("^gcc7-gcc$", "some_stuff"),
+            ],
+        ]
+
+        result = root.runUnitTests(includes, commands)
+        self.assertSuccess(result)
+        sorted_result = [sorted(lines) for lines in result.debug_lines]
+        self.assertEqual(expected, sorted_result)

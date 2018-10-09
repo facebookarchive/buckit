@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
+load("@bazel_skylib//lib:partial.bzl", "partial")
 
 LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = target_utils.ThirdPartyRuleTarget('flex', 'fl')
@@ -64,6 +65,8 @@ YACC_FLAGS = ['-y', '-d']
 # from third-party.
 SYS_INC = re.compile('^(?:-I|-isystem)?/usr(?:/local)?/include')
 
+def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, compiler):
+    return compiler_specific_flags.get("gcc" if cuda else compiler)
 
 def create_dll_needed_syms_list_rule(name, dlls, visibility):
     attrs = collections.OrderedDict()
@@ -1117,15 +1120,17 @@ class CppConverter(base.Converter):
         for lang in self.get_compiler_langs():
             out_lang_plat_compiler_flags.setdefault(lang, [])
             out_lang_plat_compiler_flags[lang].extend(
-                self.format_platform_param(compiler_flags))
+                src_and_dep_helpers.format_platform_param(compiler_flags))
             out_lang_plat_compiler_flags[lang].extend(
-                self.format_platform_param(
-                    lambda _, compiler:
-                        compiler_specific_flags.get(
-                            'gcc' if cuda else compiler)))
+                src_and_dep_helpers.format_platform_param(
+                    partial.make(
+                        _cuda_compiler_specific_flags_partial,
+                        compiler_specific_flags,
+                        cuda)))
+
         out_lang_plat_compiler_flags.setdefault('cuda_cpp_output', [])
         out_lang_plat_compiler_flags['cuda_cpp_output'].extend(
-            self.format_platform_param(
+            src_and_dep_helpers.format_platform_param(
                 list(itertools.chain(
                     *[('-_NVCC_', flag) for flag in nvcc_flags]))))
 
@@ -1140,9 +1145,9 @@ class CppConverter(base.Converter):
                 # '-fprofile-sample-accurate'
             ]
             out_lang_plat_compiler_flags['c_cpp_output'].extend(
-                self.format_platform_param(profile_args))
+                src_and_dep_helpers.format_platform_param(profile_args))
             out_lang_plat_compiler_flags['cxx_cpp_output'].extend(
-                self.format_platform_param(profile_args))
+                src_and_dep_helpers.format_platform_param(profile_args))
 
         if out_lang_plat_compiler_flags:
             attributes['lang_platform_compiler_flags'] = (

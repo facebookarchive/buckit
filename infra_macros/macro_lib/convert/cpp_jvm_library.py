@@ -21,6 +21,18 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+
+load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@bazel_skylib//lib:paths.bzl", "paths")
+
+_FORMATTER_ARCHS = {"x86_64": "amd64"}
+
+def _formatter_partial(flags, platform, _):
+    arch = platform_utils.get_platform_architecture(platform)
+    # Remap arch to JVM-specific names.
+    arch = _FORMATTER_ARCHS.get(arch, arch)
+    return [flag.format(arch=arch, platform=platform) for flag in flags]
 
 class CppJvmLibrary(base.Converter):
 
@@ -39,11 +51,6 @@ class CppJvmLibrary(base.Converter):
         if visibility is not None:
             attrs['visibility'] = visibility
 
-        def formatter(flags, platform, _):
-            arch = platform_utils.get_platform_architecture(platform)
-            # Remap arch to JVM-specific names.
-            arch = {'x86_64': 'amd64'}.get(arch, arch)
-            return [flag.format(arch=arch, platform=platform) for flag in flags]
 
         platform_jvm_path = '/usr/local/fb-jdk-{}-{{platform}}'.format(major_version)
         jvm_path = '/usr/local/fb-jdk-{}'.format(major_version)
@@ -53,21 +60,21 @@ class CppJvmLibrary(base.Converter):
         # (e.g. headers, libraries) pulled into the build.  Longer-term, we
         # should move the FB JDK into tp2 to do this properly.
         attrs['exported_platform_preprocessor_flags'] = (
-            self.format_platform_param(
-                functools.partial(
-                    formatter,
+            src_and_dep_helpers.format_platform_param(
+                partial.make(
+                    _formatter_partial,
                     ['-isystem',
-                     os.path.join(platform_jvm_path, 'include'),
+                     paths.join(platform_jvm_path, 'include'),
                      '-isystem',
-                     os.path.join(platform_jvm_path, 'include', 'linux'),
+                     paths.join(platform_jvm_path, 'include', 'linux'),
                      '-isystem',
-                     os.path.join(jvm_path, 'include'),
+                     paths.join(jvm_path, 'include'),
                      '-isystem',
-                     os.path.join(jvm_path, 'include', 'linux')])))
+                     paths.join(jvm_path, 'include', 'linux')])))
         attrs['exported_platform_linker_flags'] = (
-            self.format_platform_param(
-                functools.partial(
-                    formatter,
+            src_and_dep_helpers.format_platform_param(
+                partial.make(
+                    _formatter_partial,
                     ['-L{}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
                      '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
                      '-L{}/jre/lib/{{arch}}/server'.format(jvm_path),

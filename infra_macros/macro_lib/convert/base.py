@@ -75,6 +75,8 @@ load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 
+load("@bazel_skylib//lib:partial.bzl", "partial")
+
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
 # fbcode.allocators.X property. The value is a comma delimited list of
@@ -185,6 +187,15 @@ def is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
 
     return getattr(src, "repo", None) != None
 
+_THIN_LTO_FLAG = ["-flto=thin"]
+_LTO_FLAG = ["-flto"]
+
+def _lto_linker_flags_partial(_, compiler):
+    if compiler != "clang":
+        return []
+    if config.lto_type() == "thin":
+        return _THIN_LTO_FLAG
+    return _LTO_FLAG
 
 class Converter(object):
 
@@ -215,14 +226,19 @@ class Converter(object):
         for Buck.
         """
 
+        def _get_platform_flags_from_arch_flags_partial(platform_flags, platform, _):
+            return platform_flags.get(platform)
+
+
         platform_flags = {}
         for arch, flags in sorted(arch_flags.items()):
             platforms = platform_utils.get_platforms_for_architecture(arch)
             for platform in platform_utils.get_platforms_for_architecture(arch):
                 platform_flags[platform] = flags
 
-        return self.format_platform_param(
-            lambda platform, _: platform_flags.get(platform))
+        return src_and_dep_helpers.format_platform_param(
+            partial.make(
+                _get_platform_flags_from_arch_flags_partial, platform_flags))
 
     def get_tool_version(self, platform, project):
         conf = self._context.third_party_config['platforms'][platform]
@@ -348,6 +364,9 @@ class Converter(object):
         """
         Format the given parsed source list.
         """
+        def _format_source_list_partial(tp2_dep_srcs, platform, _):
+            return [self.format_source(src, platform=platform) for src in tp2_dep_srcs]
+
 
         # All path sources and fbcode source references are installed via the
         # `srcs` parameter.
@@ -360,10 +379,8 @@ class Converter(object):
         # so that they're platform aware.
         tp2_dep_srcs = [src for src in srcs if is_tp2_src_dep(src)]
         out_platform_srcs = (
-            self.format_platform_param(
-                lambda platform, _:
-                    [self.format_source(src, platform=platform)
-                     for src in tp2_dep_srcs]))
+            src_and_dep_helpers.format_platform_param(
+                partial.make(_format_source_list_partial, tp2_dep_srcs)))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -371,6 +388,9 @@ class Converter(object):
         """
         Format the given parsed sources with flags list.
         """
+        def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):
+            return [self.format_source_with_flags(src, platform=platform) for src in tp2_dep_srcs]
+
 
         # All path sources and fbcode source references are installed via the
         # `srcs` parameter.
@@ -384,10 +404,8 @@ class Converter(object):
         tp2_dep_srcs = [src
                         for src in srcs_with_flags if is_tp2_src_dep(src.src)]
         out_platform_srcs = (
-            self.format_platform_param(
-                lambda platform, _:
-                    [self.format_source_with_flags(src, platform=platform)
-                     for src in tp2_dep_srcs]))
+            src_and_dep_helpers.format_platform_param(
+                partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs)))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -395,6 +413,12 @@ class Converter(object):
         """
         Format the given source map.
         """
+        def _format_source_map_partial(tp2_srcs, platform, _):
+            return {
+                name: self.format_source(src, platform=platform)
+                for name, src in tp2_srcs.items()
+            }
+
 
         # All path sources and fbcode source references are installed via the
         # `srcs` parameter.
@@ -408,10 +432,8 @@ class Converter(object):
         tp2_srcs = {name: src
                     for name, src in srcs.items() if is_tp2_src_dep(src)}
         out_platform_srcs = (
-            self.format_platform_param(
-                lambda platform, _:
-                    {name: self.format_source(src, platform=platform)
-                     for name, src in tp2_srcs.items()}))
+            src_and_dep_helpers.format_platform_param(
+                partial.make(_format_source_map_partial, tp2_srcs)))
 
         return PlatformParam(out_srcs, out_platform_srcs)
 
@@ -490,24 +512,6 @@ class Converter(object):
             dst.setdefault(platform, [])
             dst[platform].extend(deps)
 
-    def format_platform_param(self, value):
-        out = []
-
-        for platform in platform_utils.get_platforms_for_host_architecture():
-            for _compiler in compiler.get_supported_compilers():
-                result = (
-                    value(platform, _compiler)
-                    if callable(value) else value)
-                if result:
-                    # Buck expects the platform name as a regex, so anchor and
-                    # escape it for literal matching.
-                    buck_platform = (
-                        platform_utils.to_buck_platform(platform, _compiler))
-                    out.append(
-                        ('^{}$'.format(re.escape(buck_platform)), result))
-
-        return out
-
     def format_platform_deps(self, deps, deprecated_auxiliary_deps=False):
         """
         Takes a map of fbcode platform names to lists of deps and converts to
@@ -515,23 +519,25 @@ class Converter(object):
 
         Also add override support for PyFI migration - T22354138
         """
+        def _format_platform_deps_partial(deps, deprecated_auxiliary_deps, platform, _):
+                pdeps = deps
 
-        def gen(platform, _):
-            pdeps = deps
+                # Auxiliary deps support.
+                if deprecated_auxiliary_deps:
+                    pdeps = self._convert_auxiliary_deps(platform, pdeps)
 
-            # Auxiliary deps support.
-            if deprecated_auxiliary_deps:
-                pdeps = self._convert_auxiliary_deps(platform, pdeps)
+                # Process PyFI overrides
+                if python_wheel_overrides.should_use_overrides():
+                    if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
+                        pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
+                                 for d in pdeps]
+                return self.format_deps(pdeps, platform=platform)
 
-            # Process PyFI overrides
-            if python_wheel_overrides.should_use_overrides():
-                if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
-                    pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
-                             for d in pdeps]
-
-            return self.format_deps(pdeps, platform=platform)
-
-        return self.format_platform_param(gen)
+        return src_and_dep_helpers.format_platform_param(
+            partial.make(
+                _format_platform_deps_partial,
+                deps,
+                deprecated_auxiliary_deps))
 
     def format_all_deps(self, deps, platform=None):
         """
@@ -709,6 +715,9 @@ class Converter(object):
         """
         Return a dict mapping languages to base compiler flags.
         """
+        def _get_compiler_flags_partial(build_mode, _, compiler):
+            return build_mode.gcc_flags if compiler == "gcc" else build_mode.clang_flags
+
 
         # Initialize the compiler flags dictionary.
         compiler_flags = collections.OrderedDict()
@@ -719,41 +728,43 @@ class Converter(object):
         c_langs = self.get_compiler_general_langs()
 
         # Apply the general sanitizer/coverage flags.
+        per_platform_sanitizer_flags = None
+        if sanitizers.get_sanitizer() != None:
+            per_platform_sanitizer_flags = src_and_dep_helpers.format_platform_param(
+                sanitizers.get_sanitizer_flags())
+        per_platform_coverage_flags = src_and_dep_helpers.format_platform_param(
+            self.get_coverage_flags(base_path))
+
         for lang in c_langs:
-            if sanitizers.get_sanitizer() is not None:
-                compiler_flags[lang].extend(
-                    self.format_platform_param(sanitizers.get_sanitizer_flags()))
-            compiler_flags[lang].extend(
-                self.format_platform_param(self.get_coverage_flags(base_path)))
+            if per_platform_sanitizer_flags != None:
+                compiler_flags[lang].extend(per_platform_sanitizer_flags)
+            compiler_flags[lang].extend(per_platform_coverage_flags)
 
         # Apply flags from the build mode file.
         build_mode = self.get_build_mode()
         if build_mode is not None:
+            compiler_partial = partial.make(_get_compiler_flags_partial, build_mode)
 
             # Apply language-specific build mode flags.
             compiler_flags['c_cpp_output'].extend(
-                self.format_platform_param(build_mode.c_flags))
+                src_and_dep_helpers.format_platform_param(build_mode.c_flags))
             compiler_flags['cxx_cpp_output'].extend(
-                self.format_platform_param(build_mode.cxx_flags))
+                src_and_dep_helpers.format_platform_param(build_mode.cxx_flags))
 
             # Apply compiler-specific build mode flags.
             for lang in c_langs:
                 compiler_flags[lang].extend(
-                    self.format_platform_param(
-                        lambda _, compiler:
-                            build_mode.gcc_flags
-                            if compiler == 'gcc'
-                            else build_mode.clang_flags))
+                    src_and_dep_helpers.format_platform_param(compiler_partial))
 
             # Cuda always uses GCC.
             compiler_flags['cuda_cpp_output'].extend(
-                self.format_platform_param(build_mode.gcc_flags))
+                src_and_dep_helpers.format_platform_param(build_mode.gcc_flags))
 
         # Add in command line flags last.
         compiler_flags['c_cpp_output'].extend(
-            self.format_platform_param(self.get_extra_cflags()))
+            src_and_dep_helpers.format_platform_param(self.get_extra_cflags()))
         compiler_flags['cxx_cpp_output'].extend(
-            self.format_platform_param(self.get_extra_cxxflags()))
+            src_and_dep_helpers.format_platform_param(self.get_extra_cxxflags()))
 
         return compiler_flags
 
@@ -1278,13 +1289,8 @@ class Converter(object):
         # as IR only, and must also link everything with -flto
         if self.is_lto_enabled():
             lib_attrs['platform_linker_flags'] = (
-                self.format_platform_param(
-                    lambda _, compiler: (
-                        ['-flto=thin'
-                         if self._context.lto_type == 'thin'
-                         else '-flto']
-                        if compiler == 'clang'
-                        else [])))
+                src_and_dep_helpers.format_platform_param(
+                    partial.make(_lto_linker_flags_partial)))
 
         if static:
             # Use link_whole to make sure the build info symbols are always
@@ -1450,13 +1456,8 @@ class Converter(object):
         # as IR only, and must also link everything with -flto
         if self.is_lto_enabled():
             lib_attrs['platform_linker_flags'] = (
-                self.format_platform_param(
-                    lambda _, compiler: (
-                        ['-flto=thin'
-                         if self._context.lto_type == 'thin'
-                         else '-flto']
-                        if compiler == 'clang'
-                        else [])))
+                src_and_dep_helpers.format_platform_param(
+                    partial.make(_lto_linker_flags_partial)))
 
 
         # Use link_whole to make sure the build info symbols are always
