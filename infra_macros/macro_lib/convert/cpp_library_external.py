@@ -87,10 +87,7 @@ class CppLibraryExternalConverter(base.Converter):
         # until we move fboss's versioned tp2 deps to use Buck's version
         # support.
 
-        # TODO: Just take this as a parameter
-        platform = (
-            self.get_tp2_build_dat(base_path)['platform']
-            if third_party.is_tp2(base_path) else None)
+        platform = third_party.get_tp2_platform(base_path) if third_party.is_tp2(base_path) else None
 
         # Normalize include dir param.
         # TODO: If type == str

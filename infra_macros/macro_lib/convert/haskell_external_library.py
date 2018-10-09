@@ -23,6 +23,7 @@ include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 
 class HaskellExternalLibraryConverter(base.Converter):
@@ -67,7 +68,7 @@ class HaskellExternalLibraryConverter(base.Converter):
             external_deps=(),
             visibility=None):
 
-        platform = self.get_tp2_build_dat(base_path)['platform']
+        platform = third_party.get_tp2_platform(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name

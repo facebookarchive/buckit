@@ -21,6 +21,7 @@ include_defs("{}/rule.py".format(macro_root))
 
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 class RustLibraryExternalConverter(base.Converter):
 
@@ -40,7 +41,7 @@ class RustLibraryExternalConverter(base.Converter):
                 visibility=None,
                 external_deps=()):
 
-        platform = self.get_tp2_build_dat(base_path)['platform']
+        platform = third_party.get_tp2_platform(base_path)
 
         attributes = collections.OrderedDict()
 

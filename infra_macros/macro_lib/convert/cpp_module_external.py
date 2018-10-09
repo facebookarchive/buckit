@@ -61,8 +61,7 @@ class CppModuleExternalConverter(base.Converter):
         for dep in external_deps:
             dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
-        # TODO: This should not be reading from json, should just be provided
-        platform = self.get_tp2_build_dat(base_path)['platform']
+        platform = third_party.get_tp2_platform(base_path)
 
         # Generate the module file.
         module_rule_name = name + '-module'
