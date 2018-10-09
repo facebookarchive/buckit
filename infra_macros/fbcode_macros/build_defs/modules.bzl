@@ -130,6 +130,7 @@ def _gen_module(
         module_name,
         headers = None,
         header_dir = None,
+        header_prefix = "",
         flags = (),
         platform_flags = (),
         deps = (),
@@ -150,6 +151,10 @@ def _gen_module(
       header_dir: A directory containing headers to be compiled into a module.
                   Must contain a `module.modulemap` at the top-level.  Cannot
                   be specified if `headers` is used.
+      header_prefix: A path component that the headers are actually relative to.
+                     This path will be used to prefix the header files in error
+                     messages from compiler errors seen when building this
+                     module.
       flags: Additional flags to pass to the compiler when building the module.
       platform_flags: Additional platform-specific flags, specified as a list
                       of regex and flag list tuples, to pass to the compiler
@@ -194,6 +199,8 @@ def _gen_module(
         srcs = srcs,
         cmd = "\n".join(
             [
+                "set -euo pipefail",
+
                 # TODO(T32246582): This is gross, but we currently need to run the
                 # C/C++ compilers from the root of fbcode, so search up the dir
                 # tree to find it.
@@ -233,7 +240,9 @@ def _gen_module(
                 'for i in "${!args[@]}"; do',
                 "  args[$i]=${args[$i]//$PWD\//}",
                 "done",
-                'exec "${args[@]}" > "$OUT"',
+                ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT"' +
+                 ' | >&2 sed "s|${{SRCDIR//$PWD\//}}/headers/|{}|g"')
+                    .format(header_prefix),
             ],
         ),
         visibility = visibility,
@@ -302,6 +311,7 @@ def _gen_tp2_cpp_module(
         headers = headers,
         flags = out_flags,
         header_dir = header_dir,
+        header_prefix = paths.join(base_path, header_dir) + "/",
         module_name = module_name,
         platform_deps = out_platform_deps,
         platform_flags = out_platform_flags,
