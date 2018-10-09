@@ -204,6 +204,9 @@ def rule_handler(context, globals, rule_type, **kwargs):
             include_defs,
             read_config))
     context['build_mode'] = build_mode.get_build_modes_for_base_path(base_path).get(context['mode'])
+    if 'compiler_overrides' in kwargs:
+        context['default_compiler'] = \
+            kwargs['compiler_overrides'].get(context['mode'])
     context['third_party_config'] = third_party_config
     context['config'] = config
 
@@ -213,7 +216,8 @@ def rule_handler(context, globals, rule_type, **kwargs):
         rule.attributes.get('name'),
         base_path)
 
-    results = converter.convert(base.Context(**context), base_path, rule)
+    new_context = base.Context(**context)
+    results = converter.convert(new_context, base_path, rule)
     # Instantiate the Buck rules that got converted successfully.
     for converted in results:
         eval("native." + converted.type, globals)(**converted.attributes)

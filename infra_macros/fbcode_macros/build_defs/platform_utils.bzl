@@ -186,7 +186,7 @@ def _to_buck_platform(platform, compiler):
     fmt = read_string("fbcode", "buck_platform_format", "{platform}")
     return fmt.format(platform = platform, compiler = compiler)
 
-def _get_buck_platform_for_base_path(base_path):
+def _get_buck_platform_for_base_path(base_path, override_compiler = None):
     """
     Return the Buck platform to use for a deployable rule at the given base
     path, running some consistency checks as well.
@@ -194,7 +194,10 @@ def _get_buck_platform_for_base_path(base_path):
 
     return _to_buck_platform(
         _get_platform_for_base_path(base_path),
-        compiler.get_compiler_for_base_path(base_path),
+        compiler.get_compiler_for_base_path(
+            base_path,
+            override_compiler = override_compiler,
+        ),
     )
 
 def _get_buck_platform_for_current_buildfile():
