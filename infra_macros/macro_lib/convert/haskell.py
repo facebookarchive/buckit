@@ -596,7 +596,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags = []
         out_linker_flags = []
         out_link_style = self.get_link_style()
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -865,7 +865,7 @@ class HaskellConverter(base.Converter):
             attributes['visibility'] = visibility
         attributes['test'] = ':' + binary_name
         attributes['env'] = env
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
         attributes['labels'] = (
             label_utils.convert_labels(platform, 'haskell', 'custom-type-hs', *tags))
         rules.append(Rule('sh_test', attributes))

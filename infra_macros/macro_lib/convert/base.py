@@ -191,54 +191,6 @@ class Converter(object):
         self._context = context
         self._tp2_build_dat_cache = {}
 
-    def parse_platform_file(self, filename):
-        """
-        Parse the given platform file and return its platform.
-        """
-
-        # Parse platform file.
-        parsed_platforms = []
-        all_platforms = self.get_platforms(native=False)
-        with open(filename) as f:
-            for line in f:
-                line = line.strip()
-
-                # Ignore empty lines and lines starting with '#'
-                if not line or line.startswith('#'):
-                    continue
-
-                # Make sure this is a valid platform name.
-                if line not in all_platforms:
-                    raise Exception(
-                        'invalid platform "{}" specified in "{}"'
-                        .format(line, filename))
-
-                parsed_platforms.append(line)
-
-        # Make sure we found a platform name
-        if not parsed_platforms:
-            raise Exception('no platform information present in "%s"' %
-                            (filename,))
-
-        # We don't currently support cross-building, so filter out non-native
-        # platforms.
-        native_platforms = self.get_platforms(native=True)
-        platforms = [p for p in parsed_platforms if p in native_platforms]
-
-        # There should be only one active platform.
-        if len(platforms) > 1:
-            raise Exception(
-                'found multiple active platforms ({}) in "{}"'
-                .format(', '.join('"' + p + '"' for p in platforms), filename))
-
-        return None if not platforms else platforms[0]
-
-    def get_platform(self, base_path):
-        """
-        Get the fbcode platform to use for the given base path.
-        """
-        return platform_utils.get_platform_for_base_path(base_path)
-
     def get_platforms(self, native=True):
         """
         Return all fbcode platforms we can build against.

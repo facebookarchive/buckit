@@ -57,7 +57,7 @@ class OCamlConverter(base.Converter):
 
         extra_rules = []
         dependencies = []
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()
 
@@ -129,7 +129,7 @@ class OCamlConverter(base.Converter):
         if visibility is not None:
             attributes['visibility'] = visibility
 
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         ldflags = self.get_ldflags(
             base_path,

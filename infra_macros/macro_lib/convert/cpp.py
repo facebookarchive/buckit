@@ -939,7 +939,7 @@ class CppConverter(base.Converter):
         dlopen_info = self.get_dlopen_info(dlopen_enabled)
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
-            self.get_platform(
+            platform_utils.get_platform_for_base_path(
                 base_path
                 if self.get_fbconfig_rule_type() != 'cpp_node_extension'
                 # Node rules always use the platforms set in the root PLATFORM
@@ -1085,7 +1085,7 @@ class CppConverter(base.Converter):
                 attributes['link_whole'] = link_whole
             if global_symbols:
                 if platform_utils.get_platform_architecture(
-                        self.get_platform(base_path)) == 'aarch64':
+                        platform_utils.get_platform_for_base_path(base_path)) == 'aarch64':
                     # On aarch64 we use bfd linker which doesn't support
                     # --export-dynamic-symbol. We force link_whole instead.
                     attributes['link_whole'] = True
@@ -1272,7 +1272,7 @@ class CppConverter(base.Converter):
             if ld_threads and \
                not core_tools.is_core_tool(base_path, name) and \
                '-fuse-ld=lld' not in out_ldflags and \
-               platform_utils.get_platform_architecture(self.get_platform(base_path)) \
+               platform_utils.get_platform_architecture(platform_utils.get_platform_for_base_path(base_path)) \
                != 'aarch64' and \
                '-fuse-ld=bfd' not in out_ldflags:
                 out_ldflags.extend([

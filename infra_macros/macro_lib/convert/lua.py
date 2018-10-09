@@ -379,7 +379,7 @@ class LuaConverter(base.Converter):
         Buckify a binary rule.
         """
 
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -506,7 +506,7 @@ class LuaConverter(base.Converter):
         if visibility is not None:
             attributes['visibility'] = visibility
         attributes['test'] = ':' + binary_name
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
         attributes['labels'] = (
             label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags))
         rules.append(Rule('sh_test', attributes))

@@ -182,7 +182,7 @@ class RustConverter(base.Converter):
         attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         if self.is_binary():
-            platform = self.get_platform(base_path)
+            platform = platform_utils.get_platform_for_base_path(base_path)
             if not link_style:
                 link_style = self.get_link_style()
 
@@ -317,7 +317,7 @@ class RustConverter(base.Converter):
             binary=True,
             strip_mode=None,
             build_info=True,
-            platform=self.get_platform(base_path))
+            platform=platform_utils.get_platform_for_base_path(base_path))
 
         test_attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 

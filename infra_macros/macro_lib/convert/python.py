@@ -990,7 +990,7 @@ class PythonConverter(base.Converter):
         dependencies = []
         platform_deps = []
         out_preload_deps = []
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
         python_version = self.get_default_version(platform=platform,
                                                   constraint=py_version,
                                                   flavor=py_flavor)
@@ -1338,7 +1338,7 @@ class PythonConverter(base.Converter):
             versions = {py_version: name}
         else:
             versions = {}
-            platform = self.get_platform(base_path)
+            platform = platform_utils.get_platform_for_base_path(base_path)
             for py_ver in py_version:
                 python_version = self.get_default_version(platform, py_ver)
                 new_name = name + '-' + python_version.vstring

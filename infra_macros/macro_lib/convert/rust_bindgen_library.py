@@ -168,7 +168,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # TODO(T27678070): The Rust bindgen rule should inherit it's platform
         # from top-level rules, not look it up via a PLATFORM file.  We should
         # cleanup all references to this in the code below.
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         attrs['name'] = gen_name
         attrs['out'] = os.path.join(os.curdir, src)

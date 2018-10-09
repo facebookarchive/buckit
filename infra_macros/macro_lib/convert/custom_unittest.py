@@ -21,6 +21,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -48,7 +49,7 @@ class CustomUnittestConverter(base.Converter):
             visibility=None):
 
         extra_rules = []
-        platform = self.get_platform(base_path)
+        platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()
 
