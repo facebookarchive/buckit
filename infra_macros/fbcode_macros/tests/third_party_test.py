@@ -179,3 +179,28 @@ class ThirdPartyTest(tests.utils.TestCase):
         expected = {"architecture": platform.machine(), "tools": {}}
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected)
+
+    @tests.utils.with_project()
+    def test_is_tp2(self, root):
+        commands = [
+            'third_party.is_tp2("third-party-buck/foo")',
+            'third_party.is_tp2("third-party-buck-thing/foo")',
+            'third_party.is_tp2("foo/bar/baz")',
+        ]
+        expected = [True, False, False]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_is_tp2_src_dep(self, root):
+        includes = self.includes + [
+            ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+        ]
+        commands = [
+            'third_party.is_tp2_src_dep("third-party-buck/foo.py")',
+            'third_party.is_tp2_src_dep(target_utils.RootRuleTarget("foo/bar", "baz"))',
+            'third_party.is_tp2_src_dep(target_utils.ThirdPartyRuleTarget("foo", "bar"))',
+        ]
+        expected = [False, False, True]
+
+        self.assertSuccess(root.runUnitTests(includes, commands), *expected)

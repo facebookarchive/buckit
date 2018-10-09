@@ -815,7 +815,7 @@ class PythonConverter(base.Converter):
         # If we're TP project, install all sources via the `versioned_srcs`
         # parameter. `py_flavor` is ignored since flavored Pythons are only
         # intended for use by internal projects.
-        if self.is_tp2(base_path):
+        if third_party.is_tp2(base_path):
 
             # TP2 projects have multiple "pre-built" source dirs, so we install
             # them via the `versioned_srcs` parameter along with the versions
@@ -922,7 +922,7 @@ class PythonConverter(base.Converter):
             attributes['versioned_resources'] = out_versioned_resources
 
         dependencies = []
-        if self.is_tp2(base_path):
+        if third_party.is_tp2(base_path):
             dependencies.append(self.get_tp2_project_dep(base_path))
         for target in deps:
             dependencies.append(

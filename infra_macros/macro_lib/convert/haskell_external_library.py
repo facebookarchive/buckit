@@ -140,7 +140,7 @@ class HaskellExternalLibraryConverter(base.Converter):
         # If this is a tp2 project, verify that we just have a single inlined
         # build.  When this stops being true, we'll need to add versioned
         # subdir support for `prebuilt_haskell_library` rules (e.g. D4297963).
-        if self.is_tp2(base_path):
+        if third_party.is_tp2(base_path):
             project_builds = self.get_tp2_project_builds(base_path)
             if (len(project_builds) != 1 or
                     project_builds.values()[0].subdir != ''):

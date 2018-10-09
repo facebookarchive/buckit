@@ -27,6 +27,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
@@ -89,7 +90,7 @@ class CppLibraryExternalConverter(base.Converter):
         # TODO: Just take this as a parameter
         platform = (
             self.get_tp2_build_dat(base_path)['platform']
-            if self.is_tp2(base_path) else None)
+            if third_party.is_tp2(base_path) else None)
 
         # Normalize include dir param.
         # TODO: If type == str
@@ -103,7 +104,7 @@ class CppLibraryExternalConverter(base.Converter):
             assert dep.startswith(':')
             dependencies.append(
                 target_utils.ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]))
-        if implicit_project_deps and self.is_tp2(base_path):
+        if implicit_project_deps and third_party.is_tp2(base_path):
             project = base_path.split(os.sep)[3]
             dependencies.append(self.get_tp2_project_target(project))
         for dep in external_deps:
@@ -114,7 +115,7 @@ class CppLibraryExternalConverter(base.Converter):
 
         # If modules are enabled, automatically build a module from the module
         # map found in the first include dir, if one exists.
-        if modules.enabled() and self.is_tp2(base_path):
+        if modules.enabled() and third_party.is_tp2(base_path):
 
             # Add implicit toolchain module deps.
             dependencies.extend(

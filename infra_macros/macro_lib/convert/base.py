@@ -72,7 +72,6 @@ load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
@@ -179,13 +178,6 @@ def is_collection(obj):
 
     return False
 
-
-def is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
-    """
-    Return whether the given source path refers to a tp2 target.
-    """
-
-    return getattr(src, "repo", None) != None
 
 _THIN_LTO_FLAG = ["-flto=thin"]
 _LTO_FLAG = ["-flto"]
@@ -335,12 +327,12 @@ class Converter(object):
         # `srcs` parameter.
         out_srcs = []
         for src in srcs:
-            if not is_tp2_src_dep(src):
+            if not third_party.is_tp2_src_dep(src):
                 out_srcs.append(self.format_source(src))
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
-        tp2_dep_srcs = [src for src in srcs if is_tp2_src_dep(src)]
+        tp2_dep_srcs = [src for src in srcs if third_party.is_tp2_src_dep(src)]
         out_platform_srcs = (
             src_and_dep_helpers.format_platform_param(
                 partial.make(_format_source_list_partial, tp2_dep_srcs)))
@@ -359,13 +351,13 @@ class Converter(object):
         # `srcs` parameter.
         out_srcs = []
         for src in srcs_with_flags:
-            if not is_tp2_src_dep(src.src):
+            if not third_party.is_tp2_src_dep(src.src):
                 out_srcs.append(self.format_source_with_flags(src))
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
         tp2_dep_srcs = [src
-                        for src in srcs_with_flags if is_tp2_src_dep(src.src)]
+                        for src in srcs_with_flags if third_party.is_tp2_src_dep(src.src)]
         out_platform_srcs = (
             src_and_dep_helpers.format_platform_param(
                 partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs)))
@@ -387,13 +379,13 @@ class Converter(object):
         # `srcs` parameter.
         out_srcs = {}
         for name, src in srcs.items():
-            if not is_tp2_src_dep(src):
+            if not third_party.is_tp2_src_dep(src):
                 out_srcs[name] = self.format_source(src)
 
         # All third-party sources references are installed via `platform_srcs`
         # so that they're platform aware.
         tp2_srcs = {name: src
-                    for name, src in srcs.items() if is_tp2_src_dep(src)}
+                    for name, src in srcs.items() if third_party.is_tp2_src_dep(src)}
         out_platform_srcs = (
             src_and_dep_helpers.format_platform_param(
                 partial.make(_format_source_map_partial, tp2_srcs)))
@@ -1480,14 +1472,6 @@ class Converter(object):
         attrs['cmd'] = ' && '.join(cmds)
         return Rule('genrule', attrs)
 
-    def is_tp2(self, base_path):
-        """
-        Return whether the rule this `base_path` corresponds to come from
-        third-party.
-        """
-
-        return base_path.startswith('third-party-buck/')
-
     def get_tp2_build_dat(self, base_path):
         """
         Load the TP2 metadata for the TP2 project at the given base path.
@@ -1740,7 +1724,7 @@ class Converter(object):
         here).
         """
 
-        assert self.is_tp2(base_path)
+        assert third_party.is_tp2(base_path)
 
         # Setup flags.
         out_flags = []

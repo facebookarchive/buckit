@@ -216,6 +216,10 @@ def _replace_third_party_repo(string, platform):
         _get_build_target_prefix(platform),
     )
 
+def _get_third_party_config_for_platform(platform):
+    """ Returns the raw third party configuration for a specific platform """
+    return third_party_config["platforms"][platform]
+
 def _is_tp2_target(target):
     """
     Determines whether or not this is a special 'third-party' or 'third-party tools'
@@ -226,9 +230,18 @@ def _is_tp2_target(target):
     """
     return target.repo in _THIRD_PARTY_REPOS
 
-def _get_third_party_config_for_platform(platform):
-    """ Returns the raw third party configuration for a specific platform """
-    return third_party_config["platforms"][platform]
+def _is_tp2(base_path):
+    """
+    Return whether the rule this `base_path` corresponds to came from third-party.
+    """
+
+    return base_path.startswith("third-party-buck/")
+
+def _is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
+    """
+    Return whether the given source path refers to a tp2 target.
+    """
+    return getattr(src, "repo", None) in _THIRD_PARTY_REPOS
 
 third_party = struct(
     external_dep_target = _external_dep_target,
@@ -239,6 +252,8 @@ third_party = struct(
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,
     get_tools_path = _get_tools_path,
+    is_tp2 = _is_tp2,
+    is_tp2_src_dep = _is_tp2_src_dep,
     is_tp2_target = _is_tp2_target,
     replace_third_party_repo = _replace_third_party_repo,
     replace_third_party_repo_list = _replace_third_party_repo_list,

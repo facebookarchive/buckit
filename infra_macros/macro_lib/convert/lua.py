@@ -23,6 +23,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
@@ -333,7 +334,7 @@ class LuaConverter(base.Converter):
         # If this is a tp2 project, verify that we just have a single inlined
         # build.  When this stops being true, we'll need to add versioned src
         # support to lua rules (e.g. D4312362).
-        if self.is_tp2(base_path):
+        if third_party.is_tp2(base_path):
             project_builds = self.get_tp2_project_builds(base_path)
             if (len(project_builds) != 1 or
                     project_builds.values()[0].subdir != ''):
@@ -343,7 +344,7 @@ class LuaConverter(base.Converter):
                     .format(self.get_tp2_project_name(base_path)))
 
         dependencies = []
-        if self.is_tp2(base_path):
+        if third_party.is_tp2(base_path):
             dependencies.append(
                 self.get_tp2_project_target(
                     self.get_tp2_project_name(base_path)))
@@ -354,7 +355,7 @@ class LuaConverter(base.Converter):
         if dependencies:
             platform = (
                 self.get_tp2_platform(base_path)
-                if self.is_tp2(base_path) else None)
+                if third_party.is_tp2(base_path) else None)
             attributes['deps'], attributes['platform_deps'] = (
                 src_and_dep_helpers.format_all_deps(dependencies, platform=platform))
 
