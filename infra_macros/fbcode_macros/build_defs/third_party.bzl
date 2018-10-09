@@ -13,6 +13,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
+load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 
 _THIRD_PARTY_REPOS = rule_target_types.THIRD_PARTY_REPOS
 
@@ -225,10 +226,14 @@ def _is_tp2_target(target):
     """
     return target.repo in _THIRD_PARTY_REPOS
 
+def _get_third_party_config_for_platform(platform):
+    return third_party_config["platforms"][platform]
+
 third_party = struct(
     external_dep_target = _external_dep_target,
     get_build_path = _get_build_path,
     get_build_target_prefix = _get_build_target_prefix,
+    get_third_party_config_for_platform = _get_third_party_config_for_platform,
     get_tool_bin_target = _get_tool_bin_target,
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,

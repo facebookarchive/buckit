@@ -42,6 +42,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 
 INTERPS = [
@@ -373,7 +374,7 @@ class PythonConverter(base.Converter):
         specified, then return versions for all platforms.
         """
 
-        confs = [self.get_third_party_config(p)['build']['projects']['python']
+        confs = [third_party.get_third_party_config_for_platform(p)['build']['projects']['python']
                  for p in self.get_platforms()
                  if platform is None or p == platform]
         versions = set(version_str
@@ -390,7 +391,7 @@ class PythonConverter(base.Converter):
         `platform`.
         """
 
-        pyconf = self.get_third_party_config(platform)['build']['projects']['python']
+        pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
         for _, version_str in pyconf:
             version = PythonVersion(version_str)
             if version.satisfies(constraint) and version.supports(flavor):
@@ -401,7 +402,7 @@ class PythonConverter(base.Converter):
         """
         True if the Python `version` is configured for `platform`.
         """
-        pyconf = self.get_third_party_config(platform)['build']['projects']['python']
+        pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
         for _, version_str in pyconf:
             if version_str == version.vstring:
                 return True

@@ -7,6 +7,8 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import platform
+
 import tests.utils
 from tests.utils import dedent
 
@@ -170,3 +172,10 @@ class ThirdPartyTest(tests.utils.TestCase):
             "ld//ld:ld",
         ]
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_third_party_config_for_platform(self, root):
+        commands = ['third_party.get_third_party_config_for_platform("gcc5")']
+        expected = {"architecture": platform.machine(), "tools": {}}
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected)

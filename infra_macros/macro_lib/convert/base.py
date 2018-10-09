@@ -72,6 +72,7 @@ load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -283,9 +284,6 @@ class Converter(object):
     def get_third_party_tools_root(self, platform):
         return os.path.join(self.get_third_party_root(platform), 'tools')
 
-    def get_third_party_config(self, platform):
-        return self._context.third_party_config['platforms'][platform]
-
     def get_platforms_for_arch(self, arch):
         """
         Return all platforms building for the given arch.
@@ -377,7 +375,7 @@ class Converter(object):
         """
 
         # Load the auxiliary version list from the config.
-        config = self.get_third_party_config(platform)
+        config = third_party.get_third_party_config_for_platform(platform)
         aux_versions = config['build']['auxiliary_versions']
 
         processed_deps = []

@@ -21,6 +21,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 
 class HaskellExternalLibraryConverter(base.Converter):
@@ -122,7 +123,7 @@ class HaskellExternalLibraryConverter(base.Converter):
                 [os.path.join(lib_dir, 'lib{}.a'.format(l)) for l in libs])
             attributes['profiled_static_libs'] = (
                 [os.path.join(lib_dir, 'lib{}_p.a'.format(l)) for l in libs])
-        tp_config = self.get_third_party_config(platform)
+        tp_config = third_party.get_third_party_config_for_platform(platform)
         ghc_version = tp_config['tools']['projects']['ghc']
         shlibs = (
             [os.path.join(lib_dir, 'lib{}-ghc{}.so'.format(lib, ghc_version))
