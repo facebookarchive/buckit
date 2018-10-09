@@ -66,6 +66,7 @@ load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -187,7 +188,7 @@ _LTO_FLAG = ["-flto"]
 def _lto_linker_flags_partial(_, compiler):
     if compiler != "clang":
         return []
-    if config.lto_type() == "thin":
+    if config.get_lto_type() == "thin":
         return _THIN_LTO_FLAG
     return _LTO_FLAG
 
