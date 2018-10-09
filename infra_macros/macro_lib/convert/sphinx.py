@@ -160,6 +160,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 SPHINX_SECTION = 'sphinx'
 
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 class _SphinxConverter(base.Converter):
     """
@@ -199,7 +200,7 @@ class _SphinxConverter(base.Converter):
             return
 
         for target, outdir in genrule_srcs.items():
-            rule = fbcode_target.parse_target(target, base_path)
+            rule = target_utils.parse_target(target, default_base_path=base_path)
             if '/' in outdir:
                 root, rest = outdir.split('/', 1)
             else:

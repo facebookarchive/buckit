@@ -69,3 +69,43 @@ class TargetUtilsTest(tests.utils.TestCase):
             False,
             False,
         )
+
+    @tests.utils.with_project()
+    def test_parses_successfully(self, root):
+        commands = [
+            'target_utils.parse_target("@/third-party:llvm:bin/clang")',
+            'target_utils.parse_target("@/third-party-tools:llvm:bin/clang")',
+            'target_utils.parse_target(":foo-bar", default_base_path="parent/dir")',
+            'target_utils.parse_target(":foo-bar-default", default_base_path="parent/dir", default_repo="default")',
+            'target_utils.parse_target("some_cell//foo:bar")',
+            'target_utils.parse_target("//foo:bar-default-none")',
+            'target_utils.parse_target("//foo:bar-default", default_repo="default")',
+        ]
+
+        expected = [
+            self.rule_target("third-party", "llvm", "bin/clang"),
+            self.rule_target("third-party-tools", "llvm", "bin/clang"),
+            self.rule_target(None, "parent/dir", "foo-bar"),
+            self.rule_target("default", "parent/dir", "foo-bar-default"),
+            self.rule_target("some_cell", "foo", "bar"),
+            self.rule_target(None, "foo", "bar-default-none"),
+            self.rule_target("default", "foo", "bar-default"),
+        ]
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_parse_fails_when_given_bad_data(self, root):
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, ['target_utils.parse_target("invalid")']),
+            'rule name must contain "//"',
+        )
+        self.assertFailureWithMessage(
+            root.runUnitTests(
+                self.includes, ['target_utils.parse_target("@/third-party")']
+            ),
+            'rule name must contain at least one ":"',
+        )
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, ['target_utils.parse_target(":foo::")']),
+            'rule name has too many ":"',
+        )

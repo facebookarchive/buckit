@@ -51,10 +51,11 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-parse_target = import_macro_lib('target').parse_target
+parse_target = target_utils.parse_target
 
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -244,12 +245,17 @@ class ImageFeatureConverter(base.Converter):
     ):
 
         def normalize_target(target):
-            return self.get_target(*parse_target(
+            parsed = parse_target(
                 target,
                 # $(query_targets ...) omits the current repo/cell name
                 default_repo='',
                 default_base_path=base_path,
-            ))
+            )
+            return self.get_target(
+                repo=parsed.repo,
+                path=parsed.base_path,
+                name=parsed.name,
+            )
 
         # (1) Normalizes & annotates Buck target names so that they can be
         #     automatically enumerated from our JSON output.

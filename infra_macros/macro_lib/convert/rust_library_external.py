@@ -19,6 +19,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 class RustLibraryExternalConverter(base.Converter):
 
@@ -57,7 +58,7 @@ class RustLibraryExternalConverter(base.Converter):
 
         dependencies = []
         for dep in deps:
-            dependencies.append(target.parse_target(dep, base_path=base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             dependencies.append(self.normalize_external_dep(dep))
         if dependencies:

@@ -117,7 +117,7 @@ class CppLibraryExternalConverter(base.Converter):
 
             # Add implicit toolchain module deps.
             dependencies.extend(
-                map(target.parse_target, modules.get_implicit_module_deps()))
+                map(target_utils.parse_target, modules.get_implicit_module_deps()))
 
             # Set a default module name.
             module_name = (

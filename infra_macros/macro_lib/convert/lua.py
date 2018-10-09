@@ -283,7 +283,7 @@ class LuaConverter(base.Converter):
         # If a user-specified `cpp_main` is given, use that.  Otherwise,
         # fallback to the default.
         if cpp_main is not None:
-            out_deps.append(target.parse_target(cpp_main, base_path=base_path))
+            out_deps.append(target_utils.parse_target(cpp_main, default_base_path=base_path))
         else:
             out_deps.append(DEFAULT_CPP_MAIN)
 
@@ -347,7 +347,7 @@ class LuaConverter(base.Converter):
                 self.get_tp2_project_target(
                     self.get_tp2_project_name(base_path)))
         for dep in deps:
-            dependencies.append(target.parse_target(dep, base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             dependencies.append(self.normalize_external_dep(dep))
         if dependencies:
@@ -409,7 +409,7 @@ class LuaConverter(base.Converter):
         if cpp_main is None:
             cpp_main_dep = DEFAULT_CPP_MAIN
         else:
-            cpp_main_dep = target.parse_target(cpp_main, base_path)
+            cpp_main_dep = target_utils.parse_target(cpp_main, default_base_path=base_path)
 
         # Default main_module = name
         if (main_module is None and
@@ -462,7 +462,7 @@ class LuaConverter(base.Converter):
 
         # Add in `dep` and `external_deps` parameters to the dependency list.
         for dep in deps:
-            dependencies.append(target.parse_target(dep, base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             dependencies.append(self.normalize_external_dep(dep))
 

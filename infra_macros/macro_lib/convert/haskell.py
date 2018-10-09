@@ -708,7 +708,7 @@ class HaskellConverter(base.Converter):
         # Collect all deps specified by the user.
         user_deps = []
         for dep in deps:
-            user_deps.append(target.parse_target(dep, base_path=base_path))
+            user_deps.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             user_deps.append(self.normalize_external_dep(dep))
         user_deps.extend(self.get_deps_for_packages(packages))

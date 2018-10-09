@@ -19,6 +19,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 class OCamlConverter(base.Converter):
@@ -102,7 +103,7 @@ class OCamlConverter(base.Converter):
 
         # Translate dependencies.
         for dep in deps:
-            dependencies.append(target.parse_target(dep, base_path=base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
 
         # Translate external dependencies.
         for dep in external_deps:

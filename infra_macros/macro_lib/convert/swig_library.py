@@ -535,9 +535,9 @@ class SwigLibraryConverter(base.Converter):
 
         # Parse incoming options.
         languages = self.get_languages(languages)
-        cpp_deps = [target.parse_target(d, base_path) for d in cpp_deps]
+        cpp_deps = [target_utils.parse_target(d, default_base_path=base_path) for d in cpp_deps]
         ext_deps = (
-            [target.parse_target(d, base_path) for d in ext_deps] +
+            [target_utils.parse_target(d, default_base_path=base_path) for d in ext_deps] +
             [self.normalize_external_dep(d) for d in ext_external_deps])
 
         if module is None:

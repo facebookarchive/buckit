@@ -1494,7 +1494,7 @@ class CppConverter(base.Converter):
                     gtest_deps.append(
                         self._context.config.get_gtest_main_dependency())
                 dependencies.extend(
-                    [target.parse_target(dep) for dep in gtest_deps])
+                    [target_utils.parse_target(dep) for dep in gtest_deps])
             else:
                 attributes['framework'] = type
 
@@ -1532,7 +1532,7 @@ class CppConverter(base.Converter):
                     for os, dep in os_deps
                     if os == self._context.config.get_current_os()
                 ]):
-            dependencies.append(target.parse_target(dep, base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
 
         # If we include any lex sources, implicitly add a dep on the lex lib.
         if lex_srcs:
@@ -1598,7 +1598,7 @@ class CppConverter(base.Converter):
         # Add implicit toolchain module deps.
         if modules.enabled():
             dependencies.extend(
-                map(target.parse_target, modules.get_implicit_module_deps()))
+                map(target_utils.parse_target, modules.get_implicit_module_deps()))
 
         # Modularize libraries.
         if modules.enabled() and self.is_library() and out_module:

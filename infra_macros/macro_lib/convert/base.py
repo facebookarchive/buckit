@@ -61,7 +61,6 @@ def import_macro_lib(path):
 
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
-fbcode_target = import_macro_lib('fbcode_target')
 build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
@@ -465,7 +464,7 @@ class Converter(object):
         Convert the given build target into a buck build target.
         """
 
-        parsed = fbcode_target.parse_target(target, base_path=base_path)
+        parsed = target_utils.parse_target(target, default_base_path=base_path)
         return self.get_dep_target(parsed, source=target, platform=platform)
 
     def parse_source(self, base_path, src):  # type: (str, str) -> Union[str, RuleTarget]
@@ -474,7 +473,7 @@ class Converter(object):
         """
 
         if src[0] in ':@' or src.startswith('//'):
-            return fbcode_target.parse_target(src, base_path=base_path)
+            return target_utils.parse_target(src, default_base_path=base_path)
 
         return src
 
@@ -607,7 +606,7 @@ class Converter(object):
         # typical Buck absolute target prefix, so generate a proper error
         # message.
         if src[0] in ':@' or src.startswith('//'):
-            target = fbcode_target.parse_target(src, base_path=base_path)
+            target = target_utils.parse_target(src, default_base_path=base_path)
             assert target.repo is None, src
             src = self.get_dep_target(target, source=src)
 
@@ -1420,7 +1419,7 @@ class Converter(object):
 
     def get_allocator_deps(self, allocator):
         return [
-            fbcode_target.parse_target(rdep)
+            target_utils.parse_target(rdep)
             for rdep in self._context.config.get_allocators()[allocator]
         ]
 

@@ -223,7 +223,7 @@ class RustConverter(base.Converter):
 
         # Translate dependencies.
         for dep in deps or []:
-            dependencies.append(target.parse_target(dep, base_path=base_path))
+            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
 
         # Translate external dependencies.
         for dep in external_deps or []:
@@ -353,7 +353,7 @@ class RustConverter(base.Converter):
         deps = []
         deps.extend(dependencies)
         for dep in test_deps or []:
-            deps.append(target.parse_target(dep, base_path=base_path))
+            deps.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in test_external_deps or []:
             deps.append(self.normalize_external_dep(dep))
 
