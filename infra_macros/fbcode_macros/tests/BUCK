@@ -36,6 +36,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
     "fbcode_macros//build_defs:modules.bzl",
     "fbcode_macros//build_defs:native_rules.bzl",
+    "fbcode_macros//build_defs:ocaml_external_library.bzl",
     "fbcode_macros//build_defs:paths_config.bzl",
     "fbcode_macros//build_defs:platform_utils.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
@@ -216,6 +217,15 @@ skylark_integration_test(
     name = "native_rules_test",
     srcs = ["native_rules_test.py"],
     deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "ocaml_external_library_test",
+    srcs = ["ocaml_external_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(

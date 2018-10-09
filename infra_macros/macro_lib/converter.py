@@ -62,6 +62,7 @@ load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_e
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
+load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
 load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
@@ -91,7 +92,6 @@ image_feature = import_macro_lib('convert/container_image/image_feature')
 image_layer = import_macro_lib('convert/container_image/image_layer')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
-ocaml_library_external = import_macro_lib('convert/ocaml_library_external')
 python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
@@ -181,7 +181,6 @@ def convert(context, base_path, rule):
         custom_unittest.CustomUnittestConverter(context),
         thrift_library.ThriftLibraryConverter(context),
         swig_library.SwigLibraryConverter(context),
-        ocaml_library_external.OCamlLibraryExternalConverter(context),
         ocaml.OCamlConverter(context, 'ocaml_library'),
         ocaml.OCamlConverter(context, 'ocaml_binary'),
         rust.RustConverter(context, 'rust_library'),
@@ -227,6 +226,7 @@ def convert(context, base_path, rule):
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
+        'ocaml_external_library': ocaml_external_library,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'rust_external_library': rust_external_library,  # noqa F821
         'scala_library': scala_library,  # noqa F821
