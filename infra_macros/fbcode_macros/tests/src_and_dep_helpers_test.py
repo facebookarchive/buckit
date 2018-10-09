@@ -18,6 +18,23 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
     ]
 
     @tests.utils.with_project()
+    def test_get_source_name_works(self, root):
+        self.assertSuccess(
+            root.runUnitTests(
+                self.includes,
+                [
+                    'src_and_dep_helpers.get_source_name("//foo/bar:baz=path/to/baz1.cpp")',
+                    'src_and_dep_helpers.get_source_name(":baz=path/to/baz2.cpp")',
+                    'src_and_dep_helpers.get_source_name("path/to/baz3.cpp")',
+                ],
+            ),
+            "path/to/baz1.cpp",
+            "path/to/baz2.cpp",
+            "path/to/baz3.cpp",
+        )
+
+
+    @tests.utils.with_project()
     def test_extract_source_name_works(self, root):
         self.assertSuccess(
             root.runUnitTests(
@@ -25,12 +42,10 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
                 [
                     'src_and_dep_helpers.extract_source_name("//foo/bar:baz=path/to/baz1.cpp")',
                     'src_and_dep_helpers.extract_source_name(":baz=path/to/baz2.cpp")',
-                    'src_and_dep_helpers.extract_source_name("path/to/baz3.cpp")',
                 ],
             ),
             "path/to/baz1.cpp",
             "path/to/baz2.cpp",
-            "path/to/baz3.cpp",
         )
 
     @tests.utils.with_project()

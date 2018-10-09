@@ -6,26 +6,27 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
-def _extract_name_from_custom_rule(src):
+def _extract_source_name(src):
+    """ Takes a string of the format foo=bar, and returns bar """
     parts = src.split("=")
     if len(parts) != 2:
         fail("generated source target {} is missing `=<name>` suffix".format(src))
     return parts[1]
 
-def _extract_source_name(src):
+def _get_source_name(src):
     """
     Gets the filename for a `src`.
 
     Example:
-        extract_source_name("//foo:bar=path/to/baz.cpp") returns "path/to/baz.cpp",
-        get_soruce_name("foo/bar/baz.cpp") returns "foo/bar/baz.cpp"
+        get_source_name("//foo:bar=path/to/baz.cpp") returns "path/to/baz.cpp",
+        get_source_name("foo/bar/baz.cpp") returns "foo/bar/baz.cpp"
 
     Args:
         src: Either a filename, or, if a target, the bit after `=` from a
              custom rule.
     """
     if src[0] in "/:":
-        return _extract_name_from_custom_rule(src)
+        return _extract_source_name(src)
     else:
         return src
 
@@ -74,7 +75,7 @@ def _convert_source_map(base_path, srcs):
     converted = {}
     for k, v in srcs.items():
         # TODO(pjameson, agallagher): We have no idea why this is here...
-        name = _extract_source_name(k)
+        name = _get_source_name(k)
         if name in converted:
             fail('duplicate name "{}" for "{}" and "{}" in source map'.format(name, v, converted[name]))
         converted[name] = _convert_source(base_path, v)
@@ -302,6 +303,7 @@ src_and_dep_helpers = struct(
     format_deps = _format_deps,
     format_platform_deps = _format_platform_deps,
     format_platform_param = _format_platform_param,
+    get_source_name = _get_source_name,
     normalize_external_dep = _normalize_external_dep,
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,
