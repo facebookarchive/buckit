@@ -897,15 +897,6 @@ class CppConverter(base.Converter):
         if platform.startswith('platform007'):
             cuda = False
 
-            # Any target that depends on this can't be built, just drop it.
-            super_banned_cuda_targets = {
-                "//deeplearning/projects/faiss:gpu_faiss",
-            }
-            if any(dep in super_banned_cuda_targets for dep in deps):
-                print('Warning: no CUDA on platform007: ignoring target {}:{}'
-                      .format(base_path, name))
-                return []
-
             def filter_flags(flags):
                 banned_flags = [
                     "-DUSE_CUDNN=1",
