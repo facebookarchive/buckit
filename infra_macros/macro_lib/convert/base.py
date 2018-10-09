@@ -415,13 +415,13 @@ class Converter(object):
         """
 
         parsed, version = (
-            target.parse_external_dep(
+            target_utils.parse_external_dep(
                 raw_target,
                 lang_suffix=lang_suffix))
 
         # OSS support: Make repo default to the base path.
-        if parsed.repo is None:
-            parsed = parsed._replace(repo=parsed.base_path)
+        #if parsed.repo is None:
+        #    parsed = parsed._replace(repo=parsed.base_path)
 
         return parsed if not parse_version else (parsed, version)
 
@@ -444,7 +444,11 @@ class Converter(object):
             # use the alternate project name it's installed as.
             proj = os.path.basename(dep.base_path)
             if vers is not None and vers in aux_versions.get(proj, []):
-                dep = dep._replace(base_path=dep.base_path + '-' + vers)
+                dep = target_utils.RuleTarget(
+                    repo=dep.repo,
+                    base_path=dep.base_path + "-" + vers,
+                    name=dep.name,
+                )
 
             processed_deps.append(dep)
 

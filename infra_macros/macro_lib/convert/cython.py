@@ -45,10 +45,10 @@ base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
-target = import_macro_lib('target')
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 def split_matching_extensions(srcs, exts):
@@ -263,7 +263,7 @@ class Converter(base.Converter):
         back into tuple form as expected by the convert method of cpp.py
         """
         for dep in external_deps:
-            parsed, version = target.parse_external_dep(dep, lang_suffix='-py')
+            parsed, version = target_utils.parse_external_dep(dep, lang_suffix='-py')
             if parsed.repo is None:
                 yield (parsed.base_path, version, parsed.name)
             else:

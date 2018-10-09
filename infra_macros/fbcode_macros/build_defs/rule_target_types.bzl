@@ -80,7 +80,9 @@ def _is_rule_target(target):
 rule_target_types = struct(
     RootRuleTarget = _RootRuleTarget,
     RuleTarget = _RuleTarget,
+    THIRD_PARTY_REPO = _THIRD_PARTY_REPO,
     THIRD_PARTY_REPOS = _THIRD_PARTY_REPOS,
+    THIRD_PARTY_TOOLS_REPO = _THIRD_PARTY_TOOLS_REPO,
     ThirdPartyRuleTarget = _ThirdPartyRuleTarget,
     ThirdPartyToolRuleTarget = _ThirdPartyToolRuleTarget,
     is_rule_target = _is_rule_target,

@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
 
 # Re-export from rule_target_types so that the common case usage is to use target_utils,
 # but having a separate 'types' file allows us to break a few cyclic dependencies down
@@ -53,11 +54,69 @@ def _parse_target(target, default_repo = None, default_base_path = None):
         fail('rule name has too many ":" chracters (more than 3): "{}"'.format(target))
     return rule_target_types.RuleTarget(repo = repo, base_path = base_path, name = name)
 
+def _parse_external_dep(raw_target, lang_suffix = ""):
+    """
+    Take one of the various external dependency formats, and return a target
+
+    Args:
+        raw_target: This is one of several formats (kept mostly for legacy
+                    reasons)
+                        - "<project>": Use a rule named <project> inside of
+                            <project>. e.g. "curl"
+                        - (<project>,): Works the same as the raw string
+                        - (<project>, <version>)
+                            Gets a specific target and version. This is mostly
+                            legacy behavior, as explicit version support hacks
+                            were factored outsome time ago
+                        - (<project>, <version>, <rule>)
+                            This is the normal style of external deps (where
+                            <version> is None). This will select a specific
+                            rule inside of the project's resolved build file.
+                        - (<repo>, <project>, <version>, <rule>)
+                            This format should only really be used for accessing
+                            third-party-tools rather than third-party
+        lang_suffix: If provided, this will be appended for rules that do not
+                     explicitly specify a rule (i.e. the first three types of
+                     arguments mentioned above)
+
+    Returns:
+        Tuple of (ThirdPartyRuleTarget, version_string or None)
+    """
+
+    # We allow both tuples, and strings for legacy reasons
+    if is_tuple(raw_target):
+        target = raw_target
+    elif is_unicode(raw_target) or is_string(raw_target):
+        target = (raw_target,)
+    else:
+        fail("external dependency should be a tuple or string, " +
+             "not {}".format(raw_target))
+
+    repo = rule_target_types.THIRD_PARTY_REPO
+    if len(target) in (1, 2):
+        project = target[0]
+        rule = target[0] + lang_suffix
+        version = target[1] if len(target) == 2 else None
+    elif len(target) == 3:
+        project = target[0]
+        version = target[1]
+        rule = target[2]
+    elif len(target) == 4:
+        repo = target[0]
+        project = target[1]
+        version = target[2]
+        rule = target[3]
+    else:
+        fail(("illegal external dependency {}: must have 1, 2, or 3 elements").format(raw_target))
+
+    return (rule_target_types.RuleTarget(repo, project, rule), version)
+
 target_utils = struct(
     RootRuleTarget = rule_target_types.RootRuleTarget,
     RuleTarget = rule_target_types.RuleTarget,
     ThirdPartyRuleTarget = rule_target_types.ThirdPartyRuleTarget,
     ThirdPartyToolRuleTarget = rule_target_types.ThirdPartyToolRuleTarget,
     is_rule_target = rule_target_types.is_rule_target,
+    parse_external_dep = _parse_external_dep,
     parse_target = _parse_target,
 )

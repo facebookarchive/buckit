@@ -109,3 +109,51 @@ class TargetUtilsTest(tests.utils.TestCase):
             root.runUnitTests(self.includes, ['target_utils.parse_target(":foo::")']),
             'rule name has too many ":"',
         )
+
+    @tests.utils.with_project()
+    def test_external_dep_with_version(self, root):
+        commands = [
+            'target_utils.parse_external_dep("foo")',
+            'target_utils.parse_external_dep("foo", "-py")',
+            'target_utils.parse_external_dep(("foo",))',
+            'target_utils.parse_external_dep(("foo",), "-py")',
+            'target_utils.parse_external_dep(("foo", "1.0"))',
+            'target_utils.parse_external_dep(("foo", "1.0"), "-py")',
+            'target_utils.parse_external_dep(("foo", "1.0", "bar"))',
+            'target_utils.parse_external_dep(("foo", None, "bar"))',
+            'target_utils.parse_external_dep(("third-party-tools", "foo", "1.0", "bar"))',
+            'target_utils.parse_external_dep(("third-party-tools", "foo", None, "bar"))',
+        ]
+        expected = [
+            (self.rule_target("third-party", "foo", "foo"), None),
+            (self.rule_target("third-party", "foo", "foo-py"), None),
+            (self.rule_target("third-party", "foo", "foo"), None),
+            (self.rule_target("third-party", "foo", "foo-py"), None),
+            (self.rule_target("third-party", "foo", "foo"), "1.0"),
+            (self.rule_target("third-party", "foo", "foo-py"), "1.0"),
+            (self.rule_target("third-party", "foo", "bar"), "1.0"),
+            (self.rule_target("third-party", "foo", "bar"), None),
+            (self.rule_target("third-party-tools", "foo", "bar"), "1.0"),
+            (self.rule_target("third-party-tools", "foo", "bar"), None),
+        ]
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_parse_external_dep_fails_on_wrong_tuple_size(self, root):
+        commands = [
+            "target_utils.parse_external_dep("
+            + '("foo", "bar", "baz", "other", "other foobar"))'
+        ]
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, commands),
+            "illegal external dependency ",
+            "must have 1, 2, or 3 elements",
+        )
+
+    @tests.utils.with_project()
+    def test_parse_external_dep_fails_on_bad_raw_target(self, root):
+        commands = ['target_utils.parse_external_dep({"not_a_string": "or_tuple"})']
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, commands),
+            "external dependency should be a tuple or string",
+        )
