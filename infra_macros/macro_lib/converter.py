@@ -63,6 +63,7 @@ load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
+load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
 load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
 load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 
@@ -94,7 +95,6 @@ ocaml_library_external = import_macro_lib('convert/ocaml_library_external')
 python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
-rust_library_external = import_macro_lib('convert/rust_library_external')
 sphinx = import_macro_lib('convert/sphinx')
 swig_library = import_macro_lib('convert/swig_library')
 thrift_library = import_macro_lib('convert/thrift_library')
@@ -188,7 +188,6 @@ def convert(context, base_path, rule):
         rust.RustConverter(context, 'rust_binary'),
         rust.RustConverter(context, 'rust_unittest'),
         rust_bindgen_library.RustBindgenLibraryConverter(context),
-        rust_library_external.RustLibraryExternalConverter(context),
         sphinx.SphinxWikiConverter(context),
         sphinx.SphinxManpageConverter(context),
         wheel.PyWheel(context),
@@ -229,6 +228,7 @@ def convert(context, base_path, rule):
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
+        'rust_external_library': rust_external_library,  # noqa F821
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
         'cpp_library_external': cpp_library_external,

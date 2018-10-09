@@ -41,6 +41,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:python_typing.bzl",
     "fbcode_macros//build_defs:prebuilt_jar.bzl",
+    "fbcode_macros//build_defs:rust_external_library.bzl",
     "fbcode_macros//build_defs:sanitizers.bzl",
     "fbcode_macros//build_defs:scala_library.bzl",
     "fbcode_macros//build_defs:scala_test.bzl",
@@ -227,6 +228,15 @@ skylark_integration_test(
     name = "python_typing_test",
     srcs = ["python_typing_test.py"],
     deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "rust_external_library_test",
+    srcs = ["rust_external_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(
