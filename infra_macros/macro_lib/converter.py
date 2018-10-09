@@ -52,6 +52,8 @@ load(  # noqa F821
 load("@fbcode_macros//build_defs:antlr3_srcs.bzl", "antlr3_srcs")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
+load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
+load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
@@ -71,7 +73,6 @@ with allow_unsafe_import():  # noqa: F821
 base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
-cpp_library_external = import_macro_lib('convert/cpp_library_external')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
 )
@@ -140,13 +141,7 @@ def convert(context, base_path, rule):
     converters = [
         discard.DiscardingConverter(context, 'cpp_binary_external'),
         discard.DiscardingConverter(context, 'haskell_genscript'),
-        cpp_library_external.CppLibraryExternalConverter(
-            context,
-            'cpp_library_external'),
         cpp_library_external_custom.CppLibraryExternalCustomConverter(context),
-        cpp_library_external.CppLibraryExternalConverter(
-            context,
-            'd_library_external'),
         cpp.CppConverter(context, 'cpp_library'),
         cpp.CppConverter(context, 'cpp_binary'),
         cpp.CppConverter(context, 'cpp_unittest'),
@@ -236,6 +231,8 @@ def convert(context, base_path, rule):
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
+        'cpp_library_external': cpp_library_external,
+        'd_library_external': d_library_external,
     }
 
     for converter in converters:

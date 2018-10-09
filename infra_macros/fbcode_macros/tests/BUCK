@@ -17,6 +17,8 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:core_tools.bzl",
     "fbcode_macros//build_defs:cpp_flags.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
+    "fbcode_macros//build_defs:cpp_library_external.bzl",
+    "fbcode_macros//build_defs:d_library_external.bzl",
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
@@ -148,6 +150,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "core_tools_test",
     srcs = ["core_tools_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "cpp_library_external_test",
+    srcs = ["cpp_library_external_test.py"],
     deps = [":utils"],
 )
 
