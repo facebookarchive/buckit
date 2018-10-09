@@ -190,7 +190,10 @@ skylark_integration_test(
 skylark_integration_test(
     name = "modules_test",
     srcs = ["modules_test.py"],
-    deps = [":utils"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(

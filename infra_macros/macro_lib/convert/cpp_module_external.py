@@ -61,10 +61,12 @@ class CppModuleExternalConverter(base.Converter):
         for dep in external_deps:
             dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
+        # TODO: This should not be reading from json, should just be provided
+        platform = self.get_tp2_build_dat(base_path)['platform']
+
         # Generate the module file.
         module_rule_name = name + '-module'
-        self._gen_tp2_cpp_module(
-            base_path,
+        modules.gen_tp2_cpp_module(
             name=module_rule_name,
             module_name=module_name,
             header_dir=include_dir,
@@ -72,6 +74,7 @@ class CppModuleExternalConverter(base.Converter):
             flags=propagated_pp_flags,
             dependencies=dependencies,
             visibility=["//{}:{}".format(base_path, name)],
+            platform=platform,
         )
 
         # Wrap with a `cxx_library`, propagating the module map file via the
@@ -89,7 +92,7 @@ class CppModuleExternalConverter(base.Converter):
         attrs['exported_deps'] = (
             src_and_dep_helpers.format_deps(
                 dependencies,
-                platform=self.get_tp2_build_dat(base_path)['platform']))
+                platform=platform))
         if visibility is not None:
             attrs["visibility"] = visibility
         # Setup platform default for compilation DB, and direct building.

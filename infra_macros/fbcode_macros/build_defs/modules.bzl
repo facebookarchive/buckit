@@ -1,6 +1,9 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
     "read_boolean",
@@ -139,6 +142,7 @@ def _gen_module(
     Args:
       name: The name of rule that builds the module.  This will also serve as
             a name prefix for any additional rules that need to be created.
+      module_name: The name of the module at the C++ level
       headers: A dictionary of headers to be compiled into a module, mapping
                their full include path to their sources.  Must contain a
                `module.modulemap` at the top-level.  Cannot be specified if
@@ -202,7 +206,7 @@ def _gen_module(
                 # Add toolchain flags
                 "args+=($(cxxppflags :{}))".format(helper_name),
                 "args+=($(cxxflags))",
-                "args+=({})".format(" ".join(map(shell.quote, _get_toolchain_flags()))),
+                "args+=({})".format(" ".join([shell.quote(f) for f in _get_toolchain_flags()])),
 
                 # Enable building *.pcm module files.
                 'args+=("-Xclang" "-emit-module")',
@@ -235,9 +239,80 @@ def _gen_module(
         visibility = visibility,
     )
 
+def _gen_tp2_cpp_module(
+        name,
+        module_name,
+        platform,
+        header_dir = None,
+        headers = None,
+        flags = (),
+        dependencies = (),
+        local_submodule_visibility = False,
+        visibility = None):
+    """
+    A thin wrapper around `modules.gen_module()`, which performs some deps
+    formatting and adds fbcode build flags (e.g. from BUILD_MODE)
+
+    Args:
+      name: The name of rule that builds the module.  This will also serve as
+            a name prefix for any additional rules that need to be created.
+      module_name: The name of the module at the C++ level
+      headers: A dictionary of headers to be compiled into a module, mapping
+               their full include path to their sources.  Must contain a
+               `module.modulemap` at the top-level.  Cannot be specified if
+               `header_dir` is used.
+      header_dir: A directory containing headers to be compiled into a module.
+                  Must contain a `module.modulemap` at the top-level.  Cannot
+                  be specified if `headers` is used.
+      flags: Additional flags to pass to the compiler when building the module.
+      deps: C/C++ deps providing headers used by the headers in this module.
+      local_submodule_visibility: Whether or not modules-local-submodule-visibility
+                                  should be added to the cxxpp flags used by
+                                  gen_module()
+    """
+
+    base_path = native.package_name()
+    if not third_party.is_tp2(base_path):
+        fail("gen_tp2_cpp_module can only be called within a tp2 package, not " + base_path)
+
+    # Setup flags.
+    out_flags = []
+    if local_submodule_visibility:
+        out_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
+    out_flags.extend(flags)
+    out_flags.extend(cpp_flags.get_extra_cxxppflags())
+
+    # Form platform-specific flags.
+    out_platform_flags = []
+    out_platform_flags.extend(
+        cpp_flags.get_compiler_flags(base_path)["cxx_cpp_output"],
+    )
+
+    # Convert deps to lower-level Buck deps/platform-deps pair.
+    out_deps, out_platform_deps = (
+        src_and_dep_helpers.format_all_deps(
+            dependencies,
+            platform = platform,
+        )
+    )
+
+    # Generate the module file.
+    _gen_module(
+        name = name,
+        headers = headers,
+        flags = out_flags,
+        header_dir = header_dir,
+        module_name = module_name,
+        platform_deps = out_platform_deps,
+        platform_flags = out_platform_flags,
+        visibility = visibility,
+        deps = out_deps,
+    )
+
 modules = struct(
     enabled = _enabled,
     gen_module = _gen_module,
+    gen_tp2_cpp_module = _gen_tp2_cpp_module,
     get_implicit_module_deps = _get_implicit_module_deps,
     get_module_map = _get_module_map,
     get_module_name = _get_module_name,

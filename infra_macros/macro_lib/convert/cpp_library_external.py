@@ -138,8 +138,7 @@ class CppLibraryExternalConverter(base.Converter):
                     return
 
                 # Create the module compilation rule.
-                self._gen_tp2_cpp_module(
-                    base_path,
+                modules.gen_tp2_cpp_module(
                     name=module_rule_name,
                     module_name=module_name,
                     header_dir=inc_dirs[0],
@@ -147,6 +146,7 @@ class CppLibraryExternalConverter(base.Converter):
                     local_submodule_visibility=modules_local_submodule_visibility,
                     flags=propagated_pp_flags,
                     visibility=['//{}:{}'.format(base_path, name)],
+                    platform=platform,
                 )
 
                 # Add module location to exported C++ flags.
