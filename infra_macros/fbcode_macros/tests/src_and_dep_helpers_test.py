@@ -83,3 +83,39 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             root.runUnitTests(self.includes, commands),
             'duplicate name "foo.cpp" for "bar.cpp" and "foo.cpp" in source map',
         )
+
+    @tests.utils.with_project()
+    def test_parse_source_methods(self, root):
+        commands = [
+            'src_and_dep_helpers.parse_source("foo/bar", "@/third-party:foo:baz")',
+            'src_and_dep_helpers.parse_source("foo/bar", ":baz")',
+            'src_and_dep_helpers.parse_source("foo/bar", "//other:baz")',
+            'src_and_dep_helpers.parse_source("foo/bar", "src.cpp")',
+            'src_and_dep_helpers.parse_source_list("foo/bar", [":baz", "//other:baz", "src.cpp"])',
+            (
+                'src_and_dep_helpers.parse_source_map("foo/bar", {'
+                '"baz1.cpp": ":baz1.cpp",'
+                '"baz2.cpp": "//other:baz2.cpp",'
+                '"baz3.cpp": "baz3.cpp",'
+                "})"
+            ),
+        ]
+
+        expected = [
+            self.rule_target("third-party", "foo", "baz"),
+            self.rule_target(None, "foo/bar", "baz"),
+            self.rule_target(None, "other", "baz"),
+            "src.cpp",
+            [
+                self.rule_target(None, "foo/bar", "baz"),
+                self.rule_target(None, "other", "baz"),
+                "src.cpp",
+            ],
+            {
+                "baz1.cpp": self.rule_target(None, "foo/bar", "baz1.cpp"),
+                "baz2.cpp": self.rule_target(None, "other", "baz2.cpp"),
+                "baz3.cpp": "baz3.cpp",
+            },
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

@@ -414,16 +414,6 @@ class Converter(object):
         parsed = target_utils.parse_target(target, default_base_path=base_path)
         return target_utils.target_to_label(parsed, platform=platform)
 
-    def parse_source(self, base_path, src):  # type: (str, str) -> Union[str, RuleTarget]
-        """
-        Parse a source into either a relative path or a build target reference.
-        """
-
-        if src[0] in ':@' or src.startswith('//'):
-            return target_utils.parse_target(src, default_base_path=base_path)
-
-        return src
-
     def format_source(self, src, platform=None):  # type: (Union[str, RuleTarget], str) -> str
         """
         Format the given source path.
@@ -442,13 +432,6 @@ class Converter(object):
 
         src = self.format_source(src_with_flags.src, platform=platform)
         return (src, src_with_flags.flags) if src_with_flags.flags else src
-
-    def parse_source_list(self, base_path, raw_srcs):  # type: (str, List[str]) -> List[Union[str, RuleTarget]]
-        """
-        Parse the list of raw sources.
-        """
-
-        return [self.parse_source(base_path, s) for s in raw_srcs]
 
     def format_source_list(self, srcs):  # type: List[Union[str, RuleTarget]] -> PlatformParam[List[str], List[Union[str, List[str]]]]
         """
@@ -496,14 +479,6 @@ class Converter(object):
                      for src in tp2_dep_srcs]))
 
         return PlatformParam(out_srcs, out_platform_srcs)
-
-    def parse_source_map(self, base_path, raw_srcs):  # type: (str, Dict[str, str]) -> Dict[str, Union[str, RuleTarget]]
-        """
-        Parse the given map of source names to paths.
-        """
-
-        return {name: self.parse_source(base_path, src)
-                for name, src in raw_srcs.items()}
 
     def format_source_map(self, srcs):  # type: Dict[str, Union[str, RuleTarget]] -> PlatformParam[Dict[str, str], List[Tuple[str, Dict[str, str]]]]
         """

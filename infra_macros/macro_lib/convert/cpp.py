@@ -1404,7 +1404,7 @@ class CppConverter(base.Converter):
         # Convert the `srcs` parameter.  If `known_warnings` is set, add in
         # flags to mute errors.
         for src in srcs:
-            src = self.parse_source(base_path, src)
+            src = src_and_dep_helpers.parse_source(base_path, src)
             flags = None
             if (known_warnings is True or
                     (known_warnings and

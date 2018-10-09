@@ -43,6 +43,7 @@ load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 INTERPS = [
@@ -300,7 +301,7 @@ class PythonConverter(base.Converter):
         # Parse sources in dict form.
         if isinstance(srcs, dict):
             out_srcs = (
-                self.parse_source_map(
+                src_and_dep_helpers.parse_source_map(
                     base_path,
                     {v: k for k, v in srcs.items()}))
 
@@ -310,7 +311,7 @@ class PythonConverter(base.Converter):
             out_srcs = {}
 
             # Format sources into a dict of logical name of value.
-            for src in self.parse_source_list(base_path, srcs):
+            for src in src_and_dep_helpers.parse_source_list(base_path, srcs):
 
                 # Path names are the same as path values.
                 if not target_utils.is_rule_target(src):
