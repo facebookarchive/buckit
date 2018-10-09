@@ -643,7 +643,7 @@ class HaskellConverter(base.Converter):
             rules.extend(r)
 
         if ghci_bin_dep is not None:
-            bin_dep_target = self.convert_build_target(base_path, ghci_bin_dep)
+            bin_dep_target = src_and_dep_helpers.convert_build_target(base_path, ghci_bin_dep)
             attributes['ghci_bin_dep'] = bin_dep_target
 
         if ghci_init is not None:
@@ -936,7 +936,7 @@ class HaskellConverter(base.Converter):
 
         out_deps = []
         for target in deps:
-            out_deps.append(self.convert_build_target(base_path, target))
+            out_deps.append(src_and_dep_helpers.convert_build_target(base_path, target))
         attrs['deps'] = out_deps
 
         rules.append(Rule('haskell_haddock', attrs))

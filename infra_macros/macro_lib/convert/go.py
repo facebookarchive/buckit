@@ -139,13 +139,13 @@ class GoConverter(base.Converter):
         if tests:
             attributes['tests'] = []
             for test in tests:
-                attributes['tests'].append(self.convert_build_target(base_path, test))
+                attributes['tests'].append(src_and_dep_helpers.convert_build_target(base_path, test))
 
         if package_name:
             attributes['package_name'] = package_name
 
         if library:
-            attributes['library'] = self.convert_build_target(base_path, library)
+            attributes['library'] = src_and_dep_helpers.convert_build_target(base_path, library)
 
         if resources:
             attributes['resources'] = resources
@@ -155,7 +155,7 @@ class GoConverter(base.Converter):
 
         dependencies = []
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(src_and_dep_helpers.convert_build_target(base_path, target))
 
         if self.is_binary() or (self.is_cgo() and linker_flags):
             attributes['linker_flags'] = linker_flags
@@ -225,7 +225,7 @@ class GoConverter(base.Converter):
             attributes['compiler_flags'] = compiler_flags
 
         if exported_deps:
-            exported_deps = [self.convert_build_target(base_path, d)
+            exported_deps = [src_and_dep_helpers.convert_build_target(base_path, d)
                              for d in exported_deps]
             attributes['exported_deps'] = exported_deps
 

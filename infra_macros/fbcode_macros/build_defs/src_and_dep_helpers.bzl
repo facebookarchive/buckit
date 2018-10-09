@@ -30,6 +30,42 @@ def _get_source_name(src):
     else:
         return src
 
+def _convert_external_build_target(target, platform = None, lang_suffix = ""):
+    """
+    Convert a raw external_dep target to a buck label
+
+    Args:
+        target: The external_dep string or tuple
+        platform: The platform to use when normalizing the target
+        lang_suffix: Used when converting the target
+
+    Returns:
+        A buck label for the provided raw external_dep style target
+    """
+
+    return target_utils.target_to_label(
+        src_and_dep_helpers.normalize_external_dep(target, lang_suffix = lang_suffix),
+        platform = platform,
+    )
+
+def _convert_build_target(base_path, target, platform = None):
+    """
+    Convert the given raw target string (one given in deps) to a buck label
+
+    Args:
+        base_path: The package to use if the target string is relative
+        target: The raw target string that should be normalized
+        platform: The platform to use when parsing the dependency, if applicable
+
+    Returns:
+        A buck label for the provided raw target
+    """
+
+    return target_utils.target_to_label(
+        target_utils.parse_target(target, default_base_path = base_path),
+        platform = platform,
+    )
+
 def _convert_source(base_path, src):
     """
     Convert a source, which may refer to an in-repo source or a rule that generates it, to a buck label
@@ -295,6 +331,8 @@ def _normalize_external_dep(raw_target, lang_suffix = "", parse_version = False)
     return parsed if not parse_version else (parsed, version)
 
 src_and_dep_helpers = struct(
+    convert_build_target = _convert_build_target,
+    convert_external_build_target = _convert_external_build_target,
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
     convert_source_map = _convert_source_map,

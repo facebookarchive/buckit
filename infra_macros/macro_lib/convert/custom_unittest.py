@@ -22,6 +22,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -77,7 +78,7 @@ class CustomUnittestConverter(base.Converter):
             # If the first parameter appears to be generated, hook it up using
             # a dep source reference.
             elif self.is_generated_path(command[0]):
-                test = self.convert_build_target(base_path, deps[bin_refs])
+                test = src_and_dep_helpers.convert_build_target(base_path, deps[bin_refs])
                 bin_refs += 1
 
             # Otherwise, we need to plug it up using a `SourcePath`.  Since
@@ -113,7 +114,7 @@ class CustomUnittestConverter(base.Converter):
                 # a heuristic that the leading deps of this `custom_unittest`
                 # correspond to the args in the command.
                 if self.is_generated_path(arg):
-                    dep = self.convert_build_target(base_path, deps[bin_refs])
+                    dep = src_and_dep_helpers.convert_build_target(base_path, deps[bin_refs])
                     args.append('$(location {0})'.format(dep))
                     bin_refs += 1
                 else:
@@ -152,7 +153,7 @@ class CustomUnittestConverter(base.Converter):
 
         dependencies = []
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(src_and_dep_helpers.convert_build_target(base_path, target))
         if dependencies:
             attributes['deps'] = dependencies
 

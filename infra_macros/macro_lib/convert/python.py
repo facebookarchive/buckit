@@ -428,9 +428,9 @@ class PythonConverter(base.Converter):
         if '=' not in target:
             return (
                 ratio,
-                self.convert_build_target(base_path, target))
+                src_and_dep_helpers.convert_build_target(base_path, target))
         target, path = target.rsplit('=', 1)
-        return (ratio, self.convert_build_target(base_path, target), path)
+        return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
 
     def get_python_build_info(
             self,
@@ -927,7 +927,7 @@ class PythonConverter(base.Converter):
             dependencies.append(self.get_tp2_project_dep(base_path))
         for target in deps:
             dependencies.append(
-                self.convert_build_target(base_path, target))
+                src_and_dep_helpers.convert_build_target(base_path, target))
         if cpp_deps:
             dependencies.extend(cpp_deps)
         if dependencies:
@@ -1070,7 +1070,7 @@ class PythonConverter(base.Converter):
 
         # Add user-provided preloaded deps.
         for dep in preload_deps:
-            out_preload_deps.append(self.convert_build_target(base_path, dep))
+            out_preload_deps.append(src_and_dep_helpers.convert_build_target(base_path, dep))
 
         # Add the C/C++ build info lib to preload deps.
         cxx_build_info, cxx_build_info_rules = (
@@ -1296,7 +1296,7 @@ class PythonConverter(base.Converter):
                 library_name,
                 base_module if base_module is not None else base_path,
                 srcs,
-                [self.convert_build_target(base_path, dep) for dep in deps],
+                [src_and_dep_helpers.convert_build_target(base_path, dep) for dep in deps],
                 typing or (check_types and not self.is_library()),
                 typing_options,
                 visibility,

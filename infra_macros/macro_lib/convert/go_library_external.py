@@ -18,6 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 class GoLibraryExternalConverter(base.Converter):
@@ -54,13 +55,13 @@ class GoLibraryExternalConverter(base.Converter):
             attributes['visibility'] = visibility
 
         if exported_deps:
-            exported_deps = [self.convert_build_target(base_path, d)
+            exported_deps = [src_and_dep_helpers.convert_build_target(base_path, d)
                              for d in exported_deps]
             attributes['exported_deps'] = exported_deps
 
         dependencies = []
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(src_and_dep_helpers.convert_build_target(base_path, target))
 
         attributes['deps'] = dependencies
 

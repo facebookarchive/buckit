@@ -261,23 +261,6 @@ class Converter(object):
         else:
             return project
 
-    def convert_external_build_target(self, target, platform=None, lang_suffix=''):
-        """
-        Convert the given build target reference from an external dep TARGETS
-        file reference.
-        """
-
-        parsed = src_and_dep_helpers.normalize_external_dep(target, lang_suffix=lang_suffix)
-        return target_utils.target_to_label(parsed, platform=platform)
-
-    def convert_build_target(self, base_path, target, platform=None):
-        """
-        Convert the given build target into a buck build target.
-        """
-
-        parsed = target_utils.parse_target(target, default_base_path=base_path)
-        return target_utils.target_to_label(parsed, platform=platform)
-
     def format_source(self, src, platform=None):  # type: (Union[str, RuleTarget], str) -> str
         """
         Format the given source path.
@@ -402,7 +385,7 @@ class Converter(object):
         def convert_target_expander(name, target):
             return '$({} {})'.format(
                 name,
-                self.convert_build_target(base_path, target, platform=platform))
+                src_and_dep_helpers.convert_build_target(base_path, target, platform=platform))
 
         def as_is_converter(name, *args):
             return '$({})'.format(' '.join([name] + list(args)))

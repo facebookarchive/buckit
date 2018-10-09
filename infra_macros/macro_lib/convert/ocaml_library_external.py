@@ -85,7 +85,7 @@ class OCamlLibraryExternalConverter(base.Converter):
             dependencies.append(project_dep)
 
         for target in deps:
-            dependencies.append(self.convert_build_target(base_path, target))
+            dependencies.append(src_and_dep_helpers.convert_build_target(base_path, target))
 
         for target in external_deps:
             edep = src_and_dep_helpers.normalize_external_dep(target)

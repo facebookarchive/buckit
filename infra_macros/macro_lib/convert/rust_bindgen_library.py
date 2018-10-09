@@ -25,6 +25,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 FLAGFILTER = '''\
@@ -281,7 +282,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             base_path,
             name,
             header,
-            [self.convert_build_target(base_path, d) for d in cpp_deps],
+            [src_and_dep_helpers.convert_build_target(base_path, d) for d in cpp_deps],
             src_includes=src_includes,
             **kwargs)
 

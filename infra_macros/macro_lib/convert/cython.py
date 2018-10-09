@@ -49,6 +49,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 def split_matching_extensions(srcs, exts):
@@ -424,11 +425,11 @@ class Converter(base.Converter):
         pxd_headers, headers = split_matching_extensions(
             headers, self.HEADER_EXTS)
 
-        deps = [self.convert_build_target(base_path, d) for d in deps]
-        external_deps = [self.convert_external_build_target(e)
+        deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
+        external_deps = [src_and_dep_helpers.convert_external_build_target(e)
                          for e in external_deps]
 
-        python_deps = [self.convert_build_target(base_path, d) for d in python_deps]
+        python_deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in python_deps]
 
         # This is normally base_path if package is not set
         if package is None:

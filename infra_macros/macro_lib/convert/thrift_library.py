@@ -2655,7 +2655,7 @@ class ThriftLibraryConverter(base.Converter):
         thrift_srcs = self.fixup_thrift_srcs(thrift_srcs)
         thrift_args = self.parse_thrift_args(thrift_args)
         languages = self.get_languages(languages)
-        deps = [self.convert_build_target(base_path, d) for d in deps]
+        deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
 
         # Setup the exported include tree to dependents.
         includes = set()

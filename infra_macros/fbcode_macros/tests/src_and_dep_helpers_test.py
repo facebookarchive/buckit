@@ -343,3 +343,29 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_convert_external_build_target(self, root):
+        commands = [
+            'src_and_dep_helpers.convert_external_build_target(("foo"), "plat")',
+            'src_and_dep_helpers.convert_external_build_target(("foo"), "plat", "-py")',
+        ]
+
+        expected = [
+            "//third-party-buck/plat/build/foo:foo",
+            "//third-party-buck/plat/build/foo:foo-py",
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_convert_build_target(self, root):
+        commands = [
+            'src_and_dep_helpers.convert_build_target("foo", ":bar")',
+            'src_and_dep_helpers.convert_build_target("foo", "//bar:baz")',
+            'src_and_dep_helpers.convert_build_target("foo", "@/third-party:bar:baz", "plat")',
+        ]
+
+        expected = ["//foo:bar", "//bar:baz", "//third-party-buck/plat/build/bar:baz"]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

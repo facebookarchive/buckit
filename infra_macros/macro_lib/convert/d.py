@@ -82,13 +82,13 @@ class DConverter(base.Converter):
         dependencies = []
         for target in deps:
             dependencies.append(
-                self.convert_build_target(
+                src_and_dep_helpers.convert_build_target(
                     base_path,
                     target,
                     platform=platform))
         for target in external_deps:
             dependencies.append(
-                self.convert_external_build_target(target, platform=platform))
+                src_and_dep_helpers.convert_external_build_target(target, platform=platform))
         # All D rules get an implicit dep on the runtime.
         dependencies.append(
             target_utils.target_to_label(
