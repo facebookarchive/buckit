@@ -25,6 +25,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 
 # Flags controlling warnings issued by compiler
@@ -553,7 +554,7 @@ class HaskellConverter(base.Converter):
                     os.path.join(
                         '$GEN_DIR',
                         self.get_fbcode_dir_from_gen_dir())),
-                ghc_tool=self.get_tp2_tool_path('ghc', platform),
+                ghc_tool=third_party.get_tool_path('ghc', platform),
                 ghc=self.get_tp2_dep_path('ghc', platform),
                 link_style=self._context.link_style,
                 deps=' :' + deps_name,

@@ -70,6 +70,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -317,21 +318,6 @@ class Converter(object):
         conf = self._context.third_party_config['platforms'][platform]
         return LooseVersion(conf['tools']['projects'][project])
 
-    def get_tp2_tool_path(self, project, platform):
-        """
-        Return the path within third-party for the given project. This will be
-        the directory, not a specific target or binary. Based on configuration,
-        and the path may be modified to fit fbcode's layout
-        """
-
-        if self._context.config.get_third_party_use_tools_subdir():
-            return os.path.join(
-                self.get_third_party_root(platform),
-                'tools',
-                project)
-        else:
-            return os.path.join(self.get_third_party_root(platform), project)
-
     def get_tool_target(self, target, platform):
         """
         Return the target for the tool described by the given RuleTarget.
@@ -339,7 +325,7 @@ class Converter(object):
 
         return target_utils.to_label(
             None,
-            self.get_tp2_tool_path(target.base_path, platform),
+            third_party.get_tool_path(target.base_path, platform),
             target.name)
 
     def get_tp2_dep_path(self, project, platform):
