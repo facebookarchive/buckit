@@ -36,7 +36,7 @@ def _generate_modules_tree(name, srcs, deps, visibility):
     dirs = {}
     files = []
     for raw_src, dst in srcs:
-        src = src_and_dep_helpers.get_source_name(raw_src)
+        src = src_and_dep_helpers.extract_source_name(raw_src)
         dst = paths.join('"$OUT"', dst)
         files.append((src, dst))
         dirs[paths.dirname(dst)] = None

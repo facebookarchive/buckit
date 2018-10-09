@@ -16,14 +16,14 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
     ]
 
     @tests.utils.with_project()
-    def test_get_source_name_works(self, root):
+    def test_extract_source_name_works(self, root):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes,
                 [
-                    'src_and_dep_helpers.get_source_name("//foo/bar:baz=path/to/baz1.cpp")',
-                    'src_and_dep_helpers.get_source_name(":baz=path/to/baz2.cpp")',
-                    'src_and_dep_helpers.get_source_name("path/to/baz3.cpp")',
+                    'src_and_dep_helpers.extract_source_name("//foo/bar:baz=path/to/baz1.cpp")',
+                    'src_and_dep_helpers.extract_source_name(":baz=path/to/baz2.cpp")',
+                    'src_and_dep_helpers.extract_source_name("path/to/baz3.cpp")',
                 ],
             ),
             "path/to/baz1.cpp",
@@ -32,10 +32,10 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         )
 
     @tests.utils.with_project()
-    def test_get_source_name_fails_if_no_equals_sign(self, root):
+    def test_extract_source_name_fails_if_no_equals_sign(self, root):
         self.assertFailureWithMessage(
             root.runUnitTests(
-                self.includes, ['src_and_dep_helpers.get_source_name("//foo:bar")']
+                self.includes, ['src_and_dep_helpers.extract_source_name("//foo:bar")']
             ),
             "generated source target //foo:bar is missing `=<name>` suffix",
         )

@@ -38,7 +38,7 @@ def js_npm_module(
     # NPM modules package their listed sources.
     root = paths.join("node_modules", js_common.get_node_module_name(name, node_module_name))
     out_srcs = [
-        (src, paths.join(root, src_and_dep_helpers.get_source_name(src)))
+        (src, paths.join(root, src_and_dep_helpers.extract_source_name(src)))
         for src in sorted(srcs)
     ]
 

@@ -71,6 +71,7 @@ load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -713,19 +714,6 @@ class Converter(object):
     def get_build_mode(self):
         return self._context.build_mode
 
-    def extract_name(self, gen_src):
-        """
-        Extract the logical name from the given generated source.
-        """
-
-        try:
-            _, name = gen_src.split('=')
-        except ValueError:
-            raise ValueError(
-                'generated source target {!r} is missing `=<name>` suffix'
-                .format(gen_src))
-        return name
-
     def get_parsed_src_name(self, src):
         """
         Get the logical name of the given source.
@@ -735,7 +723,7 @@ class Converter(object):
         # suffix.
         rule_name = getattr(src, "name", None)
         if rule_name != None:
-            return self.extract_name(rule_name)
+            return src_and_dep_helpers.extract_source_name(rule_name)
 
         # Otherwise, the name is the source itself.
         else:
@@ -749,7 +737,7 @@ class Converter(object):
         # If this is a build target, extract the name from the `=<name>`
         # suffix.
         if src[0] in '/@:':
-            return self.extract_name(src)
+            return src_and_dep_helpers.extract_source_name(src)
 
         # Otherwise, the name is the source itself.
         else:
