@@ -93,7 +93,7 @@ class TargetUtilsTest(tests.utils.TestCase):
         ]
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
-    @tests.utils.with_project()
+    @tests.utils.with_project(run_buckd=True)
     def test_parse_fails_when_given_bad_data(self, root):
         self.assertFailureWithMessage(
             root.runUnitTests(self.includes, ['target_utils.parse_target("invalid")']),
@@ -157,3 +157,35 @@ class TargetUtilsTest(tests.utils.TestCase):
             root.runUnitTests(self.includes, commands),
             "external dependency should be a tuple or string",
         )
+
+    @tests.utils.with_project()
+    def test_to_label_works(self, root):
+        commands = [
+            'target_utils.to_label("cell", "foo/bar", "baz")',
+            'target_utils.to_label(None, "foo/bar", "baz")',
+            'target_utils.to_label(None, "", "baz")',
+        ]
+
+        expected = ["cell//foo/bar:baz", "//foo/bar:baz", "//:baz"]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_target_to_label_works(self, root):
+        commands = [
+            'target_utils.target_to_label(target_utils.RootRuleTarget("foo", "bar"), platform="default")',
+            'target_utils.target_to_label(target_utils.ThirdPartyRuleTarget("foo", "bar"), platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("@/third-party:foo:bar"), platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("@/third-party-tools:foo:bar"), platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("cell//foo:bar"), platform="default")',
+        ]
+
+        expected = [
+            "//foo:bar",
+            "//third-party-buck/default/build/foo:bar",
+            "//third-party-buck/default/build/foo:bar",
+            "//third-party-buck/default/tools/foo:bar",
+            "cell//foo:bar",
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

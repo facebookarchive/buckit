@@ -103,7 +103,7 @@ class ThriftLangConverter(base.Converter):
         else:
             repo = base_path.split('/')[0]
             target = target_utils.ThirdPartyRuleTarget(repo, base_path, target)
-        return self.get_dep_target(target)
+        return target_utils.target_to_label(target)
 
     def get_compiler(self):
         """
@@ -1567,19 +1567,19 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         # If this rule builds thrift files, automatically add a dependency
         # on the python thrift library.
-        out_deps.append(self.get_dep_target(self.THRIFT_PY_LIB_RULE_NAME))
+        out_deps.append(target_utils.target_to_label(self.THRIFT_PY_LIB_RULE_NAME))
 
         # If thrift files are build with twisted support, add also
         # dependency on the thrift's twisted transport library.
         if self._flavor == self.TWISTED or 'twisted' in options:
             out_deps.append(
-                self.get_dep_target(self.THRIFT_PY_TWISTED_LIB_RULE_NAME))
+                target_utils.target_to_label(self.THRIFT_PY_TWISTED_LIB_RULE_NAME))
 
         # If thrift files are build with asyncio support, add also
         # dependency on the thrift's asyncio transport library.
         if self._flavor == self.ASYNCIO or 'asyncio' in options:
             out_deps.append(
-                self.get_dep_target(self.THRIFT_PY_ASYNCIO_LIB_RULE_NAME))
+                target_utils.target_to_label(self.THRIFT_PY_ASYNCIO_LIB_RULE_NAME))
 
         if self._flavor in (self.NORMAL, self.ASYNCIO):
             out_deps.append(':' + self.get_pyi_dependency(name))

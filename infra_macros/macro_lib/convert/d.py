@@ -90,11 +90,11 @@ class DConverter(base.Converter):
                 self.convert_external_build_target(target, platform=platform))
         # All D rules get an implicit dep on the runtime.
         dependencies.append(
-            self.get_dep_target(
+            target_utils.target_to_label(
                 target_utils.ThirdPartyRuleTarget('dlang', 'druntime'),
                 platform=platform))
         dependencies.append(
-            self.get_dep_target(
+            target_utils.target_to_label(
                 target_utils.ThirdPartyRuleTarget('dlang', 'phobos'),
                 platform=platform))
         # Add in binary-specific link deps.

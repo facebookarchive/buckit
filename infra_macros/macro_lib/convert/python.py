@@ -334,7 +334,7 @@ class PythonConverter(base.Converter):
                     'consider using the `<rule-name>=<out>` notation instead. '
                     'Otherwise, please specify this parameter as `dict` '
                     'mapping sources to explicit "names" (see {} for details).'
-                    .format(param, self.get_dep_target(src), GEN_SRCS_LINK))
+                    .format(param, target_utils.target_to_label(src), GEN_SRCS_LINK))
 
         return out_srcs
 
@@ -866,7 +866,7 @@ class PythonConverter(base.Converter):
                         ver_srcs.update(pvsrcs)
                 if ver_srcs:
                     all_versioned_srcs.append(
-                        ({self.get_dep_target(pytarget, platform=p) :
+                        ({target_utils.target_to_label(pytarget, platform=p) :
                           pyversion.vstring
                           for p in platforms
                           if self.platform_has_version(p, pyversion)},
@@ -1078,7 +1078,7 @@ class PythonConverter(base.Converter):
                 platform,
                 static=False,
                 visibility=visibility))
-        out_preload_deps.append(self.get_dep_target(cxx_build_info))
+        out_preload_deps.append(target_utils.target_to_label(cxx_build_info))
         rules.extend(cxx_build_info_rules)
 
         # Provide a standard set of backport deps to all binaries

@@ -99,6 +99,7 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
@@ -342,7 +343,7 @@ class ImageLayerConverter(base.Converter):
                 rule_name_quoted=quote(rule_name),
                 parent_layer_json_quoted='$(location {})'.format(parent_layer)
                     if parent_layer else "''",
-                current_target_quoted=quote(self.get_target(
+                current_target_quoted=quote(target_utils.to_label(
                     self._context.config.get_current_repo_name(),
                     base_path,
                     rule_name,

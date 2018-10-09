@@ -281,17 +281,6 @@ class Converter(object):
     def get_third_party_tools_root(self, platform):
         return os.path.join(self.get_third_party_root(platform), 'tools')
 
-    def get_repo_root(self, repo, platform):
-        if repo is None:
-            return ''
-        elif (not self._context.config.get_unknown_cells_are_third_party() or
-              self._context.buck_ops.read_config('repositories', repo)):
-            return ''
-        elif repo == 'third-party-tools':
-            return self.get_third_party_tools_root(platform)
-        else:
-            return self.get_third_party_build_root(platform)
-
     def get_third_party_config(self, platform):
         return self._context.third_party_config['platforms'][platform]
 
@@ -328,23 +317,6 @@ class Converter(object):
         conf = self._context.third_party_config['platforms'][platform]
         return LooseVersion(conf['tools']['projects'][project])
 
-    def get_target(self, repo, path, name):
-        """
-        Return the target for a given cell, path, and target name
-
-        If fbcode.unknown_cells_are_third_party is True, and the repo is not
-        found in .buckconfig, then a third-party directory structure is assumed
-        and no cell is used
-        """
-        cell = repo
-        if(repo and
-                self._context.config.get_unknown_cells_are_third_party() and
-                self._context.buck_ops.read_config(
-                    'repositories', repo) is None):
-            cell = None
-
-        return '{}//{}:{}'.format(cell or '', path, name)
-
     def get_tp2_tool_path(self, project, platform):
         """
         Return the path within third-party for the given project. This will be
@@ -365,8 +337,8 @@ class Converter(object):
         Return the target for the tool described by the given RuleTarget.
         """
 
-        return self.get_target(
-            target.repo,
+        return target_utils.to_label(
+            None,
             self.get_tp2_tool_path(target.base_path, platform),
             target.name)
 
@@ -382,27 +354,13 @@ class Converter(object):
         else:
             return project
 
-    def get_dep_target(self, target, platform=None, source=None):
-        """
-        Format a Buck-style build target from the given RuleTarget
-        """
-
-        assert target.base_path is not None, str(target)
-
-        repo_root = self.get_repo_root(target.repo, platform)
-
-        return self.get_target(
-            target.repo,
-            os.path.join(repo_root, target.base_path),
-            target.name)
-
     def format_deps(self, deps, platform=None):
         """
         Takes a list of deps and returns a new list of formatted deps
         appropriate `deps` parameter.
         """
 
-        return [self.get_dep_target(d, platform=platform) for d in deps]
+        return [target_utils.target_to_label(d, platform=platform) for d in deps]
 
     def normalize_external_dep(
             self,
@@ -461,7 +419,7 @@ class Converter(object):
         """
 
         parsed = self.normalize_external_dep(target, lang_suffix=lang_suffix)
-        return self.get_dep_target(parsed, source=target, platform=platform)
+        return target_utils.target_to_label(parsed, platform=platform)
 
     def convert_build_target(self, base_path, target, platform=None):
         """
@@ -469,7 +427,7 @@ class Converter(object):
         """
 
         parsed = target_utils.parse_target(target, default_base_path=base_path)
-        return self.get_dep_target(parsed, source=target, platform=platform)
+        return target_utils.target_to_label(parsed, platform=platform)
 
     def parse_source(self, base_path, src):  # type: (str, str) -> Union[str, RuleTarget]
         """
@@ -488,7 +446,7 @@ class Converter(object):
 
         if target_utils.is_rule_target(src):
             assert src.repo is None or platform is not None, str(src)
-            return self.get_dep_target(src, platform=platform)
+            return target_utils.target_to_label(src, platform=platform)
 
         return src
 
@@ -612,7 +570,7 @@ class Converter(object):
         if src[0] in ':@' or src.startswith('//'):
             target = target_utils.parse_target(src, default_base_path=base_path)
             assert target.repo is None, src
-            src = self.get_dep_target(target, source=src)
+            src = target_utils.target_to_label(target)
 
         return src
 
@@ -747,12 +705,12 @@ class Converter(object):
         """
 
         out_deps = []
-        out_deps.extend(self.get_dep_target(d) for d in deps if d.repo is None)
+        out_deps.extend(target_utils.target_to_label(d) for d in deps if d.repo is None)
         # If we have an explicit platform (as is the case with tp2 projects),
         # we can pass the tp2 deps using the `deps` parameter.
         if platform is not None:
             out_deps.extend(
-                self.get_dep_target(d, platform=platform)
+                target_utils.target_to_label(d, platform=platform)
                 for d in deps if d.repo is not None)
 
         out_platform_deps = []
@@ -1885,7 +1843,7 @@ class Converter(object):
                     continue
 
                 pdep = (
-                    self.get_dep_target(
+                    target_utils.target_to_label(
                         self.get_tp2_project_target(project),
                         platform=build_dat['platform']))
                 build_deps[pdep] = version
@@ -1915,7 +1873,7 @@ class Converter(object):
 
         project = base_path.split(os.sep)[3]
         platform = self.get_tp2_platform(base_path)
-        return self.get_dep_target(
+        return target_utils.target_to_label(
             self.get_tp2_project_target(project),
             platform=platform)
 

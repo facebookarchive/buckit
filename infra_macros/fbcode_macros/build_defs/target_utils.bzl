@@ -1,4 +1,6 @@
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
 
 # Re-export from rule_target_types so that the common case usage is to use target_utils,
@@ -111,6 +113,53 @@ def _parse_external_dep(raw_target, lang_suffix = ""):
 
     return (rule_target_types.RuleTarget(repo, project, rule), version)
 
+def _get_repo_and_repo_root(repo, platform):
+    """
+    Gets any additional paths that should be prepended to the package based on repo.
+
+    This is primarily used to add third-party and third-party-tools paths
+    """
+    if repo == None:
+        return (repo, "")
+    elif repo == rule_target_types.THIRD_PARTY_REPO:
+        return (None, third_party.get_build_path(platform))
+    elif repo == rule_target_types.THIRD_PARTY_TOOLS_REPO:
+        return (None, third_party.get_tools_path(platform))
+    else:
+        # If another cell is directly referenced, just keep its normal path
+        return (repo, "")
+
+def _to_label(repo, path, name):
+    """
+    Returns the target string to pass to buck
+
+    Args:
+        repo: The name of the cell, or None
+        path: The path within the cell
+        name: The name of the rule
+
+    Returns:
+        A fully qualified target string
+    """
+
+    return "{}//{}:{}".format(repo or "", path, name)
+
+def _target_to_label(target, platform = None):
+    """
+    Converts a target struct  to a string to pass to buck
+
+    Args:
+        target: A struct returned from root_rule_target() or third_party_rule_target()
+        platform: If provided, the fbcode platform to use
+
+    Returns:
+        A fully qualified target string
+    """
+    if target.base_path == None:
+        fail("{} must not have a 'None' base_path".format(target))
+    repo, repo_root = _get_repo_and_repo_root(target.repo, platform)
+    return _to_label(repo, paths.join(repo_root, target.base_path), target.name)
+
 target_utils = struct(
     RootRuleTarget = rule_target_types.RootRuleTarget,
     RuleTarget = rule_target_types.RuleTarget,
@@ -119,4 +168,6 @@ target_utils = struct(
     is_rule_target = rule_target_types.is_rule_target,
     parse_external_dep = _parse_external_dep,
     parse_target = _parse_target,
+    target_to_label = _target_to_label,
+    to_label = _to_label,
 )

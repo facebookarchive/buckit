@@ -251,7 +251,7 @@ class ImageFeatureConverter(base.Converter):
                 default_repo='',
                 default_base_path=base_path,
             )
-            return self.get_target(
+            return target_utils.to_label(
                 repo=parsed.repo,
                 path=parsed.base_path,
                 name=parsed.name,
