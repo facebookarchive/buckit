@@ -742,15 +742,27 @@ class TestCase(unittest.TestCase):
             )
             def dev():
                 return {
-                    "dev": create_build_mode(c_flags=["-DDEBUG"]),
+                    "dev": create_build_mode(
+                        c_flags=["-DDEBUG"],
+                        cxx_flags=["-DCXX_DEBUG"],
+                        clang_flags=["-DCLANG"],
+                        gcc_flags=["-DGCC"]),
                 }
             def dbg():
                 return {
-                    "dbg": create_build_mode(c_flags=["-DDEBUG"]),
+                    "dbg": create_build_mode(
+                        c_flags=["-DDEBUG"],
+                        cxx_flags=["-DCXX_DEBUG"],
+                        clang_flags=["-DCLANG"],
+                        gcc_flags=["-DGCC"]),
                 }
             def opt():
                 return {
-                    "opt": create_build_mode(c_flags=["-DDEBUG"]),
+                    "opt": create_build_mode(
+                        c_flags=["-DDEBUG"],
+                        cxx_flags=["-DCXX_DEBUG"],
+                        clang_flags=["-DCLANG"],
+                        gcc_flags=["-DGCC"]),
                 }
             build_mode_overrides = {"fbcode": {
                 "foo/bar": dev,

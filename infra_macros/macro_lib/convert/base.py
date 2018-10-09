@@ -181,7 +181,6 @@ def is_collection(obj):
 
     return False
 
-
 _THIN_LTO_FLAG = ["-flto=thin"]
 _LTO_FLAG = ["-flto"]
 
@@ -576,63 +575,6 @@ class Converter(object):
     def read_extra_ghc_linker_flags(self):
         return self.read_list('haskell', 'extra_linker_flags', [])
 
-    def get_compiler_flags(self, base_path):
-        """
-        Return a dict mapping languages to base compiler flags.
-        """
-        def _get_compiler_flags_partial(build_mode, _, compiler):
-            return build_mode.gcc_flags if compiler == "gcc" else build_mode.clang_flags
-
-
-        # Initialize the compiler flags dictionary.
-        compiler_flags = collections.OrderedDict()
-        for lang in cpp_flags.COMPILER_LANGS:
-            compiler_flags[lang] = []
-
-        # The set of language we apply "general" compiler flags to.
-        c_langs = cpp_flags.COMPILER_GENERAL_LANGS
-
-        # Apply the general sanitizer/coverage flags.
-        per_platform_sanitizer_flags = None
-        if sanitizers.get_sanitizer() != None:
-            per_platform_sanitizer_flags = src_and_dep_helpers.format_platform_param(
-                sanitizers.get_sanitizer_flags())
-        per_platform_coverage_flags = src_and_dep_helpers.format_platform_param(
-            coverage.get_coverage_flags(base_path))
-
-        for lang in c_langs:
-            if per_platform_sanitizer_flags != None:
-                compiler_flags[lang].extend(per_platform_sanitizer_flags)
-            compiler_flags[lang].extend(per_platform_coverage_flags)
-
-        # Apply flags from the build mode file.
-        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
-        if build_mode is not None:
-            compiler_partial = partial.make(_get_compiler_flags_partial, build_mode)
-
-            # Apply language-specific build mode flags.
-            compiler_flags['c_cpp_output'].extend(
-                src_and_dep_helpers.format_platform_param(build_mode.c_flags))
-            compiler_flags['cxx_cpp_output'].extend(
-                src_and_dep_helpers.format_platform_param(build_mode.cxx_flags))
-
-            # Apply compiler-specific build mode flags.
-            for lang in c_langs:
-                compiler_flags[lang].extend(
-                    src_and_dep_helpers.format_platform_param(compiler_partial))
-
-            # Cuda always uses GCC.
-            compiler_flags['cuda_cpp_output'].extend(
-                src_and_dep_helpers.format_platform_param(build_mode.gcc_flags))
-
-        # Add in command line flags last.
-        compiler_flags['c_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(cpp_flags.get_extra_cflags()))
-        compiler_flags['cxx_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(cpp_flags.get_extra_cxxflags()))
-
-        return compiler_flags
-
     def get_strip_mode(self, base_path, name):
         """
         Return a flag to strip debug symbols from binaries, or `None` if
@@ -810,7 +752,7 @@ class Converter(object):
         # discern code generation flags from language specific flags, just
         # pass all our C/C++ compiler flags in.
         buck_platform = platform_utils.to_buck_platform(platform, 'gcc')
-        compiler_flags = self.get_compiler_flags(base_path)
+        compiler_flags = cpp_flags.get_compiler_flags(base_path)
         section = 'cxx#{}'.format(buck_platform)
         flags.extend(read_flags(section, 'cflags', []))
         for plat_re, cflags in compiler_flags['c_cpp_output']:
@@ -1565,7 +1507,7 @@ class Converter(object):
         # Form platform-specific flags.
         out_platform_flags = []
         out_platform_flags.extend(
-            self.get_compiler_flags(base_path)['cxx_cpp_output'])
+            cpp_flags.get_compiler_flags(base_path)['cxx_cpp_output'])
 
         # Convert deps to lower-level Buck deps/platform-deps pair.
         out_deps, out_platform_deps = (

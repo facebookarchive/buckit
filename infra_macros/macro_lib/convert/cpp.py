@@ -1104,7 +1104,7 @@ class CppConverter(base.Converter):
 
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
-        out_lang_plat_compiler_flags = self.get_compiler_flags(base_path)
+        out_lang_plat_compiler_flags = cpp_flags.get_compiler_flags(base_path)
         for lang in cpp_flags.COMPILER_LANGS:
             out_lang_plat_compiler_flags.setdefault(lang, [])
             out_lang_plat_compiler_flags[lang].extend(

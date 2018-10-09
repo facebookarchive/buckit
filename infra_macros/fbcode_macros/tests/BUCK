@@ -127,7 +127,10 @@ skylark_integration_test(
 skylark_integration_test(
     name = "cpp_flags_test",
     srcs = ["cpp_flags_test.py"],
-    deps = [":utils"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(
