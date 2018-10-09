@@ -38,6 +38,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 FLAGS = [
@@ -260,7 +261,7 @@ class PythonSwigConverter(SwigLangConverter):
             # be nice to support a better API in the converters to
             # handle higher-leverl objects, but for now we're stuck
             # doing this to re-use other converters.
-            deps=self.format_deps([d for d in cpp_deps if d.repo is None]),
+            deps=src_and_dep_helpers.format_deps([d for d in cpp_deps if d.repo is None]),
             external_deps=[
                 (d.repo, d.base_path, None, d.name)
                 for d in cpp_deps if d.repo is not None
@@ -341,10 +342,10 @@ class GoSwigConverter(SwigLangConverter):
         for dep in cpp_deps:
             cxx_rule_args = {}
             cxx_rule_args['name'] = "{}-ext".format(dep.name)
-            cxx_rule_args['deps'] = self.format_deps([dep])
+            cxx_rule_args['deps'] = src_and_dep_helpers.format_deps([dep])
             cxx_rule_args['srcs'] = [src]
 
-            deps.extend(self.format_deps([target_utils.RuleTarget(
+            deps.extend(src_and_dep_helpers.format_deps([target_utils.RuleTarget(
                 name="{}-ext".format(dep.name),
                 base_path=dep.base_path,
                 repo=dep.repo)]))
@@ -462,7 +463,7 @@ class SwigLibraryConverter(base.Converter):
                 flags=' '.join(map(pipes.quote, flags)),
                 lang=pipes.quote(converter.get_lang_opt()),
                 includes=self.get_exported_include_tree(':' + name),
-                deps=''.join([' ' + d for d in self.format_deps(cpp_deps)]),
+                deps=''.join([' ' + d for d in src_and_dep_helpers.format_deps(cpp_deps)]),
                 hdr=pipes.quote(hdr),
                 src=pipes.quote(src)))
         rules.append(Rule('cxx_genrule', attrs))

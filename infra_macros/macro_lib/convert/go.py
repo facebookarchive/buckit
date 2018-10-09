@@ -177,7 +177,7 @@ class GoConverter(base.Converter):
                 attributes['linker_flags'] if 'linker_flags' in attributes else [],
             )
 
-            formatted_deps = self.format_deps(
+            formatted_deps = src_and_dep_helpers.format_deps(
                 d,
                 platform=platform_utils.get_buck_platform_for_base_path(
                     base_path

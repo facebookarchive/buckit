@@ -19,6 +19,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 class RustLibraryExternalConverter(base.Converter):
@@ -63,6 +64,6 @@ class RustLibraryExternalConverter(base.Converter):
             dependencies.append(self.normalize_external_dep(dep))
         if dependencies:
             attributes['deps'] = (
-                self.format_deps(dependencies, platform=platform))
+                src_and_dep_helpers.format_deps(dependencies, platform=platform))
 
         return [Rule(self.get_buck_rule_type(), attributes)]

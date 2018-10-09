@@ -13,7 +13,8 @@ from tests.utils import dedent
 
 class SrcAndDepHelpersTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+        ("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"),
+        ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils"),
     ]
 
     @tests.utils.with_project()
@@ -167,3 +168,18 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         self.assertSuccess(result)
         sorted_result = [sorted(lines) for lines in result.debug_lines]
         self.assertEqual(expected, sorted_result)
+
+    @tests.utils.with_project()
+    def test_format_deps_works(self, root):
+        commands = [
+            'src_and_dep_helpers.format_deps([target_utils.RootRuleTarget("foo/bar", "baz")])',
+            'src_and_dep_helpers.format_deps([target_utils.RuleTarget("xplat", "foo/bar", "baz")])',
+            'src_and_dep_helpers.format_deps([target_utils.ThirdPartyRuleTarget("foo", "baz")], "default")',
+        ]
+        expected = [
+            ["//foo/bar:baz"],
+            ["xplat//foo/bar:baz"],
+            ["//third-party-buck/default/build/foo:baz"],
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

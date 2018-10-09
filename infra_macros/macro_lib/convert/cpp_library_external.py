@@ -27,6 +27,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 Inputs = (
@@ -232,7 +233,7 @@ class CppLibraryExternalConverter(base.Converter):
 
         if dependencies:
             attributes['exported_deps'] = (
-                self.format_deps(dependencies, platform=platform))
+                src_and_dep_helpers.format_deps(dependencies, platform=platform))
 
         if supports_omnibus is not None:
             attributes['supports_merged_linking'] = supports_omnibus

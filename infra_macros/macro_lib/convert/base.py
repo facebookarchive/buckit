@@ -266,14 +266,6 @@ class Converter(object):
         else:
             return project
 
-    def format_deps(self, deps, platform=None):
-        """
-        Takes a list of deps and returns a new list of formatted deps
-        appropriate `deps` parameter.
-        """
-
-        return [target_utils.target_to_label(d, platform=platform) for d in deps]
-
     def normalize_external_dep(
             self,
             raw_target,
@@ -520,18 +512,19 @@ class Converter(object):
         Also add override support for PyFI migration - T22354138
         """
         def _format_platform_deps_partial(deps, deprecated_auxiliary_deps, platform, _):
-                pdeps = deps
+            pdeps = deps
 
-                # Auxiliary deps support.
-                if deprecated_auxiliary_deps:
-                    pdeps = self._convert_auxiliary_deps(platform, pdeps)
+            # Auxiliary deps support.
+            if deprecated_auxiliary_deps:
+                pdeps = self._convert_auxiliary_deps(platform, pdeps)
 
-                # Process PyFI overrides
-                if python_wheel_overrides.should_use_overrides():
-                    if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
-                        pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
-                                 for d in pdeps]
-                return self.format_deps(pdeps, platform=platform)
+            # Process PyFI overrides
+            if python_wheel_overrides.should_use_overrides():
+                if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
+                    pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
+                             for d in pdeps]
+            return src_and_dep_helpers.format_deps(pdeps, platform=platform)
+
 
         return src_and_dep_helpers.format_platform_param(
             partial.make(

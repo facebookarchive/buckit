@@ -19,6 +19,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
@@ -103,7 +104,7 @@ class DConverter(base.Converter):
                 base_path,
                 name,
                 attributes['linker_flags'])
-            dependencies.extend(self.format_deps(d, platform=platform))
+            dependencies.extend(src_and_dep_helpers.format_deps(d, platform=platform))
             rules.extend(r)
         attributes['deps'] = dependencies
 

@@ -145,11 +145,19 @@ def _format_platform_param(value):
                 out.append(("^{}$".format(buck_platform), result))
     return out
 
+def _format_deps(deps, platform = None):
+    """
+    Takes a list of RuleTarget structs, and returns a new list of buck labels for the given platform
+    """
+
+    return [target_utils.target_to_label(d, platform = platform) for d in deps]
+
 src_and_dep_helpers = struct(
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
     convert_source_map = _convert_source_map,
     extract_source_name = _extract_source_name,
+    format_deps = _format_deps,
     format_platform_param = _format_platform_param,
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,

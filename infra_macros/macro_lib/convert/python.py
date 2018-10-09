@@ -1064,7 +1064,7 @@ class PythonConverter(base.Converter):
         # Add any special preload deps.
         default_preload_deps, default_preload_rules = (
             self.get_preload_deps(base_path, name, allocator, jemalloc_conf, visibility))
-        out_preload_deps.extend(self.format_deps(default_preload_deps))
+        out_preload_deps.extend(src_and_dep_helpers.format_deps(default_preload_deps))
         rules.extend(default_preload_rules)
 
         # Add user-provided preloaded deps.
