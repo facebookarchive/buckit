@@ -255,18 +255,6 @@ class Converter(object):
 
         return sorted(platforms)
 
-    def _get_supported_compilers(self):
-        """
-        Return list of compilers supported in this build mode.
-        """
-
-        # If a global compiler is set, then always return a list of just that.
-        if self._context.global_compiler:
-            return [self._context.global_compiler]
-
-        # Otherwise, we assume we support clang and gcc.
-        return ['clang', 'gcc']
-
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
             return os.path.join(
@@ -583,15 +571,15 @@ class Converter(object):
         out = []
 
         for platform in self.get_platforms():
-            for compiler in self._get_supported_compilers():
+            for _compiler in compiler.get_supported_compilers():
                 result = (
-                    value(platform, compiler)
+                    value(platform, _compiler)
                     if callable(value) else value)
                 if result:
                     # Buck expects the platform name as a regex, so anchor and
                     # escape it for literal matching.
                     buck_platform = (
-                        platform_utils.to_buck_platform(platform, compiler))
+                        platform_utils.to_buck_platform(platform, _compiler))
                     out.append(
                         ('^{}$'.format(re.escape(buck_platform)), result))
 

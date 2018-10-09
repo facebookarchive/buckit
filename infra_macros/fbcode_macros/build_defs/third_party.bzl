@@ -227,6 +227,7 @@ def _is_tp2_target(target):
     return target.repo in _THIRD_PARTY_REPOS
 
 def _get_third_party_config_for_platform(platform):
+    """ Returns the raw third party configuration for a specific platform """
     return third_party_config["platforms"][platform]
 
 third_party = struct(

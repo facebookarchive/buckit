@@ -52,3 +52,15 @@ class CompilerTest(tests.utils.TestCase):
             ),
             None,
         )
+
+    @tests.utils.with_project()
+    def test_get_supported_compilers(self, root):
+        self.assertSuccess(
+            root.runUnitTests(self.includes, ["compiler.get_supported_compilers()"]),
+            ["clang", "gcc"],
+        )
+        root.updateBuckconfig("fbcode", "global_compiler", "gcc")
+        self.assertSuccess(
+            root.runUnitTests(self.includes, ["compiler.get_supported_compilers()"]),
+            ["gcc"],
+        )
