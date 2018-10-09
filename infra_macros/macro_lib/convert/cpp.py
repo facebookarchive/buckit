@@ -1600,6 +1600,17 @@ class CppConverter(base.Converter):
             modules.gen_module(
                 mod_name,
                 module_name,
+                # TODO(T32915747): Due to a clang bug when using module and
+                # header maps together, clang cannot update the module at load
+                # time with the correct path to it's new home location (modules
+                # are originally built in the sandbox of a Buck `genrule`, but
+                # are used from a different location: Buck's header symlink
+                # trees.  To work around this, we add support for manually
+                # fixing up the embedded module home location to be the header
+                # symlink tree.
+                override_module_home=(
+                    'buck-out/{}/gen/{}/{}#header-mode-symlink-tree-with-header-map,headers%s'
+                    .format(self._context.mode, base_path, name)),
                 headers=out_headers,
                 flags=module_flags,
                 platform_flags=module_platform_flags,

@@ -135,6 +135,7 @@ def _gen_module(
         platform_flags = (),
         deps = (),
         platform_deps = (),
+        override_module_home = None,
         visibility = None):
     """
     Compile a module (i.e. `.pcm` file) from a `module.modulemap` file and the
@@ -159,6 +160,8 @@ def _gen_module(
       platform_flags: Additional platform-specific flags, specified as a list
                       of regex and flag list tuples, to pass to the compiler
                       when building the module.
+      override_module_home: Postprocess the module and replace the module home
+                            built into the modue with the given one.
       deps: C/C++ deps providing headers used by the headers in this module.
       platform_deps: C/C++ platform-specific deps, specified as a list of regex
                      and flag list tuples, providing headers used by the
@@ -189,62 +192,83 @@ def _gen_module(
     # Make headers, either from a directory or a map, available to the command
     # in a new "headers" directory.
     if headers != None:
-        srcs = {paths.join("headers", h): s for h, s in headers.items()}
+        srcs = {paths.join("module_headers", h): s for h, s in headers.items()}
     else:
-        srcs = {"headers": header_dir}
+        srcs = {"module_headers": header_dir}
+
+    commands = [
+        "set -euo pipefail",
+
+        # TODO(T32246582): This is gross, but we currently need to run the
+        # C/C++ compilers from the root of fbcode, so search up the dir
+        # tree to find it.
+        "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done",
+
+        # Set up the args for module compilation.
+        "args=()",
+        "args+=($(cxx))",
+
+        # Add toolchain flags
+        "args+=($(cxxppflags :{}))".format(helper_name),
+        "args+=($(cxxflags))",
+        "args+=({})".format(" ".join([shell.quote(f) for f in _get_toolchain_flags()])),
+
+        # Enable building *.pcm module files.
+        'args+=("-Xclang" "-emit-module")',
+        # Set the name of the module we're building.
+        'args+=("-fmodule-name="{})'.format(shell.quote(module_name)),
+        # The inputs to module compilation are C++ headers.
+        'args+=("-x" "c++-header")',
+        'args+=("-Xclang" "-fno-validate-pch")',
+
+        # Setup the headers as inputs to the compilation by adding the
+        # header dir implicitly via an `-I...` flag (for implicit searches
+        # for headers specified in the module map) and the
+        # `module.modulemap` as the main input arg.
+        'args+=("-I$SRCDIR/module_headers")',
+        'args+=("$SRCDIR/module_headers/module.modulemap")',
+
+        # Output via "-" and redirect to the output file rather than going
+        # directly to the output file.  This makes clang avoid embedding
+        # an absolute path for it's "original pch dir" attribute.
+        'args+=("-o" "-")',
+
+        # NOTE(T32246672): Clang will embed paths as specified on the
+        # command-line so, to avoid baking in absolute paths, sanitize
+        # them here.
+        'for i in "${!args[@]}"; do',
+        "  args[$i]=${args[$i]//$PWD\//}",
+        "done",
+        ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT"' +
+         ' | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"')
+            .format(header_prefix),
+    ]
+
+    # Postprocess the built module and update it with the new module home.
+    if override_module_home != None:
+        commands.extend([
+            'OLD="${SRCDIR//$PWD\//}"/module_headers',
+            'VER="\$(echo "$OLD" | grep -Po ",v[a-f0-9]{7}(?=__srcs/)"; true)"',
+            'NEW="\$(printf {} "$VER")"'
+            .format(shell.quote(override_module_home)),
+            # We do in in-place update, which requires that the new and old
+            # module homes are identical in length.  To meet this requirement,
+            # assume that the length of the new module home is either already
+            # the same length or smaller, padding with `/` when necessary.
+            "if [ ${#NEW} -gt ${#OLD} ]; then",
+            '  >&2 echo "New module home ($NEW) bigger than old one ($OLD)"',
+            "  exit 1",
+            "fi",
+            'NEW="\\$(echo -n "$NEW" | sed -e :a -e' +
+            ' "s|^.\{1,$(expr "$(echo -n "$OLD" | wc -c)" - 1)\}$|&/|;ta")"',
+            'sed -i "s|$OLD|$NEW|g" "$OUT"',
+        ])
 
     native.cxx_genrule(
         name = name,
         out = "module.pcm",
         srcs = srcs,
-        cmd = "\n".join(
-            [
-                "set -euo pipefail",
-
-                # TODO(T32246582): This is gross, but we currently need to run the
-                # C/C++ compilers from the root of fbcode, so search up the dir
-                # tree to find it.
-                "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done",
-
-                # Set up the args for module compilation.
-                "args=()",
-                "args+=($(cxx))",
-
-                # Add toolchain flags
-                "args+=($(cxxppflags :{}))".format(helper_name),
-                "args+=($(cxxflags))",
-                "args+=({})".format(" ".join([shell.quote(f) for f in _get_toolchain_flags()])),
-
-                # Enable building *.pcm module files.
-                'args+=("-Xclang" "-emit-module")',
-                # Set the name of the module we're building.
-                'args+=("-fmodule-name="{})'.format(shell.quote(module_name)),
-                # The inputs to module compilation are C++ headers.
-                'args+=("-x" "c++-header")',
-
-                # Setup the headers as inputs to the compilation by adding the
-                # header dir implicitly via an `-I...` flag (for implicit searches
-                # for headers specified in the module map) and the
-                # `module.modulemap` as the main input arg.
-                'args+=("-I$SRCDIR/headers")',
-                'args+=("$SRCDIR/headers/module.modulemap")',
-
-                # Output via "-" and redirect to the output file rather than going
-                # directly to the output file.  This makes clang avoid embedding
-                # an absolute path for it's "original pch dir" attribute.
-                'args+=("-o" "-")',
-
-                # NOTE(T32246672): Clang will embed paths as specified on the
-                # command-line so, to avoid baking in absolute paths, sanitize
-                # them here.
-                'for i in "${!args[@]}"; do',
-                "  args[$i]=${args[$i]//$PWD\//}",
-                "done",
-                ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT"' +
-                 ' | >&2 sed "s|${{SRCDIR//$PWD\//}}/headers/|{}|g"')
-                    .format(header_prefix),
-            ],
-        ),
+        cmd = "\n".join(commands),
         visibility = visibility,
     )
 
