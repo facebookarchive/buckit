@@ -38,7 +38,6 @@ class ConfigTest(tests.utils.TestCase):
             "dev",  # get_build_mode
             "gcc",  # get_default_compiler_family
             None,  # get_global_compiler_family
-            False,  # get_coverage
             current_os,  # get_coverage
             "fbcode",  # get_current_repo_name
             None,  # get_cython_compiler
@@ -75,7 +74,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_build_mode()",
             "config.get_default_compiler_family()",
             "config.get_global_compiler_family()",
-            "config.get_coverage()",
             "config.get_current_os()",
             "config.get_current_repo_name()",
             "config.get_cython_compiler()",
@@ -130,7 +128,6 @@ class ConfigTest(tests.utils.TestCase):
                 "auto_pch_blacklist": "/foo,/bar",
                 "build_mode": "opt",
                 "global_compiler": "clang",
-                "coverage": "true",
                 "current_repo_name": "third-party",
                 "default_allocator": "jemalloc",
                 "fbcode_style_deps": "true",
@@ -174,7 +171,6 @@ class ConfigTest(tests.utils.TestCase):
             ["/foo", "/bar"],  # get_auto_pch_blacklist
             "opt",  # get_build_mode
             "clang",  # get_global_compiler_family
-            True,  # get_coverage
             current_os,  # get_coverage
             "third-party",  # get_current_repo_name
             "//tools:cython",  # get_cython_compiler
@@ -213,7 +209,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_global_compiler_family()",
-            "config.get_coverage()",
             "config.get_current_os()",
             "config.get_current_repo_name()",
             "config.get_cython_compiler()",

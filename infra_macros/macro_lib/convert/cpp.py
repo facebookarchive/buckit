@@ -52,6 +52,7 @@ load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
+load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -509,21 +510,6 @@ class CppConverter(base.Converter):
             deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
-
-    def get_coverage_ldflags(self, base_path):
-        """
-        Return compiler flags needed to support coverage builds.
-        """
-
-        flags = []
-
-        coverage = self.is_coverage_enabled(base_path)
-        if coverage and sanitizers.get_sanitizer() is None:
-            # Add flags to enable LLVM's Coverage Mapping.
-            flags.append('-fprofile-instr-generate')
-            flags.append('-fcoverage-mapping')
-
-        return flags
 
     def convert_lex(self, name, lex_flags, lex_src, platform, visibility):
         """
@@ -1168,7 +1154,7 @@ class CppConverter(base.Converter):
         if not cuda:
             if sanitizers.get_sanitizer() is not None:
                 out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
-            out_preprocessor_flags.extend(self.get_coverage_flags(base_path))
+            out_preprocessor_flags.extend(coverage.get_coverage_flags(base_path))
         self.verify_preprocessor_flags(
             'preprocessor_flags',
             preprocessor_flags)
@@ -1264,7 +1250,7 @@ class CppConverter(base.Converter):
         if self.is_binary(dlopen_info):
             if sanitizers.get_sanitizer() is not None:
                 out_ldflags.extend(self.get_sanitizer_binary_ldflags())
-            out_ldflags.extend(self.get_coverage_ldflags(base_path))
+            out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
             if (self._context.buck_ops.read_config('fbcode', 'gdb-index') and
                   not core_tools.is_core_tool(base_path, name)):
                 out_ldflags.append('-Wl,--gdb-index')
@@ -1484,7 +1470,7 @@ class CppConverter(base.Converter):
 
         if self.is_test(self.get_buck_rule_type()):
             attributes['labels'].extend(label_utils.convert_labels(platform, 'c++'))
-            if self.is_coverage_enabled(base_path):
+            if coverage.is_coverage_enabled(base_path):
                 attributes['labels'].append('coverage')
             attributes['use_default_test_main'] = use_default_test_main
             if 'serialize' in tags:

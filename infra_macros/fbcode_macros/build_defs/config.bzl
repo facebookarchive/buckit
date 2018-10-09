@@ -127,12 +127,6 @@ def _get_global_compiler_family():
     """
     return _falsy_as_none(read_string("fbcode", "global_compiler", None))
 
-def _get_coverage():
-    """
-    Whether to gather coverage information or not
-    """
-    return read_boolean("fbcode", "coverage", False)
-
 def _get_current_host_os():
     """ Get a string version of the host os. This will eventually go away """
     overridden_os = read_string("fbcode", "os_family", None)
@@ -406,7 +400,6 @@ config = struct(
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
-    get_coverage = _get_coverage,
     get_current_os = _get_current_host_os,
     get_current_repo_name = _get_current_repo_name,
     get_cython_compiler = _get_cython_compiler,

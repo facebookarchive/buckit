@@ -13,6 +13,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:common_paths.bzl",
     "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
+    "fbcode_macros//build_defs:coverage.bzl",
     "fbcode_macros//build_defs:core_tools.bzl",
     "fbcode_macros//build_defs:cpp_flags.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
@@ -126,6 +127,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "cpp_flags_test",
     srcs = ["cpp_flags_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "coverage_test",
+    srcs = ["coverage_test.py"],
     deps = [":utils"],
 )
 

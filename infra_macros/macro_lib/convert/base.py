@@ -65,6 +65,7 @@ build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
+load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -597,7 +598,7 @@ class Converter(object):
             per_platform_sanitizer_flags = src_and_dep_helpers.format_platform_param(
                 sanitizers.get_sanitizer_flags())
         per_platform_coverage_flags = src_and_dep_helpers.format_platform_param(
-            self.get_coverage_flags(base_path))
+            coverage.get_coverage_flags(base_path))
 
         for lang in c_langs:
             if per_platform_sanitizer_flags != None:
@@ -929,79 +930,6 @@ class Converter(object):
 
         return ldflags
 
-    def get_coverage_binary_deps(self):
-        assert self._context.coverage
-        compiler.require_global_compiler(
-            "can only use coverage with build modes that use clang globally",
-            "clang")
-
-        if sanitizers.get_sanitizer() is None:
-            return [
-                target_utils.RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
-            ]
-        else:
-            # all coverage deps are included in the santizer deps
-            return []
-
-    def get_coverage_flags(self, base_path):
-        """
-        Return compiler flags needed to support coverage builds.
-        """
-
-        flags = []
-
-        if self.is_coverage_enabled(base_path):
-            if sanitizers.get_sanitizer() is not None:
-                flags.append('-fsanitize-coverage=bb')
-            else:
-                # Add flags to enable LLVM's Source-based Code Coverage
-                flags.append('-fprofile-instr-generate')
-                flags.append('-fcoverage-mapping')
-
-        return flags
-
-    def allowed_by_coverage_only(self, base_path):
-        """
-        Returns whether the `cxx.coverage_only` whitelists the given rule for
-        coverage.
-        """
-
-        prefixes = self._context.buck_ops.read_config('cxx', 'coverage_only')
-
-        # If not option was set, then always enable coverage.
-        if prefixes is None:
-            return True
-
-        # Otherwise, the base path has to match one of the prefixes to enable
-        # coverage.
-        for prefix in shlex.split(prefixes):
-            if base_path.startswith(prefix):
-                return True
-
-        return False
-
-    def is_coverage_enabled(self, base_path):
-        """
-        Return whether to build C/C++ code with coverage enabled.
-        """
-
-        # Only use coverage if the global build mode coverage flag is set.
-        if not self._context.coverage:
-            return False
-
-        # Make sure the `cxx.coverage_only` option allows this rule.
-        if not self.allowed_by_coverage_only(base_path):
-            return False
-
-        # We use LLVM's coverage modes so that all coverage instrumentation
-        # is inlined in the binaries and so work seamlessly with Buck's caching
-        # (http://llvm.org/docs/CoverageMappingFormat.html).
-        compiler.require_global_compiler(
-            "can only use coverage with build modes that use clang globally",
-            "clang")
-
-        return True
-
     def get_binary_link_deps(
             self,
             base_path,
@@ -1032,8 +960,8 @@ class Converter(object):
         rules.extend(r)
 
         # Add in any dependencies required for code coverage
-        if self._context.coverage:
-            deps.extend(self.get_coverage_binary_deps())
+        if coverage.get_coverage():
+            deps.extend(coverage.get_coverage_binary_deps())
 
         # We link in our own implementation of `kill` to binaries (S110576).
         if default_deps:

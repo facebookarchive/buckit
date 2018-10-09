@@ -61,6 +61,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 # /macros/macros.py
 load('@fbcode_macros//build_defs:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
+load('@fbcode_macros//build_defs:coverage.bzl', 'coverage')
 load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
@@ -261,7 +262,7 @@ def install_converted_rules(globals, **context_kwargs):
     context_kwargs = {
         'default_compiler': config.get_default_compiler_family(),
         'global_compiler': config.get_global_compiler_family(),
-        'coverage': config.get_coverage(),
+        'coverage': coverage.get_coverage(),
         'link_style': config.get_default_link_style(),
         'mode': config.get_build_mode(),
         'lto_type': config.get_lto_type(),

@@ -44,6 +44,7 @@ load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 
 
 INTERPS = [
@@ -554,7 +555,7 @@ class PythonConverter(base.Converter):
                 )
             if par_style is not None:
                 passthrough_args.append('--par-style=' + par_style)
-            if needed_coverage is not None or self._context.coverage:
+            if needed_coverage is not None or coverage.get_coverage():
                 passthrough_args.append('--store-source')
             if self._context.mode.startswith('opt'):
                 passthrough_args.append('--optimize')
