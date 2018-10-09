@@ -577,13 +577,6 @@ class Converter(object):
     def read_extra_ghc_linker_flags(self):
         return self.read_list('haskell', 'extra_linker_flags', [])
 
-    def get_compiler_general_langs(self):
-        """
-        The languages which general compiler flag apply to.
-        """
-
-        return ('assembler', 'c_cpp_output', 'cxx_cpp_output')
-
     def get_compiler_flags(self, base_path):
         """
         Return a dict mapping languages to base compiler flags.
@@ -598,7 +591,7 @@ class Converter(object):
             compiler_flags[lang] = []
 
         # The set of language we apply "general" compiler flags to.
-        c_langs = self.get_compiler_general_langs()
+        c_langs = cpp_flags.COMPILER_GENERAL_LANGS
 
         # Apply the general sanitizer/coverage flags.
         per_platform_sanitizer_flags = None
