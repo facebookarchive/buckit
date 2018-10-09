@@ -32,6 +32,13 @@ try:
 except ImportError:
     import configparser
 
+try:
+    import tests.facebook.utils
+
+    __import_facebook_utils = True
+except ImportError:
+    __import_facebook_utils = False
+
 RunResult = collections.namedtuple("RunResult", ["returncode", "stdout", "stderr"])
 UnitTestResult = collections.namedtuple(
     "UnitTestResult", ["returncode", "stdout", "stderr", "debug_lines"]
@@ -45,7 +52,7 @@ def dedent(text):
     return textwrap.dedent(text).strip()
 
 
-def __recursively_get_files_contents(base):
+def __recursively_get_files_contents(base, module):
     """
     Recursively get all file contents for a given path from pkg_resources
 
@@ -55,18 +62,18 @@ def __recursively_get_files_contents(base):
         Map of relative path to a string of the file's contents
     """
     is_file = pkg_resources.resource_exists(
-        __name__, base
-    ) and not pkg_resources.resource_isdir(__name__, base)
+        module, base
+    ) and not pkg_resources.resource_isdir(module, base)
     if is_file:
-        return {base: pkg_resources.resource_string(__name__, base)}
+        return {base: pkg_resources.resource_string(module, base)}
 
     ret = {}
-    for file in pkg_resources.resource_listdir(__name__, base):
+    for file in pkg_resources.resource_listdir(module, base):
         full_path = os.path.join(base, file)
-        if not pkg_resources.resource_isdir(__name__, full_path):
-            ret[full_path] = pkg_resources.resource_string(__name__, full_path)
+        if not pkg_resources.resource_isdir(module, full_path):
+            ret[full_path] = pkg_resources.resource_string(module, full_path)
         else:
-            ret.update(__recursively_get_files_contents(full_path))
+            ret.update(__recursively_get_files_contents(full_path, module))
     return ret
 
 
@@ -81,7 +88,9 @@ def recursively_get_files_contents(base, strip_base):
     Returns:
         Map of relative path to a string of the file's contents
     """
-    ret = __recursively_get_files_contents(base)
+    ret = __recursively_get_files_contents(base, "tests.utils")
+    if __import_facebook_utils:
+        ret.update(__recursively_get_files_contents(base, "tests.facebook.utils"))
     if strip_base:
         # + 1 is for the /
         ret = {path[len(base) + 1 :]: ret[path] for path in ret.keys()}

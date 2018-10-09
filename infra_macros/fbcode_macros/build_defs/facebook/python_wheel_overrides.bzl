@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+
+# Big tuple of tuples used to generate a dict of all the external_deps /
+# TP2 dependencies mapped to the new PyFI //python/wheel TARGET.
+# These will be use with python_* TARGETS to allow for a cleaner migration to PyFI
+
+OVERRIDES = (
+    # TP2 Name, PyFI Target Name
+    ("python-attrs", "attrs"),
+    ("certifi", "certifi"),
+    ("python-cffi", "cffi"),
+    ("python-chardet", "chardet"),
+    ("python-click", "click"),  # We have a hacked unicode_literals 7.0.dev release
+    ("coverage", "coverage"),
+    ("colorama", "colorama"),
+    ("python-dateutil", "python-dateutil"),
+    ("decorator", "decorator"),
+    ("python-enum34", "enum34"),
+    ("funcsigs", "funcsigs"),
+    ("python-future", "future"),
+    ("python-ipaddress", "ipaddress"),
+    ("python-idna", "idna"),
+    ("ipython", "ipython"),
+    ("ipython_genutils", "ipython-genutils"),
+    ("Jinja2", "jinja2"),
+    ("jsonpickle", "jsonpickle"),
+    ("MarkupSafe", "markupsafe"),
+    ("mock", "mock"),
+    ("python-munch", "munch"),
+    ("pathlib2", "pathlib2"),
+    ("pexpect", "pexpect"),
+    ("pexpect-u", "pexpect"),
+    ("ply", "ply"),
+    ("prompt-toolkit", "prompt-toolkit"),
+    ("ptyprocess", "ptyprocess"),
+    ("pycparser", "pycparser"),
+    ("Pygments", "pygments"),  # TP2 has duplicates
+    ("pygments", "pygments"),  # TP2 has duplicates
+    ("pyparsing", "pyparsing"),
+    ("python-requests", "requests"),
+    ("pytz", "pytz"),
+    ("Shapely", "shapely"),
+    ("singledispatch", "singledispatch"),
+    ("six", "six"),
+    ("setuptools", "setuptools"),
+    ("traitlets", "traitlets"),
+    ("typing", "typing"),
+    ("urllib3", "urllib3"),
+    ("wcwidth", "wcwidth"),
+    ("PyYAML", "pyyaml"),
+)
+
+# TODO(cooper) - T24797643 - Add platform007 support
+_PYFI_SUPPORTED_PLATFORMS = ("gcc-5-glibc-2.23", "gcc-5-glibc-2.23-aarch64")
+
+def _generate_pyfi_overrides(overrides):
+    # type: (Tuple[str, str, str]) -> Dict[Union[str, Tuple[Optional[str], ...]], str]
+    """Generate str key mapping of TP2 name to PyFI TARGET name"""
+    pyfi_overrides = {}
+    for tp2_name, pyfi_name in overrides:
+        pyfi_overrides[tp2_name] = target_utils.RootRuleTarget(
+            paths.join("python/wheel", pyfi_name),
+            pyfi_name,
+        )
+
+    return pyfi_overrides
+
+def _should_use_overrides():
+    return bool(config.get_pyfi_overrides_path())
+
+_PYFI_OVERRIDES = _generate_pyfi_overrides(OVERRIDES)
+
+python_wheel_overrides = struct(
+    PYFI_OVERRIDES = _PYFI_OVERRIDES,
+    PYFI_SUPPORTED_PLATFORMS = _PYFI_SUPPORTED_PLATFORMS,
+    should_use_overrides = _should_use_overrides,
+)

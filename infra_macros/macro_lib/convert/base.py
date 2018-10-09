@@ -73,6 +73,7 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -553,11 +554,9 @@ class Converter(object):
                 pdeps = self._convert_auxiliary_deps(platform, pdeps)
 
             # Process PyFI overrides
-            pyfi_overrides_path = self._context.config.get_pyfi_overrides_path()
-            if pyfi_overrides_path:
-                overrides = include_defs(pyfi_overrides_path)
-                if platform in overrides.PYFI_SUPPORTED_PLATFORMS:
-                    pdeps = [overrides.PYFI_OVERRIDES.get(d.base_path, d)
+            if python_wheel_overrides.should_use_overrides():
+                if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
+                    pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
                              for d in pdeps]
 
             return self.format_deps(pdeps, platform=platform)
