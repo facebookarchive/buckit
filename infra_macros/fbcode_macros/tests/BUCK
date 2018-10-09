@@ -23,6 +23,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:lex.bzl",
+    "fbcode_macros//build_defs:go_external_library.bzl",
     "fbcode_macros//build_defs:java_binary.bzl",
     "fbcode_macros//build_defs:java_common.bzl",
     "fbcode_macros//build_defs:java_library.bzl",
@@ -160,6 +161,15 @@ skylark_integration_test(
     name = "cpp_library_external_test",
     srcs = ["cpp_library_external_test.py"],
     deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "go_external_library_test",
+    srcs = ["go_external_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(

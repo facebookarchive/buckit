@@ -54,6 +54,7 @@ load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
+load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
@@ -85,7 +86,6 @@ d = import_macro_lib('convert/d')
 discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
-go_library_external = import_macro_lib('convert/go_library_external')
 haskell = import_macro_lib('convert/haskell')
 haskell_external_library = import_macro_lib('convert/haskell_external_library')
 image_feature = import_macro_lib('convert/container_image/image_feature')
@@ -163,7 +163,6 @@ def convert(context, base_path, rule):
         go.GoConverter(context, 'cgo_library'),
         go.GoConverter(context, 'go_unittest', 'go_test'),
         go_bindgen_library.GoBindgenLibraryConverter(context),
-        go_library_external.GoLibraryExternalConverter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
@@ -218,6 +217,7 @@ def convert(context, base_path, rule):
         'test_suite': test_suite,  # noqa F821
         'buck_command_alias': buck_command_alias,  # noqa F821
         'custom_rule': custom_rule,  # noqa F821
+        'go_external_library': go_external_library,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
         'java_protoc_library': java_protoc_library,  # noqa F821
