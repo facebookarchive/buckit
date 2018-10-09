@@ -1199,11 +1199,11 @@ class CppConverter(base.Converter):
                 out_lang_preprocessor_flags['cxx'].extend(
                     build_mode.cxxpp_flags)
         out_lang_preprocessor_flags['c'].extend(
-            self.get_extra_cppflags())
+            cpp_flags.get_extra_cppflags())
         out_lang_preprocessor_flags['cxx'].extend(
-            self.get_extra_cxxppflags())
+            cpp_flags.get_extra_cxxppflags())
         out_lang_preprocessor_flags['assembler_with_cpp'].extend(
-            self.get_extra_cxxppflags())
+            cpp_flags.get_extra_cxxppflags())
         if modules.enabled() and out_compile_with_modules:
             # Add module toolchain flags.
             out_lang_preprocessor_flags['cxx'].extend(

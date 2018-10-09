@@ -124,6 +124,12 @@ skylark_integration_test(
 )
 
 skylark_integration_test(
+    name = "cpp_flags_test",
+    srcs = ["cpp_flags_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
     name = "custom_rule_test",
     srcs = ["custom_rule_test.py"],
     resources = glob(["testdata/custom_rule/*"]),

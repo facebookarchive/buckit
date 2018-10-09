@@ -626,9 +626,9 @@ class Converter(object):
 
         # Add in command line flags last.
         compiler_flags['c_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(self.get_extra_cflags()))
+            src_and_dep_helpers.format_platform_param(cpp_flags.get_extra_cflags()))
         compiler_flags['cxx_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(self.get_extra_cxxflags()))
+            src_and_dep_helpers.format_platform_param(cpp_flags.get_extra_cxxflags()))
 
         return compiler_flags
 
@@ -667,41 +667,6 @@ class Converter(object):
             return None
         else:
             raise Exception('invalid strip mode: ' + mode)
-
-    def get_extra_cflags(self):
-        """
-        Get extra C compiler flags to build with.
-        """
-
-        return read_flags('cxx', 'extra_cflags', default=())
-
-    def get_extra_cxxflags(self):
-        """
-        Get extra C++ compiler flags to build with.
-        """
-
-        return read_flags('cxx', 'extra_cxxflags', default=())
-
-    def get_extra_cppflags(self):
-        """
-        Get extra C preprocessor flags to build with.
-        """
-
-        return read_flags('cxx', 'extra_cppflags', default=())
-
-    def get_extra_cxxppflags(self):
-        """
-        Get extra C++ preprocessor flags to build with.
-        """
-
-        return read_flags('cxx', 'extra_cxxppflags', default=())
-
-    def get_extra_ldflags(self):
-        """
-        Get extra linker flags to build with.
-        """
-
-        return read_flags('cxx', 'extra_ldflags', default=())
 
     def get_link_style(self):
         """
@@ -960,7 +925,7 @@ class Converter(object):
                     ldflags.append('-fno-lto')
 
         # 6. Add in command-line ldflags.
-        ldflags.extend(self.get_extra_ldflags())
+        ldflags.extend(cpp_flags.get_extra_ldflags())
 
         return ldflags
 
@@ -1138,9 +1103,9 @@ class Converter(object):
         if visibility is not None:
             lib_attrs['visibility'] = visibility
         lib_attrs['srcs'] = [':' + source_name]
-        lib_attrs['compiler_flags'] = self.get_extra_cflags()
+        lib_attrs['compiler_flags'] = cpp_flags.get_extra_cflags()
         lib_attrs['linker_flags'] = (
-            list(self.get_extra_ldflags()) +
+            list(cpp_flags.get_extra_ldflags()) +
             ['-nodefaultlibs'] +
             list(linker_flags))
 
@@ -1299,7 +1264,7 @@ class Converter(object):
             .format(base_path=base_path, name=name)
         ]
         lib_attrs['srcs'] = [':' + source_gen_name]
-        lib_attrs['compiler_flags'] = self.get_extra_cflags()
+        lib_attrs['compiler_flags'] = cpp_flags.get_extra_cflags()
 
         # Setup platform default for compilation DB, and direct building.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
@@ -1309,7 +1274,7 @@ class Converter(object):
         lib_linker_flags = []
         if linker_flags:
             lib_linker_flags = (
-                list(self.get_extra_ldflags()) +
+                list(cpp_flags.get_extra_ldflags()) +
                 ['-nodefaultlibs'] +
                 list(linker_flags)
             )
@@ -1667,7 +1632,7 @@ class Converter(object):
         if local_submodule_visibility:
             out_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
         out_flags.extend(flags)
-        out_flags.extend(self.get_extra_cxxppflags())
+        out_flags.extend(cpp_flags.get_extra_cxxppflags())
 
         # Form platform-specific flags.
         out_platform_flags = []

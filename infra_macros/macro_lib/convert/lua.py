@@ -20,6 +20,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -260,8 +261,8 @@ class LuaConverter(base.Converter):
         cpp_main_attrs['name'] = name + '-cpp-main'
         if visibility is not None:
             cpp_main_attrs['visibility'] = visibility
-        cpp_main_attrs['compiler_flags'] = self.get_extra_cxxflags()
-        cpp_main_attrs['linker_flags'] = self.get_extra_ldflags()
+        cpp_main_attrs['compiler_flags'] = cpp_flags.get_extra_cxxflags()
+        cpp_main_attrs['linker_flags'] = cpp_flags.get_extra_ldflags()
         cpp_main_attrs['exported_linker_flags'] = [
             # Since we statically link in sanitizer/allocators libs, make sure
             # we export all their symbols on the dynamic symbols table.
