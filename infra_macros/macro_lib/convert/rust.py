@@ -22,6 +22,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 class RustConverter(base.Converter):
@@ -146,7 +147,7 @@ class RustConverter(base.Converter):
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
-        attributes['srcs'] = self.convert_source_list(base_path, srcs or [])
+        attributes['srcs'] = src_and_dep_helpers.convert_source_list(base_path, srcs or [])
         attributes['features'] = features or []
 
         if not crate_root and not self.is_test():
@@ -348,7 +349,7 @@ class RustConverter(base.Converter):
         test_attributes['srcs'] = list(attributes.get('srcs', []))
         if test_srcs:
             test_attributes['srcs'] += (
-                self.convert_source_list(base_path, test_srcs))
+                src_and_dep_helpers.convert_source_list(base_path, test_srcs))
 
         deps = []
         deps.extend(dependencies)

@@ -49,6 +49,7 @@ load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
@@ -1374,11 +1375,11 @@ class CppConverter(base.Converter):
         # headers.
         if base.is_collection(headers):
             out_headers.extend(
-                self.convert_source_list(base_path, headers))
+                src_and_dep_helpers.convert_source_list(base_path, headers))
         elif isinstance(headers, dict):
             headers_iter = headers.iteritems()
             converted = {
-                k: self.convert_source(base_path, v) for k, v in headers_iter}
+                k: src_and_dep_helpers.convert_source(base_path, v) for k, v in headers_iter}
 
             if base.is_collection(out_headers):
                 out_headers = {k: k for k in out_headers}

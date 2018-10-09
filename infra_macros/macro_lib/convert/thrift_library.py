@@ -45,6 +45,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -411,8 +412,8 @@ class CppThriftConverter(ThriftLangConverter):
         sources = self.merge_sources_map(sources_map)
 
         types_suffix = '-types'
-        types_sources = self.convert_source_list(base_path, cpp2_srcs)
-        types_headers = self.convert_source_list(base_path, cpp2_headers)
+        types_sources = src_and_dep_helpers.convert_source_list(base_path, cpp2_srcs)
+        types_headers = src_and_dep_helpers.convert_source_list(base_path, cpp2_headers)
         types_deps = [
             self.get_thrift_dep_target('folly', 'indestructible'),
             self.get_thrift_dep_target('folly', 'optional'),
@@ -2141,7 +2142,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             visibility=visibility,
             # tupperware.thriftdoc.validator.registry recursively loads this:
             base_module='tupperware.thriftdoc.generated_asts',
-            srcs=self.convert_source_map(base_path, py_library_srcs),
+            srcs=src_and_dep_helpers.convert_source_map(base_path, py_library_srcs),
             deps=deps,
         ))
 

@@ -30,6 +30,7 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 VENDOR_PATH = 'third-party-source/go'
 
@@ -129,7 +130,7 @@ class GoConverter(base.Converter):
 
         attributes = collections.OrderedDict(
             name=name,
-            srcs=self.convert_source_list(base_path, srcs + gen_srcs),
+            srcs=src_and_dep_helpers.convert_source_list(base_path, srcs + gen_srcs),
         )
 
         if visibility is not None:

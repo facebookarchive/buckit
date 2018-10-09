@@ -20,6 +20,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 class OCamlConverter(base.Converter):
@@ -62,7 +63,7 @@ class OCamlConverter(base.Converter):
 
         attributes['name'] = name
 
-        attributes['srcs'] = self.convert_source_list(base_path, srcs)
+        attributes['srcs'] = src_and_dep_helpers.convert_source_list(base_path, srcs)
 
         if warnings_flags:
             attributes['warnings_flags'] = warnings_flags

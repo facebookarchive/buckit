@@ -23,6 +23,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 DEFAULT_CPP_MAIN = target_utils.RootRuleTarget('tools/make_lar', 'lua_main')
@@ -165,11 +166,11 @@ class LuaConverter(base.Converter):
 
     def convert_sources(self, base_path, srcs):
         if isinstance(srcs, dict):
-            return self.convert_source_map(
+            return src_and_dep_helpers.convert_source_map(
                 base_path,
                 {v: k for k, v in srcs.iteritems()})
         else:
-            return self.convert_source_list(base_path, srcs)
+            return src_and_dep_helpers.convert_source_list(base_path, srcs)
 
     def create_run_library(
             self,

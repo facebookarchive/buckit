@@ -21,6 +21,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -624,7 +625,7 @@ class HaskellConverter(base.Converter):
                 self.format_all_deps(d)
 
             attributes['extra_script_templates'] = map(
-                lambda template : self.convert_source(base_path, template),
+                lambda template : src_and_dep_helpers.convert_source(base_path, template),
                 extra_script_templates)
             template_base_names = []
             # BUCK generates a standard script with the same name as TARGET
@@ -645,7 +646,7 @@ class HaskellConverter(base.Converter):
             attributes['ghci_bin_dep'] = bin_dep_target
 
         if ghci_init is not None:
-            attributes['ghci_init'] = self.convert_source(base_path, ghci_init)
+            attributes['ghci_init'] = src_and_dep_helpers.convert_source(base_path, ghci_init)
 
         if self.read_hs_profile():
             attributes['enable_profiling'] = True

@@ -544,40 +544,6 @@ class Converter(object):
 
         return param
 
-    def convert_source(self, base_path, src):
-        """
-        Convert a source, which may refer to an in-repo source or a rule that
-        generates it, to a Buck-compatible source path reference.
-        """
-
-        # If this src starts with the special build target chars, parse it as
-        # a build target.  We also parse it as a build target if we see the
-        # typical Buck absolute target prefix, so generate a proper error
-        # message.
-        if src[0] in ':@' or src.startswith('//'):
-            target = target_utils.parse_target(src, default_base_path=base_path)
-            assert target.repo is None, src
-            src = target_utils.target_to_label(target)
-
-        return src
-
-    def convert_source_list(self, base_path, srcs):
-        converted = []
-        for src in srcs:
-            converted.append(self.convert_source(base_path, src))
-        return converted
-
-    def convert_source_map(self, base_path, srcs):
-        converted = {}
-        for k, v in srcs.iteritems():
-            name = self.get_source_name(k)
-            if name in converted:
-                raise ValueError(
-                    'duplicate name "{0}" for "{1}" and "{2}" in source map'
-                    .format(name, v, converted[name]))
-            converted[name] = self.convert_source(base_path, v)
-        return converted
-
     def convert_blob_with_macros(
             self,
             base_path,

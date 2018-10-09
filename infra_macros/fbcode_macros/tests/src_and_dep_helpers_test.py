@@ -39,3 +39,47 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             ),
             "generated source target //foo:bar is missing `=<name>` suffix",
         )
+
+    @tests.utils.with_project()
+    def test_convert_source_methods(self, root):
+        commands = [
+            'src_and_dep_helpers.convert_source("foo/bar", ":baz")',
+            'src_and_dep_helpers.convert_source("foo/bar", "//other:baz")',
+            'src_and_dep_helpers.convert_source("foo/bar", "foo/bar/baz.py")',
+            'src_and_dep_helpers.convert_source("foo/bar", "foo.py")',
+            'src_and_dep_helpers.convert_source_list("foo/bar", [":baz", "//other:baz", "foo/bar/baz.py", "foo.py"])',
+            (
+                'src_and_dep_helpers.convert_source_map("foo/bar", {'
+                '":=bar/baz1.cpp": ":baz1.cpp",'
+                '":=bar/baz2.cpp": "baz2.cpp",'
+                '"bar/baz3.cpp": ":baz3.cpp",'
+                '"bar/baz4.cpp": "baz4.cpp",'
+                "})"
+            ),
+        ]
+
+        expected = [
+            "//foo/bar:baz",
+            "//other:baz",
+            "foo/bar/baz.py",
+            "foo.py",
+            ["//foo/bar:baz", "//other:baz", "foo/bar/baz.py", "foo.py"],
+            {
+                "bar/baz1.cpp": "//foo/bar:baz1.cpp",
+                "bar/baz2.cpp": "baz2.cpp",
+                "bar/baz3.cpp": "//foo/bar:baz3.cpp",
+                "bar/baz4.cpp": "baz4.cpp",
+            },
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_convert_source_map_handles_duplicate_keys(self, root):
+        commands = [
+            'src_and_dep_helpers.convert_source_map("foo/bar", {":=foo.cpp": "foo.cpp", "foo.cpp": "bar.cpp"})'
+        ]
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, commands),
+            'duplicate name "foo.cpp" for "bar.cpp" and "foo.cpp" in source map',
+        )
