@@ -61,7 +61,7 @@ class RustLibraryExternalConverter(base.Converter):
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
-            dependencies.append(self.normalize_external_dep(dep))
+            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
         if dependencies:
             attributes['deps'] = (
                 src_and_dep_helpers.format_deps(dependencies, platform=platform))

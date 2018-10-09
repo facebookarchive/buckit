@@ -228,7 +228,7 @@ class RustConverter(base.Converter):
 
         # Translate external dependencies.
         for dep in external_deps or []:
-            dependencies.append(self.normalize_external_dep(dep))
+            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
         if not tests:
             tests = []
@@ -356,7 +356,7 @@ class RustConverter(base.Converter):
         for dep in test_deps or []:
             deps.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in test_external_deps or []:
-            deps.append(self.normalize_external_dep(dep))
+            deps.append(src_and_dep_helpers.normalize_external_dep(dep))
 
         d, r = self.get_rust_binary_deps(
             base_path,

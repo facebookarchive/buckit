@@ -221,7 +221,7 @@ class PyWheel(base.Converter):
                 attrs['exclude_deps_from_merged_linking'] = True
             attrs['platform_deps'].extend(
                 src_and_dep_helpers.format_platform_deps(
-                    [self.normalize_external_dep(d, lang_suffix='-py')
+                    [src_and_dep_helpers.normalize_external_dep(d, lang_suffix='-py')
                      for d in external_deps]))
 
         if tests:

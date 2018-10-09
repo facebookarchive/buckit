@@ -59,7 +59,7 @@ class CppModuleExternalConverter(base.Converter):
             project = base_path.split(os.sep)[3]
             dependencies.append(third_party.get_tp2_project_target(project))
         for dep in external_deps:
-            dependencies.append(self.normalize_external_dep(dep))
+            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
         # Generate the module file.
         module_rule_name = name + '-module'

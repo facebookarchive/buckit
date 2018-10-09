@@ -712,7 +712,7 @@ class HaskellConverter(base.Converter):
         for dep in deps:
             user_deps.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
-            user_deps.append(self.normalize_external_dep(dep))
+            user_deps.append(src_and_dep_helpers.normalize_external_dep(dep))
         user_deps.extend(self.get_deps_for_packages(packages))
         if fb_haskell:
             user_deps.extend(self.get_deps_for_packages(

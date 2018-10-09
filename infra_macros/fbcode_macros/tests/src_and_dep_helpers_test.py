@@ -315,3 +315,16 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         self.assertSuccess(result)
         sorted_result = [(lines[0], sorted(lines[1])) for lines in result.debug_lines]
         self.assertEqual(expected, sorted_result)
+
+    @tests.utils.with_project()
+    def test_normalize_external_dep(self, root):
+        commands = [
+            'src_and_dep_helpers.normalize_external_dep(("foo", None, "bar"))',
+            'src_and_dep_helpers.normalize_external_dep(("foo", "1.0", "bar"), parse_version=True)',
+        ]
+        expected = [
+            self.rule_target("third-party", "foo", "bar"),
+            (self.rule_target("third-party", "foo", "bar"), "1.0"),
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

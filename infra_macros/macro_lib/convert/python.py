@@ -940,7 +940,7 @@ class PythonConverter(base.Converter):
         if external_deps:
             attributes['platform_deps'] = (
                 src_and_dep_helpers.format_platform_deps(
-                    [self.normalize_external_dep(
+                    [src_and_dep_helpers.normalize_external_dep(
                          dep,
                          lang_suffix='-py',
                          parse_version=True)

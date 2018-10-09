@@ -539,7 +539,7 @@ class SwigLibraryConverter(base.Converter):
         cpp_deps = [target_utils.parse_target(d, default_base_path=base_path) for d in cpp_deps]
         ext_deps = (
             [target_utils.parse_target(d, default_base_path=base_path) for d in ext_deps] +
-            [self.normalize_external_dep(d) for d in ext_external_deps])
+            [src_and_dep_helpers.normalize_external_dep(d) for d in ext_external_deps])
 
         if module is None:
             module = name

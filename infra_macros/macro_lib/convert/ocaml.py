@@ -108,7 +108,7 @@ class OCamlConverter(base.Converter):
 
         # Translate external dependencies.
         for dep in external_deps:
-            dependencies.append(self.normalize_external_dep(dep))
+            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
         # Add in binary-specific link deps.
         if self.is_binary():

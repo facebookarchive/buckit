@@ -258,34 +258,13 @@ class Converter(object):
         else:
             return project
 
-    def normalize_external_dep(
-            self,
-            raw_target,
-            lang_suffix='',
-            parse_version=False):
-        """
-        Normalize the various ways users can specify an external dep into a
-        RuleTarget
-        """
-
-        parsed, version = (
-            target_utils.parse_external_dep(
-                raw_target,
-                lang_suffix=lang_suffix))
-
-        # OSS support: Make repo default to the base path.
-        #if parsed.repo is None:
-        #    parsed = parsed._replace(repo=parsed.base_path)
-
-        return parsed if not parse_version else (parsed, version)
-
     def convert_external_build_target(self, target, platform=None, lang_suffix=''):
         """
         Convert the given build target reference from an external dep TARGETS
         file reference.
         """
 
-        parsed = self.normalize_external_dep(target, lang_suffix=lang_suffix)
+        parsed = src_and_dep_helpers.normalize_external_dep(target, lang_suffix=lang_suffix)
         return target_utils.target_to_label(parsed, platform=platform)
 
     def convert_build_target(self, base_path, target, platform=None):

@@ -1581,7 +1581,7 @@ class CppConverter(base.Converter):
 
         # Add external deps.
         for dep in external_deps:
-            dependencies.append(self.normalize_external_dep(dep))
+            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
         # Add in any CUDA deps.  We only add this if it's not always present,
         # it's common to explicitly depend on the cuda runtime.

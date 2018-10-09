@@ -20,6 +20,7 @@ with allow_unsafe_import():
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
@@ -157,7 +158,7 @@ class HaskellExternalLibraryConverter(base.Converter):
             dependencies.append(project_dep)
 
         for target in external_deps:
-            edep = self.normalize_external_dep(target)
+            edep = src_and_dep_helpers.normalize_external_dep(target)
             dependencies.append(
                 target_utils.target_to_label(edep, platform=platform))
 

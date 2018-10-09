@@ -270,6 +270,29 @@ def _format_all_deps(deps, platform = None):
 
     return out_deps, out_platform_deps
 
+def _normalize_external_dep(raw_target, lang_suffix = "", parse_version = False):
+    """
+    Normalize the various ways users can specify an external dep into a RuleTarget
+
+    Args:
+        raw_target: The string, tuple, etc (see target_utils.parse_external_dep)
+        lang_suffix: The language suffix that should be added (or not)
+        parse_version: Whether the version should be returned from e.g. tuples
+
+    Returns:
+        Either a RuleTarget if parse_version is False, or a (RuleTarget, version_string)
+        if parse_version is True
+    """
+
+    parsed, version = (
+        target_utils.parse_external_dep(
+            raw_target,
+            lang_suffix = lang_suffix,
+        )
+    )
+
+    return parsed if not parse_version else (parsed, version)
+
 src_and_dep_helpers = struct(
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
@@ -279,6 +302,7 @@ src_and_dep_helpers = struct(
     format_deps = _format_deps,
     format_platform_deps = _format_platform_deps,
     format_platform_param = _format_platform_param,
+    normalize_external_dep = _normalize_external_dep,
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,
     parse_source_map = _parse_source_map,
