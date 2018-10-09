@@ -63,6 +63,7 @@ Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -576,18 +577,6 @@ class Converter(object):
     def read_extra_ghc_linker_flags(self):
         return self.read_list('haskell', 'extra_linker_flags', [])
 
-    def get_compiler_langs(self):
-        """
-        The languages which general compiler flag apply to.
-        """
-
-        return (
-            'asm',
-            'assembler',
-            'c_cpp_output',
-            'cuda_cpp_output',
-            'cxx_cpp_output')
-
     def get_compiler_general_langs(self):
         """
         The languages which general compiler flag apply to.
@@ -605,7 +594,7 @@ class Converter(object):
 
         # Initialize the compiler flags dictionary.
         compiler_flags = collections.OrderedDict()
-        for lang in self.get_compiler_langs():
+        for lang in cpp_flags.COMPILER_LANGS:
             compiler_flags[lang] = []
 
         # The set of language we apply "general" compiler flags to.

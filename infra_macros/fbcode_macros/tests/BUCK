@@ -14,6 +14,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
     "fbcode_macros//build_defs:core_tools.bzl",
+    "fbcode_macros//build_defs:cpp_flags.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",

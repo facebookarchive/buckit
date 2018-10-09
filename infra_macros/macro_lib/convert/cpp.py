@@ -42,6 +42,7 @@ include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
@@ -1117,7 +1118,7 @@ class CppConverter(base.Converter):
         # Form compiler flags.  We pass everything as language-specific flags
         # so that we can can control the ordering.
         out_lang_plat_compiler_flags = self.get_compiler_flags(base_path)
-        for lang in self.get_compiler_langs():
+        for lang in cpp_flags.COMPILER_LANGS:
             out_lang_plat_compiler_flags.setdefault(lang, [])
             out_lang_plat_compiler_flags[lang].extend(
                 src_and_dep_helpers.format_platform_param(compiler_flags))
