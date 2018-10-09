@@ -692,8 +692,7 @@ class Converter(object):
         # everything onto the dynamic symbol table.  Since this only affects
         # object files from sources immediately owned by `cpp_binary` rules,
         # this shouldn't have much of a performance issue.
-        buck_platform = platform_utils.get_buck_platform_for_base_path(
-            base_path, override_compiler=self._context.default_compiler)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         if (self.get_link_style() == 'shared' and
                 self.read_shlib_interfaces(buck_platform) == 'defined_only'):
             ldflags.append('-Wl,--export-dynamic')
@@ -818,8 +817,7 @@ class Converter(object):
                     name,
                     rule_type,
                     platform,
-                    compiler.get_compiler_for_current_buildfile(
-                        override_compiler=self._context.default_compiler)))
+                    compiler.get_compiler_for_current_buildfile()))
 
         # 5. If enabled, add in LTO linker flags.
         if self.is_lto_enabled():
@@ -1123,8 +1121,7 @@ class Converter(object):
         lib_attrs['compiler_flags'] = cpp_flags.get_extra_cflags()
 
         # Setup platform default for compilation DB, and direct building.
-        buck_platform = platform_utils.get_buck_platform_for_base_path(
-            base_path, override_compiler=self._context.default_compiler)
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         lib_attrs['default_platform'] = buck_platform
         lib_attrs['defaults'] = {'platform': buck_platform}
 

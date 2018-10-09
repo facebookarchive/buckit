@@ -44,7 +44,6 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:lex.bzl", "lex")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
-load("@fbcode_macros//build_defs:create_build_mode.bzl", "create_build_mode")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
@@ -857,8 +856,7 @@ class CppConverter(base.Converter):
             autodeps_keep=False,
             undefined_symbols=False,
             module=None,
-            compile_with_modules=None,
-            compiler_overrides={}):
+            compile_with_modules=None):
 
         if not isinstance(compiler_flags, (list, tuple)):
             raise TypeError(
@@ -1257,10 +1255,7 @@ class CppConverter(base.Converter):
             macro_handlers = {}
             if self.is_binary(dlopen_info):
                 macro_handlers['platform'] = (
-                    lambda: platform_utils.get_buck_platform_for_base_path(
-                        base_path,
-                        override_compiler=self._context.default_compiler,
-                    ))
+                    lambda: platform_utils.get_buck_platform_for_base_path(base_path))
             if flag != '--enable-new-dtags':
                 out_exported_ldflags.extend(
                     ['-Xlinker',
@@ -1365,8 +1360,7 @@ class CppConverter(base.Converter):
 
         # Handle DLL deps.
         if dlls:
-            buck_platform = platform_utils.get_buck_platform_for_base_path(
-                base_path, override_compiler=self._context.default_compiler)
+            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
                 convert_dlls(base_path, name, platform, buck_platform, dlls,
                              self.get_fbcode_dir_from_gen_dir(), visibility))
@@ -1524,8 +1518,7 @@ class CppConverter(base.Converter):
         # Set the build platform, via both the `default_platform` parameter and
         # the default flavors support.
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            buck_platform = platform_utils.get_buck_platform_for_base_path(
-                base_path, override_compiler=self._context.default_compiler)
+            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             attributes['default_platform'] = buck_platform
             if not self.is_deployable():
                 attributes['defaults'] = {'platform': buck_platform}
@@ -1903,7 +1896,6 @@ class CppConverter(base.Converter):
 
         if rtype == 'cpp_binary':
             args.update([
-                'compiler_overrides',
                 'dlopen_enabled',
                 'dont_link_prerequisites',
                 'enable_lto',

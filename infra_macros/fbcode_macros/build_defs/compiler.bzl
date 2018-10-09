@@ -30,7 +30,7 @@ def _require_global_compiler(msg, compiler = None):
     elif global_compiler != compiler:
         fail(msg)
 
-def _get_compiler_for_base_path(base_path, override_compiler = None):
+def _get_compiler_for_base_path(base_path):
     """
     Return the compiler family to use for the buildfile at the given base path.
     """
@@ -44,17 +44,11 @@ def _get_compiler_for_base_path(base_path, override_compiler = None):
     mode_compiler = mode.compiler if mode != None else None
 
     # If a global compiler is set, use that.
-    # T34130018: Even if a BUILD_MODE file or cpp_binary rule attempts to set a
-    # different compiler than the global compiler set by the build mode, we use
-    # the global compiler, silently ignoring the BUILD MODE or cpp_binary rule
-    # setting.
+    # T34130018: Even if a BUILD_MODE file attempts to set a different compiler
+    # than the global compiler set by the build mode, we use the global compiler
+    # and silently ignore the BUILD_MODE file.
     if global_compiler != None:
         return global_compiler
-
-    # The next highest priority override is the override_compiler that may be
-    # set by the cpp_binary rule's compiler_overrides map.
-    if override_compiler != None:
-        return override_compiler
 
     # Next, use the compiler set in the BUILD_MODE file.
     if mode_compiler != None:
@@ -63,11 +57,8 @@ def _get_compiler_for_base_path(base_path, override_compiler = None):
     # Lastly, fallback to the default.
     return default_compiler
 
-def _get_compiler_for_current_buildfile(override_compiler = None):
-    return _get_compiler_for_base_path(
-        native.package_name(),
-        override_compiler = override_compiler,
-    )
+def _get_compiler_for_current_buildfile():
+    return _get_compiler_for_base_path(native.package_name())
 
 compiler = struct(
     get_compiler_for_base_path = _get_compiler_for_base_path,
