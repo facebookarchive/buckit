@@ -850,3 +850,6 @@ class TestCase(unittest.TestCase):
         are parsed in unittests
         """
         return collections.namedtuple("struct", sorted(kwargs.keys()))(**kwargs)
+
+    def rule_target(self, repo, base_path, name):
+        return self.struct(repo=repo, base_path=base_path, name=name)

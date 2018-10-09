@@ -18,11 +18,8 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 class DConverter(base.Converter):
@@ -94,11 +91,11 @@ class DConverter(base.Converter):
         # All D rules get an implicit dep on the runtime.
         dependencies.append(
             self.get_dep_target(
-                ThirdPartyRuleTarget('dlang', 'druntime'),
+                target_utils.ThirdPartyRuleTarget('dlang', 'druntime'),
                 platform=platform))
         dependencies.append(
             self.get_dep_target(
-                ThirdPartyRuleTarget('dlang', 'phobos'),
+                target_utils.ThirdPartyRuleTarget('dlang', 'phobos'),
                 platform=platform))
         # Add in binary-specific link deps.
         if self.is_binary():

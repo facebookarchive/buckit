@@ -20,19 +20,16 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
-DEFAULT_CPP_MAIN = RootRuleTarget('tools/make_lar', 'lua_main')
+DEFAULT_CPP_MAIN = target_utils.RootRuleTarget('tools/make_lar', 'lua_main')
 
 INTERPRETERS = [
     DEFAULT_CPP_MAIN,
-    RootRuleTarget('tools/make_lar', 'lua_main_no_fb'),
+    target_utils.RootRuleTarget('tools/make_lar', 'lua_main_no_fb'),
 ]
 
 CPP_MAIN_SOURCE_TEMPLATE = """\
@@ -404,7 +401,7 @@ class LuaConverter(base.Converter):
                     deps=deps,
                     external_deps=external_deps,
                     visibility=visibility))
-            dependencies.append(RootRuleTarget(base_path, lib_name))
+            dependencies.append(target_utils.RootRuleTarget(base_path, lib_name))
             deps = []
             external_deps = []
 
@@ -432,7 +429,7 @@ class LuaConverter(base.Converter):
                     base_module=base_module,
                     visibility=visibility))
             rules.extend(extra_rules)
-            dependencies.append(RootRuleTarget(base_path, lib))
+            dependencies.append(target_utils.RootRuleTarget(base_path, lib))
 
         # Generate the native starter library.
         cpp_main_lib, extra_rules = (
@@ -461,7 +458,7 @@ class LuaConverter(base.Converter):
 
         # Tests depend on FB lua test lib.
         if self.is_test():
-            dependencies.append(RootRuleTarget('fblualib/luaunit', 'luaunit'))
+            dependencies.append(target_utils.RootRuleTarget('fblualib/luaunit', 'luaunit'))
 
         # Add in `dep` and `external_deps` parameters to the dependency list.
         for dep in deps:

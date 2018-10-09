@@ -21,13 +21,10 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 # Flags controlling warnings issued by compiler
@@ -161,19 +158,19 @@ FB_HASKELL_COMPILER_FLAGS = [
 ]
 
 IMPLICIT_TP_DEPS = [
-    ThirdPartyRuleTarget('ghc', 'base'),
+    target_utils.ThirdPartyRuleTarget('ghc', 'base'),
 
     # TODO(agallagher): These probably need to be moved into the TARGETS
     # rule definition for a core lib.
-    ThirdPartyRuleTarget('glibc', 'dl'),
-    ThirdPartyRuleTarget('glibc', 'm'),
-    ThirdPartyRuleTarget('glibc', 'pthread'),
+    target_utils.ThirdPartyRuleTarget('glibc', 'dl'),
+    target_utils.ThirdPartyRuleTarget('glibc', 'm'),
+    target_utils.ThirdPartyRuleTarget('glibc', 'pthread'),
 ]
 
-ALEX = ThirdPartyRuleTarget('hs-alex', 'alex')
+ALEX = target_utils.ThirdPartyRuleTarget('hs-alex', 'alex')
 ALEX_PACKAGES = ['array', 'bytestring']
 
-HAPPY = ThirdPartyRuleTarget('hs-happy', 'happy')
+HAPPY = target_utils.ThirdPartyRuleTarget('hs-happy', 'happy')
 HAPPY_PACKAGES = ['array']
 
 HSC2HS_TEMPL = '''\
@@ -331,7 +328,7 @@ class HaskellConverter(base.Converter):
         else:
             project = 'stackage-lts'
 
-        return ThirdPartyRuleTarget(project, package)
+        return target_utils.ThirdPartyRuleTarget(project, package)
 
     def get_deps_for_packages(self, packages):
         return [self.get_dep_for_package(p) for p in packages]
@@ -816,7 +813,7 @@ class HaskellConverter(base.Converter):
             rules.extend(r)
         if self.is_test():
             dependencies.append(self.get_dep_for_package('HUnit'))
-            dependencies.append(RootRuleTarget('tools/test/stubs', 'fbhsunit'))
+            dependencies.append(target_utils.RootRuleTarget('tools/test/stubs', 'fbhsunit'))
 
 
         if self.get_fbconfig_rule_type() in ['haskell_library', 'haskell_binary']:

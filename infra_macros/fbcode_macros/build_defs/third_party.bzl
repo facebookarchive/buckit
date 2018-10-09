@@ -12,6 +12,9 @@ Various helpers to get labels for use in third-party
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
+
+_THIRD_PARTY_REPOS = rule_target_types.THIRD_PARTY_REPOS
 
 def _third_party_target(platform, project, rule):
     """
@@ -212,6 +215,16 @@ def _replace_third_party_repo(string, platform):
         _get_build_target_prefix(platform),
     )
 
+def _is_tp2_target(target):
+    """
+    Determines whether or not this is a special 'third-party' or 'third-party tools'
+    target. This can be used to modify final buck labels in various conversion methods
+
+    Args:
+      target: A `RuleTarget` object
+    """
+    return target.repo in _THIRD_PARTY_REPOS
+
 third_party = struct(
     external_dep_target = _external_dep_target,
     get_build_path = _get_build_path,
@@ -220,6 +233,7 @@ third_party = struct(
     get_tool_path = _get_tool_path,
     get_tool_target = _get_tool_target,
     get_tools_path = _get_tools_path,
+    is_tp2_target = _is_tp2_target,
     replace_third_party_repo = _replace_third_party_repo,
     replace_third_party_repo_list = _replace_third_party_repo_list,
     third_party_target = _third_party_target,

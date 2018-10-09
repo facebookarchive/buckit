@@ -54,7 +54,7 @@ class SanitizersTest(tests.utils.TestCase):
             root.runUnitTests(
                 self.includes, ["sanitizers.get_sanitizer_binary_deps()"]
             ),
-            [("tools/build/sanitizers", "asan-cpp")],
+            [self.rule_target(None, "tools/build/sanitizers", "asan-cpp")],
         )
 
     @tests.utils.with_project()

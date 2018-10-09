@@ -20,11 +20,8 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 class RustConverter(base.Converter):
@@ -104,13 +101,13 @@ class RustConverter(base.Converter):
 
         # Always explicitly add libc - except for sanitizer modes, since
         # they already add them
-        libc = ThirdPartyRuleTarget('glibc', 'c')
+        libc = target_utils.ThirdPartyRuleTarget('glibc', 'c')
         if libc not in deps:
             deps.append(libc)
 
         # Always explicitly add libstdc++ - except for sanitizer modes, since
         # they already add them
-        libgcc = ThirdPartyRuleTarget('libgcc', 'stdc++')
+        libgcc = target_utils.ThirdPartyRuleTarget('libgcc', 'stdc++')
         if libgcc not in deps:
             deps.append(libgcc)
         return deps, rules
@@ -442,4 +439,4 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
         lib_attrs['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         rules.append(Rule('rust_library', lib_attrs))
 
-        return RootRuleTarget(base_path, lib_name), rules
+        return target_utils.RootRuleTarget(base_path, lib_name), rules

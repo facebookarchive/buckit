@@ -34,10 +34,8 @@ base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
-RootRuleTarget = target.RootRuleTarget
-RuleTarget = target.RuleTarget
-ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 
@@ -158,7 +156,7 @@ class JavaSwigConverter(SwigLangConverter):
         attrs['link_style'] = kwargs.get('java_link_style')
         attrs['deps'], attrs['platform_deps'] = (
             self.format_all_deps(
-                cpp_deps + [RootRuleTarget('common/java/jvm', 'jvm')]))
+                cpp_deps + [target_utils.RootRuleTarget('common/java/jvm', 'jvm')]))
         # When using e.g. %feature("director") in Something.i, SWIG includes
         # "Something.h" in the source code of the C/C++ Java extension.
         attrs['headers'] = [hdr]
@@ -346,7 +344,7 @@ class GoSwigConverter(SwigLangConverter):
             cxx_rule_args['deps'] = self.format_deps([dep])
             cxx_rule_args['srcs'] = [src]
 
-            deps.extend(self.format_deps([RuleTarget(
+            deps.extend(self.format_deps([target_utils.RuleTarget(
                 name="{}-ext".format(dep.name),
                 base_path=dep.base_path,
                 repo=dep.repo)]))
@@ -459,7 +457,7 @@ class SwigLibraryConverter(base.Converter):
         attrs['cmd'] = (
             ' && '.join(cmds).format(
                 swig=self.get_tool_target(
-                    ThirdPartyRuleTarget('swig', 'bin/swig'),
+                    target_utils.ThirdPartyRuleTarget('swig', 'bin/swig'),
                     platform),
                 flags=' '.join(map(pipes.quote, flags)),
                 lang=pipes.quote(converter.get_lang_opt()),

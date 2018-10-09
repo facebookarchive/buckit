@@ -63,9 +63,6 @@ Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 fbcode_target = import_macro_lib('fbcode_target')
 build_info = import_macro_lib('build_info')
-RootRuleTarget = fbcode_target.RootRuleTarget
-RuleTarget = fbcode_target.RuleTarget
-ThirdPartyRuleTarget = fbcode_target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config_attrs")
@@ -73,6 +70,7 @@ load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 # Support the `allocators` parameter, which uses a keyword to select
 # a memory allocator dependency. These are pulled from in buckconfig's
@@ -182,7 +180,7 @@ def is_tp2_src_dep(src):  # type: Union[str, RuleTaret] -> bool
     Return whether the given source path refers to a tp2 target.
     """
 
-    return isinstance(src, RuleTarget) and src.repo is not None
+    return getattr(src, "repo", None) != None
 
 
 class Converter(object):
@@ -485,7 +483,7 @@ class Converter(object):
         Format the given source path.
         """
 
-        if isinstance(src, RuleTarget):
+        if target_utils.is_rule_target(src):
             assert src.repo is None or platform is not None, str(src)
             return self.get_dep_target(src, platform=platform)
 
@@ -788,8 +786,9 @@ class Converter(object):
 
         # If this is a build target, extract the name from the `=<name>`
         # suffix.
-        if isinstance(src, RuleTarget):
-            return self.extract_name(src.name)
+        rule_name = getattr(src, "name", None)
+        if rule_name != None:
+            return self.extract_name(rule_name)
 
         # Otherwise, the name is the source itself.
         else:
@@ -1315,7 +1314,7 @@ class Converter(object):
 
         if sanitizers.get_sanitizer() is None:
             return [
-                RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
+                target_utils.RuleTarget('llvm-fb', 'llvm-fb', 'clang_rt.profile'),
             ]
         else:
             # all coverage deps are included in the santizer deps
@@ -1400,7 +1399,7 @@ class Converter(object):
             deps.extend(self.get_allocator_deps(allocator))
 
         # Add in any dependencies required for sanitizers.
-        deps.extend([RootRuleTarget(*d) for d in sanitizers.get_sanitizer_binary_deps()])
+        deps.extend(sanitizers.get_sanitizer_binary_deps())
         d, r = self.create_sanitizer_configuration(
             base_path,
             name,
@@ -1415,7 +1414,7 @@ class Converter(object):
 
         # We link in our own implementation of `kill` to binaries (S110576).
         if default_deps:
-            deps.append(RootRuleTarget('common/init', 'kill'))
+            deps.append(target_utils.RootRuleTarget('common/init', 'kill'))
 
         return deps, rules
 
@@ -1513,7 +1512,7 @@ class Converter(object):
             lib_attrs['force_static'] = True
         rules.append(Rule('cxx_library', lib_attrs))
 
-        return RootRuleTarget(base_path, lib_name), rules
+        return target_utils.RootRuleTarget(base_path, lib_name), rules
 
     def get_build_info(self, base_path, name, rule_type, platform):
         if core_tools.is_core_tool(base_path, name):
@@ -1685,7 +1684,7 @@ class Converter(object):
         lib_attrs['force_static'] = True
 
         rules.append(Rule('cxx_library', lib_attrs))
-        deps.append(RootRuleTarget(base_path, lib_name))
+        deps.append(target_utils.RootRuleTarget(base_path, lib_name))
 
         return deps, rules
 
@@ -1836,7 +1835,7 @@ class Converter(object):
         Return the TP2 project target for the given project.
         """
 
-        return ThirdPartyRuleTarget(
+        return target_utils.ThirdPartyRuleTarget(
             project,
             self.get_tp2_project_target_name())
 

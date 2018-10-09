@@ -34,17 +34,14 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-target = import_macro_lib('fbcode_target')
 build_info = import_macro_lib('build_info')
-RootRuleTarget = target.RootRuleTarget
-RuleTarget = target.RuleTarget
-ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 INTERPS = [
@@ -315,7 +312,7 @@ class PythonConverter(base.Converter):
             for src in self.parse_source_list(base_path, srcs):
 
                 # Path names are the same as path values.
-                if not isinstance(src, RuleTarget):
+                if not target_utils.is_rule_target(src):
                     out_srcs[src] = src
                     continue
 
@@ -351,7 +348,7 @@ class PythonConverter(base.Converter):
         # Do a final pass to verify that all sources in `gen_srcs` are rule
         # references.
         for src in out_srcs.itervalues():
-            if not isinstance(src, RuleTarget):
+            if not target_utils.is_rule_target(src):
                 raise ValueError(
                     'parameter `gen_srcs`: `{}` must be a reference to rule '
                     'that generates a source (e.g. `//foo:bar`, `:bar`) '
@@ -692,7 +689,7 @@ class PythonConverter(base.Converter):
         lib_rule = Rule('cxx_library', attrs)
         rules.append(lib_rule)
 
-        return RootRuleTarget(base_path, lib_rule.attributes['name']), rules
+        return target_utils.RootRuleTarget(base_path, lib_rule.attributes['name']), rules
 
     def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None, visibility=None):
         """
@@ -709,7 +706,7 @@ class PythonConverter(base.Converter):
         if sanitizer is not None:
             sanitizer = sanitizers.get_short_name(sanitizer)
             deps.append(
-                RootRuleTarget(
+                target_utils.RootRuleTarget(
                     'tools/build/sanitizers',
                     '{}-py'.format(sanitizer)))
         # Generate sanitizer configuration even if sanitizers are not used
@@ -836,7 +833,7 @@ class PythonConverter(base.Converter):
                 vsrc = {}
                 for build_src in build_srcs:
                     for name, src in build_src.items():
-                        if isinstance(src, RuleTarget):
+                        if target_utils.is_rule_target(src):
                             vsrc[name] = src
                         else:
                             vsrc[name] = os.path.join(build.subdir, src)
@@ -1028,7 +1025,7 @@ class PythonConverter(base.Converter):
             # Add the "coverage" library as a dependency for all python tests.
             platform_deps.extend(
                 self.format_platform_deps(
-                    [ThirdPartyRuleTarget('coverage', 'coverage-py')]))
+                    [target_utils.ThirdPartyRuleTarget('coverage', 'coverage-py')]))
 
         # Otherwise, this is a binary, so just the library portion as a dep.
         else:
@@ -1087,8 +1084,8 @@ class PythonConverter(base.Converter):
         # Provide a standard set of backport deps to all binaries
         platform_deps.extend(
             self.format_platform_deps(
-                [ThirdPartyRuleTarget('typing', 'typing-py'),
-                 ThirdPartyRuleTarget('python-future', 'python-future-py')]))
+                [target_utils.ThirdPartyRuleTarget('typing', 'typing-py'),
+                 target_utils.ThirdPartyRuleTarget('python-future', 'python-future-py')]))
 
         # Provide a hook for the nuclide debugger in @mode/dev builds, so
         # that one can have `PYTHONBREAKPOINT=nuclide.set_trace` in their

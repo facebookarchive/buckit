@@ -23,11 +23,8 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
 FLAGFILTER = '''\
@@ -219,7 +216,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             return fmt.format(
                 fbcode=os.path.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
                 bindgen=self.get_tool_target(
-                    ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
+                    target_utils.ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
                     platform),
                 bindgen_flags=' '.join(map(pipes.quote, bindgen_flags)),
                 base_clang_flags=' '.join(map(pipes.quote, base_clang_flags)),

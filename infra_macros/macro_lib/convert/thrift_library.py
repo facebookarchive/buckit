@@ -41,12 +41,10 @@ python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
-RootRuleTarget = target.RootRuleTarget
-RuleTarget = target.RuleTarget
-ThirdPartyRuleTarget = target.ThirdPartyRuleTarget
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -97,14 +95,14 @@ class ThriftLangConverter(base.Converter):
     def get_thrift_dep_target(self, base_path, target):
         """
         Gets the translated target for a base_path and target. In fbcode, this
-        will be a RootRuleTarget. Outside of fbcode, we have to make sure that
+        will be a target_utils.RootRuleTarget. Outside of fbcode, we have to make sure that
         the specified third-party repo is used
         """
         if self._context.config.get_current_repo_name() == 'fbcode':
-            target = RootRuleTarget(base_path, target)
+            target = target_utils.RootRuleTarget(base_path, target)
         else:
             repo = base_path.split('/')[0]
-            target = ThirdPartyRuleTarget(repo, base_path, target)
+            target = target_utils.ThirdPartyRuleTarget(repo, base_path, target)
         return self.get_dep_target(target)
 
     def get_compiler(self):
@@ -783,55 +781,55 @@ class HaskellThriftConverter(ThriftLangConverter):
     """
 
     THRIFT_HS_LIBS = [
-        RootRuleTarget('thrift/lib/hs', 'thrift'),
-        RootRuleTarget('thrift/lib/hs', 'types'),
-        RootRuleTarget('thrift/lib/hs', 'protocol'),
-        RootRuleTarget('thrift/lib/hs', 'transport'),
+        target_utils.RootRuleTarget('thrift/lib/hs', 'thrift'),
+        target_utils.RootRuleTarget('thrift/lib/hs', 'types'),
+        target_utils.RootRuleTarget('thrift/lib/hs', 'protocol'),
+        target_utils.RootRuleTarget('thrift/lib/hs', 'transport'),
     ]
 
     THRIFT_HS_LIBS_DEPRECATED = [
-        RootRuleTarget('thrift/lib/hs', 'hs'),
+        target_utils.RootRuleTarget('thrift/lib/hs', 'hs'),
     ]
 
     THRIFT_HS2_LIBS = [
-        RootRuleTarget('common/hs/thrift/lib', 'codegen-types-only'),
-        RootRuleTarget('common/hs/thrift/lib', 'protocol'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'codegen-types-only'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'protocol'),
     ]
 
     THRIFT_HS2_SERVICE_LIBS = [
-        RootRuleTarget('common/hs/thrift/lib', 'channel'),
-        RootRuleTarget('common/hs/thrift/lib', 'codegen'),
-        RootRuleTarget('common/hs/thrift/lib', 'processor'),
-        RootRuleTarget('common/hs/thrift/lib', 'types'),
-        RootRuleTarget('common/hs/thrift/lib/if', 'application-exception-hs2')
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'channel'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'codegen'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'processor'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib', 'types'),
+        target_utils.RootRuleTarget('common/hs/thrift/lib/if', 'application-exception-hs2')
     ]
 
     THRIFT_DEPS = [
-        ThirdPartyRuleTarget('stackage-lts', 'QuickCheck'),
-        ThirdPartyRuleTarget('stackage-lts', 'vector'),
-        ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
-        ThirdPartyRuleTarget('stackage-lts', 'text'),
-        ThirdPartyRuleTarget('stackage-lts', 'hashable'),
-        ThirdPartyRuleTarget('ghc', 'base'),
-        ThirdPartyRuleTarget('ghc', 'bytestring'),
-        ThirdPartyRuleTarget('ghc', 'containers'),
-        ThirdPartyRuleTarget('ghc', 'deepseq'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'QuickCheck'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'vector'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'text'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'hashable'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'base'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'bytestring'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'containers'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'deepseq'),
     ]
 
     THRIFT_HS2_DEPS = [
-        ThirdPartyRuleTarget('ghc', 'base'),
-        ThirdPartyRuleTarget('ghc', 'bytestring'),
-        ThirdPartyRuleTarget('ghc', 'containers'),
-        ThirdPartyRuleTarget('ghc', 'deepseq'),
-        ThirdPartyRuleTarget('ghc', 'transformers'),
-        ThirdPartyRuleTarget('stackage-lts', 'aeson'),
-        ThirdPartyRuleTarget('stackage-lts', 'binary-parsers'),
-        ThirdPartyRuleTarget('stackage-lts', 'data-default'),
-        ThirdPartyRuleTarget('stackage-lts', 'hashable'),
-        ThirdPartyRuleTarget('stackage-lts', 'STMonadTrans'),
-        ThirdPartyRuleTarget('stackage-lts', 'text'),
-        ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
-        ThirdPartyRuleTarget('stackage-lts', 'vector'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'base'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'bytestring'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'containers'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'deepseq'),
+        target_utils.ThirdPartyRuleTarget('ghc', 'transformers'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'aeson'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'binary-parsers'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'data-default'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'hashable'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'STMonadTrans'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'text'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
+        target_utils.ThirdPartyRuleTarget('stackage-lts', 'vector'),
     ]
 
     def __init__(self, context, *args, **kwargs):
@@ -1352,9 +1350,9 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
     PYI = 'pyi'
     PYI_ASYNCIO = 'pyi-asyncio'
 
-    THRIFT_PY_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'py')
-    THRIFT_PY_TWISTED_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'twisted')
-    THRIFT_PY_ASYNCIO_LIB_RULE_NAME = RootRuleTarget('thrift/lib/py', 'asyncio')
+    THRIFT_PY_LIB_RULE_NAME = target_utils.RootRuleTarget('thrift/lib/py', 'py')
+    THRIFT_PY_TWISTED_LIB_RULE_NAME = target_utils.RootRuleTarget('thrift/lib/py', 'twisted')
+    THRIFT_PY_ASYNCIO_LIB_RULE_NAME = target_utils.RootRuleTarget('thrift/lib/py', 'asyncio')
 
     def __init__(self, context, *args, **kwargs):
         flavor = kwargs.pop('flavor', self.NORMAL)
@@ -1612,11 +1610,11 @@ class OCamlThriftConverter(ThriftLangConverter):
     """
 
     THRIFT_OCAML_LIBS = [
-        RootRuleTarget('common/ocaml/thrift', 'thrift'),
+        target_utils.RootRuleTarget('common/ocaml/thrift', 'thrift'),
     ]
 
     THRIFT_OCAML_DEPS = [
-        RootRuleTarget('hphp/hack/src/third-party/core', 'core'),
+        target_utils.RootRuleTarget('hphp/hack/src/third-party/core', 'core'),
     ]
 
     def __init__(self, context, *args, **kwargs):

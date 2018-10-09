@@ -41,6 +41,8 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:scala_test.bzl",
     "fbcode_macros//build_defs:shell.bzl",
     "fbcode_macros//build_defs:src_and_dep_helpers.bzl",
+    "fbcode_macros//build_defs:rule_target_types.bzl",
+    "fbcode_macros//build_defs:target_utils.bzl",
     "fbcode_macros//build_defs:third_party.bzl",
     "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:visibility.bzl",
@@ -210,6 +212,11 @@ skylark_integration_test(
         "fbcode_macros//tests/facebook:utils",
         ":utils",
     ],
+)
+
+skylark_integration_test(
+    name = "target_utils_test",
+    srcs = ["target_utils_test.py"],
 )
 
 skylark_integration_test(

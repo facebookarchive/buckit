@@ -41,10 +41,6 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -52,12 +48,13 @@ load("@fbcode_macros//build_defs:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 
-LEX = ThirdPartyRuleTarget('flex', 'flex')
-LEX_LIB = ThirdPartyRuleTarget('flex', 'fl')
+LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
+LEX_LIB = target_utils.ThirdPartyRuleTarget('flex', 'fl')
 
-YACC = ThirdPartyRuleTarget('bison', 'bison')
+YACC = target_utils.ThirdPartyRuleTarget('bison', 'bison')
 YACC_FLAGS = ['-y', '-d']
 
 
@@ -299,7 +296,7 @@ def convert_dlls(
     attrs['cmd'] = ' && '.join(cmds)
     rules.append(Rule('cxx_genrule', attrs))
     deps.append(
-        RootRuleTarget(
+        target_utils.RootRuleTarget(
             base_path,
             '{}#{}'.format(attrs['name'], buck_platform)))
     return rules, deps, ldflags, dep_queries
@@ -503,7 +500,7 @@ class CppConverter(base.Converter):
         # undefined symbols.
         if (sanitizer.startswith('address') and
                 self.get_link_style() == 'shared'):
-            deps.append(RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
+            deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
 
@@ -795,7 +792,7 @@ class CppConverter(base.Converter):
         # TODO(#17067102): `cpp_precompiled_header` rules currently don't
         # support `platform_deps` parameter.
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            deps.append(ThirdPartyRuleTarget('libgcc', 'atomic'))
+            deps.append(target_utils.ThirdPartyRuleTarget('libgcc', 'atomic'))
 
         return deps
 
@@ -1354,7 +1351,7 @@ class CppConverter(base.Converter):
             header, source, rules = (
                 self.convert_lex(name, lex_args, lex_src, platform, visibility))
             out_headers.append(header)
-            out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), ['-w']))
+            out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
             extra_rules.extend(rules)
 
         # Generate rules to handle yacc sources.
@@ -1370,7 +1367,7 @@ class CppConverter(base.Converter):
                     platform,
                     visibility))
             out_headers.extend(yacc_headers)
-            out_srcs.append(base.SourceWithFlags(RootRuleTarget(base_path, source[1:]), None))
+            out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
             extra_rules.extend(rules)
 
         # Convert and add in any explicitly mentioned headers into our output
@@ -1554,27 +1551,27 @@ class CppConverter(base.Converter):
             extra_rules.extend(r)
 
         if self.get_fbconfig_rule_type() == 'cpp_python_extension':
-            dependencies.append(ThirdPartyRuleTarget('python', 'python'))
+            dependencies.append(target_utils.ThirdPartyRuleTarget('python', 'python'))
             # Generate an empty typing_config
             extra_rules.append(self.gen_typing_config(name, visibility=visibility))
 
         # Lua main module rules depend on are custom lua main.
         if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':
             dependencies.append(
-                RootRuleTarget('tools/make_lar', 'lua_main_decl'))
-            dependencies.append(ThirdPartyRuleTarget('LuaJIT', 'luajit'))
+                target_utils.RootRuleTarget('tools/make_lar', 'lua_main_decl'))
+            dependencies.append(target_utils.ThirdPartyRuleTarget('LuaJIT', 'luajit'))
 
             # When `embed_deps` is set, auto-dep deps on to the embed restore
             # libraries, which will automatically restore special env vars used
             # for loading the binary.
             if embed_deps:
-                dependencies.append(RootRuleTarget('common/embed', 'lua'))
-                dependencies.append(RootRuleTarget('common/embed', 'python'))
+                dependencies.append(target_utils.RootRuleTarget('common/embed', 'lua'))
+                dependencies.append(target_utils.RootRuleTarget('common/embed', 'python'))
 
         # All Node extensions get the node headers.
         if self.get_fbconfig_rule_type() == 'cpp_node_extension':
             dependencies.append(
-                ThirdPartyRuleTarget('node', 'node-headers'))
+                target_utils.ThirdPartyRuleTarget('node', 'node-headers'))
 
         # Add external deps.
         for dep in external_deps:

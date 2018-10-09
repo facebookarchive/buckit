@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_string")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 # Maps sanitizer type to a shortname used in rules and tags/labels
 _SANITIZERS = {
@@ -131,7 +132,7 @@ def _get_sanitizer_binary_deps():
     )
 
     return [
-        ("tools/build/sanitizers", _SANITIZERS[sanitizer] + "-cpp"),
+        target_utils.RootRuleTarget("tools/build/sanitizers", _SANITIZERS[sanitizer] + "-cpp"),
     ]
 
 def _get_sanitizer_flags():

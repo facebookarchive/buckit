@@ -25,15 +25,9 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("{}:fbcode_target.py".format(macro_root),
-     "RootRuleTarget",
-     "RuleTarget",
-     "ThirdPartyRuleTarget")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
-
-PYTHON = ThirdPartyRuleTarget('python', 'python')
-PYTHON3 = ThirdPartyRuleTarget('python3', 'python')
 
 Inputs = (
     collections.namedtuple(
@@ -107,7 +101,7 @@ class CppLibraryExternalConverter(base.Converter):
         for dep in deps:
             assert dep.startswith(':')
             dependencies.append(
-                ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]))
+                target_utils.ThirdPartyRuleTarget(os.path.dirname(base_path), dep[1:]))
         if implicit_project_deps and self.is_tp2(base_path):
             project = base_path.split(os.sep)[3]
             dependencies.append(self.get_tp2_project_target(project))
