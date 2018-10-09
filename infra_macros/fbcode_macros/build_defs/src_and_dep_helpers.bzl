@@ -1,7 +1,10 @@
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 def _extract_name_from_custom_rule(src):
     parts = src.split("=")
@@ -152,12 +155,89 @@ def _format_deps(deps, platform = None):
 
     return [target_utils.target_to_label(d, platform = platform) for d in deps]
 
+def __convert_auxiliary_deps(platform, deps):
+    """
+    Convert a list of dependencies and versions to a list of potentially versioned RuleTarget struts
+
+    Args:
+        platform: The platform to get auxilliary deps for
+        deps: A list of (`RuleTarget`, version) tuples where version is either None
+              or a string that should be found in the third-party config for this
+              third party RuleTarget
+
+    Returns:
+        A list of RuleTarget structs, with adjusted base paths if the original
+        RuleTarget/version combination was found in the auxiliary_deps section of the
+        third-party configuration
+    """
+
+    # Load the auxiliary version list from the config.
+    config = third_party.get_third_party_config_for_platform(platform)
+    aux_versions = config["build"]["auxiliary_versions"]
+
+    processed_deps = []
+
+    for dep, vers in deps:
+        # If the parsed version for this project is listed as an
+        # auxiliary version in the config, then redirect this dep to
+        # use the alternate project name it's installed as.
+        proj = paths.basename(dep.base_path)
+        if vers != None and vers in aux_versions.get(proj, []):
+            dep = target_utils.RuleTarget(
+                repo = dep.repo,
+                base_path = dep.base_path + "-" + vers,
+                name = dep.name,
+            )
+
+        processed_deps.append(dep)
+
+    return processed_deps
+
+def __format_platform_deps_gen(deps, deprecated_auxiliary_deps, platform, _):
+    pdeps = deps
+
+    # Auxiliary deps support.
+    if deprecated_auxiliary_deps:
+        pdeps = __convert_auxiliary_deps(platform, pdeps)
+
+    # Process PyFI overrides
+    if python_wheel_overrides.should_use_overrides():
+        if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
+            pdeps = [
+                python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
+                for d in pdeps
+            ]
+
+    return _format_deps(pdeps, platform = platform)
+
+def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
+    """
+    Takes a map of fbcode platform names to lists of deps and converts to
+    an output list appropriate for Buck's `platform_deps` parameter.
+
+    Also add override support for PyFI migration - T22354138
+
+    Args:
+        deps: A list of `RuleTarget` structs if deprecated_auxiliary_deps is False
+              or a list of (`RuleTarget`, version_string|None) if
+              deprecated_auxiliary_deps is True
+        deprecated_auxiliary_deps: If True, modify dependencies based on third-party
+                                   configuration, otherwise do not
+
+    Returns:
+        A list of (buck platform regex, [target labels])
+    """
+    return _format_platform_param(
+        partial.make(__format_platform_deps_gen, deps, deprecated_auxiliary_deps),
+    )
+
 src_and_dep_helpers = struct(
     convert_source = _convert_source,
     convert_source_list = _convert_source_list,
     convert_source_map = _convert_source_map,
     extract_source_name = _extract_source_name,
     format_deps = _format_deps,
+    format_platform_deps = _format_platform_deps,
     format_platform_param = _format_platform_param,
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,

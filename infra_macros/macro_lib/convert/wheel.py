@@ -40,6 +40,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
 compiled_wheel = re.compile('-cp[0-9]{2}-')
 
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 def get_url_basename(url):
@@ -219,7 +220,7 @@ class PyWheel(base.Converter):
             if compiled:
                 attrs['exclude_deps_from_merged_linking'] = True
             attrs['platform_deps'].extend(
-                self.format_platform_deps(
+                src_and_dep_helpers.format_platform_deps(
                     [self.normalize_external_dep(d, lang_suffix='-py')
                      for d in external_deps]))
 

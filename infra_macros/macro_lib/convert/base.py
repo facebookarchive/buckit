@@ -287,35 +287,6 @@ class Converter(object):
 
         return parsed if not parse_version else (parsed, version)
 
-    def _convert_auxiliary_deps(self, platform, deps):
-        """
-        Perform auxiliary dep processing on the given map of platforms to
-        (`RuleTarget`, version) tuples.
-        """
-
-        # Load the auxiliary version list from the config.
-        config = third_party.get_third_party_config_for_platform(platform)
-        aux_versions = config['build']['auxiliary_versions']
-
-        processed_deps = []
-
-        for dep, vers in deps:
-
-            # If the parsed version for this project is listed as an
-            # auxiliary version in the config, then redirect this dep to
-            # use the alternate project name it's installed as.
-            proj = os.path.basename(dep.base_path)
-            if vers is not None and vers in aux_versions.get(proj, []):
-                dep = target_utils.RuleTarget(
-                    repo=dep.repo,
-                    base_path=dep.base_path + "-" + vers,
-                    name=dep.name,
-                )
-
-            processed_deps.append(dep)
-
-        return processed_deps
-
     def convert_external_build_target(self, target, platform=None, lang_suffix=''):
         """
         Convert the given build target reference from an external dep TARGETS
@@ -504,34 +475,6 @@ class Converter(object):
             dst.setdefault(platform, [])
             dst[platform].extend(deps)
 
-    def format_platform_deps(self, deps, deprecated_auxiliary_deps=False):
-        """
-        Takes a map of fbcode platform names to lists of deps and converts to
-        an output list appropriate for Buck's `platform_deps` parameter.
-
-        Also add override support for PyFI migration - T22354138
-        """
-        def _format_platform_deps_partial(deps, deprecated_auxiliary_deps, platform, _):
-            pdeps = deps
-
-            # Auxiliary deps support.
-            if deprecated_auxiliary_deps:
-                pdeps = self._convert_auxiliary_deps(platform, pdeps)
-
-            # Process PyFI overrides
-            if python_wheel_overrides.should_use_overrides():
-                if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
-                    pdeps = [python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
-                             for d in pdeps]
-            return src_and_dep_helpers.format_deps(pdeps, platform=platform)
-
-
-        return src_and_dep_helpers.format_platform_param(
-            partial.make(
-                _format_platform_deps_partial,
-                deps,
-                deprecated_auxiliary_deps))
-
     def format_all_deps(self, deps, platform=None):
         """
         Return a tuple of formatted internal and external deps, to be installed
@@ -550,7 +493,7 @@ class Converter(object):
         out_platform_deps = []
         if platform is None:
             out_platform_deps.extend(
-                self.format_platform_deps(
+                src_and_dep_helpers.format_platform_deps(
                     [d for d in deps if d.repo is not None]))
 
         return out_deps, out_platform_deps

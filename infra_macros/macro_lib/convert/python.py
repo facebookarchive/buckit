@@ -939,7 +939,7 @@ class PythonConverter(base.Converter):
 
         if external_deps:
             attributes['platform_deps'] = (
-                self.format_platform_deps(
+                src_and_dep_helpers.format_platform_deps(
                     [self.normalize_external_dep(
                          dep,
                          lang_suffix='-py',
@@ -1026,7 +1026,7 @@ class PythonConverter(base.Converter):
 
             # Add the "coverage" library as a dependency for all python tests.
             platform_deps.extend(
-                self.format_platform_deps(
+                src_and_dep_helpers.format_platform_deps(
                     [target_utils.ThirdPartyRuleTarget('coverage', 'coverage-py')]))
 
         # Otherwise, this is a binary, so just the library portion as a dep.
@@ -1085,7 +1085,7 @@ class PythonConverter(base.Converter):
 
         # Provide a standard set of backport deps to all binaries
         platform_deps.extend(
-            self.format_platform_deps(
+            src_and_dep_helpers.format_platform_deps(
                 [target_utils.ThirdPartyRuleTarget('typing', 'typing-py'),
                  target_utils.ThirdPartyRuleTarget('python-future', 'python-future-py')]))
 

@@ -183,3 +183,88 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_format_platform_deps_works(self, root):
+        commands = [
+            (
+                "src_and_dep_helpers.format_platform_deps(["
+                'target_utils.RootRuleTarget("foo/bar", "baz"),'
+                'target_utils.RuleTarget("xplat", "foo/bar", "baz"),'
+                'target_utils.ThirdPartyRuleTarget("foo", "baz"),'
+                "])"
+            )
+        ]
+        expected = [
+            [
+                (
+                    "^default-clang$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/default/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^default-gcc$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/default/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc5-clang$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc5/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc5-gcc$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc5/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc6-clang$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc6/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc6-gcc$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc6/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc7-clang$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc7/build/foo:baz",
+                    ],
+                ),
+                (
+                    "^gcc7-gcc$",
+                    [
+                        "//foo/bar:baz",
+                        "xplat//foo/bar:baz",
+                        "//third-party-buck/gcc7/build/foo:baz",
+                    ],
+                ),
+            ]
+        ]
+
+        result = root.runUnitTests(self.includes, commands)
+        self.assertSuccess(result)
+        sorted_result = [sorted(lines) for lines in result.debug_lines]
+        self.assertEqual(expected, sorted_result)
