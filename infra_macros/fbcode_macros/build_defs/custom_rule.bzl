@@ -24,7 +24,7 @@ def _get_output_dir(name):
     """ Return the name of the main genrule's output directory """
     return name + "-outputs"
 
-def _get_project_root_from_gen_dir():
+def get_project_root_from_gen_dir():
     """
     Gets the project root relative to the buck-out gen directory
 
@@ -55,7 +55,7 @@ def _create_main_rule(
 
     out = _get_output_dir(name)
     fbcode_platform, buck_platform = platform_utils.get_fbcode_and_buck_platform_for_current_buildfile()
-    fbcode_dir = paths.join("$GEN_DIR", _get_project_root_from_gen_dir())
+    fbcode_dir = paths.join("$GEN_DIR", get_project_root_from_gen_dir())
     install_dir = '"$OUT"'
 
     # Build up a custom path using any extra tools specified by the
@@ -169,10 +169,14 @@ def copy_genrule_output_file(name_prefix, genrule_target, filename, visibility):
         filename: The name of the file inside of the original genrule output
                   directory
         visibility: The visibility for the rule
+
+    Returns:
+        The name of the rule
     """
     out_name = name_prefix + "=" + filename
     visibility = get_visibility(visibility, out_name)
     _copy_genrule_output(genrule_target, out_name, filename, visibility)
+    return out_name
 
 def custom_rule(
         name,

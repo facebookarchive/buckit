@@ -41,6 +41,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:lex.bzl", "lex")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -56,7 +57,7 @@ load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
-LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
+#LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = target_utils.ThirdPartyRuleTarget('flex', 'fl')
 
 YACC = target_utils.ThirdPartyRuleTarget('bison', 'bison')
@@ -510,58 +511,6 @@ class CppConverter(base.Converter):
             deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
-
-    def convert_lex(self, name, lex_flags, lex_src, platform, visibility):
-        """
-        Create rules to generate a C/C++ header and source from the given lex
-        file.
-        """
-
-        name_base = '{}={}'.format(name.replace(os.sep, '-'), lex_src)
-        header_name = name_base + '.h'
-        source_name = name_base + '.cc'
-
-        base = lex_src
-        header = base + '.h'
-        source = base + '.cc'
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name_base
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = base + '.d'
-        attrs['srcs'] = [lex_src]
-        attrs['cmd'] = ' && '.join([
-            'mkdir -p $OUT',
-            '$(exe {lex}) {args} -o$OUT/{src} --header-file=$OUT/{hdr}'
-            ' $SRCS'
-            .format(
-                lex=self.get_tool_target(LEX, platform),
-                args=' '.join([pipes.quote(f) for f in lex_flags]),
-                src=pipes.quote(source),
-                hdr=pipes.quote(header)),
-            r"""(cd "$GEN_DIR"/{fbcode} &&"""
-            r""" perl -pi -e 's!\Q'"$PWD"'/\E!!' "$OUT"/{src} "$OUT"/{hdr})"""
-            .format(
-                fbcode=self.get_fbcode_dir_from_gen_dir(),
-                src=pipes.quote(source),
-                hdr=pipes.quote(header)),
-        ])
-
-        rules = []
-        rules.append(Rule('genrule', attrs))
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/{}'.format(name_base, header),
-                header_name,
-                header))
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/{}'.format(name_base, source),
-                source_name,
-                source))
-
-        return (':' + header_name, ':' + source_name, rules)
 
     def convert_yacc(self, base_path, name, yacc_flags, yacc_src, platform, visibility):
         """
@@ -1342,11 +1291,9 @@ class CppConverter(base.Converter):
         lex_srcs, srcs = self.split_matching_extensions_and_other(
             srcs, self.LEX_EXTS)
         for lex_src in lex_srcs:
-            header, source, rules = (
-                self.convert_lex(name, lex_args, lex_src, platform, visibility))
+            header, source = lex(name, lex_args, lex_src, platform, visibility)
             out_headers.append(header)
             out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
-            extra_rules.extend(rules)
 
         # Generate rules to handle yacc sources.
         yacc_srcs, srcs = self.split_matching_extensions_and_other(
