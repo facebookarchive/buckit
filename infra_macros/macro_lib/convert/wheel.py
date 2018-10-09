@@ -118,7 +118,7 @@ class PyWheelDefault(base.Converter):
         # but not actually providing the wheel.  To do this, emit and add
         # platform deps onto "error" rules that will fail at build time.
         platform_versions = collections.OrderedDict(platform_versions)
-        for platform in self.get_platforms():
+        for platform in platform_utils.get_platforms_for_host_architecture():
             py2_plat = self.get_python_platform(platform, major_version=2)
             py3_plat = self.get_python_platform(platform, major_version=3)
             present_for_any_python_version = (

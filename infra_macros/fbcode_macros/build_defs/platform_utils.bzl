@@ -33,6 +33,15 @@ _all_platforms = third_party_config["platforms"].keys()
 
 _current_architecture = __get_current_architecture()
 
+def __get_platforms_for_architecture(arch):
+    return sorted([
+        name
+        for name, details in third_party_config["platforms"].items()
+        if details["architecture"] == arch
+    ])
+
+_all_platforms_for_current_architecture = __get_platforms_for_architecture(_current_architecture)
+
 def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
     """
     Takes a mapping of cell/path/platform and validates and transforms it
@@ -219,7 +228,17 @@ def _get_platform_architecture(platform):
         return _current_architecture
     return third_party_config["platforms"][platform]["architecture"]
 
+def _get_platforms_for_host_architecture():
+    return _all_platforms_for_current_architecture
+
+def _get_platforms_for_architecture(arch):
+    return __get_platforms_for_architecture(arch)
+
+def _get_all_platforms():
+    return _all_platforms
+
 platform_utils = struct(
+    get_all_platforms = _get_all_platforms,
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
     get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,
     get_default_platform = _get_default_platform,
@@ -229,5 +248,7 @@ platform_utils = struct(
     get_platform_for_cell_path_and_arch = _get_platform_for_cell_path_and_arch,
     get_platform_for_current_buildfile = _get_platform_for_current_buildfile,
     get_platform_overrides = _get_platform_overrides,
+    get_platforms_for_architecture = _get_platforms_for_architecture,
+    get_platforms_for_host_architecture = _get_platforms_for_host_architecture,
     to_buck_platform = _to_buck_platform,
 )

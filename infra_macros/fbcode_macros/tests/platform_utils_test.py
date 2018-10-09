@@ -291,3 +291,39 @@ class PlatformTest(tests.utils.TestCase):
             ),
             platform.machine(),
         )
+
+    @tests.utils.with_project()
+    def test_get_all_platforms(self, root):
+        result = root.runUnitTests(
+            self.includes, ["platform_utils.get_all_platforms()"]
+        )
+        self.assertSuccess(result)
+        self.assertEquals(
+            ["default", "gcc5", "gcc5-other", "gcc6", "gcc7"],
+            sorted(result.debug_lines[0]),
+        )
+
+    @tests.utils.with_project()
+    def test_get_platforms_for_host_architecture(self, root):
+        result = root.runUnitTests(
+            self.includes,
+            [
+                "platform_utils.get_platforms_for_host_architecture()",
+            ],
+        )
+        self.assertSuccess(result)
+        self.assertEquals(
+            ["default", "gcc5", "gcc6", "gcc7"], sorted(result.debug_lines[0])
+        )
+
+    @tests.utils.with_project()
+    def test_get_platforms_for_architecture(self, root):
+        result = root.runUnitTests(
+            self.includes,
+            [
+                'platform_utils.get_platforms_for_architecture("{}")'.format(
+                    self.other_arch
+                )
+            ],
+        )
+        self.assertSuccess(result, ["gcc5-other"])

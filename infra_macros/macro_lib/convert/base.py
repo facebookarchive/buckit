@@ -192,22 +192,6 @@ class Converter(object):
         self._context = context
         self._tp2_build_dat_cache = {}
 
-    def get_platforms(self, native=True):
-        """
-        Return all fbcode platforms we can build against.
-        """
-
-        platforms = set()
-
-        for platform, config in (
-                self._context.third_party_config['platforms'].iteritems()):
-            # We only support native building, so exclude platforms spporting
-            # incompatible architectures.
-            if not native or platmod.machine() == config['architecture']:
-                platforms.add(platform)
-
-        return sorted(platforms)
-
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
             return os.path.join(
@@ -225,20 +209,6 @@ class Converter(object):
     def get_third_party_tools_root(self, platform):
         return os.path.join(self.get_third_party_root(platform), 'tools')
 
-    def get_platforms_for_arch(self, arch):
-        """
-        Return all platforms building for the given arch.
-        """
-
-        platforms = []
-
-        platform_configs = self._context.third_party_config['platforms']
-        for name, config in platform_configs.items():
-            if arch == config['architecture']:
-                platforms.append(name)
-
-        return sorted(platforms)
-
     def get_platform_flags_from_arch_flags(self, arch_flags):
         """
         Format a dict of architecture names to flags into a platform flag list
@@ -247,8 +217,8 @@ class Converter(object):
 
         platform_flags = {}
         for arch, flags in sorted(arch_flags.items()):
-            platforms = self.get_platforms_for_arch(arch)
-            for platform in self.get_platforms_for_arch(arch):
+            platforms = platform_utils.get_platforms_for_architecture(arch)
+            for platform in platform_utils.get_platforms_for_architecture(arch):
                 platform_flags[platform] = flags
 
         return self.format_platform_param(
@@ -523,7 +493,7 @@ class Converter(object):
     def format_platform_param(self, value):
         out = []
 
-        for platform in self.get_platforms():
+        for platform in platform_utils.get_platforms_for_host_architecture():
             for _compiler in compiler.get_supported_compilers():
                 result = (
                     value(platform, _compiler)

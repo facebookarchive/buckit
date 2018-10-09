@@ -376,7 +376,7 @@ class PythonConverter(base.Converter):
         """
 
         confs = [third_party.get_third_party_config_for_platform(p)['build']['projects']['python']
-                 for p in self.get_platforms()
+                 for p in platform_utils.get_platforms_for_host_architecture()
                  if platform is None or p == platform]
         versions = set(version_str
                        for pyconf in confs
@@ -851,7 +851,7 @@ class PythonConverter(base.Converter):
         # specified, then we have to install all sources via `versioned_srcs`
         else:
             pytarget = self.get_tp2_project_target('python')
-            platforms = self.get_platforms()
+            platforms = platform_utils.get_platforms_for_host_architecture()
 
             # Iterate over all potential Python versions and collect srcs for
             # each version:
