@@ -1528,7 +1528,7 @@ class CppConverter(base.Converter):
             dependencies.extend(self.get_implicit_deps())
 
         # Add implicit toolchain module deps.
-        if modules.enabled():
+        if modules.enabled() and out_compile_with_modules:
             dependencies.extend(
                 map(target_utils.parse_target, modules.get_implicit_module_deps()))
 
