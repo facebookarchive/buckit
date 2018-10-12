@@ -517,7 +517,11 @@ class CppThriftConverter(ThriftLangConverter):
 
         # Support a global config for explicitly opting thrift generated C/C++
         # rules in to using modules.
-        module = self.read_bool("cxx", "module_thrift_rule_default", required=False)
+        modular_headers = (
+            self.read_bool(
+                "cxx",
+                "modular_headers_thrift_default",
+                required=False))
 
         # Create the types, services and clients rules
         # Delegate to the C/C++ library converting to add in things like
@@ -535,7 +539,7 @@ class CppThriftConverter(ThriftLangConverter):
             # and build //thrift/lib/cpp2/test:exceptservice-cpp2-types).
             undefined_symbols=True,
             visibility=visibility,
-            module=module,
+            modular_headers=modular_headers,
         )
         clients_rules = self._cpp_converter.convert(
             base_path,
@@ -550,7 +554,7 @@ class CppThriftConverter(ThriftLangConverter):
             # and build //thrift/lib/cpp2/test:Presult-cpp2-clients).
             undefined_symbols=True,
             visibility=visibility,
-            module=module,
+            modular_headers=modular_headers,
         )
         services_rules = self._cpp_converter.convert(
             base_path,
@@ -562,7 +566,7 @@ class CppThriftConverter(ThriftLangConverter):
             compiler_flags=common_compiler_flags,
             compiler_specific_flags=common_compiler_specific_flags,
             visibility=visibility,
-            module=module,
+            modular_headers=modular_headers,
         )
         # Create a master rule that depends on -types, -services and -clients
         # for compatibility
@@ -577,7 +581,7 @@ class CppThriftConverter(ThriftLangConverter):
                 ':' + name + services_suffix,
             ],
             visibility=visibility,
-            module=module,
+            modular_headers=modular_headers,
         )
         return types_rules + clients_rules + services_rules + master_rules
 

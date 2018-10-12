@@ -46,7 +46,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:modules.bzl", "modules")
+load("@fbcode_macros//build_defs:modules.bzl", module_utils="modules")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -855,8 +855,8 @@ class CppConverter(base.Converter):
             os_linker_flags=None,
             autodeps_keep=False,
             undefined_symbols=False,
-            module=None,
-            compile_with_modules=None):
+            modular_headers=None,
+            modules=None):
 
         if not isinstance(compiler_flags, (list, tuple)):
             raise TypeError(
@@ -963,36 +963,37 @@ class CppConverter(base.Converter):
 
         # Figure out whether this rule's headers should be built into a clang
         # module (in supporting build modes).
-        out_module = True
+        out_modular_headers = True
         # Check the global, build mode default.
-        global_modules = self.read_bool('cxx', 'module_rule_default', required=False)
-        if global_modules is not None:
-            out_module = global_modules
+        global_modular_headers = (
+            self.read_bool('cxx', 'modular_headers_default', required=False))
+        if global_modular_headers is not None:
+            out_modular_headers = global_modular_headers
         # Check the build mode file override.
-        if build_mode is not None and build_mode.cxx_modules is not None:
-            out_module = build_mode.cxx_modules
+        if (build_mode is not None and
+                build_mode.cxx_modular_headers is not None):
+            out_modular_headers = build_mode.cxx_modular_headers
         # Check the rule override.
-        if module is not None:
-            out_module = module
+        if modular_headers is not None:
+            out_modular_headers = modular_headers
 
         # Figure out whether this rule should be built using clang modules (in
         # supporting build modes).
-        out_compile_with_modules = True
+        out_modules = True
         # Check the global, build mode default.
-        global_compile_with_modules = (
-            self.read_bool('cxx', 'compile_with_modules', required=False))
-        if global_compile_with_modules is not None:
-            compile_with_modules = global_compile_with_modules
+        global_modules = (
+            self.read_bool('cxx', 'modules_default', required=False))
+        if global_modules is not None:
+            out_modules = global_modules
         # Check the build mode file override.
-        if (build_mode is not None and
-                build_mode.cxx_compile_with_modules is not None):
-            out_compile_with_modules = build_mode.cxx_compile_with_modules
+        if build_mode is not None and build_mode.cxx_modules is not None:
+            out_modules = build_mode.cxx_modules
         # Check the rule override.
-        if compile_with_modules is not None:
-            out_compile_with_modules = compile_with_modules
+        if modules is not None:
+            out_modules = modules
         # Don't build precompiled headers with modules.
         if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
-            out_compile_with_modules = False
+            out_modules = False
 
         attributes = collections.OrderedDict()
 
@@ -1133,15 +1134,16 @@ class CppConverter(base.Converter):
             cpp_flags.get_extra_cxxppflags())
         out_lang_preprocessor_flags['assembler_with_cpp'].extend(
             cpp_flags.get_extra_cxxppflags())
-        if modules.enabled() and out_compile_with_modules:
+        if module_utils.enabled() and out_modules:
             # Add module toolchain flags.
             out_lang_preprocessor_flags['cxx'].extend(
-                modules.get_toolchain_flags())
+                module_utils.get_toolchain_flags())
             # Tell the compiler that C/C++ sources compiled in this rule are
             # part of the same module as the headers (and so have access to
             # private headers).
-            if out_module:
-                module_name = modules.get_module_name('fbcode', base_path, name)
+            if out_modular_headers:
+                module_name = (
+                    module_utils.get_module_name('fbcode', base_path, name))
                 out_lang_preprocessor_flags['cxx'].append(
                     '-fmodule-name=' + module_name)
         if out_lang_preprocessor_flags:
@@ -1531,12 +1533,12 @@ class CppConverter(base.Converter):
             dependencies.extend(self.get_implicit_deps())
 
         # Add implicit toolchain module deps.
-        if modules.enabled() and out_compile_with_modules:
+        if module_utils.enabled() and out_modules:
             dependencies.extend(
-                map(target_utils.parse_target, modules.get_implicit_module_deps()))
+                map(target_utils.parse_target, module_utils.get_implicit_module_deps()))
 
         # Modularize libraries.
-        if modules.enabled() and self.is_library() and out_module:
+        if module_utils.enabled() and self.is_library() and out_modular_headers:
 
             # If we're using modules, we need to add in the `module.modulemap`
             # file and make sure it gets installed at the root of the include
@@ -1554,9 +1556,9 @@ class CppConverter(base.Converter):
             out_header_namespace = ""
 
             # Create rule to generate the implicit `module.modulemap`.
-            module_name = modules.get_module_name('fbcode', base_path, name)
+            module_name = module_utils.get_module_name('fbcode', base_path, name)
             mmap_name = name + '-module-map'
-            modules.module_map_rule(
+            module_utils.module_map_rule(
                 mmap_name,
                 module_name,
                 # There are a few header suffixes (e.g. '-inl.h') that indicate a
@@ -1584,7 +1586,7 @@ class CppConverter(base.Converter):
             module_platform_flags.extend(out_platform_compiler_flags)
             module_deps, module_platform_deps = (
                 src_and_dep_helpers.format_all_deps(dependencies))
-            modules.gen_module(
+            module_utils.gen_module(
                 mod_name,
                 module_name,
                 # TODO(T32915747): Due to a clang bug when using module and
@@ -1852,7 +1854,6 @@ class CppConverter(base.Converter):
             'auto_headers',
             'compiler_flags',
             'compiler_specific_flags',
-            'compile_with_modules',
             'deps',
             'external_deps',
             'global_symbols',
@@ -1861,6 +1862,7 @@ class CppConverter(base.Converter):
             'known_warnings',
             'lex_args',
             'linker_flags',
+            'modules',
             'name',
             'nodefaultlibs',
             'nvcc_flags',
@@ -1919,7 +1921,7 @@ class CppConverter(base.Converter):
             args.update([
                 'lib_name',
                 'link_whole',
-                'module',
+                'modular_headers',
                 'os_deps',
                 'os_linker_flags',
                 'preferred_linkage',
