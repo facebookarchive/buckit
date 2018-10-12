@@ -17,27 +17,21 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 OVERRIDES = (
     # TP2 Name, PyFI Target Name
-    ("python-attrs", "attrs"),
+    ("Jinja2", "jinja2"),
+    ("MarkupSafe", "markupsafe"),
+    ("PyYAML", "pyyaml"),
+    ("Pygments", "pygments"),  # TP2 has duplicates (See pygments)
+    ("Shapely", "shapely"),
+    ("asn1crypto", "asn1crypto"),
     ("certifi", "certifi"),
-    ("python-cffi", "cffi"),
-    ("python-chardet", "chardet"),
-    ("python-click", "click"),  # We have a hacked unicode_literals 7.0.dev release
-    ("coverage", "coverage"),
     ("colorama", "colorama"),
-    ("python-dateutil", "python-dateutil"),
+    ("coverage", "coverage"),
     ("decorator", "decorator"),
-    ("python-enum34", "enum34"),
     ("funcsigs", "funcsigs"),
-    ("python-future", "future"),
-    ("python-ipaddress", "ipaddress"),
-    ("python-idna", "idna"),
     ("ipython", "ipython"),
     ("ipython_genutils", "ipython-genutils"),
-    ("Jinja2", "jinja2"),
     ("jsonpickle", "jsonpickle"),
-    ("MarkupSafe", "markupsafe"),
     ("mock", "mock"),
-    ("python-munch", "munch"),
     ("pathlib2", "pathlib2"),
     ("pexpect", "pexpect"),
     ("pexpect-u", "pexpect"),
@@ -45,20 +39,28 @@ OVERRIDES = (
     ("prompt-toolkit", "prompt-toolkit"),
     ("ptyprocess", "ptyprocess"),
     ("pycparser", "pycparser"),
-    ("Pygments", "pygments"),  # TP2 has duplicates
-    ("pygments", "pygments"),  # TP2 has duplicates
+    ("pygments", "pygments"),  # TP2 has duplicates (see Pygments)
     ("pyparsing", "pyparsing"),
+    ("python-attrs", "attrs"),
+    ("python-cffi", "cffi"),
+    ("python-chardet", "chardet"),
+    ("python-click", "click"),  # We have a hacked unicode_literals 7.0.dev release
+    ("python-cryptography", "cryptography"),
+    ("python-dateutil", "python-dateutil"),
+    ("python-enum34", "enum34"),
+    ("python-future", "future"),
+    ("python-idna", "idna"),
+    ("python-ipaddress", "ipaddress"),
+    ("python-munch", "munch"),
     ("python-requests", "requests"),
     ("pytz", "pytz"),
-    ("Shapely", "shapely"),
+    ("setuptools", "setuptools"),
     ("singledispatch", "singledispatch"),
     ("six", "six"),
-    ("setuptools", "setuptools"),
     ("traitlets", "traitlets"),
     ("typing", "typing"),
     ("urllib3", "urllib3"),
     ("wcwidth", "wcwidth"),
-    ("PyYAML", "pyyaml"),
 )
 
 # TODO(cooper) - T24797643 - Add platform007 support
