@@ -888,11 +888,14 @@ class CppConverter(base.Converter):
 
         cuda = self.has_cuda_srcs(srcs)
 
-        # TODO(lucian, pbrady, T24109997): temp hack until platform007 has full CUDA support.
-        # Until then unblock migration to p007 for projects that don't really need CUDA,
-        # but depend on CUDA through convenience transitive dependencies.
-        # Once platform007 supports CUDA cuda_deps should be merged back into deps.
-        if platform.startswith('platform007'):
+        # TODO(lucian, pbrady, T24109997): this was a temp hack when CUDA doesn't
+        # support platform007
+        # We still keep it here in case CUDA is lagging on gcc support again;
+        # For projects that don't really need CUDA, but depend on CUDA through
+        # convenience transitive dependencies, we exclude the CUDA files to
+        # unblock migration. Once CUDA supports gcc of the new platform,
+        # cuda_deps should be merged back into deps.
+        if platform.startswith('platform008'):
             cuda = False
 
             def filter_flags(flags):
