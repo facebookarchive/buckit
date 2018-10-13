@@ -43,27 +43,53 @@ class YumConfTestCase(unittest.TestCase):
             ),
         ], list(self.yum_conf.gen_repos()))
 
-    def test_modify_repos(self):
-        out = io.StringIO()
-        self.yum_conf.modify_repo_configs([YumConfRepo(
+    def test_isolate_repos(self):
+        isolated_repos = [YumConfRepo(
             name='potato',
             base_url='https://example.com/potato',
-            gpg_key_urls=('file:///much/secure/so/hack_proof',),
-        )], out)
+            gpg_key_urls=('file:///much/secure/so/hack_proof', 'https://cat'),
+        )]
+        with self.assertRaisesRegex(AssertionError, 'Failed to isolate '):
+            self.yum_conf.isolate().isolate_repos(isolated_repos)
+        isolated_repos.append(YumConfRepo(
+            name='oleander',
+            base_url='https://zupa.example.com/sup',
+            gpg_key_urls=(),
+        ))
+
+        out = io.StringIO()
+        self.yum_conf.isolate().isolate_repos(isolated_repos).isolate_main(
+            install_root='/install_root',
+            config_path='/config_path',
+        ).write(out)
+
         self.assertEqual(textwrap.dedent('''\
         [main]
         debuglevel = 2
         gpgcheck = 1
+        cachedir = /var/cache/yum
+        persistdir = /var/lib/yum
+        usercache = 0
+        reposdir = /dev/null
+        logfile = /var/log/yum.log
+        installroot = /install_root
+        config_file_path = /config_path
+        syslog_device =\x20
+        plugins = 0
+        pluginpath = /dev/null
+        pluginconfpath = /dev/null
+        bugtracker_url =\x20
+        fssnap_devices = !*
 
         [potato]
         baseurl = https://example.com/potato
         enabled = 1
         gpgkey = file:///much/secure/so/hack_proof
+        \thttps://cat
 
         [oleander]
-        baseurl = http://example.com/oleander
-        gpgkey = https://example.com/zupa
-        \thttps://example.com/super/safe
+        baseurl = https://zupa.example.com/sup
+        gpgkey =\x20
         enabled = 1
 
         '''), out.getvalue())
