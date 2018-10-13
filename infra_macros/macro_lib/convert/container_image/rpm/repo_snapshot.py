@@ -6,13 +6,12 @@ list all `ReportableError`s via:
     jq '.[].error | select(. != null)' $(find snapshot-dir/ -name '*.json')
 '''
 import json
-import logging
 
 from typing import Mapping, NamedTuple, Union
 
-from .common import open_ro, Path
+from .common import get_file_logger, open_ro, Path
 
-log = logging.getLogger(__name__)
+log = get_file_logger(__file__)
 
 
 class ReportableError(Exception):

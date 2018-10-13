@@ -9,6 +9,10 @@ import stat
 from typing import AnyStr, NamedTuple
 
 
+def get_file_logger(py_path):
+    return logging.getLogger(os.path.basename(py_path))
+
+
 def init_logging(*, debug: bool=False):
     logging.basicConfig(
         format='%(levelname)s %(name)s %(asctime)s %(message)s',

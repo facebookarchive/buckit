@@ -24,7 +24,6 @@ os.execlp(sys.argv[1], *sys.argv[1:], str(s.fileno()))
 
 '''
 import json
-import logging
 import os
 import socket
 import time
@@ -34,12 +33,12 @@ from socketserver import BaseServer
 from http.server import BaseHTTPRequestHandler, HTTPStatus
 from typing import Mapping, Tuple
 
-from .common import Checksum, Path, set_new_key
+from .common import Checksum, get_file_logger, Path, set_new_key
 from .repo_objects import RepoMetadata
 from .repo_snapshot import FileIntegrityError, ReportableError
 from .storage import Storage
 
-log = logging.getLogger(__name__)
+log = get_file_logger(__file__)
 
 
 # How big are our reads against Storage? Exposed for the unit test.
