@@ -80,49 +80,71 @@ REPO_CHANGE_STEPS = [
 ]
 
 
+def build_rpm(package_dir: str, arch: str, rpm: Rpm) -> str:
+    'Returns the filename of the built RPM.'
+    with tempfile.TemporaryDirectory(dir=package_dir) as td, \
+            tempfile.NamedTemporaryFile() as tf:
+        tf.write(rpm.spec().encode())
+        tf.flush()
+        subprocess.run(
+            [
+                # Has to be an absolute path thanks to @phild >:-/
+                '/usr/bin/rpmbuild', '-bb', '--target', arch,
+                '--buildroot', os.path.join(td, 'build'), tf.name,
+            ],
+            env={'HOME': os.path.join(td, 'home')},
+            check=True,
+        )
+        # `rpmbuild` has a non-configurable output layout, so
+        # we'll move the resulting rpm into our package dir.
+        rpms_dir = os.path.join(td, 'home/rpmbuild/RPMS', arch)
+        rpm_name, = os.listdir(rpms_dir)
+        os.rename(
+            os.path.join(rpms_dir, rpm_name),
+            os.path.join(package_dir, rpm_name),
+        )
+        return rpm_name
+
+
 def make_repo_steps(
     out_dir: str, repo_change_steps: List[Dict[str, Repo]], arch: str,
 ):
+    # When an RPM occurs in two different repos, we want it to be
+    # bit-identical (otherwise, the snapshot would see a `mutable_rpm`
+    # error).  This means never rebuilding an RPM that was previously seen.
+    # The paths are relative to `out_dir`.
+    rpm_to_path = {}
+    # The repos that exist at the current step.
     repos = {}
     for step, repo_changes in enumerate(repo_change_steps):
-        for name, repo in repo_changes.items():
+        for repo_name, repo in repo_changes.items():
             if repo is None:
-                del repos[name]
+                del repos[repo_name]
             else:
-                repos[name] = repo
+                repos[repo_name] = repo
         step_dir = os.path.join(out_dir, str(step))
         os.makedirs(step_dir)
-        for name, repo in repos.items():
-            repo_dir = os.path.join(step_dir, name)
+        for repo_name, repo in repos.items():
+            repo_dir = os.path.join(step_dir, repo_name)
             if isinstance(repo, str):  # Symlink to another repo
                 assert repo in repos
                 os.symlink(repo, repo_dir)
                 continue
             # Each repo's package dir is different to exercise the fact
             # that the same file's location may differ across repos.
-            package_dir = os.path.join(repo_dir, f'{name}-pkgs')
+            package_dir = os.path.join(repo_dir, f'{repo_name}-pkgs')
             os.makedirs(package_dir)
             for rpm in repo.rpms:
-                with tempfile.TemporaryDirectory(dir=package_dir) as td, \
-                        tempfile.NamedTemporaryFile() as tf:
-                    tf.write(rpm.spec().encode())
-                    tf.flush()
-                    subprocess.run(
-                        [
-                            # Has to be an absolute path thanks to @phild >:-/
-                            '/usr/bin/rpmbuild', '-bb', '--target', arch,
-                            '--buildroot', os.path.join(td, 'build'), tf.name,
-                        ],
-                        env={'HOME': os.path.join(td, 'home')},
-                        check=True,
+                prev_path = rpm_to_path.get(rpm)
+                if prev_path:
+                    os.symlink(
+                        os.path.join('../../..', prev_path),
+                        os.path.join(package_dir, os.path.basename(prev_path)),
                     )
-                    # `rpmbuild` has a non-configurable output layout, so
-                    # we'll move the resulting rpm into our package dir.
-                    rpms_dir = os.path.join(td, 'home/rpmbuild/RPMS', arch)
-                    rpm, = os.listdir(rpms_dir)
-                    os.rename(
-                        os.path.join(rpms_dir, rpm),
-                        os.path.join(package_dir, rpm),
+                else:
+                    rpm_to_path[rpm] = os.path.join(
+                        str(step), repo_name, os.path.basename(package_dir),
+                        build_rpm(package_dir, arch, rpm),
                     )
             # Now that all RPMs were built, we can generate the Yum metadata
             subprocess.run(['createrepo', repo_dir], check=True)
