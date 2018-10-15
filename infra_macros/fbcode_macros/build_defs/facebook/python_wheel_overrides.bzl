@@ -54,17 +54,23 @@ OVERRIDES = (
     ("python-munch", "munch"),
     ("python-requests", "requests"),
     ("pytz", "pytz"),
+    ("retype", "retype"),
     ("setuptools", "setuptools"),
     ("singledispatch", "singledispatch"),
     ("six", "six"),
     ("traitlets", "traitlets"),
     ("typing", "typing"),
+    ("typed-ast", "typed-ast"),
     ("urllib3", "urllib3"),
     ("wcwidth", "wcwidth"),
 )
 
-# TODO(cooper) - T24797643 - Add platform007 support
-_PYFI_SUPPORTED_PLATFORMS = ("gcc-5-glibc-2.23", "gcc-5-glibc-2.23-aarch64")
+_PYFI_SUPPORTED_PLATFORMS = (
+    "gcc-5-glibc-2.23",
+    "gcc-5-glibc-2.23-aarch64",
+    "platform007",
+    "platform007-aarch64",
+)
 
 def _generate_pyfi_overrides(overrides):
     # type: (Tuple[str, str, str]) -> Dict[Union[str, Tuple[Optional[str], ...]], str]
