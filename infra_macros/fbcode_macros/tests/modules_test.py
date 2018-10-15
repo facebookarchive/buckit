@@ -16,6 +16,30 @@ class ModulesTest(tests.utils.TestCase):
 
     includes = [("@fbcode_macros//build_defs:modules.bzl", "modules")]
 
+    expected_cmd = (
+        r"""set -euo pipefail\n"""
+        r"""while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\n"""
+        r"""args=()\n"""
+        r"""args+=($(cxx))\n"""
+        r"""args+=($(cxxppflags :foo-helper))\n"""
+        r"""args+=($(cxxflags))\n"""
+        r"""args+=(\'-fmodules\' \'-Rmodule-build\' \'-fimplicit-module-maps\' \'-fno-builtin-module-map\' \'-fno-implicit-modules\' \'-fmodules-cache-path=/DOES/NOT/EXIST\' \'-Xclang\' \'-fno-modules-global-index\' \'-Wnon-modular-include-in-module\' \'-Xclang\' \'-fno-absolute-module-directory\')\n"""
+        r"""args+=(\"-Xclang\" \"-emit-module\")\n"""
+        r"""args+=(\"-fmodule-name=\"\'bar\')\n"""
+        r"""args+=(\"-x\" \"c++-header\")\n"""
+        r"args+=(\"-Xclang\" \"-fno-validate-pch\")\n"
+        r"""args+=(\"-I$SRCDIR/module_headers\")\n"""
+        r"""args+=(\"$SRCDIR/module_headers/module.modulemap\")\n"""
+        r"""args+=(\"-o\" \"-\")\n"""
+        r"""for i in \"${!args[@]}\"; do\n"""
+        r"""  args[$i]=${args[$i]//$PWD\\//}\n"""
+        r"""done\n"""
+        + (
+            r"(\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$OUT\""
+            + r" | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/something/|g\""
+        )
+    )
+
     @tests.utils.with_project()
     def test_get_module_name(self, root):
         self.assertSuccess(
@@ -70,17 +94,16 @@ class ModulesTest(tests.utils.TestCase):
             """
             ),
         )
-
         expected = tests.utils.dedent(
             r"""
 cxx_genrule(
   name = "foo",
-  cmd = "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\nargs=()\nargs+=($(cxx))\nargs+=($(cxxppflags :foo-helper))\nargs+=($(cxxflags))\nargs+=(\'-fmodules\' \'-Rmodule-build\' \'-fimplicit-module-maps\' \'-fno-builtin-module-map\' \'-fno-implicit-modules\' \'-fmodules-cache-path=/DOES/NOT/EXIST\' \'-Xclang\' \'-fno-modules-global-index\' \'-Wnon-modular-include-in-module\' \'-Xclang\' \'-fno-absolute-module-directory\')\nargs+=(\"-Xclang\" \"-emit-module\")\nargs+=(\"-fmodule-name=\"\'bar\')\nargs+=(\"-x\" \"c++-header\")\nargs+=(\"-I$SRCDIR/headers\")\nargs+=(\"$SRCDIR/headers/module.modulemap\")\nargs+=(\"-o\" \"-\")\nfor i in \"${!args[@]}\"; do\n  args[$i]=${args[$i]//$PWD\\//}\ndone\nexec \"${args[@]}\" > \"$OUT\"",
+  cmd = "{cmd}",
   out = "module.pcm",
-  srcs = {
-    "headers/module.modulemap": "module.modulemap",
-    "headers/foo.h": "foo.cpp",
-  },
+  srcs = {{
+    "module_headers/module.modulemap": "module.modulemap",
+    "module_headers/foo.h": "foo.cpp",
+  }},
 )
 
 cxx_library(
@@ -93,7 +116,7 @@ cxx_library(
   ],
 )
         """
-        )
+        ).format(cmd=self.expected_cmd)
         result = root.runAudit(["third-party-buck/something/BUCK"])
         self.validateAudit({"third-party-buck/something/BUCK": expected}, result)
 
@@ -121,12 +144,12 @@ cxx_library(
             r"""
 cxx_genrule(
   name = "foo",
-  cmd = "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\nargs=()\nargs+=($(cxx))\nargs+=($(cxxppflags :foo-helper))\nargs+=($(cxxflags))\nargs+=(\'-fmodules\' \'-Rmodule-build\' \'-fimplicit-module-maps\' \'-fno-builtin-module-map\' \'-fno-implicit-modules\' \'-fmodules-cache-path=/DOES/NOT/EXIST\' \'-Xclang\' \'-fno-modules-global-index\' \'-Wnon-modular-include-in-module\' \'-Xclang\' \'-fno-absolute-module-directory\')\nargs+=(\"-Xclang\" \"-emit-module\")\nargs+=(\"-fmodule-name=\"\'bar\')\nargs+=(\"-x\" \"c++-header\")\nargs+=(\"-I$SRCDIR/headers\")\nargs+=(\"$SRCDIR/headers/module.modulemap\")\nargs+=(\"-o\" \"-\")\nfor i in \"${!args[@]}\"; do\n  args[$i]=${args[$i]//$PWD\\//}\ndone\nexec \"${args[@]}\" > \"$OUT\"",
+  cmd = "{cmd}",
   out = "module.pcm",
-  srcs = {
-    "headers/foo.h": "foo.cpp",
-    "headers/module.modulemap": "module.modulemap",
-  },
+  srcs = {{
+    "module_headers/foo.h": "foo.cpp",
+    "module_headers/module.modulemap": "module.modulemap",
+  }},
 )
 
 cxx_library(
@@ -139,6 +162,6 @@ cxx_library(
   ],
 )
         """
-        )
+        ).format(cmd=self.expected_cmd)
         result = root.runAudit(["third-party-buck/something/BUCK"])
         self.validateAudit({"third-party-buck/something/BUCK": expected}, result)

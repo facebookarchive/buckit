@@ -14,6 +14,30 @@ from tests.utils import dedent
 
 
 class CppLibraryExternalTest(tests.utils.TestCase):
+    module_cmd = (
+        r"""set -euo pipefail\n"""
+        r"""while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\n"""
+        r"""args=()\n"""
+        r"""args+=($(cxx))\n"""
+        r"""args+=($(cxxppflags :MagickCore-module-helper))\n"""
+        r"""args+=($(cxxflags))\n"""
+        r"""args+=(\'-fmodules\' \'-Rmodule-build\' \'-fimplicit-module-maps\' \'-fno-builtin-module-map\' \'-fno-implicit-modules\' \'-fmodules-cache-path=/DOES/NOT/EXIST\' \'-Xclang\' \'-fno-modules-global-index\' \'-Wnon-modular-include-in-module\' \'-Xclang\' \'-fno-absolute-module-directory\')\n"""
+        r"""args+=(\"-Xclang\" \"-emit-module\")\n"""
+        r"""args+=(\"-fmodule-name=\"\'third-party//ImageMagick:MagickCore\')\n"""
+        r"""args+=(\"-x\" \"c++-header\")\n"""
+        r"args+=(\"-Xclang\" \"-fno-validate-pch\")\n"
+        r"""args+=(\"-I$SRCDIR/module_headers\")\n"""
+        r"""args+=(\"$SRCDIR/module_headers/module.modulemap\")\n"""
+        r"""args+=(\"-o\" \"-\")\n"""
+        r"""for i in \"${!args[@]}\"; do\n"""
+        r"""  args[$i]=${args[$i]//$PWD\\//}\n"""
+        r"""done\n"""
+        + (
+            r"(\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$OUT\""
+            + r" | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/gcc5/build/ImageMagick/include/ImageMagick/|g\""
+        )
+    )
+
     @tests.utils.with_project()
     def test_cpp_library_external_parses(self, root):
         buckfile = "third-party-buck/gcc5/build/ImageMagick/BUCK"
@@ -129,11 +153,11 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                     "//third-party-buck/gcc5/build/bzip2:bz2",
                     "//third-party-buck/gcc5/build/glibc:dl",
                   ],
-                  exported_lang_preprocessor_flags = {
+                  exported_lang_preprocessor_flags = {{
                     "cxx": [
                       "-fmodule-file=third-party//ImageMagick:MagickCore=$(location :MagickCore-module)",
                     ],
-                  },
+                  }},
                   exported_linker_flags = [
                     "-Wl,--no-as-needed",
                   ],
@@ -157,11 +181,11 @@ class CppLibraryExternalTest(tests.utils.TestCase):
 
                 cxx_genrule(
                   name = "MagickCore-module",
-                  cmd = "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\nargs=()\nargs+=($(cxx))\nargs+=($(cxxppflags :MagickCore-module-helper))\nargs+=($(cxxflags))\nargs+=(\'-fmodules\' \'-Rmodule-build\' \'-fimplicit-module-maps\' \'-fno-builtin-module-map\' \'-fno-implicit-modules\' \'-fmodules-cache-path=/DOES/NOT/EXIST\' \'-Xclang\' \'-fno-modules-global-index\' \'-Wnon-modular-include-in-module\' \'-Xclang\' \'-fno-absolute-module-directory\')\nargs+=(\"-Xclang\" \"-emit-module\")\nargs+=(\"-fmodule-name=\"\'third-party//ImageMagick:MagickCore\')\nargs+=(\"-x\" \"c++-header\")\nargs+=(\"-I$SRCDIR/headers\")\nargs+=(\"$SRCDIR/headers/module.modulemap\")\nargs+=(\"-o\" \"-\")\nfor i in \"${!args[@]}\"; do\n  args[$i]=${args[$i]//$PWD\\//}\ndone\nexec \"${args[@]}\" > \"$OUT\"",
+                  cmd = "{module_cmd}",
                   out = "module.pcm",
-                  srcs = {
-                    "headers": "include/ImageMagick",
-                  },
+                  srcs = {{
+                    "module_headers": "include/ImageMagick",
+                  }},
                   visibility = [
                     "//third-party-buck/gcc5/build/ImageMagick:MagickCore",
                   ],
@@ -183,7 +207,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                   ],
                 )
                 """
-            )
+            ).format(module_cmd=self.module_cmd)
         }
 
         self.validateAudit(expected, root.runAudit([buckfile]))

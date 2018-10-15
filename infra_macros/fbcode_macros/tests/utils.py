@@ -879,7 +879,10 @@ class TestCase(unittest.TestCase):
 
         for file, contents in result.files.items():
             try:
-                self.assertEqual(expected_results[file], contents)
+                self.assertEqual(
+                    expected_results[file].replace("\\n", "\n"),
+                    contents.replace("\\n", "\n"),
+                )
             except AssertionError as e:
                 raise_with_traceback(
                     AssertionError("Content of {} differs:\n{}".format(file, str(e)))

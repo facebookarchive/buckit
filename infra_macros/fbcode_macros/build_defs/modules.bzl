@@ -250,7 +250,7 @@ def _gen_module(
             'OLD="${SRCDIR//$PWD\//}"/module_headers',
             'VER="\$(echo "$OLD" | grep -Po ",v[a-f0-9]{7}(?=__srcs/)"; true)"',
             'NEW="\$(printf {} "$VER")"'
-            .format(shell.quote(override_module_home)),
+                .format(shell.quote(override_module_home)),
             # We do in in-place update, which requires that the new and old
             # module homes are identical in length.  To meet this requirement,
             # assume that the length of the new module home is either already
@@ -335,7 +335,7 @@ def _gen_tp2_cpp_module(
         headers = headers,
         flags = out_flags,
         header_dir = header_dir,
-        header_prefix = paths.join(base_path, header_dir) + "/",
+        header_prefix = paths.join(base_path, header_dir or "", ""),
         module_name = module_name,
         platform_deps = out_platform_deps,
         platform_flags = out_platform_flags,
