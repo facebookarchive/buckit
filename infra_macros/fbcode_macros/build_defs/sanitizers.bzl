@@ -62,7 +62,6 @@ _UBSAN_FLAGS = [
     "-fsanitize=undefined",
     "-fno-sanitize=alignment",
     "-fno-sanitize=null",
-    "-fsanitize-blacklist=$(location //tools/build:ubsan-blacklist)",
 
     # Python extensions are loaded with RTLD_LOCAL which is
     # incompatible with vptr & function UBSAN checks.
