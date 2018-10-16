@@ -92,7 +92,7 @@ def _parse_external_dep(raw_target, lang_suffix = ""):
         target = (raw_target,)
     else:
         fail("external dependency should be a tuple or string, " +
-             "not {}".format(raw_target))
+             "not {}".format(type(raw_target)))
 
     repo = rule_target_types.THIRD_PARTY_REPO
     if len(target) in (1, 2):
