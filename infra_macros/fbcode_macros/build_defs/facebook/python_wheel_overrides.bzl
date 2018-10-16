@@ -22,7 +22,6 @@ OVERRIDES = (
     ("PyYAML", "pyyaml"),
     ("Pygments", "pygments"),  # TP2 has duplicates (See pygments)
     ("Shapely", "shapely"),
-    ("asn1crypto", "asn1crypto"),
     ("certifi", "certifi"),
     ("colorama", "colorama"),
     ("coverage", "coverage"),
@@ -45,7 +44,6 @@ OVERRIDES = (
     ("python-cffi", "cffi"),
     ("python-chardet", "chardet"),
     ("python-click", "click"),  # We have a hacked unicode_literals 7.0.dev release
-    ("python-cryptography", "cryptography"),
     ("python-dateutil", "python-dateutil"),
     ("python-enum34", "enum34"),
     ("python-future", "future"),
