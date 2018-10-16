@@ -50,6 +50,7 @@ def cpp_library_external(
         supports_omnibus = None,
         visibility = None,
         link_without_soname = False,
+        modular_headers = True,
         static_lib = None,
         static_pic_lib = None,
         shared_lib = None,
@@ -94,6 +95,8 @@ def cpp_library_external(
         visibility: The visibility of this rule. This may be modified by global settings.
         link_without_soname: Whether or not this library can be linked without an SONAME
                              property. If so, this will influence the linker
+        modular_headers: Whether to build this libraries headers into a C/C++ module
+                         in modular builds.
         static_lib: See https://buckbuild.com/rule/prebuilt_cxx_library.html#static_lib
         static_pic_lib: See https://buckbuild.com/rule/prebuilt_cxx_library.html#static_pic_lib
         shared_lib: See https://buckbuild.com/rule/prebuilt_cxx_library.html#shared_lib
@@ -139,7 +142,7 @@ def cpp_library_external(
 
     # If modules are enabled, automatically build a module from the module
     # map found in the first include dir, if one exists.
-    if modules.enabled() and third_party.is_tp2(native.package_name()):
+    if modules.enabled() and modular_headers and third_party.is_tp2(native.package_name()):
         # Add implicit toolchain module deps.
         dependencies.extend([
             target_utils.parse_target(dep)
