@@ -994,6 +994,8 @@ class CppConverter(base.Converter):
         # Don't build precompiled headers with modules.
         if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
             out_modules = False
+        if precompiled_header is not ABSENT:
+            out_modules = False
 
         attributes = collections.OrderedDict()
 
