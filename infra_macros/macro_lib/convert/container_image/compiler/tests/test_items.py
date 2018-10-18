@@ -9,7 +9,6 @@ import unittest
 import unittest.mock
 
 from contextlib import contextmanager
-from io import BytesIO
 
 import btrfs_diff.tests.render_subvols as render_sv
 
@@ -17,8 +16,8 @@ from btrfs_diff.subvolume_set import SubvolumeSet
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
-    TarballItem, CopyFileItem, MakeDirsItem, ParentLayerItem,
-    FilesystemRootItem, gen_parent_layer_items, Subvol,
+    TarballItem, CopyFileItem, FilesystemRootItem, gen_parent_layer_items,
+    MakeDirsItem, MultiRpmAction, ParentLayerItem, RpmActionType,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory
@@ -28,6 +27,7 @@ from .mock_subvolume_from_json_file import (
 )
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
+
 
 def _render_subvol(subvol: 'Subvol'):
     subvol_set = SubvolumeSet.new()
@@ -40,6 +40,10 @@ def _render_subvol(subvol: 'Subvol'):
 
 
 class ItemsTestCase(unittest.TestCase):
+
+    def setUp(self):  # More output for easier debugging
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
 
     def _check_item(self, i, provides, requires):
         self.assertEqual(provides, set(i.provides()))
@@ -325,6 +329,63 @@ class ItemsTestCase(unittest.TestCase):
                 [ParentLayerItem(from_target='T', path='potato')],
                 list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
             )
+
+    def test_multi_rpm_action(self):
+        # This works in @mode/opt since this binary is baked into the XAR
+        yum = os.path.join(os.path.dirname(__file__), 'yum-from-test-snapshot')
+
+        mice = MultiRpmAction.new(
+            frozenset(['rpm-test-mice']), RpmActionType.install, yum,
+        )
+        carrot = MultiRpmAction.new(
+            frozenset(['rpm-test-carrot']), RpmActionType.install, yum,
+        )
+        buggy_mice = mice._replace(yum_from_snapshot='bug')
+        with self.assertRaises(AssertionError):
+            buggy_mice.union(carrot)
+        action = mice.union(carrot)
+        self.assertEqual({'rpm-test-mice', 'rpm-test-carrot'}, action.rpms)
+        self.assertEqual(carrot, action._replace(rpms={'rpm-test-carrot'}))
+
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('rpm_action')
+            self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
+
+            # The empty action is a no-op
+            MultiRpmAction.new(
+                frozenset(), RpmActionType.install, None,
+            ).build(subvol)
+            self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
+
+            # Specifying RPM versions is prohibited
+            with self.assertRaises(subprocess.CalledProcessError):
+                MultiRpmAction.new(
+                    frozenset(['rpm-test-mice-2']), RpmActionType.install, yum,
+                ).build(subvol)
+
+            action.build(subvol)
+            # Clean up the `yum` & `rpm` litter before checking the packages.
+            subvol.run_as_root([
+                'rm', '-rf',
+                # Annotate all paths since `sudo rm -rf` is scary.
+                subvol.path('var/cache/yum'),
+                subvol.path('var/lib/yum'),
+                subvol.path('var/lib/rpm'),
+                subvol.path('var/log/yum.log'),
+            ])
+            subvol.run_as_root([
+                'rmdir', 'var/cache', 'var/lib', 'var/log', 'var',
+            ], cwd=subvol.path())
+            self.assertEqual(['(Dir)', {
+                'usr': ['(Dir)', {
+                    'share': ['(Dir)', {
+                        'rpm_test': ['(Dir)', {
+                            'carrot.txt': ['(File d13)'],
+                            'mice.txt': ['(File d11)'],
+                        }],
+                    }],
+                }],
+            }], _render_subvol(subvol))
 
 
 if __name__ == '__main__':

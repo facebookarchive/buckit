@@ -12,6 +12,8 @@ top of `provides.py`.
 import enum
 import os
 
+from typing import NamedTuple, Optional, FrozenSet
+
 from .enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField,
 )
@@ -325,3 +327,74 @@ def gen_parent_layer_items(target, parent_layer_filename, subvolumes_dir):
                 path=SubvolumeOnDisk.from_json_file(infile, subvolumes_dir)
                     .subvolume_path(),
             )
+
+
+class RpmActionType(enum.Enum):
+    install = 'install'
+    remove = 'remove'
+
+
+RPM_ACTION_TYPE_TO_PHASE_ORDER = {
+    RpmActionType.install: PhaseOrder.RPM_INSTALL,
+    RpmActionType.remove: PhaseOrder.RPM_REMOVE,
+}
+
+
+RPM_ACTION_TYPE_TO_YUM_CMD = {
+    # We do NOT want people specifying package versions, releases, or
+    # architectures via `image_feature`s.  That would be a sure-fire way to
+    # get version conflicts.  For the cases where we need version pinning,
+    # we'll add a per-layer "version picker" concept.
+    RpmActionType.install: 'install-n',
+    RpmActionType.remove: 'remove-n',
+}
+
+
+# This quacks like an ImageItem, with one exception: it lacks `from_target`.
+# We don't have a good story for attributing RPMs to a build target, since
+# multiple build targets may request the same RPM (though it could be done).
+# Future: consider a refactor to make explicit the bifurcation in image item
+# interfaces between "phased" and "dependency-sorted".
+class MultiRpmAction(NamedTuple):
+    rpms: FrozenSet[str]
+    action: RpmActionType
+    yum_from_snapshot: Optional[str]  # Can be None if there are no rpms.
+    phase_order: PhaseOrder  # Derived from `action`
+
+    @classmethod
+    def new(cls, rpms, action, yum_from_snapshot):
+        return cls(
+            rpms=rpms,
+            action=action,
+            yum_from_snapshot=yum_from_snapshot,
+            phase_order=RPM_ACTION_TYPE_TO_PHASE_ORDER[action],
+        )
+
+    def union(self, other):
+        self_metadata = self._replace(rpms={'omitted'})
+        other_metadata = other._replace(rpms={'omitted'})
+        assert self_metadata == other_metadata, (self_metadata, other_metadata)
+        return self._replace(rpms=self.rpms | other.rpms)
+
+    def build(self, subvol: Subvol):
+        if not self.rpms:
+            return
+        assert RPM_ACTION_TYPE_TO_PHASE_ORDER[self.action] is self.phase_order
+        assert self.yum_from_snapshot is not None, self
+        subvol.run_as_root([
+            # Since `yum-from-snapshot` variants are generally Python
+            # binaries built from this very repo, in @mode/dev, we would run
+            # a symlink-PAR from the buck-out tree as `root`.  This would
+            # leave behind root-owned `__pycache__` directories, which would
+            # break Buck's fragile cleanup, and cause us to leak old build
+            # artifacts.  This eventually runs the host out of disk space,
+            # and can also interfere with e.g.  `test-image-layer`, since
+            # that test relies on there being just one `create_ops`
+            # subvolume in `buck-image-out` with the "received UUID" that
+            # was committed to VCS as part of the test sendstream.
+            'env', 'PYTHONDONTWRITEBYTECODE=1',
+            self.yum_from_snapshot, '--install-root', subvol.path(), '--',
+            RPM_ACTION_TYPE_TO_YUM_CMD[self.action],
+            # Sort in case `yum` behavior depends on order (for determinism).
+            '--assumeyes', '--', *sorted(self.rpms),
+        ])

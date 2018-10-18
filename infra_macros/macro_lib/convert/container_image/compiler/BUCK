@@ -88,11 +88,15 @@ python_unittest(
     name = "test-items",
     srcs = ["tests/test_items.py"],
     base_module = "compiler",
+    gen_srcs = {
+        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
+        "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
+    },
     needed_coverage = [(
         100,
         ":items",
     )],
-    par_style = "zip",  # "fastzip" would break :volume_for_repo in @mode/opt
+    par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
