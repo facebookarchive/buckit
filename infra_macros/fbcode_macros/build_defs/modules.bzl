@@ -202,7 +202,7 @@ def _gen_module(
         # TODO(T32246582): This is gross, but we currently need to run the
         # C/C++ compilers from the root of fbcode, so search up the dir
         # tree to find it.
-        "while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done",
+        "while test ! -r .projectid -a `pwd` != / ; do cd ..; done",
 
         # Set up the args for module compilation.
         "args=()",
