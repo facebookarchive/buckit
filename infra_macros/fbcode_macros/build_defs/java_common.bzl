@@ -67,7 +67,7 @@ def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
         cmd = (
             "$(exe //tools/build/buck/java/duplicate_finder:main) " +
             "--output-file $OUT " +
-            "--classpath \"$(classpath {})\" " +
+            "--classpath @<(echo \"$(classpath {})\") " +
             "--link-to-docs https://fburl.com/duplicate_finder " +
             " ".join(regex_args)
         ).format(buck_target),
