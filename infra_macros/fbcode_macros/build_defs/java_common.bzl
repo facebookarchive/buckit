@@ -39,7 +39,13 @@ def _get_extra_annotation_processors_and_deps(*dep_lists):
 
     return (annotation_processors, annotation_processor_deps)
 
-def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
+def _duplicate_finder(
+        name,
+        buck_target,
+        duplicate_finder_enabled,
+        duplicate_finder_exclude_regexes,
+        logging_library_check_enabled,
+        visibility):
     """
     Creates a genrule that will run a utility to see if duplicate classes exist in a jar
 
@@ -47,18 +53,27 @@ def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
         name: The name of the genrule to create
         buck_target: The full buck target that should be inspected by the
                      duplicate finder
-        exclude_regexes: A list of regexes that should be ignored by the duplicate
-                         class finder. Single quotes are not allowed.
+        duplicate_finder_enabled: Whether to check for duplicate classes in the
+                                  classpath.
+        duplicate_finder_exclude_regexes: A list of regexes that should be
+                                          ignored by the duplicate class finder.
+                                          Single quotes are not allowed.
+        logging_library_check_enabled: Whether to check for presence of logging
+                                       library implementation classes in the
+                                       rule's classpath.
         visibility: The visibility of this rule.
     """
-    regex_args = []
-    for regex in exclude_regexes:
-        if "'" in regex:
-            fail("single quote not allowed in duplicate_finder regexes. Got " + regex)
-        regex_args.append("'%s'" % regex)
+    duplicate_exclude_regex_args = []
+    if duplicate_finder_enabled:
+        for regex in duplicate_finder_exclude_regexes:
+            if "'" in regex:
+                fail("single quote not allowed in duplicate_finder regexes. Got " + regex)
+            duplicate_exclude_regex_args.append("'%s'" % regex)
 
-    # Java 9 may include module-info.class in a module
-    regex_args.append("'module-info\\.class'")
+        # Java 9 may include module-info.class in a module
+        duplicate_exclude_regex_args.append("'module-info\\.class'")
+    else:
+        duplicate_exclude_regex_args.append("'.*'")
 
     native.genrule(
         name = name,
@@ -68,8 +83,9 @@ def _duplicate_finder(name, buck_target, exclude_regexes, visibility):
             "$(exe //tools/build/buck/java/duplicate_finder:main) " +
             "--output-file $OUT " +
             "--classpath @<(echo \"$(classpath {})\") " +
-            "--link-to-docs https://fburl.com/duplicate_finder " +
-            " ".join(regex_args)
+            "--link-to-docs https://fburl.com/java_targets " +
+            "".join(["--duplicate-classes-exclude-regex {} ".format(regex) for regex in duplicate_exclude_regex_args]) +
+            ("--forbid-logging-library-implementations " if logging_library_check_enabled else "")
         ).format(buck_target),
         type = "duplicate_finder",
     )
