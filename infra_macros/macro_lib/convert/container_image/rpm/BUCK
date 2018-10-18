@@ -193,13 +193,37 @@ export_file(
     src = "tests/snapshot.tgz",
 )
 
+# This is split out so that our coverage tool doesn't complain that
+# `test_snapshot_tgz` has 0% coverage.  T24586337
+python_library(
+    name = "test_snapshot",
+    base_module = "rpm",
+    gen_srcs = {":test_snapshot_tgz": "tests/snapshot.tgz"},
+)
+
+python_binary(
+    name = "yum-from-test-snapshot",
+    srcs = ["tests/yum_from_test_snapshot.py"],
+    base_module = "rpm",
+    main_module = "rpm.tests.yum_from_test_snapshot",
+    par_style = "xar",  # Lets us embed :test_snapshot_tgz
+    deps = [
+        ":test_snapshot",
+        ":yum-from-snapshot-library",
+    ],
+)
+
 python_unittest(
     name = "test-yum-from-snapshot",
     srcs = ["tests/test_yum_from_snapshot.py"],
     base_module = "rpm",
-    gen_srcs = {":test_snapshot_tgz": "tests/snapshot.tgz"},
     needed_coverage = [
         (100, ":yum-from-snapshot-library"),
+        (100, ":yum-from-test-snapshot-library"),
     ],
-    deps = [":yum-from-snapshot-library"],
+    par_style = "xar",  # Lets us embed :test_snapshot_tgz
+    deps = [
+        ":yum-from-snapshot-library",
+        ":yum-from-test-snapshot-library",
+    ],
 )

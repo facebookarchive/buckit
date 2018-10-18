@@ -453,6 +453,28 @@ def yum_from_snapshot(
             check_popen_returncode(yum_proc)
 
 
+# This is used by the CLIs, and so it's tested indirectly (e.g. via the
+# image compiler's test targets.
+def add_common_yum_args(parser: 'argparse.ArgumentParser'):  # pragma: no cover
+    parser.add_argument(
+        '--install-root', required=True, type=Path.from_argparse,
+        help='All packages will be installed under this root. This is '
+            'literally `yum --installroot`, but it is required here because '
+            'most users of `yum-from-snapshot` should not install to /.',
+    )
+    parser.add_argument(
+        'yum_args', nargs='+',
+        help='Pass these through to `yum`. You will want to use -- before '
+            'any argument for `yum` to prevent `yum-from-snapshot` from '
+            'parsing them. Avoid arguments that might break hermeticity '
+            '(e.g. affecting the host system, or making us depend on the '
+            'host system) -- this tool implements protections, but it '
+            'may not be foolproof.',
+    )
+
+
+# This is not a production CLI, but a development helper. In any case,
+# there's not much logic to cover.
 if __name__ == '__main__':  # pragma: no cover
     import argparse
 
@@ -472,21 +494,7 @@ if __name__ == '__main__':  # pragma: no cover
         help='What Storage do the storage IDs of the snapshots refer to? '
             'Run `repo-server --help` to learn the syntax.',
     )
-    parser.add_argument(
-        '--install-root', required=True, type=Path.from_argparse,
-        help='All packages will be installed under this root. This is '
-            'literally `yum --installroot`, but it is required here because '
-            'most users of `yum-from-snapshot` should not install to /.',
-    )
-    parser.add_argument(
-        'yum_args', nargs='+',
-        help='Pass these through to `yum`. You will want to use -- before '
-            'any argument for `yum` to prevent `yum-from-snapshot` from '
-            'parsing them. Avoid arguments that might break hermeticity '
-            '(e.g. affecting the host system, or making us depend on the '
-            'host system) -- this tool implements protections, but it '
-            'may not be foolproof.',
-    )
+    add_common_yum_args(parser)
     args = parser.parse_args()
 
     init_logging()
