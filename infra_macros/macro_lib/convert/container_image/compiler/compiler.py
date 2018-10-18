@@ -26,13 +26,13 @@ from .subvolume_on_disk import SubvolumeOnDisk
 # At the moment, the target names emitted by `image_feature` targets seem to
 # be normalized the same way as those provided to us by `image_layer`.  If
 # this were to ever change, this would be a good place to re-normalize them.
-def make_target_filename_map(targets_followed_by_filenames):
+def make_target_path_map(targets_followed_by_paths):
     'Buck query_targets_and_outputs gives us `//target path/to/target/out`'
-    if len(targets_followed_by_filenames) % 2 != 0:
+    if len(targets_followed_by_paths) % 2 != 0:
         raise RuntimeError(
-            f'Odd-length --child-dependencies {targets_followed_by_filenames}'
+            f'Odd-length --child-dependencies {targets_followed_by_paths}'
         )
-    it = iter(targets_followed_by_filenames)
+    it = iter(targets_followed_by_paths)
     d = dict(zip(it, it))
     # A hacky check to ensures that the target corresponds to the path.  We
     # can remove this if we absolutely trust the Buck output.
@@ -98,7 +98,7 @@ def build_image(args):
             ),
             gen_items_for_features(
                 [args.child_feature_json],
-                make_target_filename_map(args.child_dependencies),
+                make_target_path_map(args.child_dependencies),
             ),
         )
     ):

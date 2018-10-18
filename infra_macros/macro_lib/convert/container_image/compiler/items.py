@@ -317,11 +317,11 @@ class FilesystemRootItem(metaclass=ImageItem):
         subvol.run_as_root(['chown', 'root:root', subvol.path()])
 
 
-def gen_parent_layer_items(target, parent_layer_filename, subvolumes_dir):
-    if not parent_layer_filename:
+def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
+    if not parent_layer_path:
         yield FilesystemRootItem(from_target=target)  # just provides /
     else:
-        with open(parent_layer_filename) as infile:
+        with open(parent_layer_path) as infile:
             yield ParentLayerItem(
                 from_target=target,
                 path=SubvolumeOnDisk.from_json_file(infile, subvolumes_dir)

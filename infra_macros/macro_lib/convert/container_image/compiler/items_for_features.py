@@ -5,7 +5,7 @@ import json
 from .items import MakeDirsItem, TarballItem, CopyFileItem
 
 
-def replace_targets_by_paths(x, target_to_filename):
+def replace_targets_by_paths(x, target_to_path):
     '''
     JSON-serialized image features store single-item dicts of the form
     {'__BUCK_TARGET': '//target:path'} whenever the compiler requires a path
@@ -19,33 +19,33 @@ def replace_targets_by_paths(x, target_to_filename):
         if '__BUCK_TARGET' in x:
             assert len(x) == 1, x
             (_, target), = x.items()
-            filename = target_to_filename.get(target)
-            if not filename:
-                raise RuntimeError(f'{target} not in {target_to_filename}')
-            return filename
+            path = target_to_path.get(target)
+            if not path:
+                raise RuntimeError(f'{target} not in {target_to_path}')
+            return path
         return {
-            k: replace_targets_by_paths(v, target_to_filename)
+            k: replace_targets_by_paths(v, target_to_path)
                 for k, v in x.items()
         }
     elif type(x) is list:
-        return [replace_targets_by_paths(v, target_to_filename) for v in x]
+        return [replace_targets_by_paths(v, target_to_path) for v in x]
     elif type(x) in [int, float, str]:
         return x
     assert False, 'Unknown {type(x)} for {x}'  # pragma: no cover
 
 
-def gen_items_for_features(feature_filenames, target_to_filename):
+def gen_items_for_features(feature_paths, target_to_path):
     key_to_item_class = {
         'make_dirs': MakeDirsItem,
         'tarballs': TarballItem,
         'copy_files': CopyFileItem,
     }
-    for feature_filename in feature_filenames:
-        with open(feature_filename) as f:
-            items = replace_targets_by_paths(json.load(f), target_to_filename)
+    for feature_path in feature_paths:
+        with open(feature_path) as f:
+            items = replace_targets_by_paths(json.load(f), target_to_path)
 
             yield from gen_items_for_features(
-                items.pop('features', []), target_to_filename,
+                items.pop('features', []), target_to_path,
             )
 
             target = items.pop('target')

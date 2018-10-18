@@ -18,12 +18,12 @@ T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
 
 TARGET_ENV_VAR_PREFIX = 'test_image_feature_path_to_'
-TARGET_TO_FILENAME = {
+TARGET_TO_PATH = {
     '{}:{}'.format(T_BASE, target[len(TARGET_ENV_VAR_PREFIX):]): path
         for target, path in os.environ.items()
             if target.startswith(TARGET_ENV_VAR_PREFIX)
 }
-assert T_HELLO_WORLD_TAR in TARGET_TO_FILENAME
+assert T_HELLO_WORLD_TAR in TARGET_TO_PATH
 
 
 def mangle(feature_target):
@@ -54,23 +54,23 @@ ID_TO_ITEM = {
     ),
     'foo/bar/hello_world.tar': CopyFileItem(
         from_target=T_COPY_DIRS_TAR,
-        source=TARGET_TO_FILENAME[T_HELLO_WORLD_TAR],
+        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/bar/',
     ),
     'foo/bar/hello_world_again.tar': CopyFileItem(
         from_target=T_COPY_DIRS_TAR,
-        source=TARGET_TO_FILENAME[T_HELLO_WORLD_TAR],
+        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/bar/hello_world_again.tar',
         group='nobody',
     ),
     'foo/borf/hello_world': TarballItem(
         from_target=T_TAR,
-        tarball=TARGET_TO_FILENAME[T_HELLO_WORLD_TAR],
+        tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo/borf',
     ),
     'foo/hello_world': TarballItem(
         from_target=T_TAR,
-        tarball=TARGET_TO_FILENAME[T_HELLO_WORLD_TAR],
+        tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
     ),
 }

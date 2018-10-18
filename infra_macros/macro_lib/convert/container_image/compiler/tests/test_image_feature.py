@@ -15,19 +15,19 @@ class ImageFeatureTestCase(unittest.TestCase):
 
     def test_serialize_deserialize(self):
         root_feature_target = si.mangle(si.T_COPY_DIRS_TAR)
-        self.assertIn(root_feature_target, si.TARGET_TO_FILENAME)
+        self.assertIn(root_feature_target, si.TARGET_TO_PATH)
         self.assertEqual(
             {v for k, v in si.ID_TO_ITEM.items() if k != '/'},
             set(gen_items_for_features(
-                [si.TARGET_TO_FILENAME[root_feature_target]],
-                si.TARGET_TO_FILENAME,
+                [si.TARGET_TO_PATH[root_feature_target]],
+                si.TARGET_TO_PATH,
             )),
         )
         # Fail if some target fails to resolve to a path
         with self.assertRaisesRegex(RuntimeError, f'{si.T_BASE}:[^ ]* not in'):
             list(gen_items_for_features(
-                [si.TARGET_TO_FILENAME[root_feature_target]],
-                target_to_filename={},
+                [si.TARGET_TO_PATH[root_feature_target]],
+                target_to_path={},
             ))
 
     def test_install_order(self):

@@ -48,7 +48,7 @@ class CompilerTestCase(unittest.TestCase):
             '--subvolume-rel-path', 'SUBVOL',
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
-                si.TARGET_TO_FILENAME[si.mangle(si.T_COPY_DIRS_TAR)],
+                si.TARGET_TO_PATH[si.mangle(si.T_COPY_DIRS_TAR)],
         ] + args)), run_as_root.call_args_list
 
     def test_child_dependency_errors(self):
@@ -75,7 +75,7 @@ class CompilerTestCase(unittest.TestCase):
                 self._compile([
                     '--child-dependencies',
                     *itertools.chain.from_iterable(
-                        si.TARGET_TO_FILENAME.items()
+                        si.TARGET_TO_PATH.items()
                     ),
                 ])
 
@@ -95,7 +95,7 @@ class CompilerTestCase(unittest.TestCase):
         res, run_as_root_calls = self._compile([
             *parent_args,
             '--child-dependencies',
-            *itertools.chain.from_iterable(si.TARGET_TO_FILENAME.items()),
+            *itertools.chain.from_iterable(si.TARGET_TO_PATH.items()),
         ])
         self.assertEqual(svod.SubvolumeOnDisk(**{
             svod._BTRFS_UUID: 'fake uuid',

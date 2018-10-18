@@ -25,7 +25,7 @@ T_CHILD = f'{T_BASE}:child_layer'
 
 
 TARGET_ENV_VAR_PREFIX = 'test_image_layer_path_to_'
-TARGET_TO_FILENAME = {
+TARGET_TO_PATH = {
     target[len(TARGET_ENV_VAR_PREFIX):]: path
         for target, path in os.environ.items()
             if target.startswith(TARGET_ENV_VAR_PREFIX)
@@ -48,7 +48,7 @@ class ImageLayerTestCase(unittest.TestCase):
     @contextmanager
     def target_subvol(self, target):
         with self.subTest(target):
-            with open(TARGET_TO_FILENAME[target]) as infile:
+            with open(TARGET_TO_PATH[target]) as infile:
                 yield SubvolumeOnDisk.from_json_file(
                     infile, self.subvolumes_dir,
                 )
