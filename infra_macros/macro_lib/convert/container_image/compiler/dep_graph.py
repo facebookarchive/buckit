@@ -9,6 +9,8 @@ sort.
 '''
 from collections import namedtuple
 
+from .items import PhaseOrder
+
 
 # To build the item-to-item dependency graph, we need to first build up a
 # complete mapping of {path, {items, requiring, it}}.  To validate that
@@ -109,10 +111,25 @@ class DependencyGraph:
     The indexes make it easy to topologically sort the items.
     '''
 
-    def __init__(self, items):
+    def __init__(self, iter_items: 'Iterator[ImageItems]'):
         # Without deduping, dependency diamonds would cause a lot of
         # redundant work below.  Below, we also rely on mutating this set.
-        items = set(items)
+        items = set()
+        self.order_to_phase = {}
+        for item in iter_items:
+            if item.phase_order is None:
+                items.add(item)
+            else:
+                prev = self.order_to_phase.get(item.phase_order)
+                self.order_to_phase[item.phase_order] = item \
+                    if prev is None else prev.union(item)
+                # Hack: Also add the parent layer to the topological sort
+                # since it satisfies the dependency on "/" that other items
+                # may have.  We'll remove it in `gen_dependency_order_items`.
+                # Another fix would be to make the dependency on "/" be
+                # purely implicit -- but that's more work.
+                if item.phase_order is PhaseOrder.PARENT_LAYER:
+                    items.add(item)
 
         # An item is only added here if it requires at least one other item,
         # otherwise it goes in `.items_without_predecessors`.
@@ -137,12 +154,23 @@ class DependencyGraph:
         self.items_without_predecessors = items
 
 
-def dependency_order_items(items):
+# NB: The items this yields are not all actual `ImageItem`s, see the comment
+# on `MultiRpmAction`. However, they all quack alike.
+def gen_dependency_order_items(items):
     dg = DependencyGraph(items)
+
+    assert PhaseOrder.PARENT_LAYER in dg.order_to_phase
+    for phase in sorted(
+        dg.order_to_phase.values(), key=lambda s: s.phase_order.value,
+    ):
+        yield phase
+
     while dg.items_without_predecessors:
         # "Install" an item that has no unsatisfied dependencies.
         item = dg.items_without_predecessors.pop()
-        yield item
+        # We already yielded the parent layer phase above.
+        if item.phase_order is not PhaseOrder.PARENT_LAYER:
+            yield item
 
         # All items, which had `item` was a dependency, must have their
         # "predecessors" sets updated

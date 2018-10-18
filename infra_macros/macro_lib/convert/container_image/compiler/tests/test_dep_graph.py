@@ -2,10 +2,12 @@
 import unittest
 
 from ..dep_graph import (
-    DependencyGraph, dependency_order_items, ItemProv, ItemReq, ItemReqsProvs,
-    ValidatedReqsProvs,
+    DependencyGraph, gen_dependency_order_items, ItemProv, ItemReq,
+    ItemReqsProvs, ValidatedReqsProvs,
 )
-from ..items import CopyFileItem, ImageItem, MakeDirsItem, FilesystemRootItem
+from ..items import (
+    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
+)
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory
 
@@ -141,32 +143,61 @@ class DependencyGraphTestCase(unittest.TestCase):
 
 class DependencyOrderItemsTestCase(unittest.TestCase):
 
-    def test_dependency_order_items(self):
-        self.assertIn(tuple(dependency_order_items(PATH_TO_ITEM.values())), {
-            tuple(PATH_TO_ITEM[p] for p in paths) for paths in [
-                # A few orders are valid, don't make the test fragile.
-                ['/', '/a/b/c', '/a/b/c/F', '/a/d/e', '/a/d/e/G'],
-                ['/', '/a/b/c', '/a/d/e', '/a/b/c/F', '/a/d/e/G'],
-                ['/', '/a/b/c', '/a/d/e', '/a/d/e/G', '/a/b/c/F'],
-            ]
-        })
+    def test_gen_dependency_order_items(self):
+        self.assertIn(
+            tuple(gen_dependency_order_items(PATH_TO_ITEM.values())),
+            {
+                tuple(PATH_TO_ITEM[p] for p in paths) for paths in [
+                    # A few orders are valid, don't make the test fragile.
+                    ['/', '/a/b/c', '/a/b/c/F', '/a/d/e', '/a/d/e/G'],
+                    ['/', '/a/b/c', '/a/d/e', '/a/b/c/F', '/a/d/e/G'],
+                    ['/', '/a/b/c', '/a/d/e', '/a/d/e/G', '/a/b/c/F'],
+                ]
+            },
+        )
 
     def test_cycle_detection(self):
 
-        class BadFilesystemRootItem(metaclass=ImageItem):
-            def requires(self):
-                yield require_directory('a/b/c')
+        def requires_provides_directory_class(requires_dir, provides_dir):
 
-            def provides(self):
-                yield ProvidesDirectory(path='/')
+            class RequiresProvidesDirectory(metaclass=ImageItem):
+                def requires(self):
+                    yield require_directory(requires_dir)
 
+                def provides(self):
+                    yield ProvidesDirectory(path=provides_dir)
+
+            return RequiresProvidesDirectory
+
+        # Everything works without a cycle
+        first = FilesystemRootItem(from_target='')
+        second = requires_provides_directory_class('/', 'a')(from_target='')
+        third = MakeDirsItem(from_target='', into_dir='a', path_to_make='b/c')
+        self.assertEqual(
+            [first, second, third],
+            list(gen_dependency_order_items([second, first, third])),
+        )
+
+        # Let's change `second` to get a cycle
         with self.assertRaisesRegex(AssertionError, '^Cycle in '):
-            list(dependency_order_items([
-                MakeDirsItem(
-                    from_target='', into_dir='/', path_to_make='a/b/c/d/e'
-                ),
-                BadFilesystemRootItem(from_target=''),
+            list(gen_dependency_order_items([
+                requires_provides_directory_class('a/b', 'a')(from_target=''),
+                first, third,
             ]))
+
+    def test_phase_order(self):
+
+        class FakeFileRemove:
+            def __init__(self):
+                self.phase_order = PhaseOrder.FILE_REMOVE
+
+        first = FilesystemRootItem(from_target='')
+        second = FakeFileRemove()
+        third = MakeDirsItem(from_target='', into_dir='/', path_to_make='a/b')
+        self.assertEqual(
+            [first, second, third],
+            list(gen_dependency_order_items([second, first, third])),
+        )
 
 
 if __name__ == '__main__':

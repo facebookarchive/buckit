@@ -9,14 +9,57 @@ To understand how the methods `provides()` and `requires()` affect
 dependency resolution / installation order, start with the docblock at the
 top of `provides.py`.
 '''
+import enum
 import os
 
-from .enriched_namedtuple import metaclass_new_enriched_namedtuple
+from .enriched_namedtuple import (
+    metaclass_new_enriched_namedtuple, NonConstructibleField,
+)
 from .provides import ProvidesDirectory, ProvidesFile
 from .requires import require_directory
 from .subvolume_on_disk import SubvolumeOnDisk
 
 from subvol_utils import Subvol
+
+
+@enum.unique
+class PhaseOrder(enum.Enum):
+    '''
+    With respect to ordering, there are two types of operations that the
+    image compiler performs against images.
+
+    (1) Most additive operations are naturally ordered with respect to one
+        another by filesystem dependencies.  For example: we must create
+        /usr/bin **BEFORE** copying `:your-tool` there.
+
+    (2) Everything else, including:
+         - Removals, which commute with each other, and can be ordered
+           somewhat arbitrarily with regards to everything else if there are
+           no add-remove conflicts,
+         - RPM installation, which has a complex internal ordering, but
+           simply needs needs a definitive placement as a block of `yum`
+           operations -- due to `yum`'s complexity & various scripts, it's
+           not desirable to treat installs as regular additive operations.
+
+    For the latter types of operations, this class sets a justifiable
+    deteriminstic ordering for black-box blocks of operations, and assumes
+    that each individual block's implementation will order its internals
+    sensibly.
+
+    Phases will be executed in the order listed here.
+    '''
+    # This actually creates the subvolume, so it must preced all others.
+    PARENT_LAYER = enum.auto()
+    # Precedes RPM_INSTALL to detect the error of install-remove conflicts
+    # between features.  Precedes FILE_REMOVE because RPM removes **might**
+    # be conditional on the presence or absence of files, and we don't want
+    # that extra entropy -- whereas file removes fail or succeed predictably.
+    RPM_REMOVE = enum.auto()
+    RPM_INSTALL = enum.auto()
+    # We allow removing files added by RPM_INSTALL. The downside is that
+    # this is a footgun.  The upside is that e.g. cleaning up yum log &
+    # caches can be done as an `image_feature` instead of being code.
+    FILE_REMOVE = enum.auto()
 
 
 class ImageItem(type):
@@ -28,11 +71,15 @@ class ImageItem(type):
             fn = dct.get('customize_fields')
             if fn:
                 fn(kwargs)
+            # A little hacky: a few "items", like RPM installs, aren't
+            # sorted by dependencies, but get a fixed installation order.
+            if kwargs['phase_order'] is NonConstructibleField:
+                kwargs['phase_order'] = None
             return kwargs
 
         return metaclass_new_enriched_namedtuple(
             __class__,
-            ['from_target'],
+            ['from_target', ('phase_order', NonConstructibleField)],
             metacls, classname, bases, dct,
             customize_fields
         )
@@ -60,7 +107,7 @@ def _coerce_path_field_normal_relative(kwargs, field: str):
 class TarballItem(metaclass=ImageItem):
     fields = ['into_dir', 'tarball']
 
-    def customize_fields(kwargs):
+    def customize_fields(kwargs):  # noqa: B902
         _coerce_path_field_normal_relative(kwargs, 'into_dir')
 
     def provides(self):
@@ -175,7 +222,7 @@ class HasStatOptions:
 class CopyFileItem(HasStatOptions, metaclass=ImageItem):
     fields = ['source', 'dest']
 
-    def customize_fields(kwargs):
+    def customize_fields(kwargs):  # noqa: B902
         # rsync convention for the destination: "ends/in/slash/" means "copy
         # into this directory", "does/not/end/with/slash" means "copy with
         # the specified filename".
@@ -201,7 +248,7 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
 class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
     fields = ['into_dir', 'path_to_make']
 
-    def customize_fields(kwargs):
+    def customize_fields(kwargs):  # noqa: B902
         _coerce_path_field_normal_relative(kwargs, 'into_dir')
         _coerce_path_field_normal_relative(kwargs, 'path_to_make')
 
@@ -226,6 +273,9 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
 class ParentLayerItem(metaclass=ImageItem):
     fields = ['path']
 
+    def customize_fields(kwargs):  # noqa: B902
+        kwargs['phase_order'] = PhaseOrder.PARENT_LAYER
+
     def provides(self):
         provided_root = False
         for dirpath, _, filenames in os.walk(self.path):
@@ -247,6 +297,9 @@ class ParentLayerItem(metaclass=ImageItem):
 class FilesystemRootItem(metaclass=ImageItem):
     'A simple item to endow parent-less layers with a standard-permissions /'
     fields = []
+
+    def customize_fields(kwargs):  # noqa: B902
+        kwargs['phase_order'] = PhaseOrder.PARENT_LAYER
 
     def provides(self):
         yield ProvidesDirectory(path='/')

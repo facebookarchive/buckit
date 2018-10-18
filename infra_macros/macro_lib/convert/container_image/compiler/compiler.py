@@ -13,12 +13,11 @@ and invokes `.build()` to apply each item to actually construct the subvol.
 import argparse
 import itertools
 import os
-import subprocess
 import sys
 
 from subvol_utils import Subvol
 
-from .dep_graph import dependency_order_items
+from .dep_graph import gen_dependency_order_items
 from .items import gen_parent_layer_items
 from .items_for_features import gen_items_for_features
 from .subvolume_on_disk import SubvolumeOnDisk
@@ -90,7 +89,7 @@ def parse_args(args):
 def build_image(args):
     subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
 
-    for item in dependency_order_items(
+    for item in gen_dependency_order_items(
         itertools.chain(
             gen_parent_layer_items(
                 args.child_layer_target,
