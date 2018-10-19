@@ -16,7 +16,7 @@ from tests.utils import dedent
 class CppLibraryExternalTest(tests.utils.TestCase):
     module_cmd = (
         r"""set -euo pipefail\n"""
-        r"""while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\n"""
+        r"""while test ! -r .projectid -a `pwd` != / ; do cd ..; done\n"""
         r"""args=()\n"""
         r"""args+=($(cxx))\n"""
         r"""args+=($(cxxppflags :MagickCore-module-helper))\n"""

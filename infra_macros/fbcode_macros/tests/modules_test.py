@@ -18,7 +18,7 @@ class ModulesTest(tests.utils.TestCase):
 
     expected_cmd = (
         r"""set -euo pipefail\n"""
-        r"""while test ! -r .buckconfig -a `pwd` != / ; do cd ..; done\n"""
+        r"""while test ! -r .projectid -a `pwd` != / ; do cd ..; done\n"""
         r"""args=()\n"""
         r"""args+=($(cxx))\n"""
         r"""args+=($(cxxppflags :foo-helper))\n"""
