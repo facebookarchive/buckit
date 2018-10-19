@@ -111,6 +111,9 @@ cxx_library(
   exported_preprocessor_flags = [
     "-DFOO",
   ],
+  labels = [
+    "generated",
+  ],
   visibility = [
     "//third-party-buck/something:foo",
   ],
@@ -156,6 +159,9 @@ cxx_library(
   name = "foo-helper",
   exported_preprocessor_flags = [
     "-DFOO",
+  ],
+  labels = [
+    "generated",
   ],
   visibility = [
     "//third-party-buck/something:foo",

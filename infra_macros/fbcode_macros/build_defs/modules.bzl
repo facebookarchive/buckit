@@ -136,7 +136,8 @@ def _gen_module(
         deps = (),
         platform_deps = (),
         override_module_home = None,
-        visibility = None):
+        visibility = None,
+        labels = ()):
     """
     Compile a module (i.e. `.pcm` file) from a `module.modulemap` file and the
     corresponding headers, specified as either a map or a directory.
@@ -187,6 +188,7 @@ def _gen_module(
         exported_deps = deps,
         exported_platform_deps = platform_deps,
         visibility = ["//{}:{}".format(native.package_name(), name)],
+        labels = ["generated"],
     )
 
     # Make headers, either from a directory or a map, available to the command
@@ -270,6 +272,7 @@ def _gen_module(
         srcs = srcs,
         cmd = "\n".join(commands),
         visibility = visibility,
+        labels = labels,
     )
 
 def _gen_tp2_cpp_module(
@@ -281,7 +284,8 @@ def _gen_tp2_cpp_module(
         flags = (),
         dependencies = (),
         local_submodule_visibility = False,
-        visibility = None):
+        visibility = None,
+        labels = None):
     """
     A thin wrapper around `modules.gen_module()`, which performs some deps
     formatting and adds fbcode build flags (e.g. from BUILD_MODE)
@@ -336,6 +340,7 @@ def _gen_tp2_cpp_module(
         flags = out_flags,
         header_dir = header_dir,
         header_prefix = paths.join(base_path, header_dir or "", ""),
+        labels = labels,
         module_name = module_name,
         platform_deps = out_platform_deps,
         platform_flags = out_platform_flags,

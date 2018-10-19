@@ -27,6 +27,7 @@ def __maybe_add_module(original_name, module_rule_name, module_name, inc_dirs, d
         local_submodule_visibility = local_submodule_visibility,
         flags = flags,
         visibility = ["//{}:{}".format(native.package_name(), original_name)],
+        labels = ["generated"],
     )
     return "-fmodule-file={}=$(location :{})".format(module_name, module_rule_name)
 

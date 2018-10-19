@@ -182,6 +182,9 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                 cxx_genrule(
                   name = "MagickCore-module",
                   cmd = "{module_cmd}",
+                  labels = [
+                    "generated",
+                  ],
                   out = "module.pcm",
                   srcs = {{
                     "module_headers": "include/ImageMagick",
@@ -201,6 +204,9 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                   exported_preprocessor_flags = [
                     "-DMAGICKCORE_ARG1=VALUE1",
                     "-DMAGICKCORE_ARG2=VALUE2",
+                  ],
+                  labels = [
+                    "generated",
                   ],
                   visibility = [
                     "//third-party-buck/gcc5/build/ImageMagick:MagickCore-module",
