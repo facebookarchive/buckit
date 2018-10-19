@@ -1,0 +1,38 @@
+{
+    "repodata/0b7eb66dcd24cf4741f3c2d25ce69080366528c10814748298efe53c18a6226b-primary.sqlite.bz2": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:0b7eb66dcd24cf4741f3c2d25ce69080366528c10814748298efe53c18a6226b",
+        "size": 2034,
+        "storage_id": "test:cf80e36809de423f998314d150cc5efa"
+    },
+    "repodata/1a3127339ae93234da22fcb04fe6840aa1dd4dd804735f64db76025f43a34a0b-other.sqlite.bz2": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:1a3127339ae93234da22fcb04fe6840aa1dd4dd804735f64db76025f43a34a0b",
+        "size": 746,
+        "storage_id": "test:22c1bd0217334fb1b167a3a0e39d5ae4"
+    },
+    "repodata/28141be499ff330d85168dcfbce9a8b8e157cdde78cbe9fe5ca0349540fc23f8-other.xml.gz": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:28141be499ff330d85168dcfbce9a8b8e157cdde78cbe9fe5ca0349540fc23f8",
+        "size": 294,
+        "storage_id": "test:c9da28b9de674b239063388f768d5c16"
+    },
+    "repodata/37ded38ae1730f526387b0d5b446f53ceb5707a3be2ad3fc44e75d595623129c-filelists.xml.gz": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:37ded38ae1730f526387b0d5b446f53ceb5707a3be2ad3fc44e75d595623129c",
+        "size": 325,
+        "storage_id": "test:092c5a4d692d40419f729827b057f58c"
+    },
+    "repodata/90dce7492ac9d7b6a913da39f622811aea0d3b7d4e3156a4bcd3c576132b6413-filelists.sqlite.bz2": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:90dce7492ac9d7b6a913da39f622811aea0d3b7d4e3156a4bcd3c576132b6413",
+        "size": 855,
+        "storage_id": "test:bcff1ae18dcf485289b3a4baefc1b3d1"
+    },
+    "repodata/99bf4425538e44b6d8e3df3db30a079535d4b7e4c4c2fb1a552bc5a33ae96d2b-primary.xml.gz": {
+        "build_timestamp": 1539402431,
+        "checksum": "sha256:99bf4425538e44b6d8e3df3db30a079535d4b7e4c4c2fb1a552bc5a33ae96d2b",
+        "size": 733,
+        "storage_id": "test:3323b1a8f9d848a9bd934f66cfbb1c0c"
+    }
+}

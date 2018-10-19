@@ -1,0 +1,14 @@
+{
+    "cat-pkgs/rpm-test-mice-0.1-a.x86_64.rpm": {
+        "build_timestamp": 1539402430,
+        "checksum": "sha384:eb634dd0c978fb888da3444a741187a171b62479f1304c097d20a157c5cac03bb6fa36beb153681e04d6e8eb480c9e94",
+        "size": 6166,
+        "storage_id": "test:f56a58fb129b4cad9db1e76756ad1253"
+    },
+    "cat-pkgs/rpm-test-milk-2.71-8.x86_64.rpm": {
+        "build_timestamp": 1539402430,
+        "checksum": "sha384:f630fd79dafe943b15cbac5ce654c46dba0671bd73a427cf8544e275d40a77010cf7b730147e7661edbd74b8f995b965",
+        "size": 6170,
+        "storage_id": "test:0531e228bdab4a85a0ebb2ae6107597f"
+    }
+}
