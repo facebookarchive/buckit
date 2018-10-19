@@ -790,6 +790,7 @@ class PythonConverter(base.Converter):
         tests=[],
         external_deps=[],
         visibility=None,
+        resources=(),
         cpp_deps=(),
         py_flavor="",
     ):
@@ -951,6 +952,14 @@ class PythonConverter(base.Converter):
 
         if self.is_test():
             attributes['labels'] = ['unittest-library']
+
+        # The above code does a magical dance to split `gen_srcs`, `srcs`,
+        # and `versioned_srcs` into pure-Python `srcs` and "everything else"
+        # `resources`.  In practice, it drops `__init__.py` into non-Python
+        # data included with Python libraries, whereas `resources` does not.
+        attributes.setdefault('resources', {}).update(
+            self.parse_srcs(base_path, 'resources', resources),
+        )
 
         return Rule('python_library', attributes)
 
@@ -1271,6 +1280,7 @@ class PythonConverter(base.Converter):
         check_types=False,
         preload_deps=(),
         visibility=None,
+        resources=(),
         jemalloc_conf=None,
         typing=False,
         typing_options='',
@@ -1318,6 +1328,7 @@ class PythonConverter(base.Converter):
             tests=tests,
             external_deps=external_deps,
             visibility=visibility,
+            resources=resources,
             cpp_deps=cpp_deps,
             py_flavor=py_flavor,
         )
