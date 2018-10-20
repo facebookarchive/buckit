@@ -184,33 +184,17 @@ python_binary(
     ],
 )
 
-# This is temporary -- once `snapshot-repos` lands, we should dynamically
-# generate the snapshot, and test against that, rather than testing against
-# this hardcoded thing.  This has to be a tarball because Buck elides empty
-# directories, but `repo-server` needs them.
-export_file(
-    name = "test_snapshot_tgz",
-    src = "tests/snapshot.tgz",
-)
-
-# This is split out so that our coverage tool doesn't complain that
-# `test_snapshot_tgz` has 0% coverage.  T24586337
-python_library(
-    name = "test_snapshot",
-    base_module = "rpm",
-    gen_srcs = {":test_snapshot_tgz": "tests/snapshot.tgz"},
-)
-
 python_binary(
     name = "yum-from-test-snapshot",
     srcs = ["tests/yum_from_test_snapshot.py"],
     base_module = "rpm",
     main_module = "rpm.tests.yum_from_test_snapshot",
-    par_style = "xar",  # Lets us embed :test_snapshot_tgz
-    deps = [
-        ":test_snapshot",
-        ":yum-from-snapshot-library",
-    ],
+    par_style = "xar",  # Lets us embed `tests/snapshot`
+    # This is temporary -- once `snapshot-repos` lands, we should
+    # dynamically generate the snapshot, and test against that, rather than
+    # testing against this hardcoded thing.
+    resources = glob(["tests/snapshot/**"]),
+    deps = [":yum-from-snapshot-library"],
 )
 
 python_unittest(
@@ -221,7 +205,7 @@ python_unittest(
         (100, ":yum-from-snapshot-library"),
         (100, ":yum-from-test-snapshot-library"),
     ],
-    par_style = "xar",  # Lets us embed :test_snapshot_tgz
+    par_style = "xar",  # Lets us embed `tests/snapshot`
     deps = [
         ":yum-from-snapshot-library",
         ":yum-from-test-snapshot-library",
