@@ -957,9 +957,14 @@ class PythonConverter(base.Converter):
         # and `versioned_srcs` into pure-Python `srcs` and "everything else"
         # `resources`.  In practice, it drops `__init__.py` into non-Python
         # data included with Python libraries, whereas `resources` does not.
-        attributes.setdefault('resources', {}).update(
-            self.parse_srcs(base_path, 'resources', resources),
-        )
+        attributes.setdefault('resources', {}).update({
+            # For resources of the form {":target": "dest/path"}, we have to
+            # format the parsed `RuleTarget` struct as a string before
+            # passing it to Buck.
+            k: self.format_source(v) for k, v in self.parse_srcs(
+                base_path, 'resources', resources,
+            ).items()
+        })
 
         return Rule('python_library', attributes)
 
