@@ -52,10 +52,11 @@ class PhaseOrder(enum.Enum):
     '''
     # This actually creates the subvolume, so it must preced all others.
     PARENT_LAYER = enum.auto()
-    # Precedes RPM_INSTALL to detect the error of install-remove conflicts
-    # between features.  Precedes FILE_REMOVE because RPM removes **might**
-    # be conditional on the presence or absence of files, and we don't want
-    # that extra entropy -- whereas file removes fail or succeed predictably.
+    # Precedes FILE_REMOVE because RPM removes **might** be conditional on
+    # the presence or absence of files, and we don't want that extra entropy
+    # -- whereas file removes fail or succeed predictably.  Precedes
+    # RPM_INSTALL somewhat arbitrarily, since _gen_multi_rpm_actions
+    # prevents install-remove conflicts between features.
     RPM_REMOVE = enum.auto()
     RPM_INSTALL = enum.auto()
     # We allow removing files added by RPM_INSTALL. The downside is that
@@ -331,12 +332,15 @@ def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
 
 class RpmActionType(enum.Enum):
     install = 'install'
-    remove = 'remove'
+    # It would be sensible to have a 'remove' that fails if the package is
+    # not already installed, but `yum` doesn't seem to support that, and
+    # implementing it manually is a hassle.
+    remove_if_exists = 'remove_if_exists'
 
 
 RPM_ACTION_TYPE_TO_PHASE_ORDER = {
     RpmActionType.install: PhaseOrder.RPM_INSTALL,
-    RpmActionType.remove: PhaseOrder.RPM_REMOVE,
+    RpmActionType.remove_if_exists: PhaseOrder.RPM_REMOVE,
 }
 
 
@@ -346,7 +350,8 @@ RPM_ACTION_TYPE_TO_YUM_CMD = {
     # get version conflicts.  For the cases where we need version pinning,
     # we'll add a per-layer "version picker" concept.
     RpmActionType.install: 'install-n',
-    RpmActionType.remove: 'remove-n',
+    # The way `yum` works, this is a no-op if the package is missing.
+    RpmActionType.remove_if_exists: 'remove-n',
 }
 
 
@@ -380,7 +385,8 @@ class MultiRpmAction(NamedTuple):
         if not self.rpms:
             return
         assert RPM_ACTION_TYPE_TO_PHASE_ORDER[self.action] is self.phase_order
-        assert self.yum_from_snapshot is not None, self
+        assert self.yum_from_snapshot is not None, \
+            f'{self} -- your `image_layer` must set `yum_from_repo_snapshot`'
         subvol.run_as_root([
             # Since `yum-from-snapshot` variants are generally Python
             # binaries built from this very repo, in @mode/dev, we would run
