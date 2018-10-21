@@ -8,8 +8,9 @@ already been installed.  This is known as dependency order or topological
 sort.
 '''
 from collections import namedtuple
+from typing import Iterable
 
-from .items import PhaseOrder
+from .items import MultiRpmAction, PhaseOrder
 
 
 # To build the item-to-item dependency graph, we need to first build up a
@@ -104,6 +105,17 @@ class ValidatedReqsProvs:
         )
 
 
+def detect_rpm_action_conflicts(mras: Iterable[MultiRpmAction]):
+    'Raises when a layer attempts to perform multiple actions on one RPM'
+    rpm_to_actions = {}
+    for mra in mras:
+        for rpm in mra.rpms:
+            rpm_to_actions.setdefault(rpm, []).append(mra.action)
+    for rpm, actions in rpm_to_actions.items():
+        if len(actions) != 1:
+            raise RuntimeError(f'RPM action conflict for {rpm}: {actions}')
+
+
 class DependencyGraph:
     '''
     Given an iterable of ImageItems, validates their requires / provides
@@ -130,6 +142,10 @@ class DependencyGraph:
                 # purely implicit -- but that's more work.
                 if item.phase_order is PhaseOrder.PARENT_LAYER:
                     items.add(item)
+        detect_rpm_action_conflicts(
+            item for item in self.order_to_phase.values()
+                if isinstance(item, MultiRpmAction)
+        )
 
         # An item is only added here if it requires at least one other item,
         # otherwise it goes in `.items_without_predecessors`.

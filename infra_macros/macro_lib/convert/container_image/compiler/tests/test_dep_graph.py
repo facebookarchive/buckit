@@ -6,7 +6,8 @@ from ..dep_graph import (
     ItemReqsProvs, ValidatedReqsProvs,
 )
 from ..items import (
-    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
+    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem,
+    MultiRpmAction, PhaseOrder, RpmActionType,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory
@@ -198,6 +199,20 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
             [first, second, third],
             list(gen_dependency_order_items([second, first, third])),
         )
+
+    def test_rpm_action_conflict_detection(self):
+        install = MultiRpmAction.new(
+            action=RpmActionType.install,
+            rpms={'cat', 'dog'},
+            yum_from_snapshot='/fake/yum',
+        )
+        remove = MultiRpmAction.new(
+            action=RpmActionType.remove_if_exists,
+            rpms={'sheep', 'dog'},
+            yum_from_snapshot='/fake/yum',
+        )
+        with self.assertRaisesRegex(RuntimeError, 'RPM action conflict for d'):
+            list(gen_dependency_order_items([install, remove]))
 
 
 if __name__ == '__main__':
