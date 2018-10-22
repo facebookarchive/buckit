@@ -1226,6 +1226,7 @@ class PythonConverter(base.Converter):
                     main_module,
                     platform,
                     python_platform,
+                    python_version,
                     library,
                     dependencies,
                     platform_deps,
@@ -1442,6 +1443,7 @@ class PythonConverter(base.Converter):
         main_module,
         platform,
         python_platform,
+        python_version,
         library,
         deps,
         platform_deps,
@@ -1466,8 +1468,7 @@ class PythonConverter(base.Converter):
             ('preload_deps', preload_deps),
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
-            ('version_universe',
-             self.get_version_universe(self.get_py3_version(platform))),
+            ('version_universe', self.get_version_universe(python_version)),
         ))
         if visibility is not None:
             import_attrs['visibility'] = visibility
@@ -1508,8 +1509,7 @@ class PythonConverter(base.Converter):
             ('preload_deps', preload_deps),
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
-            ('version_universe',
-             self.get_version_universe(self.get_py3_version(platform))),
+            ('version_universe', self.get_version_universe(python_version)),
         ))
 
         if visibility is not None:
