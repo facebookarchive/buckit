@@ -21,6 +21,7 @@ class ImageFeatureTestCase(unittest.TestCase):
             set(gen_items_for_features(
                 [si.TARGET_TO_PATH[root_feature_target]],
                 si.TARGET_TO_PATH,
+                yum_from_repo_snapshot='/fake/yum',
             )),
         )
         # Fail if some target fails to resolve to a path
@@ -28,6 +29,7 @@ class ImageFeatureTestCase(unittest.TestCase):
             list(gen_items_for_features(
                 [si.TARGET_TO_PATH[root_feature_target]],
                 target_to_path={},
+                yum_from_repo_snapshot='/fake/yum',
             ))
 
     def test_install_order(self):
@@ -36,7 +38,11 @@ class ImageFeatureTestCase(unittest.TestCase):
         self.assertEqual(len(si.ID_TO_ITEM), len(doi), msg='Duplicate items?')
         id_to_idx = {k: doi.index(v) for k, v in si.ID_TO_ITEM.items()}
         self.assertEqual(0, id_to_idx['/'])
-        self.assertEqual(1, id_to_idx['foo/bar'])
+        self.assertEqual(
+            1, id_to_idx['.rpms/remove_if_exists/rpm-test-{carrot,milk}']
+        )
+        self.assertEqual(2, id_to_idx['.rpms/install/rpm-test-mice'])
+        self.assertEqual(3, id_to_idx['foo/bar'])
         self.assertLess(
             id_to_idx['foo/borf/beep'], id_to_idx['foo/borf/hello_world']
         )

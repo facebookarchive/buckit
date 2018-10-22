@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import itertools
+import os
 import tempfile
 import unittest
 import unittest.mock
@@ -13,6 +14,7 @@ from . import sample_items as si
 from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
+
 
 def _subvol_mock_is_btrfs_and_run_as_root(fn):
     '''
@@ -29,9 +31,15 @@ def _subvol_mock_is_btrfs_and_run_as_root(fn):
 
 class CompilerTestCase(unittest.TestCase):
 
-    def setUp(self):  # More output for easier debugging
+    def setUp(self):
+        # More output for easier debugging
         unittest.util._MAX_LENGTH = 12345
         self.maxDiff = 12345
+
+        # This works @mode/opt since the yum binary is baked into our PAR
+        self.yum_path = os.path.join(
+            os.path.dirname(__file__), 'yum-from-test-snapshot',
+        )
 
     @_subvol_mock_is_btrfs_and_run_as_root
     @unittest.mock.patch.object(svod, '_btrfs_get_volume_props')
@@ -46,6 +54,7 @@ class CompilerTestCase(unittest.TestCase):
         return build_image(parse_args([
             '--subvolumes-dir', FAKE_SUBVOLS_DIR,
             '--subvolume-rel-path', 'SUBVOL',
+            '--yum-from-repo-snapshot', self.yum_path,
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
                 si.TARGET_TO_PATH[si.mangle(si.T_COPY_DIRS_TAR)],
@@ -114,7 +123,11 @@ class CompilerTestCase(unittest.TestCase):
             already_exists=True,
         )
         for item in si.ID_TO_ITEM.values():
-            item.build(subvol)
+            if hasattr(item, 'yum_from_snapshot'):
+                # sample_items has `/fake/yum` here, but we need the real one
+                item._replace(yum_from_snapshot=self.yum_path).build(subvol)
+            else:
+                item.build(subvol)
         return run_as_root.call_args_list + [
             (
                 ([

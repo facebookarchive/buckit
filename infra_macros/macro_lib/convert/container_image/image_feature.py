@@ -199,6 +199,30 @@ class ImageFeatureConverter(base.Converter):
             normalized.append(t)
         return normalized
 
+    def _normalize_rpms(self, rpms):
+        if rpms is None:
+            return []
+
+        normalized = []
+        required_keys = {'name', 'action'}
+        valid_actions = ('install', 'remove_if_exists')
+        for rpm in (rpms.items() if isinstance(rpms, dict) else rpms):
+            if isinstance(rpm, dict):
+                assert required_keys == set(rpm.keys()), \
+                    'Rpm {} must have keys {}'.format(rpm, required_keys)
+                dct = rpm
+            elif isinstance(rpm, tuple):  # Handles `rpms` being a dict, too
+                assert len(rpm) == 2, \
+                    'Rpm entry {} must be (name, action)'.format(rpm)
+                dct = {'name': rpm[0], 'action': rpm[1]}
+            else:
+                assert isinstance(rpm, str), 'Bad rpms item {}'.format(rpm)
+                dct = {'name': rpm, 'action': 'install'}
+            assert dct['action'] in valid_actions, \
+                'Action for rpm {} must be in {}'.format(rpm, valid_actions)
+            normalized.append(dct)
+        return normalized
+
     def convert(
         self,
         base_path,
@@ -238,6 +262,13 @@ class ImageFeatureConverter(base.Converter):
         #  - tuple: ('//target/tarball/to_extract', 'image_absolute/dir')
         #  - dict: {'tarball': '//toextract', 'into_dir': 'image_absolute/dir'}
         tarballs=None,
+        # An iterable of RPM package names to install, **without** version
+        # or release numbers.  Order is not significant.  Also supported:
+        # {'package-name': 'install|remove_if_exists'}.  Note that removals
+        # may only be applied against the parent layer -- if your current
+        # layer includes features both removing and installing the same
+        # package, this will cause a build failure.
+        rpms=None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features=None,
@@ -270,6 +301,11 @@ class ImageFeatureConverter(base.Converter):
             'copy_files':
                 self._normalize_copy_deps(target_tagger, copy_deps),
             'tarballs': self._normalize_tarballs(target_tagger, tarballs),
+            # It'd be a bit expensive to do any kind of validation of RPM
+            # names right here, since we'd need the repo snapshot to decide
+            # whether the names are valid, and whether they contain a
+            # version or release number.  That'll happen later in the build.
+            'rpms': self._normalize_rpms(rpms),
             'features': [
                 target_tagger.tag_target(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
                     for f in features

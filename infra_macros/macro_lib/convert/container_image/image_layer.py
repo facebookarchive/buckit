@@ -129,6 +129,10 @@ class ImageLayerConverter(base.Converter):
         # don't have to change it too much.
         layer_size_bytes=10e10,
         visibility=None,
+        # Path to a binary target, with this CLI signature:
+        #   yum_from_repo_snapshot --install-root PATH -- SOME YUM ARGS
+        # Required if any dependent `image_feature` specifies `rpms`.
+        yum_from_repo_snapshot=None,
         # Path to a target outputting a btrfs send-stream of a subvolume;
         # mutually exclusive with using any of the image_feature fields.
         from_sendstream=None,
@@ -137,9 +141,12 @@ class ImageLayerConverter(base.Converter):
         # There are two independent ways to actually populate the resulting
         # btrfs subvolume.  They live in a single target type for
         # memorability, and because much of the implementation is shared.
-        if from_sendstream is not None and image_feature_kwargs:
+        if from_sendstream is not None and (
+            image_feature_kwargs or yum_from_repo_snapshot
+        ):
             raise ValueError(
-                'cannot use `from_sendstream` with `image_feature` args'
+                'cannot use `from_sendstream` with `image_feature` args or '
+                'with `yum_from_repo_snapshot`'
             )
         elif image_feature_kwargs:
             rules, make_subvol_cmd = self._compile_image_features(
@@ -147,6 +154,7 @@ class ImageLayerConverter(base.Converter):
                 rule_name=name,
                 parent_layer=parent_layer,
                 image_feature_kwargs=image_feature_kwargs,
+                yum_from_repo_snapshot=yum_from_repo_snapshot,
             )
         else:
             if parent_layer is not None:
@@ -296,6 +304,7 @@ class ImageLayerConverter(base.Converter):
         rule_name,
         parent_layer,
         image_feature_kwargs,
+        yum_from_repo_snapshot,
     ):
         # For ease of use, a layer takes all the arguments of a feature, so
         # just make an implicit feature target to implement this.
@@ -333,6 +342,7 @@ class ImageLayerConverter(base.Converter):
               --subvolume-rel-path \
                 "$subvolume_wrapper_dir/"{rule_name_quoted} \
               --parent-layer-json {parent_layer_json_quoted} \
+              {maybe_quoted_yum_from_repo_snapshot_args} \
               --child-layer-target {current_target_quoted} \
               --child-feature-json $(location {my_feature_target}) \
               --child-dependencies \
@@ -350,4 +360,9 @@ class ImageLayerConverter(base.Converter):
                 )),
                 my_feature_target=feature_target,
                 my_deps_query=this_layer_feature_query,
+                maybe_quoted_yum_from_repo_snapshot_args=''
+                    if not yum_from_repo_snapshot else
+                        '--yum-from-repo-snapshot $(location {})'.format(
+                            quote(yum_from_repo_snapshot),
+                        ),
             )

@@ -75,14 +75,21 @@ class ImageLayerTestCase(unittest.TestCase):
     def _check_child(self, subvol_path):
         self._check_parent(subvol_path)
         for path in [
-            # :feature_tar
+            # :feature_tar_and_rpms
             'foo/borf/hello_world',
             'foo/hello_world',
+            'usr/share/rpm_test/mice.txt',
             # :child_layer
             'foo/extracted_hello/hello_world',
             'foo/more_extracted_hello/hello_world',
         ]:
             self.assertTrue(os.path.isfile(os.path.join(subvol_path, path)))
+        for path in [
+            # :feature_tar_and_rpms ensures these are absent
+            'usr/share/rpm_test/carrot.txt',
+            'usr/share/rpm_test/milk.txt',
+        ]:
+            self.assertFalse(os.path.exists(os.path.join(subvol_path, path)))
 
     def test_hello_world_base(self):
         # Future: replace these checks by a more comprehensive test of the
@@ -91,6 +98,11 @@ class ImageLayerTestCase(unittest.TestCase):
             self._check_hello(sod.subvolume_path())
         with self.target_subvol('parent_layer') as sod:
             self._check_parent(sod.subvolume_path())
+            # Cannot check this in `_check_parent`, since that gets called
+            # by `_check_child`, but the RPM gets removed in the child.
+            self.assertTrue(os.path.isfile(os.path.join(
+                sod.subvolume_path(), 'usr/share/rpm_test/carrot.txt',
+            )))
         with self.target_subvol('child_layer') as sod:
             self._check_child(sod.subvolume_path())
 

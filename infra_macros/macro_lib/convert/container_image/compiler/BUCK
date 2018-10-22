@@ -3,6 +3,8 @@
 
 load(":defs.bzl", "READ_MY_DOC_image_feature_target", "TEST_TARGET_PREFIX", "image_feature_python_unittest")
 
+BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
+
 python_library(
     name = "subvolume_on_disk",
     srcs = ["subvolume_on_disk.py"],
@@ -79,8 +81,7 @@ python_library(
     deps = [
         ":requires_provides",
         ":subvolume_on_disk",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":subvol_utils",
+        BASE_DIR + ":subvol_utils",
     ],
 )
 
@@ -88,22 +89,19 @@ python_unittest(
     name = "test-items",
     srcs = ["tests/test_items.py"],
     base_module = "compiler",
-    gen_srcs = {
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
-    },
     needed_coverage = [(
         100,
         ":items",
     )],
     par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
+    resources = {
+        BASE_DIR + "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
+    },
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":testlib_temp_subvolumes",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        "/btrfs_diff:testlib_render_subvols",
+        BASE_DIR + ":testlib_temp_subvolumes",
+        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
     ],
 )
 
@@ -144,8 +142,8 @@ python_library(
 TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_dirs"),
     READ_MY_DOC_image_feature_target("feature_bad_dir"),
-    READ_MY_DOC_image_feature_target("feature_tar"),
-    READ_MY_DOC_image_feature_target("feature_copy_dirs_tar"),
+    READ_MY_DOC_image_feature_target("feature_tar_and_rpms"),
+    READ_MY_DOC_image_feature_target("feature_copy_dirs_tar_and_rpms"),
     "hello_world.tar",
 ]
 
@@ -184,6 +182,9 @@ image_feature_python_unittest(
         100,
         ":compiler",
     )],
+    resources = {
+        BASE_DIR + "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
+    },
     test_image_feature_transitive_deps = TEST_IMAGE_FEATURE_TRANSITIVE_DEPS,
     deps = [
         ":compiler",
@@ -209,8 +210,10 @@ python_unittest(
         TEST_TARGET_PREFIX + t
         for t in IMAGE_LAYER_DEPS
     ],
-    # NB: We could replace this with `gen_srcs` if this breaks, but while
-    # the `env` thing works, the effort isn't worth the reward.
+    # NB: We could replace this with `resources` if this breaks, but while
+    # the `env` thing works, the effort isn't worth the reward.  One upside
+    # of ditching `env` is that the test will start working stand-alone
+    # (running `test-image-layer#binary.par`) without needing `buck test`.
     env = {
         "test_image_layer_path_to_" + t: "$(location {})".format(
             TEST_TARGET_PREFIX + t,
@@ -221,13 +224,9 @@ python_unittest(
     # As with `test-image-feature`, we cannot get `image_layer.py` coverage.
     deps = [
         ":subvolume_on_disk",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":artifacts_dir",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":volume_for_repo",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        "/btrfs_diff:testlib_demo_sendstreams",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        "/btrfs_diff:testlib_render_subvols",
+        BASE_DIR + ":artifacts_dir",
+        BASE_DIR + ":volume_for_repo",
+        BASE_DIR + "/btrfs_diff:testlib_demo_sendstreams",
+        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
     ],
 )

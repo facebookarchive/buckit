@@ -66,6 +66,10 @@ def parse_args(args):
         help='Path to the JSON output of the parent `image_layer` target',
     )
     parser.add_argument(
+        '--yum-from-repo-snapshot',
+        help='Path to a binary taking `--install-root PATH -- SOME YUM ARGS`.',
+    )
+    parser.add_argument(
         '--child-layer-target', required=True,
         help='The name of the Buck target describing the layer being built',
     )
@@ -97,8 +101,9 @@ def build_image(args):
                 args.subvolumes_dir,
             ),
             gen_items_for_features(
-                [args.child_feature_json],
-                make_target_path_map(args.child_dependencies),
+                feature_paths=[args.child_feature_json],
+                target_to_path=make_target_path_map(args.child_dependencies),
+                yum_from_repo_snapshot=args.yum_from_repo_snapshot,
             ),
         )
     ):

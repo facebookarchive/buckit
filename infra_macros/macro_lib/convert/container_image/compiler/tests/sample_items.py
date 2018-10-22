@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import os
 
-from ..items import CopyFileItem, MakeDirsItem, TarballItem, FilesystemRootItem
+from ..items import (
+    CopyFileItem, FilesystemRootItem, MakeDirsItem, MultiRpmAction,
+    RpmActionType, TarballItem,
+)
 
 
 # Our target names are too long :(
@@ -13,8 +16,8 @@ T_BASE = (
 # since that's what we are testing.
 T_DIRS = f'{T_BASE}:feature_dirs'
 T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
-T_TAR = f'{T_BASE}:feature_tar'
-T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar'
+T_TAR = f'{T_BASE}:feature_tar_and_rpms'
+T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar_and_rpms'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
 
 TARGET_ENV_VAR_PREFIX = 'test_image_feature_path_to_'
@@ -23,7 +26,8 @@ TARGET_TO_PATH = {
         for target, path in os.environ.items()
             if target.startswith(TARGET_ENV_VAR_PREFIX)
 }
-assert T_HELLO_WORLD_TAR in TARGET_TO_PATH
+# We rely on Buck setting the environment via the `env =` directive.
+assert T_HELLO_WORLD_TAR in TARGET_TO_PATH, 'You must use `buck test`'
 
 
 def mangle(feature_target):
@@ -72,5 +76,15 @@ ID_TO_ITEM = {
         from_target=T_TAR,
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
+    ),
+    '.rpms/install/rpm-test-mice': MultiRpmAction.new(
+        rpms=frozenset({'rpm-test-mice'}),
+        action=RpmActionType.install,
+        yum_from_snapshot='/fake/yum',
+    ),
+    '.rpms/remove_if_exists/rpm-test-{carrot,milk}': MultiRpmAction.new(
+        rpms=frozenset({'rpm-test-milk', 'rpm-test-carrot'}),
+        action=RpmActionType.remove_if_exists,
+        yum_from_snapshot='/fake/yum',
     ),
 }

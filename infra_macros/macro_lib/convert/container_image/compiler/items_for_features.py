@@ -2,10 +2,14 @@
 'Makes Items from the JSON that was produced by the Buck target image_feature'
 import json
 
-from .items import MakeDirsItem, TarballItem, CopyFileItem
+from typing import Iterable, Mapping, Optional
+
+from .items import (
+    CopyFileItem, MakeDirsItem, MultiRpmAction, TarballItem, RpmActionType,
+)
 
 
-def replace_targets_by_paths(x, target_to_path):
+def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
     '''
     JSON-serialized image features store single-item dicts of the form
     {'__BUCK_TARGET': '//target:path'} whenever the compiler requires a path
@@ -34,18 +38,25 @@ def replace_targets_by_paths(x, target_to_path):
     assert False, 'Unknown {type(x)} for {x}'  # pragma: no cover
 
 
-def gen_items_for_features(feature_paths, target_to_path):
+def gen_items_for_features(
+    feature_paths: Iterable[str],
+    target_to_path: Mapping[str, str],
+    yum_from_repo_snapshot: Optional[str],
+):
     key_to_item_class = {
         'make_dirs': MakeDirsItem,
         'tarballs': TarballItem,
         'copy_files': CopyFileItem,
     }
+    action_to_rpms = {action: set() for action in RpmActionType}
     for feature_path in feature_paths:
         with open(feature_path) as f:
             items = replace_targets_by_paths(json.load(f), target_to_path)
 
             yield from gen_items_for_features(
-                items.pop('features', []), target_to_path,
+                feature_paths=items.pop('features', []),
+                target_to_path=target_to_path,
+                yum_from_repo_snapshot=yum_from_repo_snapshot,
             )
 
             target = items.pop('target')
@@ -59,9 +70,16 @@ def gen_items_for_features(feature_paths, target_to_path):
                             f'{target}, please read the exception above.'
                         ) from ex
 
-            for _rpm_name, _action in items.pop('rpms', {}).items():
-                raise NotImplementedError(  # pragma: no cover
-                    'No RPM support yet'
-                )
+            # Note that at present, we don't attempt to attribute RPMs to
+            # the build target(s) that requested them.
+            for dct in items.pop('rpms', []):
+                action_to_rpms[RpmActionType(dct['action'])].add(dct['name'])
 
             assert not items, f'Unsupported items: {items}'
+    for action, rpms in action_to_rpms.items():
+        if rpms:
+            yield MultiRpmAction.new(
+                action=action,
+                rpms=frozenset(rpms),
+                yum_from_snapshot=yum_from_repo_snapshot,
+            )

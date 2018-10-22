@@ -1,3 +1,5 @@
+BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
+
 ##
 ## image_feature: The goal of this section is to get good coverage for all
 ## the syntax variants supported by the `image_feature` converter.  The unit
@@ -40,8 +42,15 @@ image_feature(
 
 # Exercises:
 #  - all forms of specifying a tarball to extract
+#  - installing and removing RPMs
 image_feature(
-    name = "feature_tar",
+    name = "feature_tar_and_rpms",
+    rpms = {
+        "rpm-test-mice": "install",
+        "rpm-test-carrot": "remove_if_exists",  # Installed by `parent_layer`
+        # No-op in `child_layer` -- it was never installed
+        "rpm-test-milk": "remove_if_exists",
+    },
     tarballs = [
         (":hello_world.tar", "foo/borf"),
         {
@@ -56,7 +65,7 @@ image_feature(
 #  - dependent features
 #  - `copy_deps` also supports stat options
 image_feature(
-    name = "feature_copy_dirs_tar",
+    name = "feature_copy_dirs_tar_and_rpms",
     copy_deps = [
         (":hello_world.tar", "/foo/bar/"),
         {
@@ -68,7 +77,7 @@ image_feature(
     features = [
         ":feature_bad_dir",
         ":feature_dirs",
-        ":feature_tar",
+        ":feature_tar_and_rpms",
     ],
 )
 
@@ -95,11 +104,13 @@ image_layer(
     ],
     features = [":feature_dirs"],
     parent_layer = ":hello_world_base",
+    rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
+    yum_from_repo_snapshot = BASE_DIR + "/rpm:yum-from-test-snapshot",
 )
 
 image_layer(
     name = "child_layer",
-    features = [":feature_tar"],
+    features = [":feature_tar_and_rpms"],
     make_dirs = [
         ("/foo", "borf"),  # for :feature_tar
         ("/foo", "extracted_hello"),
@@ -119,6 +130,7 @@ image_layer(
             "into_dir": "/foo/more_extracted_hello",
         },
     ],
+    yum_from_repo_snapshot = BASE_DIR + "/rpm:yum-from-test-snapshot",
 )
 
 ##
@@ -132,8 +144,7 @@ python_binary(
     main_module = "save_demo_sendstream",
     par_style = "zip",  # testlib_demo_sendstreams needs this in @mode/opt
     deps = [
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        "/btrfs_diff:testlib_demo_sendstreams",
+        BASE_DIR + "/btrfs_diff:testlib_demo_sendstreams",
     ],
 )
 
