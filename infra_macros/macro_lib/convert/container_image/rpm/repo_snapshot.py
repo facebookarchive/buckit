@@ -9,7 +9,7 @@ import json
 
 from typing import Mapping, NamedTuple, Union
 
-from .common import get_file_logger, open_ro, Path
+from .common import get_file_logger, create_ro, Path
 
 log = get_file_logger(__file__)
 
@@ -86,14 +86,14 @@ class RepoSnapshot(NamedTuple):
         #  - (for RPMs) the ones listed in the primary repodata
         # This amounts to a quick re-parsing and comparison of keys, but I'm
         # not sure it's worthwhile -- good test coverage seems better.
-        with open_ro(path / 'repomd.xml', 'wb') as out:
+        with create_ro(path / 'repomd.xml', 'wb') as out:
             out.write(self.repomd.xml)
 
         for filename, sid_to_obj in (
             ('repodata.json', self.storage_id_to_repodata),
             ('rpm.json', self.storage_id_to_rpm),
         ):
-            with open_ro(path / filename, 'w') as out:
+            with create_ro(path / filename, 'w') as out:
                 obj_map = {
                     obj.location: {
                         'checksum': str(obj.best_checksum()),

@@ -56,7 +56,7 @@ class Path(bytes):
         return Path(s.encode(errors='surrogateescape'))
 
 
-def open_ro(path, mode):
+def create_ro(path, mode):
     '`open` that creates (and never overwrites) a file with mode `a+r`.'
     def ro_opener(path, flags):
         return os.open(
