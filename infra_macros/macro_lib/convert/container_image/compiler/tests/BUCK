@@ -96,7 +96,9 @@ image_layer(
 image_layer(
     name = "parent_layer",
     copy_deps = [
-        (":hello_world.tar", "/foo/bar/"),
+        # This directory comes from `rpm-test-carrot`. This tests that our
+        # dependency engine sees RPM contents as a "provides".
+        (":hello_world.tar", "/usr/share/rpm_test/"),
         {
             "source": ":hello_world.tar",
             "dest": "/foo/bar/even_more_hello_world.tar",

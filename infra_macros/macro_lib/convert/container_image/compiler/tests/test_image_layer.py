@@ -61,7 +61,8 @@ class ImageLayerTestCase(unittest.TestCase):
         self._check_hello(subvol_path)
         # :parent_layer
         for path in [
-            'foo/bar/hello_world.tar', 'foo/bar/even_more_hello_world.tar',
+            'usr/share/rpm_test/hello_world.tar',
+            'foo/bar/even_more_hello_world.tar',
         ]:
             self.assertTrue(
                 os.path.isfile(os.path.join(subvol_path, path)),
@@ -91,7 +92,7 @@ class ImageLayerTestCase(unittest.TestCase):
         ]:
             self.assertFalse(os.path.exists(os.path.join(subvol_path, path)))
 
-    def test_hello_world_base(self):
+    def test_image_layer_targets(self):
         # Future: replace these checks by a more comprehensive test of the
         # image's data & metadata using our `btrfs_diff` library.
         with self.target_subvol('hello_world_base') as sod:

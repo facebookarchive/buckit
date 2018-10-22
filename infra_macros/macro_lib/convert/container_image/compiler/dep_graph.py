@@ -8,9 +8,9 @@ already been installed.  This is known as dependency order or topological
 sort.
 '''
 from collections import namedtuple
-from typing import Iterable
+from typing import Iterable, Iterator
 
-from .items import MultiRpmAction, PhaseOrder
+from .items import ImageItem, MultiRpmAction, ParentLayerItem, PhaseOrder
 
 
 # To build the item-to-item dependency graph, we need to first build up a
@@ -123,84 +123,108 @@ class DependencyGraph:
     The indexes make it easy to topologically sort the items.
     '''
 
+    # NB: The items this consumes are a mix of `ImageItem`s and phases, see
+    # the comment on `MultiRpmAction`.
     def __init__(self, iter_items: 'Iterator[ImageItems]'):
         # Without deduping, dependency diamonds would cause a lot of
         # redundant work below.  Below, we also rely on mutating this set.
-        items = set()
+        self.items = set()
+        # While deduplicating `ImageItem`s, let's also split out the phases.
         self.order_to_phase = {}
         for item in iter_items:
             if item.phase_order is None:
-                items.add(item)
+                self.items.add(item)
             else:
                 prev = self.order_to_phase.get(item.phase_order)
+                # NB: This would fail if we had more than one PARENT_LAYER
+                # phase, since none of those classes have `union()`.
                 self.order_to_phase[item.phase_order] = item \
                     if prev is None else prev.union(item)
-                # Hack: Also add the parent layer to the topological sort
-                # since it satisfies the dependency on "/" that other items
-                # may have.  We'll remove it in `gen_dependency_order_items`.
-                # Another fix would be to make the dependency on "/" be
-                # purely implicit -- but that's more work.
-                if item.phase_order is PhaseOrder.PARENT_LAYER:
-                    items.add(item)
         detect_rpm_action_conflicts(
             item for item in self.order_to_phase.values()
                 if isinstance(item, MultiRpmAction)
         )
 
+    # Like ImageItems, the generated phases have a build(s: Subvol) operation.
+    def ordered_phases(self):
+        return sorted(
+            self.order_to_phase.values(), key=lambda s: s.phase_order.value,
+        )
+
+    # Separated so that unit tests can check the internal state.
+    def _prep_item_predecessors(self, sv_path: str):
+        # The `ImageItem` part of the build needs a PARENT_LAYER to know
+        # what is provided by the parent layer, and any subsequent phases.
+        parent_layer = self.order_to_phase[PhaseOrder.PARENT_LAYER]
+        self.items.add(
+            # If there are no other phases, `ImageItem`s would only have
+            # access to what is provided by the existing PARENT_LAYER.
+            parent_layer if len(self.order_to_phase) == 1 else
+            # Hack: Phases may change the original parent layer, so we'll
+            # compute `provides()` for dependency resolution using the
+            # mutated subvolume.  This isn't too scary since the rest of
+            # this function is guaranteed to evaluate the parent's
+            # `provides()` before any `ImageItem.build()`.
+            ParentLayerItem(from_target='fake', path=sv_path),
+        )
+
+        class Namespace:
+            pass
+
         # An item is only added here if it requires at least one other item,
         # otherwise it goes in `.items_without_predecessors`.
-        self.item_to_predecessors = {}  # {item: {items, it, requires}}
-        self.predecessor_to_items = {}  # {item: {items, requiring, it}}
+        ns = Namespace()
+        ns.item_to_predecessors = {}  # {item: {items, it, requires}}
+        ns.predecessor_to_items = {}  # {item: {items, requiring, it}}
 
         # For each path, treat items that provide something at that path as
         # predecessors of items that require something at the path.
-        for _path, rp in ValidatedReqsProvs(items).path_to_reqs_provs.items():
+        for _path, rp in ValidatedReqsProvs(
+            self.items
+        ).path_to_reqs_provs.items():
             for item_prov in rp.item_provs:
-                requiring_items = self.predecessor_to_items.setdefault(
+                requiring_items = ns.predecessor_to_items.setdefault(
                     item_prov.item, set()
                 )
                 for item_req in rp.item_reqs:
                     requiring_items.add(item_req.item)
-                    self.item_to_predecessors.setdefault(
+                    ns.item_to_predecessors.setdefault(
                         item_req.item, set()
                     ).add(item_prov.item)
 
-        # We own `items`, so reuse this set to find dependency-less items.
-        items.difference_update(self.item_to_predecessors.keys())
-        self.items_without_predecessors = items
+        ns.items_without_predecessors = \
+            self.items - ns.item_to_predecessors.keys()
 
+        return ns
 
-# NB: The items this yields are not all actual `ImageItem`s, see the comment
-# on `MultiRpmAction`. However, they all quack alike.
-def gen_dependency_order_items(items):
-    dg = DependencyGraph(items)
+    def gen_dependency_order_items(self, sv_path: str) -> Iterator[ImageItem]:
+        ns = self._prep_item_predecessors(sv_path)
+        yield_idx = 0
+        while ns.items_without_predecessors:
+            # "Install" an item that has no unsatisfied dependencies.
+            item = ns.items_without_predecessors.pop()
+            # The parent layer is built as part of `ordered_phases()`, it is
+            # only added to `items` its `provides()` fulfill requirements.
+            if item.phase_order is PhaseOrder.PARENT_LAYER:
+                assert yield_idx == 0, f'{item}: the parent layer must be 1st'
+            else:
+                yield item
+            yield_idx += 1
 
-    assert PhaseOrder.PARENT_LAYER in dg.order_to_phase
-    for phase in sorted(
-        dg.order_to_phase.values(), key=lambda s: s.phase_order.value,
-    ):
-        yield phase
+            # All items, which had `item` was a dependency, must have their
+            # "predecessors" sets updated
+            for requiring_item in ns.predecessor_to_items[item]:
+                predecessors = ns.item_to_predecessors[requiring_item]
+                predecessors.remove(item)
+                if not predecessors:
+                    ns.items_without_predecessors.add(requiring_item)
+                    # With no more predecessors, this will no longer be used.
+                    del ns.item_to_predecessors[requiring_item]
 
-    while dg.items_without_predecessors:
-        # "Install" an item that has no unsatisfied dependencies.
-        item = dg.items_without_predecessors.pop()
-        # We already yielded the parent layer phase above.
-        if item.phase_order is not PhaseOrder.PARENT_LAYER:
-            yield item
+            # We won't need this value again, and this lets us detect cycles.
+            del ns.predecessor_to_items[item]
 
-        # All items, which had `item` was a dependency, must have their
-        # "predecessors" sets updated
-        for requiring_item in dg.predecessor_to_items[item]:
-            predecessors = dg.item_to_predecessors[requiring_item]
-            predecessors.remove(item)
-            if not predecessors:
-                dg.items_without_predecessors.add(requiring_item)
-                del dg.item_to_predecessors[requiring_item]  # Won't be used.
-
-        # We won't need this value again, and this lets us detect cycles.
-        del dg.predecessor_to_items[item]
-
-    # Initially, every item was indexed here. If there's anything left over,
-    # we must have a cycle. Future: print a cycle to simplify debugging.
-    assert not dg.predecessor_to_items, \
-        'Cycle in {}'.format(dg.predecessor_to_items)
+        # Initially, every item was indexed here. If there's anything left,
+        # we must have a cycle. Future: print a cycle to simplify debugging.
+        assert not ns.predecessor_to_items, \
+            'Cycle in {}'.format(ns.predecessor_to_items)

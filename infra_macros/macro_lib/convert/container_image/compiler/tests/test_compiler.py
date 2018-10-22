@@ -15,6 +15,8 @@ from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
+orig_os_walk = os.walk
+
 
 def _subvol_mock_is_btrfs_and_run_as_root(fn):
     '''
@@ -29,6 +31,17 @@ def _subvol_mock_is_btrfs_and_run_as_root(fn):
     return fn
 
 
+def _os_walk(path, **kwargs):
+    '''
+    DependencyGraph adds a ParentLayerItem to traverse the subvolume, as
+    modified by the phases. This ensures the traversal produces a subvol /
+    '''
+    if path == os.path.join(FAKE_SUBVOLS_DIR, 'SUBVOL'):
+        yield (path, [], [])
+    else:
+        yield from orig_os_walk(path, **kwargs)
+
+
 class CompilerTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -41,11 +54,13 @@ class CompilerTestCase(unittest.TestCase):
             os.path.dirname(__file__), 'yum-from-test-snapshot',
         )
 
+    @unittest.mock.patch('os.walk')
     @_subvol_mock_is_btrfs_and_run_as_root
     @unittest.mock.patch.object(svod, '_btrfs_get_volume_props')
     def _compile(
-        self, args, btrfs_get_volume_props, is_btrfs, run_as_root,
+        self, args, btrfs_get_volume_props, is_btrfs, run_as_root, os_walk,
     ):
+        os_walk.side_effect = _os_walk
         # We don't have an actual btrfs subvolume, so make up a UUID.
         btrfs_get_volume_props.return_value = {'UUID': 'fake uuid'}
         # Since we're not making subvolumes, we need this so that

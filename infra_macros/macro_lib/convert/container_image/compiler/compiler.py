@@ -17,7 +17,7 @@ import sys
 
 from subvol_utils import Subvol
 
-from .dep_graph import gen_dependency_order_items
+from .dep_graph import DependencyGraph
 from .items import gen_parent_layer_items
 from .items_for_features import gen_items_for_features
 from .subvolume_on_disk import SubvolumeOnDisk
@@ -93,20 +93,23 @@ def parse_args(args):
 def build_image(args):
     subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
 
-    for item in gen_dependency_order_items(
-        itertools.chain(
-            gen_parent_layer_items(
-                args.child_layer_target,
-                args.parent_layer_json,
-                args.subvolumes_dir,
-            ),
-            gen_items_for_features(
-                feature_paths=[args.child_feature_json],
-                target_to_path=make_target_path_map(args.child_dependencies),
-                yum_from_repo_snapshot=args.yum_from_repo_snapshot,
-            ),
-        )
-    ):
+    dep_graph = DependencyGraph(itertools.chain(
+        gen_parent_layer_items(
+            args.child_layer_target,
+            args.parent_layer_json,
+            args.subvolumes_dir,
+        ),
+        gen_items_for_features(
+            feature_paths=[args.child_feature_json],
+            target_to_path=make_target_path_map(args.child_dependencies),
+            yum_from_repo_snapshot=args.yum_from_repo_snapshot,
+        ),
+    ))
+    for phase in dep_graph.ordered_phases():
+        phase.build(subvol)
+    # We cannot validate or sort `ImageItem`s until the phases are
+    # materialized since the items may depend on the output of the phases.
+    for item in dep_graph.gen_dependency_order_items(subvol.path().decode()):
         item.build(subvol)
     # Build artifacts should never change.
     subvol.set_readonly(True)
