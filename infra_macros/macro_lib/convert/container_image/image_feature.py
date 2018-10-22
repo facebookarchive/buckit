@@ -150,12 +150,16 @@ class ImageFeatureConverter(base.Converter):
     def get_fbconfig_rule_type(self):
         return 'image_feature'
 
+    def _coerce_dict_to_items(self, maybe_dct):
+        'Any collection that tazkes a list of pairs also takes a dict.'
+        return maybe_dct.items() if isinstance(maybe_dct, dict) else maybe_dct
+
     def _normalize_make_dirs(self, make_dirs):
         if make_dirs is None:
             return []
 
         normalized = []
-        for d in make_dirs:
+        for d in self._coerce_dict_to_items(make_dirs):
             if isinstance(d, basestring):
                 d = {'into_dir': '/', 'path_to_make': d}
             elif isinstance(d, tuple):
@@ -172,7 +176,7 @@ class ImageFeatureConverter(base.Converter):
             return []
 
         normalized = []
-        for d in copy_deps:
+        for d in self._coerce_dict_to_items(copy_deps):
             if isinstance(d, tuple):
                 assert len(d) == 2, (
                     'copy_deps tuples must have the form: '
@@ -188,7 +192,7 @@ class ImageFeatureConverter(base.Converter):
             return []
 
         normalized = []
-        for t in tarballs:
+        for t in self._coerce_dict_to_items(tarballs):
             if isinstance(t, tuple):
                 assert len(t) == 2, (
                     'tarballs tuples must have the form: '
@@ -206,7 +210,7 @@ class ImageFeatureConverter(base.Converter):
         normalized = []
         required_keys = {'name', 'action'}
         valid_actions = ('install', 'remove_if_exists')
-        for rpm in (rpms.items() if isinstance(rpms, dict) else rpms):
+        for rpm in self._coerce_dict_to_items(rpms):
             if isinstance(rpm, dict):
                 assert required_keys == set(rpm.keys()), \
                     'Rpm {} must have keys {}'.format(rpm, required_keys)
