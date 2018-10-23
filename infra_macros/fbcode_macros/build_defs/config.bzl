@@ -71,6 +71,14 @@ def _get_allocators():
         ),
     }
 
+def _get_asm_filter():
+    """
+    Get the ASM stream filter utility; it's a C++ app, which is very minimal
+    and has no deps, except for the (C++11 or better) compiler, glibc, and
+    either libstdc++ / libc++.
+    """
+    return read_string("fbcode", "asm_filter", None)
+
 def _get_auto_fdo_enabled():
     """ Returns whether or not this build is using AutoFDO profile feedback """
 
@@ -397,6 +405,7 @@ def _get_use_custom_par_args():
 config = struct(
     get_add_auto_headers_glob = _get_add_auto_headers_glob,
     get_allocators = _get_allocators,
+    get_asm_filter = _get_asm_filter,
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
