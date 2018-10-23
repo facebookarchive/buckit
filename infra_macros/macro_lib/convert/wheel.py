@@ -89,8 +89,8 @@ def _wheel_override_version_check(name, platform_versions):
                 "Make sure there is a {0} wheel for {3} version of {4}.".format(
                     wheel_platform,
                     building_platform,
-                    platform_versions.get(building_platform, "None"),
                     platform_versions.get(wheel_platform, "None"),
+                    platform_versions.get(building_platform, "None"),
                     name,
                 )
             )
