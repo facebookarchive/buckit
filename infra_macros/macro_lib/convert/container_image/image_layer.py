@@ -99,13 +99,13 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
+
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load(":image_utils.bzl", "image_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 image_feature = import_macro_lib('convert/container_image/image_feature')
-
-HELPER_BASE = '//tools/build/buck/infra_macros/macro_lib/convert/container_image'
 
 
 class ImageLayerConverter(base.Converter):
@@ -184,7 +184,7 @@ class ImageLayerConverter(base.Converter):
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
                 '''.format(
                     from_sendstream=from_sendstream,
-                    helper_base=HELPER_BASE,
+                    helper_base=image_utils.HELPER_BASE,
                 )
 
         rules.append(Rule('genrule', collections.OrderedDict(
@@ -195,103 +195,57 @@ class ImageLayerConverter(base.Converter):
             # keep our output JSON out of the distributed Buck cache.  See
             # the docs for BuildRule::isCacheable.
             cacheable=False,
-            bash='''
-            # CAREFUL: To avoid inadvertently masking errors, we should
-            # only perform command substitutions with variable
-            # assignments.
-            set -ue -o pipefail
+            bash=image_utils.wrap_bash_build_in_common_boilerplate(
+                bash='''
+                # We want subvolume names to be user-controllable. To permit
+                # this, we wrap each subvolume in a temporary subdirectory.
+                # This also allows us to prevent access to capability-
+                # escalating programs inside the built subvolume by users
+                # other than the repo owner.
+                #
+                # The "version" code here ensures that the wrapper directory
+                # has a unique name.  We could use `mktemp`, but our variant
+                # is a little more predictable (not a security concern since
+                # we own the parent directory) and a lot more debuggable.
+                # Usability is better since our version sorts by build time.
+                binary_path=$(location {helper_base}:subvolume-version)
+                subvolume_ver=\\$( "$binary_path" )
+                subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
-            binary_path=$(location {helper_base}:artifacts-dir)
-            # Common sense would tell us to find helper programs via:
-            #   os.path.dirname(os.path.abspath(__file__))
-            # The benefit of using \\$(location) is that it does not bake
-            # an absolute paths into our command.  This **should** help
-            # the cache continue working even if the user moves the repo.
-            artifacts_dir=\\$( "$binary_path" )
+                # IMPORTANT: This invalidates and/or deletes any existing
+                # subvolume that was produced by the same target.  This is the
+                # point of no return.
+                #
+                # This creates the wrapper directory for the subvolume, and
+                # pre-initializes "$OUT" in a special way to support a form of
+                # refcounting that distinguishes between subvolumes that are
+                # referenced from the Buck cache ("live"), and ones that are
+                # no longer referenced ("dead").  We want to create the
+                # refcount file before starting the build to guarantee that we
+                # have refcount files for partially built images -- this makes
+                # debugging failed builds a bit more predictable.
+                refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
+                $(location {helper_base}:subvolume-garbage-collector) \
+                  --refcounts-dir "$refcounts_dir" \
+                  --subvolumes-dir "$subvolumes_dir" \
+                  --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
+                  --new-subvolume-json "$OUT"
 
-            # Future-proofing: keep all Buck target subvolumes under
-            # "targets/" in the per-repo volume, so that we can easily
-            # add other types of subvolumes in the future.
-            binary_path=$(location {helper_base}:volume-for-repo)
-            volume_dir=\\$("$binary_path" "$artifacts_dir" {min_free_bytes})
-            subvolumes_dir="$volume_dir/targets"
-            mkdir -m 0700 -p "$subvolumes_dir"
-
-            # Capture output to a tempfile to hide logspam on successful runs.
-            my_log=`mktemp`
-
-            log_on_error() {{
-              exit_code="$?"
-              # Always persist the log for debugging purposes.
-              collected_logs="$artifacts_dir/image_layer.log"
-              (
-                  date
-                  cat "$my_log" || :
-              ) |& flock "$collected_logs" tee -a "$collected_logs"
-              # If we had an error, also dump the log to stderr.
-              if [[ "$exit_code" != 0 ]] ; then
-                cat "$my_log" 1>&2
-              fi
-              rm "$my_log"
-            }}
-            # Careful: do NOT replace this with (...) || (...), it will lead
-            # to `set -e` not working as you expect, because bash is awful.
-            trap log_on_error EXIT
-
-            (
-              # Log all commands now that stderr is redirected.
-              set -x
-              # We want subvolume names to be user-controllable. To permit
-              # this, we wrap each subvolume in a temporary subdirectory.
-              # This also allows us to prevent access to capability-
-              # escalating programs inside the built subvolume by users
-              # other than the repo owner.
-              #
-              # The "version" code here ensures that the wrapper directory
-              # has a unique name.  We could use `mktemp`, but our variant
-              # is a little more predictable (not a security concern since
-              # we own the parent directory) and a lot more debuggable.
-              # Usability is better since our version sorts by build time.
-              binary_path=$(location {helper_base}:subvolume-version)
-              subvolume_ver=\\$( "$binary_path" )
-              subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
-
-              # IMPORTANT: This invalidates and/or deletes any existing
-              # subvolume that was produced by the same target.  This is the
-              # point of no return.
-              #
-              # This creates the wrapper directory for the subvolume, and
-              # pre-initializes "$OUT" in a special way to support a form of
-              # refcounting that distinguishes between subvolumes that are
-              # referenced from the Buck cache ("live"), and ones that are
-              # no longer referenced ("dead").  We want to create the
-              # refcount file before starting the build to guarantee that we
-              # have refcount files for partially built images -- this makes
-              # debugging failed builds a bit more predictable.
-              refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
-              $(location {helper_base}:subvolume-garbage-collector) \
-                --refcounts-dir "$refcounts_dir" \
-                --subvolumes-dir "$subvolumes_dir" \
-                --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
-                --new-subvolume-json "$OUT"
-
-              {make_subvol_cmd}
-
-              # Our hardlink-based refcounting scheme, as well as the fact
-              # that we keep subvolumes in a special location, make it a
-              # terrible idea to mutate the output after creation.
-              chmod a-w "$OUT"
-            ) &> "$my_log"
-            '''.format(
-                min_free_bytes=int(layer_size_bytes),
-                helper_base=HELPER_BASE,
-                rule_name_quoted=quote(name),
-                refcounts_dir_quoted=os.path.join(
-                    '$GEN_DIR',
-                    quote(self.get_fbcode_dir_from_gen_dir()),
-                    'buck-out/.volume-refcount-hardlinks/',
+                {make_subvol_cmd}
+                '''.format(
+                    helper_base=image_utils.HELPER_BASE,
+                    rule_name_quoted=quote(name),
+                    refcounts_dir_quoted=os.path.join(
+                        '$GEN_DIR',
+                        quote(self.get_fbcode_dir_from_gen_dir()),
+                        'buck-out/.volume-refcount-hardlinks/',
+                    ),
+                    make_subvol_cmd=make_subvol_cmd,
                 ),
-                make_subvol_cmd=make_subvol_cmd,
+                volume_min_free_bytes=int(layer_size_bytes),
+                log_description="{}(name={})".format(
+                    self.get_fbconfig_rule_type(), name
+                ),
             ),
             visibility=visibility,
         )))
@@ -349,7 +303,7 @@ class ImageLayerConverter(base.Converter):
                 $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
                   > "$OUT"
             '''.format(
-                helper_base=HELPER_BASE,
+                helper_base=image_utils.HELPER_BASE,
                 rule_name_quoted=quote(rule_name),
                 parent_layer_json_quoted='$(location {})'.format(parent_layer)
                     if parent_layer else "''",
