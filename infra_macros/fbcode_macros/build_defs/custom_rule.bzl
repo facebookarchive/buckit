@@ -50,7 +50,8 @@ def _create_main_rule(
         strict = True,
         env = None,
         no_remote = False,
-        build_script_visibility = None):
+        build_script_visibility = None,
+        add_install_dir = True):
     package = native.package_name()
 
     out = _get_output_dir(name)
@@ -98,7 +99,8 @@ def _create_main_rule(
     cmd += "$(exe {})".format(third_party.replace_third_party_repo(build_script_dep, fbcode_platform))
     if not strict:
         cmd += " --fbcode_dir=" + fbcode_dir
-    cmd += " --install_dir=" + install_dir
+    if add_install_dir:
+        cmd += " --install_dir=" + install_dir
 
     if build_args:
         cmd += " " + third_party.replace_third_party_repo(build_args, fbcode_platform)
@@ -190,7 +192,8 @@ def custom_rule(
         strict = True,
         env = None,
         no_remote = False,
-        visibility = None):
+        visibility = None,
+        add_install_dir = True):
     """
     Creates rules to run a script and allow other rules to access that scripts outputs
 
@@ -245,6 +248,8 @@ def custom_rule(
                    work with distributed builds properly. It will be removed
                    in the future. Do not use this.
         visibility: If provided, override the visibility of this rule.
+        add_install_dir: when set to true --install_dir parameter is passed on
+                         the command line of the script.
     """
 
     # Normalize visibility
@@ -276,6 +281,7 @@ def custom_rule(
     main_rule_name = _create_main_rule(
         name = name,
         srcs = srcs,
+        add_install_dir = add_install_dir,
         build_args = build_args,
         build_script_dep = build_script_dep,
         build_script_visibility = visibility,
