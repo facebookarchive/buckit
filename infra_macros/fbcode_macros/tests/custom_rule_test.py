@@ -244,6 +244,94 @@ class CustomRuleTest(tests.utils.TestCase):
         )
 
     @tests.utils.with_project()
+    def test_adds_fbcode_env_var_and_flag_if_not_add_install_dir(self, root):
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
+            load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
+            custom_rule(
+                name="foobar",
+                build_script_dep="//:main_script",
+                build_args="--flag $(location //:arg_dep)",
+                srcs=["//:src1", "//:src2"],
+                tools=["protobufs", "cc"],
+                deps=[
+                    "//:old_dep1",
+                    "//:old_dep2",
+                ],
+                output_gen_files=["out1"],
+                add_install_dir=False,
+            )
+        """
+            ),
+        )
+        expected_cmd = (
+            'mkdir -p \\"$OUT\\" && '
+            "env "
+            "BUCK_PLATFORM=default-gcc "
+            "FBCODE_BUILD_MODE=dev "
+            "FBCODE_BUILD_TOOL=buck "
+            "FBCODE_PLATFORM=default "
+            "FBCODE_THIRD_PARTY_TOOLS="
+            "$(location //third-party-buck/default/tools:protobufs/bin):"
+            "$(location //third-party-buck/default/tools:cc/bin) "
+            'INSTALL_DIR=\\"$OUT\\" '
+            "PATH="
+            "$GEN_DIR/../../third-party-buck/default/tools/protobufs/bin:"
+            "$GEN_DIR/../../third-party-buck/default/tools/cc/bin:"
+            '\\"$PATH\\" '
+            'SRCDIR=\\"$SRCDIR\\" '
+            "$(exe //:main_script) "
+            "--flag "
+            "$(location //:arg_dep) "
+            "# $(location //:old_dep1) "
+            "$(location //:old_dep2)"
+        )
+        expected = dedent(
+            '''
+            genrule(
+              name = "foobar",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + '''",
+              out = "out1",
+              visibility = [
+                "PUBLIC",
+              ],
+            )
+
+            genrule(
+              name = "foobar-outputs",
+              cmd = "'''
+            + expected_cmd
+            + '''",
+              no_remote = False,
+              out = "foobar-outputs",
+              srcs = [
+                "//:src1",
+                "//:src2",
+              ],
+            )
+
+            genrule(
+              name = "foobar=out1",
+              cmd = "'''
+            + self._getCopyCommand("foobar", "out1")
+            + """",
+              out = "out1",
+              visibility = [
+                "PUBLIC",
+              ],
+            )
+        """
+        )
+
+        result = root.runAudit(["BUCK"])
+
+        self.validateAudit({"BUCK": expected}, result)
+
+    @tests.utils.with_project()
     def test_adds_fbcode_env_var_and_flag_if_not_strict(self, root):
         root.addFile(
             "BUCK",
