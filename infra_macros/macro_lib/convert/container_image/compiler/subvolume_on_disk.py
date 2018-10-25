@@ -23,6 +23,7 @@ log = logging.Logger(__name__)
 #  (2) Written into the on-disk dictionary format
 #  (3) Read from the on-disk dictionary format
 _BTRFS_UUID = 'btrfs_uuid'  # (1-3)
+_BTRFS_PARENT_UUID = 'btrfs_parent_uuid'  # (1)
 _HOSTNAME = 'hostname'  # (1-3)
 _SUBVOLUMES_BASE_DIR = 'subvolumes_base_dir'  # (1)
 _SUBVOLUME_REL_PATH = 'subvolume_rel_path'  # (1-3)
@@ -56,12 +57,15 @@ def _btrfs_get_volume_props(subvolume_path):
                 props[SNAPSHOTS] = []
             else:
                 assert k not in props, f'{l} already had a value {props[k]}'
+                if k.endswith(' UUID') and v == '-':
+                    v = None
                 props[k] = v
     return props
 
 
 class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
     _BTRFS_UUID,
+    _BTRFS_PARENT_UUID,
     _HOSTNAME,
     _SUBVOLUMES_BASE_DIR,
     _SUBVOLUME_REL_PATH,
@@ -72,13 +76,6 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
     serialize & deserialize this metadata to a JSON format that can be
     safely used as as Buck output representing the subvolume.
     '''
-
-    _KNOWN_KEYS = {
-        _BTRFS_UUID,
-        _HOSTNAME,
-        _SUBVOLUME_REL_PATH,
-        _DANGER,
-    }
 
     def subvolume_path(self):
         return os.path.join(self.subvolumes_base_dir, self.subvolume_rel_path)
@@ -101,8 +98,10 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         # will not commit a buggy structure to disk since
         # `to_serializable_dict` checks the idepmpotency of our
         # serialization-deserialization.
+        volume_props = _btrfs_get_volume_props(subvol_path)
         self = cls(**{
-            _BTRFS_UUID: _btrfs_get_volume_props(subvol_path)['UUID'],
+            _BTRFS_UUID: volume_props['UUID'],
+            _BTRFS_PARENT_UUID: volume_props['Parent UUID'],
             _HOSTNAME: socket.getfqdn(),
             _SUBVOLUMES_BASE_DIR: subvolumes_dir,
             _SUBVOLUME_REL_PATH: subvol_rel_path,
@@ -111,12 +110,21 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
 
     @classmethod
     def from_serializable_dict(cls, d, subvolumes_dir):
+        # This incidentally checks that the subvolume exists and is btrfs.
+        subvol_path = os.path.join(
+            # This is copypasta of subvolume_path() but I need it before
+            # creating the object. The assert below keeps them in sync.
+            subvolumes_dir, d[_SUBVOLUME_REL_PATH],
+        )
+        volume_props = _btrfs_get_volume_props(subvol_path)
         self = cls(**{
             _BTRFS_UUID: d[_BTRFS_UUID],
+            _BTRFS_PARENT_UUID: volume_props['Parent UUID'],
             _HOSTNAME: d[_HOSTNAME],
             _SUBVOLUMES_BASE_DIR: subvolumes_dir,
             _SUBVOLUME_REL_PATH: d[_SUBVOLUME_REL_PATH],
         })
+        assert subvol_path == self.subvolume_path(), (d, subvolumes_dir)
 
         # Check that the relative path is garbage-collectable.
         inner_dir = os.path.basename(d[_SUBVOLUME_REL_PATH])
@@ -141,8 +149,6 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
             raise RuntimeError(
                 f'Subvolume {self} did not come from current host {cur_host}'
             )
-        # This incidentally checks that the subvolume exists and is btrfs.
-        volume_props = _btrfs_get_volume_props(self.subvolume_path())
         if volume_props['UUID'] != self.btrfs_uuid:
             raise RuntimeError(
                 f'UUID in subvolume JSON {self} does not match that of the '
@@ -157,6 +163,7 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         # recompute the path relative to the current subvolumes directory.
         d = {
             _BTRFS_UUID: self.btrfs_uuid,
+            # Not serializing _BTRFS_PARENT_UUID since it's always deduced.
             _HOSTNAME: self.hostname,
             _SUBVOLUME_REL_PATH: self.subvolume_rel_path,
             _DANGER: 'Do NOT edit manually: this can break future builds, or '

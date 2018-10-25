@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import io
-import json
 import os
 import tempfile
 import unittest
@@ -35,6 +34,7 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
             # Since we key the uuid off the given argument, we don't have to
             # explicitly validate the given path for each mock call.
             'UUID': self._test_uuid(subvolume_path),
+            'Parent UUID': 'zupa',
         }
         self.addCleanup(self.patch_btrfs_get_volume_props.stop)
 
@@ -135,6 +135,7 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
                 good_path,
                 subvolume_on_disk.SubvolumeOnDisk(**{
                     subvolume_on_disk._BTRFS_UUID: good_uuid,
+                    subvolume_on_disk._BTRFS_PARENT_UUID: 'zupa',
                     subvolume_on_disk._HOSTNAME: _MY_HOST,
                     subvolume_on_disk._SUBVOLUME_REL_PATH: rel_path,
                     subvolume_on_disk._SUBVOLUMES_BASE_DIR: subvols,
@@ -161,6 +162,7 @@ class SubvolumeOnDiskTestCase(unittest.TestCase):
                     subvolume_on_disk.SubvolumeOnDisk(**{
                         subvolume_on_disk._BTRFS_UUID:
                             self._test_uuid(subvol_path),
+                        subvolume_on_disk._BTRFS_PARENT_UUID: 'zupa',
                         subvolume_on_disk._HOSTNAME: _MY_HOST,
                         subvolume_on_disk._SUBVOLUME_REL_PATH: rel_path,
                         subvolume_on_disk._SUBVOLUMES_BASE_DIR: subvols,
@@ -207,8 +209,8 @@ dir/parent
             {
                 'Name': 'parent',
                 'UUID': 'f96b940f-10d3-fc4e-8b2d-9362af0ee8df',
-                'Parent UUID': '-',
-                'Received UUID': '-',
+                'Parent UUID': None,
+                'Received UUID': None,
                 'Creation time': '2017-12-29 21:55:54 -0800',
                 'Subvolume ID': '277',
                 'Generation': '123',
@@ -247,7 +249,7 @@ dir/child
                 'Name': 'child',
                 'UUID': 'a1a3eb3e-eb89-7743-8335-9cd5219248e7',
                 'Parent UUID': 'f96b940f-10d3-fc4e-8b2d-9362af0ee8df',
-                'Received UUID': '-',
+                'Received UUID': None,
                 'Creation time': '2017-12-29 21:56:32 -0800',
                 'Subvolume ID': '278',
                 'Generation': '121',

@@ -62,7 +62,9 @@ class CompilerTestCase(unittest.TestCase):
     ):
         os_walk.side_effect = _os_walk
         # We don't have an actual btrfs subvolume, so make up a UUID.
-        btrfs_get_volume_props.return_value = {'UUID': 'fake uuid'}
+        btrfs_get_volume_props.return_value = {
+            'UUID': 'fake uuid', 'Parent UUID': None,
+        }
         # Since we're not making subvolumes, we need this so that
         # `Subvolume(..., already_exists=True)` will work.
         is_btrfs.return_value = True
@@ -123,6 +125,7 @@ class CompilerTestCase(unittest.TestCase):
         ])
         self.assertEqual(svod.SubvolumeOnDisk(**{
             svod._BTRFS_UUID: 'fake uuid',
+            svod._BTRFS_PARENT_UUID: None,
             svod._HOSTNAME: 'fake host',
             svod._SUBVOLUMES_BASE_DIR: FAKE_SUBVOLS_DIR,
             svod._SUBVOLUME_REL_PATH: 'SUBVOL',
