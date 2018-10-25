@@ -179,7 +179,8 @@ class ImageLayerConverter(base.Converter):
                     test $(sudo btrfs property get -ts "$subvol" ro) = ro=true
                     echo "$subvol"
                 )
-                $(location {helper_base}/compiler:subvolume-on-disk) \
+                # `exe` vs `location` is explained in `image_package.py`
+                $(exe {helper_base}/compiler:subvolume-on-disk) \
                   "$subvolumes_dir" \
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
                 '''.format(
@@ -208,7 +209,9 @@ class ImageLayerConverter(base.Converter):
                 # is a little more predictable (not a security concern since
                 # we own the parent directory) and a lot more debuggable.
                 # Usability is better since our version sorts by build time.
-                binary_path=$(location {helper_base}:subvolume-version)
+                #
+                # `exe` vs `location` is explained in `image_package.py`
+                binary_path=$(exe {helper_base}:subvolume-version)
                 subvolume_ver=\\$( "$binary_path" )
                 subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
@@ -225,7 +228,8 @@ class ImageLayerConverter(base.Converter):
                 # have refcount files for partially built images -- this makes
                 # debugging failed builds a bit more predictable.
                 refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
-                $(location {helper_base}:subvolume-garbage-collector) \
+                # `exe` vs `location` is explained in `image_package.py`
+                $(exe {helper_base}:subvolume-garbage-collector) \
                   --refcounts-dir "$refcounts_dir" \
                   --subvolumes-dir "$subvolumes_dir" \
                   --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
@@ -291,7 +295,9 @@ class ImageLayerConverter(base.Converter):
             # Take note of `targets_and_outputs` below -- this enables the
             # compiler to map the `__BUCK_TARGET`s in the outputs of
             # `image_feature` to those targets' outputs.
-            $(location {helper_base}:compiler) \
+            #
+            # `exe` vs `location` is explained in `image_package.py`
+            $(exe {helper_base}:compiler) \
               --subvolumes-dir "$subvolumes_dir" \
               --subvolume-rel-path \
                 "$subvolume_wrapper_dir/"{rule_name_quoted} \
@@ -316,7 +322,8 @@ class ImageLayerConverter(base.Converter):
                 my_deps_query=this_layer_feature_query,
                 maybe_quoted_yum_from_repo_snapshot_args=''
                     if not yum_from_repo_snapshot else
-                        '--yum-from-repo-snapshot $(location {})'.format(
+                        # `exe` vs `location` is explained in image_package.py
+                        '--yum-from-repo-snapshot $(exe {})'.format(
                             quote(yum_from_repo_snapshot),
                         ),
             )
