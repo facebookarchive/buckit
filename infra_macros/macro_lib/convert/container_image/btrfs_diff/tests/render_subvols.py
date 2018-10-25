@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 If your test has a subvolume or a sendstream, these helpers here make it
 easy to make assertions against its content. Grep around for usage examples.
@@ -16,7 +17,7 @@ from ..parse_send_stream import parse_send_stream
 from ..rendered_tree import emit_non_unique_traversal_ids
 from ..subvolume_set import SubvolumeSet, SubvolumeSetMutator
 
-from .subvolume_utils import InodeRepr, expected_subvol_add_traversal_ids
+from .subvolume_utils import expected_subvol_add_traversal_ids
 
 
 def expected_rendering(expected_subvol):
@@ -62,3 +63,11 @@ def prepare_subvol_set_for_render(
         )
         erase_utimes_in_range(ino, start=build_start_time, end=build_end_time)
         erase_selinux_xattr(ino, selinux_stats.most_common())
+
+
+# Often, we just want to render 1 sendstream
+def render_sendstream(sendstream: bytes) -> 'RenderedTree':
+    subvol_set = SubvolumeSet.new()
+    subvolume = add_sendstream_to_subvol_set(subvol_set, sendstream)
+    prepare_subvol_set_for_render(subvol_set)
+    return render_subvolume(subvolume)

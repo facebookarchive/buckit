@@ -10,9 +10,7 @@ import unittest.mock
 
 from contextlib import contextmanager
 
-import btrfs_diff.tests.render_subvols as render_sv
-
-from btrfs_diff.subvolume_set import SubvolumeSet
+from btrfs_diff.tests.render_subvols import render_sendstream
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
@@ -30,13 +28,9 @@ DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
 
 
 def _render_subvol(subvol: 'Subvol'):
-    subvol_set = SubvolumeSet.new()
-    subvolume = render_sv.add_sendstream_to_subvol_set(
-        subvol_set, subvol.mark_readonly_and_get_sendstream(),
-    )
-    subvol.set_readonly(False)
-    render_sv.prepare_subvol_set_for_render(subvol_set)
-    return render_sv.render_subvolume(subvolume)
+    rendered = render_sendstream(subvol.mark_readonly_and_get_sendstream())
+    subvol.set_readonly(False)  # YES, all our subvolumes are read-write.
+    return rendered
 
 
 class ItemsTestCase(unittest.TestCase):

@@ -6,22 +6,12 @@ import unittest
 from contextlib import contextmanager
 
 from artifacts_dir import ensure_per_repo_artifacts_dir_exists
-from btrfs_diff.subvolume_set import SubvolumeSet
-from btrfs_diff.tests import render_subvols
+from btrfs_diff.tests.render_subvols import render_sendstream
 from btrfs_diff.tests.demo_sendstreams_expected import render_demo_subvols
 from subvol_utils import Subvol
 from volume_for_repo import get_volume_for_current_repo
 
 from ..subvolume_on_disk import SubvolumeOnDisk
-
-# Our target names are too long :(
-T_BASE = (
-    '//tools/build/buck/infra_macros/macro_lib/convert/container_image/'
-    'compiler/tests'
-)
-T_HELLO_WORLD = f'{T_BASE}:hello_world_base'
-T_PARENT = f'{T_BASE}:parent_layer'
-T_CHILD = f'{T_BASE}:child_layer'
 
 
 TARGET_ENV_VAR_PREFIX = 'test_image_layer_path_to_'
@@ -123,14 +113,10 @@ class ImageLayerTestCase(unittest.TestCase):
         #    break this test of idempotence.
         for op in ['create_ops']:
             with self.target_subvol(op) as sod:
-                subvol_set = SubvolumeSet.new()
-                subvolume = render_subvols.add_sendstream_to_subvol_set(
-                    subvol_set,
-                    Subvol(sod.subvolume_path(), already_exists=True)
-                        .mark_readonly_and_get_sendstream(),
-                )
-                render_subvols.prepare_subvol_set_for_render(subvol_set)
                 self.assertEqual(
                     render_demo_subvols(**{op: True}),
-                    render_subvols.render_subvolume(subvolume),
+                    render_sendstream(
+                        Subvol(sod.subvolume_path(), already_exists=True)
+                            .mark_readonly_and_get_sendstream(),
+                    ),
                 )
