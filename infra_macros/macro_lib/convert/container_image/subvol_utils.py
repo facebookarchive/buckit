@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-import tempfile
 
 from typing import Union
 
@@ -185,4 +184,7 @@ class Subvol:
             stdout=subprocess.PIPE, **kwargs,
         ).stdout
 
-    # Future: write_sendstream_to_file()
+    def mark_readonly_and_write_sendstream_to_file(
+        self, outfile: 'BytesIO', **kwargs,
+    ):
+        self._mark_readonly_and_send(stdout=outfile, **kwargs)

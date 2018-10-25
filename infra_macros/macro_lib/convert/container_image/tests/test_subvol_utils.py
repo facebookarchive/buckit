@@ -28,7 +28,7 @@ class SubvolTestCase(unittest.TestCase):
         p = self.temp_subvols.create('parent')
         p2 = Subvol(p.path(), already_exists=True)
         self.assertEqual(p.path(), p.path())
-        c = self.temp_subvols.snapshot(p2, 'child')
+        self.temp_subvols.snapshot(p2, 'child')
 
     def test_does_not_exist(self):
         with tempfile.TemporaryDirectory() as td:
@@ -56,4 +56,9 @@ class SubvolTestCase(unittest.TestCase):
     def test_mark_readonly_and_get_sendstream(self):
         sv = self.temp_subvols.create('subvol')
         sv.run_as_root(['touch', sv.path('abracadabra')])
-        self.assertIn(b'abracadabra', sv.mark_readonly_and_get_sendstream())
+        sendstream = sv.mark_readonly_and_get_sendstream()
+        self.assertIn(b'abracadabra', sendstream)
+        with tempfile.TemporaryFile() as outfile:
+            sv.mark_readonly_and_write_sendstream_to_file(outfile)
+            outfile.seek(0)
+            self.assertEqual(sendstream, outfile.read())
