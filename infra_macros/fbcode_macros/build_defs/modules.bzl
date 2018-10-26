@@ -137,7 +137,7 @@ def _gen_module(
         platform_deps = (),
         override_module_home = None,
         visibility = None,
-        labels = ()):
+        labels = None):
     """
     Compile a module (i.e. `.pcm` file) from a `module.modulemap` file and the
     corresponding headers, specified as either a map or a directory.
@@ -168,6 +168,7 @@ def _gen_module(
                      and flag list tuples, providing headers used by the
                      headers in this module.
     """
+    labels = labels or []
 
     # Must set exactly one of `headers` and `header_dir`.
     if ((headers == None and header_dir == None) or
