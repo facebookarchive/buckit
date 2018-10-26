@@ -33,9 +33,10 @@ class CppLibraryExternalTest(tests.utils.TestCase):
         r"""  args[$i]=${args[$i]//$PWD\\//}\n"""
         r"""done\n"""
         + (
-            r"(\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$OUT\""
-            + r" | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/gcc5/build/ImageMagick/include/ImageMagick/|g\""
+            r"(\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$OUT\".tmp"
+            + r" | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/gcc5/build/ImageMagick/include/ImageMagick/|g\"\n"
         )
+        + r"mv -nT \"$OUT\".tmp \"$OUT\""
     )
 
     @tests.utils.with_project()

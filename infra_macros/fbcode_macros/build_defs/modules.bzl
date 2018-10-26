@@ -242,9 +242,10 @@ def _gen_module(
         'for i in "${!args[@]}"; do',
         "  args[$i]=${args[$i]//$PWD\//}",
         "done",
-        ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT"' +
+        ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT".tmp' +
          ' | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"')
             .format(header_prefix),
+        'mv -nT "$OUT".tmp "$OUT"',
     ]
 
     # Postprocess the built module and update it with the new module home.
