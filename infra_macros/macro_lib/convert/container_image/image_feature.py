@@ -51,7 +51,9 @@ def import_macro_lib(path):
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
+
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load(":image_utils.bzl", "image_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
@@ -344,6 +346,9 @@ class ImageFeatureConverter(base.Converter):
                 deps=' '.join(
                     '$(location {})'.format(t)
                         for t in sorted(target_tagger.targets)
+                # Add on a self-dependency (see `fake_macro_library` docblock)
+                ) + '$(location {}:image_feature_macro)'.format(
+                    image_utils.BASE_DIR,
                 ),
                 out=quote(json.dumps(out_dict, sort_keys=True)),
             ),

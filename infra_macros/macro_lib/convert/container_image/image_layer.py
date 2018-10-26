@@ -180,12 +180,12 @@ class ImageLayerConverter(base.Converter):
                     echo "$subvol"
                 )
                 # `exe` vs `location` is explained in `image_package.py`
-                $(exe {helper_base}/compiler:subvolume-on-disk) \
+                $(exe {base_dir}/compiler:subvolume-on-disk) \
                   "$subvolumes_dir" \
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
                 '''.format(
                     from_sendstream=from_sendstream,
-                    helper_base=image_utils.HELPER_BASE,
+                    base_dir=image_utils.BASE_DIR,
                 )
 
         rules.append(Rule('genrule', collections.OrderedDict(
@@ -197,6 +197,7 @@ class ImageLayerConverter(base.Converter):
             # the docs for BuildRule::isCacheable.
             cacheable=False,
             bash=image_utils.wrap_bash_build_in_common_boilerplate(
+                self_dependency=image_utils.BASE_DIR + ':image_layer_macro',
                 bash='''
                 # We want subvolume names to be user-controllable. To permit
                 # this, we wrap each subvolume in a temporary subdirectory.
@@ -210,9 +211,10 @@ class ImageLayerConverter(base.Converter):
                 # we own the parent directory) and a lot more debuggable.
                 # Usability is better since our version sorts by build time.
                 #
-                # `exe` vs `location` is explained in `image_package.py`
-                binary_path=$(exe {helper_base}:subvolume-version)
-                subvolume_ver=\\$( "$binary_path" )
+                # `exe` vs `location` is explained in `image_package.py`.
+                # `exe` won't expand in \\$( ... ), so we need `binary_path`.
+                binary_path=( $(exe {base_dir}:subvolume-version) )
+                subvolume_ver=\\$( "${{binary_path[@]}}" )
                 subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
                 # IMPORTANT: This invalidates and/or deletes any existing
@@ -229,7 +231,7 @@ class ImageLayerConverter(base.Converter):
                 # debugging failed builds a bit more predictable.
                 refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
                 # `exe` vs `location` is explained in `image_package.py`
-                $(exe {helper_base}:subvolume-garbage-collector) \
+                $(exe {base_dir}:subvolume-garbage-collector) \
                   --refcounts-dir "$refcounts_dir" \
                   --subvolumes-dir "$subvolumes_dir" \
                   --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
@@ -237,7 +239,7 @@ class ImageLayerConverter(base.Converter):
 
                 {make_subvol_cmd}
                 '''.format(
-                    helper_base=image_utils.HELPER_BASE,
+                    base_dir=image_utils.BASE_DIR,
                     rule_name_quoted=quote(name),
                     refcounts_dir_quoted=os.path.join(
                         '$GEN_DIR',
@@ -292,12 +294,13 @@ class ImageLayerConverter(base.Converter):
         )
 
         return rules, '''
+            {maybe_yum_from_repo_snapshot_dep}
             # Take note of `targets_and_outputs` below -- this enables the
             # compiler to map the `__BUCK_TARGET`s in the outputs of
             # `image_feature` to those targets' outputs.
             #
-            # `exe` vs `location` is explained in `image_package.py`
-            $(exe {helper_base}:compiler) \
+            # `exe` vs `location` is explained in `image_package.py`.
+            $(exe {base_dir}:compiler) \
               --subvolumes-dir "$subvolumes_dir" \
               --subvolume-rel-path \
                 "$subvolume_wrapper_dir/"{rule_name_quoted} \
@@ -309,7 +312,7 @@ class ImageLayerConverter(base.Converter):
                 $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
                   > "$OUT"
             '''.format(
-                helper_base=image_utils.HELPER_BASE,
+                base_dir=image_utils.BASE_DIR,
                 rule_name_quoted=quote(rule_name),
                 parent_layer_json_quoted='$(location {})'.format(parent_layer)
                     if parent_layer else "''",
@@ -322,8 +325,18 @@ class ImageLayerConverter(base.Converter):
                 my_deps_query=this_layer_feature_query,
                 maybe_quoted_yum_from_repo_snapshot_args=''
                     if not yum_from_repo_snapshot else
-                        # `exe` vs `location` is explained in image_package.py
-                        '--yum-from-repo-snapshot $(exe {})'.format(
-                            quote(yum_from_repo_snapshot),
+                        # In terms of **dependency** structure, we want this
+                        # to be `exe` (see `image_package.py` for why).
+                        # However the string output of the `exe` macro may
+                        # actually be a shell snippet, which would break
+                        # here.  To work around this, we add a no-op $(exe)
+                        # dependency via `maybe_yum_from_repo_snapshot_dep`.
+                        '--yum-from-repo-snapshot $(location {})'.format(
+                            yum_from_repo_snapshot,
+                        ),
+                maybe_yum_from_repo_snapshot_dep=''
+                    if not yum_from_repo_snapshot else
+                        'echo $(exe {}) > /dev/null'.format(
+                            yum_from_repo_snapshot,
                         ),
             )

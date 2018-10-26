@@ -1,6 +1,7 @@
-HELPER_BASE = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
+BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
 
 def _wrap_bash_build_in_common_boilerplate(
+        self_dependency,
         bash,
         volume_min_free_bytes,
         log_description):
@@ -10,20 +11,26 @@ def _wrap_bash_build_in_common_boilerplate(
     # assignments.
     set -ue -o pipefail
 
+    # Ensures that changes to the sources of the rule macros cause automatic
+    # builds & tests on the artifacts they produce.
+    echo $(location {self_dependency}) > /dev/null
+
     start_time=\\$(date +%s)
-    binary_path=$(location {helper_base}:artifacts-dir)
     # Common sense would tell us to find helper programs via:
     #   os.path.dirname(os.path.abspath(__file__))
-    # The benefit of using \\$(location) is that it does not bake
-    # an absolute paths into our command.  This **should** help
-    # the cache continue working even if the user moves the repo.
-    artifacts_dir=\\$( "$binary_path" )
+    # The benefit of using \\$(exe) is that it does not bake an absolute
+    # paths into our command.  This means the Buck cache continues working
+    # even if the user moves the repo.  `exe` vs `location` is explained in
+    # `image_package.py`.  We need `binary_path` because the `exe` macro
+    # won't get expanded inside a \\$( ...  ) context.
+    binary_path=( $(exe {base_dir}:artifacts-dir) )
+    artifacts_dir=\\$( "${{binary_path[@]}}"  )
 
     # Future-proofing: keep all Buck target subvolumes under
     # "targets/" in the per-repo volume, so that we can easily
     # add other types of subvolumes in the future.
-    binary_path=$(location {helper_base}:volume-for-repo)
-    volume_dir=\\$("$binary_path" "$artifacts_dir" {min_free_bytes})
+    binary_path=( $(exe {base_dir}:volume-for-repo) )
+    volume_dir=\\$( "${{binary_path[@]}}" "$artifacts_dir" {min_free_bytes} )
     subvolumes_dir="$volume_dir/targets"
     mkdir -m 0700 -p "$subvolumes_dir"
 
@@ -53,12 +60,12 @@ def _wrap_bash_build_in_common_boilerplate(
     (
       # Log all commands now that stderr is redirected.
       set -x
-      
+
       {bash}
-    
-      # It is always a terrible idea to mutate Buck outputs after creation. 
+
+      # It is always a terrible idea to mutate Buck outputs after creation.
       # We have two special reasons that make it even more terrible:
-      #  - [image_layer] Uses a hardlink-based refcounting scheme, as 
+      #  - [image_layer] Uses a hardlink-based refcounting scheme, as
       #    and keeps subvolumes in a special location.
       #  - [image_package] Speeds up the build for the `sendstream_stack`
       #    format by hardlinking duplicated outputs between targets.
@@ -68,14 +75,15 @@ def _wrap_bash_build_in_common_boilerplate(
       find "$OUT" '!' -type d -print0 | xargs -0 chmod a-w
     ) &> "$my_log"
     """.format(
-        helper_base = HELPER_BASE,
+        base_dir = BASE_DIR,
         bash = bash,
         min_free_bytes = volume_min_free_bytes,
         log_description = log_description,
+        self_dependency = self_dependency,
     )
 
 image_utils = struct(
-    HELPER_BASE = HELPER_BASE,
+    BASE_DIR = BASE_DIR,
     wrap_bash_build_in_common_boilerplate =
         _wrap_bash_build_in_common_boilerplate,
 )
