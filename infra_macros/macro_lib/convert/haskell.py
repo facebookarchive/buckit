@@ -399,6 +399,16 @@ class HaskellConverter(base.Converter):
         if fb_haskell:
             compiler_flags.extend(FB_HASKELL_COMPILER_FLAGS)
 
+        # -rtsopts has no effect with -no-hs-main, and GHC will emit a
+        # warning. But we might add -rtsopts automatically via
+        # fb_haskell above, so let's suppress the warning:
+        if '-no-hs-main' in compiler_flags:
+            compiler_flags = filter(
+                lambda x:
+                    not (x.startswith('-rtsopts') or
+                         x.startswith('-with-rtsotps')),
+                compiler_flags)
+
         if sanitizers.get_sanitizer() == 'address':
             compiler_flags.append('-optP-D__SANITIZE_ADDRESS__')
 
