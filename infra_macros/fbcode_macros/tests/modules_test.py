@@ -34,11 +34,21 @@ class ModulesTest(tests.utils.TestCase):
         r"""for i in \"${!args[@]}\"; do\n"""
         r"""  args[$i]=${args[$i]//$PWD\\//}\n"""
         r"""done\n"""
-        + (
-            r"(\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$OUT\".tmp"
-            + r" | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/something/|g\"\n"
-        )
-        + r'''mv -nT \"$OUT\".tmp \"$OUT\"'''
+        r"""function compile() {\n"""
+        r"""  (\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$TMP/$1\".tmp \\\n"""
+        r"""    | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/something/|g\"\n"""
+        r"""  mv -nT \"$TMP/$1\".tmp \"$TMP/$1\"\n"""
+        r"""}\n"""
+        r"""! { compile module.pcm; } 2>/dev/null\n"""
+        r"""compile module2.pcm\n"""
+        r"""if ! cmp -s \"$TMP/module.pcm\" \"$TMP/module2.pcm\"; then\n"""
+        r"""  >&2 echo \"Detected non-deterministic output.  Retrying...\"\n"""
+        r"""  compile module3.pcm 2>/dev/null\n"""
+        r"""  if ! cmp -s \"$TMP/module.pcm\" \"$TMP/module3.pcm\"; then\n"""
+        r"""    mv -fT \"$TMP/module3.pcm\" \"$TMP/module.pcm\"\n"""
+        r"""  fi\n"""
+        r"""fi\n"""
+        r'''mv -nT \"$TMP/module.pcm\" \"$OUT\"'''
     )
 
     @tests.utils.with_project()

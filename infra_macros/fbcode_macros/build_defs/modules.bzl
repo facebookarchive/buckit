@@ -243,10 +243,34 @@ def _gen_module(
         'for i in "${!args[@]}"; do',
         "  args[$i]=${args[$i]//$PWD\//}",
         "done",
-        ('("${{args[@]}}" 3>&1 1>&2 2>&3 3>&-) 2>"$OUT".tmp' +
-         ' | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"')
+
+        # Function to fun the compilation.
+        "function compile() {",
+        # Run the command and filter stderr to fixup header paths by dropping
+        # the obscure genrule sandbox directory.
+        '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP/$1".tmp \\',
+        '    | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"'
             .format(header_prefix),
-        'mv -nT "$OUT".tmp "$OUT"',
+        '  mv -nT "$TMP/$1".tmp "$TMP/$1"',
+        "}",
+
+        # TODO(T35721516): We currently see rare cases of apparent non-
+        # determinism from module compilations which are proving difficult to
+        # debug.  In the meantime, we'll perform the compilation twice to try
+        # to detect these cases, log the issue and artifact for debugging, and
+        # try to recover with a third compilation.
+        "! { compile module.pcm; } 2>/dev/null",
+        "compile module2.pcm",
+        'if ! cmp -s "$TMP/module.pcm" "$TMP/module2.pcm"; then',
+        '  >&2 echo "Detected non-deterministic output.  Retrying..."',
+        # Perform a third build to try determine the bad output, in an attempt
+        # to recover the build.
+        "  compile module3.pcm 2>/dev/null",
+        '  if ! cmp -s "$TMP/module.pcm" "$TMP/module3.pcm"; then',
+        '    mv -fT "$TMP/module3.pcm" "$TMP/module.pcm"',
+        "  fi",
+        "fi",
+        'mv -nT "$TMP/module.pcm" "$OUT"',
     ]
 
     # Postprocess the built module and update it with the new module home.
