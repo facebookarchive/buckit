@@ -36,6 +36,7 @@ OVERRIDES = (
     ("pexpect-u", "pexpect"),
     ("ply", "ply"),
     ("prompt-toolkit", "prompt-toolkit"),
+    ("psutil", "psutil"),
     ("ptyprocess", "ptyprocess"),
     ("pycparser", "pycparser"),
     ("pygments", "pygments"),  # TP2 has duplicates (see Pygments)
