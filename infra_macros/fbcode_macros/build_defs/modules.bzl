@@ -267,8 +267,26 @@ def _gen_module(
         # to recover the build.
         "  compile module3.pcm 2>/dev/null",
         '  if ! cmp -s "$TMP/module.pcm" "$TMP/module3.pcm"; then',
+        '    mv -fT "$TMP/module.pcm" "$TMP/bad.pcm"',
         '    mv -fT "$TMP/module3.pcm" "$TMP/module.pcm"',
+        "  else",
+        '    mv -fT "$TMP/module2.pcm" "$TMP/bad.pcm"',
         "  fi",
+        # Log the build for debugging.  Do this in a block which ignores errors.
+        "  ! {",
+        '    archive="$TMP/archive.tgz"',
+        '    tar -czf "$archive" -C "$TMP" module.pcm bad.pcm',
+        '    handle="\\$(clowder put -t FBCODE_BUCK_DEBUG_ARTIFACTS "$archive")"',
+        "    scribe_cat \\",
+        "      perfpipe_fbcode_buck_clang_module_errors \\",
+        '      "{\\"int\\": \\',
+        '          {\\"time\\": \\$(date +"%s")}, \\',
+        '        \\"normal\\": \\',
+        '          {\\"everstore_handle\\": \\"$handle\\", \\',
+        '           \\"build_target\\": \\"//{}:{}\\", \\'
+            .format(native.package_name(), name),
+        '           \\"build_uuid\\": \\"$BUCK_BUILD_ID\\"}}";',
+        "  }",
         "fi",
         'mv -nT "$TMP/module.pcm" "$OUT"',
     ]
