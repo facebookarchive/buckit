@@ -177,6 +177,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -188,6 +191,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
               srcs = [
@@ -200,6 +206,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -295,6 +304,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -306,6 +318,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + expected_cmd
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
               srcs = [
@@ -319,6 +334,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -386,6 +404,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -397,6 +418,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + expected_cmd
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
               srcs = [
@@ -410,6 +434,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -458,6 +485,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -469,6 +499,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
             )
@@ -478,6 +511,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -526,6 +562,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -537,6 +576,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
             )
@@ -546,6 +588,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -591,6 +636,9 @@ class CustomRuleTest(tests.utils.TestCase):
             '''
             python_library(
               name = "foobar",
+              labels = [
+                "is_fully_translated",
+              ],
               deps = [
                 ":foobar=out1",
                 ":foobar=out2",
@@ -605,6 +653,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
             )
@@ -614,6 +665,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -625,6 +679,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out2")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out2",
               visibility = [
                 "PUBLIC",
@@ -700,6 +757,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",{vis}
             )
 
@@ -708,6 +768,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = False,
               out = "foobar-outputs",
             )
@@ -717,6 +780,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",{vis}
             )
         """
@@ -775,6 +841,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -786,6 +855,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = True,
               out = "foobar-outputs",
             )
@@ -795,6 +867,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -936,6 +1011,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + '''",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",
@@ -947,6 +1025,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = \"'''
             + expected_cmd
             + '''\",
+              labels = [
+                "is_fully_translated",
+              ],
               no_remote = True,
               out = "foobar-outputs",
             )
@@ -956,6 +1037,9 @@ class CustomRuleTest(tests.utils.TestCase):
               cmd = "'''
             + self._getCopyCommand("foobar", "out1")
             + """",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out1",
               visibility = [
                 "PUBLIC",

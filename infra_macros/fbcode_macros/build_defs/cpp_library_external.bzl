@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
@@ -202,7 +203,7 @@ def cpp_library_external(
     if dependencies:
         exported_deps = src_and_dep_helpers.format_deps(dependencies, platform = platform)
 
-    native.prebuilt_cxx_library(
+    fb_native.prebuilt_cxx_library(
         name = name,
         visibility = visibility,
         # We're header only if explicitly set, or if `mode` is set to an empty list.,

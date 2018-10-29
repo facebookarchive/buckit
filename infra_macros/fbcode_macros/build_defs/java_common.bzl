@@ -2,6 +2,8 @@
 Various helper methods for constructing java_* rules
 """
 
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
 _DEPS_TO_PROCESSORS = {
     "//third-party-java/org.immutables:value": "org.immutables.processor.ProxyProcessor",
     "//third-party-java/org.openjdk.jmh:jmh-generator-annprocess": "org.openjdk.jmh.generators.BenchmarkProcessor",
@@ -75,7 +77,7 @@ def _duplicate_finder(
     else:
         duplicate_exclude_regex_args.append("'.*'")
 
-    native.genrule(
+    fb_native.genrule(
         name = name,
         visibility = visibility,
         out = "success.txt",
@@ -147,7 +149,7 @@ def _maven_publisher_rules(
         "version=" + version,
     ]
 
-    native.genrule(
+    fb_native.genrule(
         name = pom_properties_name,
         visibility = visibility,
         out = out_dir + "/pom.properties",
@@ -155,7 +157,7 @@ def _maven_publisher_rules(
         type = "maven_publisher_properties",
     )
 
-    native.genrule(
+    fb_native.genrule(
         name = pom_xml_name,
         visibility = visibility,
         out = "pom.xml",
@@ -189,7 +191,7 @@ def _package_sources(name, out, srcs, rule_type, visibility):
         rule_type: The `type` attribute to pass to the genrule
         visibility: The visibility of the genrule
     """
-    native.genrule(
+    fb_native.genrule(
         name = name,
         visibility = visibility,
         out = out,

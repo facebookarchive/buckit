@@ -35,6 +35,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           visibility = [
             "PUBLIC",
           ],
@@ -42,6 +45,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           visibility = [
             "//...",
           ],
@@ -49,6 +55,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           visibility = [
             "PUBLIC",
           ],
@@ -82,6 +91,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           visibility = [
             "PUBLIC",
           ],
@@ -89,6 +101,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -97,6 +112,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "copy",
           visibility = [
             "PUBLIC",
@@ -130,6 +148,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -138,6 +159,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "//...",
@@ -146,6 +170,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -179,6 +206,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -187,6 +217,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -195,6 +228,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "copy",
           visibility = [
             "PUBLIC",
@@ -229,6 +265,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -237,6 +276,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -245,21 +287,33 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file3.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
         )
 
         export_file(
           name = "file4.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
         )
 
         export_file(
           name = "file5.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "copy",
         )
 
         export_file(
           name = "file6.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "copy",
         )
         """
@@ -289,6 +343,9 @@ class ExportFilesTest(tests.utils.TestCase):
             """\
         export_file(
           name = "file1.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",
@@ -298,6 +355,9 @@ class ExportFilesTest(tests.utils.TestCase):
         genrule(
           name = "file1.sh-typing",
           cmd = "mkdir -p \\"$OUT\\"",
+          labels = [
+            "is_fully_translated",
+          ],
           out = "root",
           visibility = [
             "PUBLIC",
@@ -306,6 +366,9 @@ class ExportFilesTest(tests.utils.TestCase):
 
         export_file(
           name = "file2.sh",
+          labels = [
+            "is_fully_translated",
+          ],
           mode = "reference",
           visibility = [
             "PUBLIC",

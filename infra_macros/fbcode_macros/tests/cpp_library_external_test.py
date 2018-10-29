@@ -92,6 +92,9 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                     "include/ImageMagick",
                   ],
                   header_only = False,
+                  labels = [
+                    "is_fully_translated",
+                  ],
                   link_without_soname = False,
                   shared_lib = "lib/libMagickCore.so",
                   soname = "libMagickCore.1.2.3.so",
@@ -170,6 +173,9 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                     "include/ImageMagick",
                   ],
                   header_only = False,
+                  labels = [
+                    "is_fully_translated",
+                  ],
                   link_without_soname = False,
                   shared_lib = "lib/libMagickCore.so",
                   soname = "libMagickCore.1.2.3.so",
@@ -185,6 +191,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                   cmd = "{module_cmd}",
                   labels = [
                     "generated",
+                    "is_fully_translated",
                   ],
                   out = "module.pcm",
                   srcs = {{
@@ -208,6 +215,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                   ],
                   labels = [
                     "generated",
+                    "is_fully_translated",
                   ],
                   visibility = [
                     "//third-party-buck/gcc5/build/ImageMagick:MagickCore-module",

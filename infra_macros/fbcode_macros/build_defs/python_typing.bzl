@@ -4,6 +4,7 @@ Methods related to creating mypy typing rules for python rules.
 See http://mypy.readthedocs.io/en/latest/introduction.html for details
 """
 
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_string")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
@@ -145,4 +146,4 @@ def gen_typing_config(
         visibility = visibility,
         deps = deps,
     )
-    native.genrule(**attrs)
+    fb_native.genrule(**attrs)

@@ -9,6 +9,8 @@
 Rules to help run integration tests for extension files
 """
 
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
 def targets_to_resource_paths(targets):
     """
     Converts a list of targets into a {resource_name: target} mapping
@@ -78,7 +80,7 @@ def skylark_integration_test(name, deps = None, resources = None, **kwargs):
             for target in resources
         }
 
-    native.python_test(
+    fb_native.python_test(
         name = name,
         deps = deps,
         resources = resources,

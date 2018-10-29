@@ -38,6 +38,9 @@ class LexTest(tests.utils.TestCase):
 genrule(
   name = "parser=token.ll",
   cmd = "mkdir -p \"$OUT\" && $(exe //third-party-buck/gcc5/tools/flex:flex) \'-i\' -o$OUT/\'token.ll.cc\' --header-file=$OUT/\'token.ll.h\' $SRCS && perl -pi -e \'s!\\Q\'\"\\$(realpath \"$GEN_DIR/../..\")\"\'/\\E!!\'  \"$OUT\"/\'token.ll.cc\' \"$OUT\"/\'token.ll.h\'",
+  labels = [
+    "is_fully_translated",
+  ],
   out = "token.ll.d",
   srcs = [
     "token.ll",
@@ -50,6 +53,9 @@ genrule(
 genrule(
   name = "parser=token.ll.cc",
   cmd = "mkdir -p `dirname \"$OUT\"` && cp -rlTP \"$(location :parser=token.ll)/token.ll.cc\" \"$OUT\"",
+  labels = [
+    "is_fully_translated",
+  ],
   out = "token.ll.cc",
   visibility = [
     "PUBLIC",
@@ -59,6 +65,9 @@ genrule(
 genrule(
   name = "parser=token.ll.h",
   cmd = "mkdir -p `dirname \"$OUT\"` && cp -rlTP \"$(location :parser=token.ll)/token.ll.h\" \"$OUT\"",
+  labels = [
+    "is_fully_translated",
+  ],
   out = "token.ll.h",
   visibility = [
     "PUBLIC",

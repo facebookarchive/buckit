@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
@@ -56,7 +57,7 @@ def js_executable(
         "$(location :{})".format(name + "-modules"),
     ])
 
-    native.genrule(
+    fb_native.genrule(
         name = name,
         out = name + ".jsar",
         cmd = cmd,

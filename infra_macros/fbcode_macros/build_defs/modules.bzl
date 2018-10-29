@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
@@ -112,7 +113,7 @@ def _get_module_map(name, headers):
 
 def _module_map_rule(name, module_name, headers):
     contents = _get_module_map(module_name, headers)
-    native.genrule(
+    fb_native.genrule(
         name = name,
         out = "module.modulemap",
         cmd = 'echo {} > "$OUT"'.format(shell.quote(contents)),
@@ -182,7 +183,7 @@ def _gen_module(
     # A C/C++ library used to propagate C/C++ flags and deps to the
     # `cxx_genrule` below.
     helper_name = name + "-helper"
-    native.cxx_library(
+    fb_native.cxx_library(
         name = helper_name,
         exported_preprocessor_flags = flags,
         exported_platform_preprocessor_flags = platform_flags,
@@ -268,7 +269,7 @@ def _gen_module(
             'sed -i "s|$OLD|$NEW|g" "$OUT"',
         ])
 
-    native.cxx_genrule(
+    fb_native.cxx_genrule(
         name = name,
         out = "module.pcm",
         srcs = srcs,

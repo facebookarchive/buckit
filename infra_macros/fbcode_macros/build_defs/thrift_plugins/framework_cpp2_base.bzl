@@ -2,6 +2,8 @@
 Helper functions of the Thrift plugin Framework API for C++ target language.
 """
 
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
 def _invoke_codegen_rule_name(plugin, target_name, thrift_src):
     """Returns the name of the rule that invokes the plugin codegen binary."""
     return "{}-cpp2-{}-{}".format(target_name, plugin.name, thrift_src)
@@ -23,7 +25,7 @@ def _generate_invoke_codegen_rule(
         include_target,
     )
 
-    native.genrule(name = rule_name, out = ".", srcs = [thrift_src], cmd = cmd)
+    fb_native.genrule(name = rule_name, out = ".", srcs = [thrift_src], cmd = cmd)
 
     return rule_name
 
@@ -53,7 +55,7 @@ def _generate_copy_from_codegen_rule(plugin, target_name, thrift_src, file):
         ],
     )
 
-    native.genrule(
+    fb_native.genrule(
         name = rule_name,
         out = "{}/{}".format(plugin_path_prefix, file),
         cmd = cmd,

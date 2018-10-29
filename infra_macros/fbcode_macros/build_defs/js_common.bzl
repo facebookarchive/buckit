@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -45,7 +46,7 @@ def _generate_modules_tree(name, srcs, deps, visibility):
     for src, dst in files:
         cmds.append("cp {} {}".format(src, dst))
 
-    native.genrule(
+    fb_native.genrule(
         name = name,
         out = "modules",
         srcs = [s[0] for s in srcs],

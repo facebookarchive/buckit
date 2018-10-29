@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 
 def _java_protoc_compile_srcs(
@@ -10,7 +11,7 @@ def _java_protoc_compile_srcs(
         "com.github.os72.protocjar.Protoc -v3.5.0 --include_std_types --java_out=$OUT $include $SRCS"
     )
 
-    native.genrule(
+    fb_native.genrule(
         name = generated_src_zip_rule_name,
         srcs = srcs,
         out = name + ".src.zip",
@@ -21,7 +22,7 @@ def _java_protoc_create_library(
         name,
         generated_src_zip_rule_name,
         visibility):
-    native.java_library(
+    fb_native.java_library(
         name = name,
         srcs = [":" + generated_src_zip_rule_name],
         exported_deps = ["//third-party-java/com.google.protobuf:protobuf-java"],

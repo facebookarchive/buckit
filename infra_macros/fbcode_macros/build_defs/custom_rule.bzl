@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:config.bzl", "config")
@@ -123,7 +124,7 @@ def _create_main_rule(
                 third_party.replace_third_party_repo(dep, fbcode_platform),
             )
 
-    native.genrule(
+    fb_native.genrule(
         name = out,
         out = out,
         cmd = cmd,
@@ -154,7 +155,7 @@ def _copy_genrule_output(genrule_target, out_genrule_name, out, visibility):
     else:
         fail("Unknown OS in custom_rule")
 
-    native.genrule(
+    fb_native.genrule(
         name = out_genrule_name,
         out = out,
         cmd = cmd.format(genrule_target = genrule_target, out = out),
@@ -308,7 +309,7 @@ def custom_rule(
     else:
         # Otherwise, use a dummy empty Python library to force runtime
         # dependencies to propagate onto all of the outputs of the custom rule.
-        native.python_library(
+        fb_native.python_library(
             name = name,
             visibility = visibility,
             deps = [":{}={}".format(name, o) for o in outs],

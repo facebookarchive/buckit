@@ -170,6 +170,9 @@ class PythonTypingTest(tests.utils.TestCase):
             genrule(
               name = "foobar-typing",
               cmd = "{cmd1}",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "root",
               visibility = [
                 "PUBLIC",
@@ -179,6 +182,9 @@ class PythonTypingTest(tests.utils.TestCase):
             genrule(
               name = "foobar2-typing",
               cmd = "mkdir -p \"$OUT\"",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "root",
               visibility = [
                 "PUBLIC",
@@ -188,6 +194,9 @@ class PythonTypingTest(tests.utils.TestCase):
             genrule(
               name = "foobar3-typing",
               cmd = "{cmd3}",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "root",
               visibility = [
                 "PUBLIC",

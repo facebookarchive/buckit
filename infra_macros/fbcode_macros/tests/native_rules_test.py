@@ -72,6 +72,9 @@ class NativeRulesTest(tests.utils.TestCase):
             """
             test_suite(
               name = "all_tests",
+              labels = [
+                "is_fully_translated",
+              ],
               tests = [
                 ":sh_test",
               ],
@@ -83,22 +86,34 @@ class NativeRulesTest(tests.utils.TestCase):
             command_alias(
               name = "command_alias",
               exe = ":sh_binary",
+              labels = [
+                "is_fully_translated",
+              ],
             )
 
             cxx_genrule(
               name = "cxx_genrule",
               cmd = "echo > $OUT",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out.h",
             )
 
             remote_file(
               name = "file",
+              labels = [
+                "is_fully_translated",
+              ],
               sha1 = "d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
               url = "http://example.com/foo",
             )
 
             filegroup(
               name = "filegroup",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "python_library.py",
               ],
@@ -107,11 +122,17 @@ class NativeRulesTest(tests.utils.TestCase):
             genrule(
               name = "genrule",
               cmd = "echo > $OUT",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "out",
             )
 
             python_binary(
               name = "python_binary",
+              labels = [
+                "is_fully_translated",
+              ],
               main_module = "python_binary",
               deps = [
                 ":python_library",
@@ -120,6 +141,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             python_library(
               name = "python_library",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "python_library.py",
               ],
@@ -127,16 +151,25 @@ class NativeRulesTest(tests.utils.TestCase):
 
             sh_binary(
               name = "sh_binary",
+              labels = [
+                "is_fully_translated",
+              ],
               main = "sh_binary.sh",
             )
 
             sh_binary(
               name = "sh_binary2.sh",
+              labels = [
+                "is_fully_translated",
+              ],
               main = "sh_binary2.sh",
             )
 
             sh_test(
               name = "sh_test",
+              labels = [
+                "is_fully_translated",
+              ],
               test = "sh_test.sh",
             )
 
@@ -182,6 +215,9 @@ class NativeRulesTest(tests.utils.TestCase):
             r"""
             python_binary(
               name = "python_binary",
+              labels = [
+                "is_fully_translated",
+              ],
               main_module = "python_binary",
               deps = [
                 ":python_library",
@@ -190,6 +226,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             python_library(
               name = "python_library",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "python_library.py",
               ],
@@ -198,6 +237,9 @@ class NativeRulesTest(tests.utils.TestCase):
             genrule(
               name = "python_library-typing",
               cmd = "mkdir -p \"$OUT\"",
+              labels = [
+                "is_fully_translated",
+              ],
               out = "root",
               visibility = [
                 "PUBLIC",
@@ -280,6 +322,9 @@ class NativeRulesTest(tests.utils.TestCase):
             """
             cxx_binary(
               name = "bar_bin",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "main.cpp",
               ],
@@ -287,6 +332,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             cxx_library(
               name = "bar_lib",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "lib.cpp",
               ],
@@ -294,6 +342,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             cxx_test(
               name = "bar_test",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "test.cpp",
               ],
@@ -328,6 +379,9 @@ class NativeRulesTest(tests.utils.TestCase):
             """
             cxx_binary(
               name = "bar_bin",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "main.cpp",
               ],
@@ -335,6 +389,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             cxx_library(
               name = "bar_lib",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "lib.cpp",
               ],
@@ -342,6 +399,9 @@ class NativeRulesTest(tests.utils.TestCase):
 
             cxx_test(
               name = "bar_test",
+              labels = [
+                "is_fully_translated",
+              ],
               srcs = [
                 "test.cpp",
               ],

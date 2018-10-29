@@ -100,6 +100,9 @@ class ModulesTest(tests.utils.TestCase):
 cxx_genrule(
   name = "foo",
   cmd = "{cmd}",
+  labels = [
+    "is_fully_translated",
+  ],
   out = "module.pcm",
   srcs = {{
     "module_headers/module.modulemap": "module.modulemap",
@@ -114,6 +117,7 @@ cxx_library(
   ],
   labels = [
     "generated",
+    "is_fully_translated",
   ],
   visibility = [
     "//third-party-buck/something:foo",
@@ -149,6 +153,9 @@ cxx_library(
 cxx_genrule(
   name = "foo",
   cmd = "{cmd}",
+  labels = [
+    "is_fully_translated",
+  ],
   out = "module.pcm",
   srcs = {{
     "module_headers/foo.h": "foo.cpp",
@@ -163,6 +170,7 @@ cxx_library(
   ],
   labels = [
     "generated",
+    "is_fully_translated",
   ],
   visibility = [
     "//third-party-buck/something:foo",
