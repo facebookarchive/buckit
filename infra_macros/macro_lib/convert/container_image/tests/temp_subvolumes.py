@@ -13,7 +13,9 @@ class TempSubvolumes(contextlib.AbstractContextManager):
 
     def __init__(self, path_in_repo):
         self.subvols = []
-        self._temp_dir_ctx = tempfile.TemporaryDirectory(
+        # Our exit is written with exception-safety in mind, so this
+        # `_temp_dir_ctx` **should** get `__exit__`ed when this class does.
+        self._temp_dir_ctx = tempfile.TemporaryDirectory(  # noqa: P201
             dir=get_volume_for_current_repo(
                 1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
             )
@@ -76,4 +78,4 @@ class TempSubvolumes(contextlib.AbstractContextManager):
                 subvol.delete()
             except:
                 pass
-        self._temp_dir_ctx.__exit__(exc_type, exc_val, exc_tb)
+        return self._temp_dir_ctx.__exit__(exc_type, exc_val, exc_tb)

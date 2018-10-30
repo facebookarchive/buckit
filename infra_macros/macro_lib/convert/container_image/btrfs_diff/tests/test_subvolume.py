@@ -5,7 +5,6 @@ import unittest
 from ..coroutine_utils import while_not_exited
 from ..extent import Extent
 from ..freeze import freeze
-from ..inode import Chunk
 from ..inode_id import InodeIDMap
 from ..parse_dump import SendStreamItems
 from ..rendered_tree import (

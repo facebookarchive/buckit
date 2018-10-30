@@ -7,8 +7,6 @@ import io
 import struct
 import unittest
 
-from typing import Tuple
-
 from .demo_sendstreams import gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items
 

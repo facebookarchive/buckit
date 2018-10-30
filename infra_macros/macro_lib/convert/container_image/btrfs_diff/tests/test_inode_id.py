@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import copy
 import random
 import unittest
 

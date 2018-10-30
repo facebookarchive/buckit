@@ -99,6 +99,7 @@ EXTENT_KIND_TO_ABBREV = {
 def _repr_decode(b: bytes) -> str:
     return b.decode(errors="surrogateescape")
 
+
 # Future: `frozentype` should let us mirror the `Incomplete*` hierarchy,
 # instead of making this enum + union type hack.
 class Inode(NamedTuple):

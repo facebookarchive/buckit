@@ -57,7 +57,7 @@ import os
 import re
 
 from collections import OrderedDict
-from typing import Any, BinaryIO, Callable, Dict, Iterable, Optional, Pattern
+from typing import Any, BinaryIO, Dict, Iterable, Optional, Pattern
 
 from .send_stream import SendStreamItem, SendStreamItems
 

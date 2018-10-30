@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 import io
-import os
-import pickle
-import subprocess
 import sys
 import unittest
 
@@ -11,10 +8,7 @@ from typing import List, Sequence
 from ..parse_dump import (
     NAME_TO_PARSER_TYPE, parse_btrfs_dump, unquote_btrfs_progs_path,
 )
-from ..send_stream import (
-    get_frequency_of_selinux_xattrs, ItemFilters, SendStreamItem,
-    SendStreamItems,
-)
+from ..send_stream import SendStreamItem, SendStreamItems
 
 from .demo_sendstreams import make_demo_sendstreams, gold_demo_sendstreams
 from .demo_sendstreams_expected import get_filtered_and_expected_items

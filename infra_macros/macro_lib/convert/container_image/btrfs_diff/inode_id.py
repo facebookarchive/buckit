@@ -11,7 +11,6 @@ import os
 
 from collections import defaultdict, deque
 
-from types import MappingProxyType
 from typing import (
     Any, Iterator, Mapping, NamedTuple, Optional, Sequence, Set, Tuple,
 )

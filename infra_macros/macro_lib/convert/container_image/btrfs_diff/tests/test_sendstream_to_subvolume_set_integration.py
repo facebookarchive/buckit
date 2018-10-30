@@ -17,8 +17,6 @@ filesystems.
 
 In effect, we jointly test the Linux kernel, btrfs-progs, and this library.
 '''
-import io
-import os
 import sys
 import unittest
 
