@@ -1230,7 +1230,7 @@ class PythonConverter(base.Converter):
                     library,
                     dependencies,
                     platform_deps,
-                    preload_deps,
+                    out_preload_deps,
                     typing_options,
                     visibility
                 )
