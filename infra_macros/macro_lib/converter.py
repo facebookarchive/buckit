@@ -90,6 +90,7 @@ go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
 image_feature = import_macro_lib('convert/container_image/image_feature')
 image_layer = import_macro_lib('convert/container_image/image_layer')
+image_package = import_macro_lib('convert/container_image/image_package')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
@@ -170,6 +171,7 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_haddock'),
         image_feature.ImageFeatureConverter(context),
         image_layer.ImageLayerConverter(context),
+        image_package.ImagePackageConverter(context),
         lua.LuaConverter(context, 'lua_library'),
         lua.LuaConverter(context, 'lua_binary'),
         lua.LuaConverter(context, 'lua_unittest'),

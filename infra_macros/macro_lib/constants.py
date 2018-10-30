@@ -151,6 +151,7 @@ FBCODE_RULES = [
     'haskell_unittest',
     'image_feature',
     'image_layer',
+    'image_package',
     'java_binary',
     'java_library',
     'java_test',

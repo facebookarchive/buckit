@@ -1,3 +1,5 @@
+BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
+
 load(":defs.bzl", "fake_macro_library")
 
 python_library(
@@ -8,10 +10,8 @@ python_library(
     base_module = "",
     deps = [
         ":subvol_utils",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":artifacts_dir",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":volume_for_repo",
+        BASE_DIR + ":artifacts_dir",
+        BASE_DIR + ":volume_for_repo",
     ],
 )
 
@@ -125,9 +125,7 @@ python_binary(
 python_binary(
     name = "compiler",
     main_module = "compiler.compiler",
-    deps = [
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image/compiler:compiler",
-    ],
+    deps = [BASE_DIR + "/compiler:compiler"],
 )
 
 python_binary(
@@ -149,6 +147,40 @@ python_binary(
     deps = [":volume_for_repo"],
 )
 
+python_binary(
+    name = "package-image",
+    srcs = ["package_image.py"],
+    base_module = "",
+    main_module = "package_image",
+    deps = [
+        ":subvol_utils",
+        BASE_DIR + "/compiler:subvolume_on_disk",
+    ],
+)
+
+TEST_TARGET_PREFIX = BASE_DIR + "/compiler/tests:"
+
+# Also tests the Buck macro `image_package.py`, but we cannot assert coverage.
+python_unittest(
+    name = "test-package-image",
+    srcs = ["tests/test_package_image.py"],
+    base_module = "compiler",
+    needed_coverage = [(100, ":package-image-library")],
+    par_style = "xar",  # Ensures we can read resources in @mode/opt
+    resources = {
+        # Same comment re: mutate_ops as in `test_layer_from_demo_sendstreams`.
+        TEST_TARGET_PREFIX + "create_ops-original.sendstream": "tests/create_ops-original.sendstream",
+        TEST_TARGET_PREFIX + "create_ops.sendstream": "tests/create_ops.sendstream",
+        TEST_TARGET_PREFIX + "create_ops": "tests/create_ops.json",
+    },
+    deps = [
+        ":artifacts_dir",
+        ":package-image-library",
+        ":volume_for_repo",
+        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
+    ],
+)
+
 # The following rules are "fake" in the sense that their build artifacts are
 # actually discarded.  However, they are required to trigger automatic
 # builds and tests on changes to the macro library, so we do need to keep
@@ -168,5 +200,11 @@ fake_macro_library(
 fake_macro_library(
     name = "image_feature_macro",
     srcs = ["image_feature.py"],
+    deps = [":image_utils_macro_lib"],
+)
+
+fake_macro_library(
+    name = "image_package_macro",
+    srcs = ["image_package.py"],
     deps = [":image_utils_macro_lib"],
 )

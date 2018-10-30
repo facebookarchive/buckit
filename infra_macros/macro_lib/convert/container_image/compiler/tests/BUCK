@@ -135,6 +135,8 @@ image_layer(
     yum_from_repo_snapshot = BASE_DIR + "/rpm:yum-from-test-snapshot",
 )
 
+image_package(name = "child_layer.sendstream")
+
 ##
 ## These few rules help test the `image_layer` `from_sendstream` feature.
 ##
@@ -154,12 +156,14 @@ python_binary(
 # with btrfs to get it to find the parent subvolume.
 for op in ["create_ops"]:
     buck_genrule(
-        name = op + ".sendstream",
-        out = op + ".sendstream",
+        name = op + "-original.sendstream",
+        out = op + "-original.sendstream",
         bash = "$(exe :save-demo-sendstream) \"$OUT\" " + op,
     )
 
     image_layer(
         name = op,
-        from_sendstream = ":" + op + ".sendstream",
+        from_sendstream = ":" + op + "-original.sendstream",
     )
+
+    image_package(name = op + ".sendstream")

@@ -72,7 +72,7 @@ def _wrap_bash_build_in_common_boilerplate(
       #
       # Not using "chmod -R" since Buck cleanup is fragile and cannot handle
       # read-only directories.
-      find "$OUT" '!' -type d -print0 | xargs -0 chmod a-w
+      find "$OUT" '!' -type d -print0 | xargs -0 --no-run-if-empty chmod a-w
     ) &> "$my_log"
     """.format(
         base_dir = BASE_DIR,

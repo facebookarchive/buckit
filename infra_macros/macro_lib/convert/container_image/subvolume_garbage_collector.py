@@ -44,7 +44,7 @@ import stat
 import subprocess
 import sys
 
-log = logging.Logger(__name__)
+log = logging.Logger(os.path.basename(__file__))  # __name__ is __main__
 
 
 @contextlib.contextmanager
@@ -156,7 +156,7 @@ def garbage_collect_subvolumes(refcounts_dir, subvolumes_dir):
 def parse_args(argv):
     parser = argparse.ArgumentParser(
         description=__doc__,
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         '--refcounts-dir', required=True,
