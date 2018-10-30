@@ -1,0 +1,28 @@
+load(":defs.bzl", "fake_macro_library")
+
+# The following rules are "fake" in the sense that their build artifacts are
+# actually discarded.  However, they are required to trigger automatic
+# builds and tests on changes to the macro library, so we do need to keep
+# them up-to-date (each rule type implicitly depends on one of these).
+
+fake_macro_library(
+    name = "image_utils",
+    srcs = ["image_utils.bzl"],
+)
+
+fake_macro_library(
+    name = "image_layer",
+    srcs = ["image_layer.py"],
+    deps = [":image_utils"],
+)
+
+fake_macro_library(
+    name = "image_feature",
+    srcs = ["image_feature.py"],
+)
+
+fake_macro_library(
+    name = "image_package",
+    srcs = ["image_package.py"],
+    deps = [":image_utils"],
+)

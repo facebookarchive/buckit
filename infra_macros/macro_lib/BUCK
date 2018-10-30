@@ -4,8 +4,9 @@ python_library(
         ["**/*.py"],
         exclude = ["convert/container_image/**"],
     ) + [
-        "convert/container_image/image_feature.py",
-        "convert/container_image/image_layer.py",
+        "convert/container_image/buck_macros/image_feature.py",
+        "convert/container_image/buck_macros/image_layer.py",
+        "convert/container_image/buck_macros/image_package.py",
     ],
     # Buck macros must be runnable from source tree and so *cannot* have any
     # deps.

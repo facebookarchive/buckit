@@ -105,7 +105,9 @@ load(":image_utils.bzl", "image_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-image_feature = import_macro_lib('convert/container_image/image_feature')
+image_feature = import_macro_lib(
+    'convert/container_image/buck_macros/image_feature'
+)
 
 
 class ImageLayerConverter(base.Converter):
@@ -197,7 +199,7 @@ class ImageLayerConverter(base.Converter):
             # the docs for BuildRule::isCacheable.
             cacheable=False,
             bash=image_utils.wrap_bash_build_in_common_boilerplate(
-                self_dependency=image_utils.BASE_DIR + ':image_layer_macro',
+                self_dependency=image_utils.BASE_DIR + '/buck_macros:image_layer',
                 bash='''
                 # We want subvolume names to be user-controllable. To permit
                 # this, we wrap each subvolume in a temporary subdirectory.

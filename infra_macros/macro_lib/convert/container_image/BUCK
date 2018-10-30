@@ -1,7 +1,5 @@
 BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
 
-load(":defs.bzl", "fake_macro_library")
-
 python_library(
     name = "testlib_temp_subvolumes",
     srcs = [
@@ -179,32 +177,4 @@ python_unittest(
         ":volume_for_repo",
         BASE_DIR + "/btrfs_diff:testlib_render_subvols",
     ],
-)
-
-# The following rules are "fake" in the sense that their build artifacts are
-# actually discarded.  However, they are required to trigger automatic
-# builds and tests on changes to the macro library, so we do need to keep
-# them up-to-date (each rule type implicitly depends on one of these).
-
-fake_macro_library(
-    name = "image_utils_macro_lib",
-    srcs = ["image_utils.bzl"],
-)
-
-fake_macro_library(
-    name = "image_layer_macro",
-    srcs = ["image_layer.py"],
-    deps = [":image_utils_macro_lib"],
-)
-
-fake_macro_library(
-    name = "image_feature_macro",
-    srcs = ["image_feature.py"],
-    deps = [":image_utils_macro_lib"],
-)
-
-fake_macro_library(
-    name = "image_package_macro",
-    srcs = ["image_package.py"],
-    deps = [":image_utils_macro_lib"],
 )

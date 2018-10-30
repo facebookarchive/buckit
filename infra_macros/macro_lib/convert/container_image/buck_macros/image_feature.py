@@ -53,7 +53,6 @@ def import_macro_lib(path):
 
 
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load(":image_utils.bzl", "image_utils")
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
@@ -347,8 +346,9 @@ class ImageFeatureConverter(base.Converter):
                     '$(location {})'.format(t)
                         for t in sorted(target_tagger.targets)
                 # Add on a self-dependency (see `fake_macro_library` docblock)
-                ) + '$(location {}:image_feature_macro)'.format(
-                    image_utils.BASE_DIR,
+                ) + (
+                    '$(location //tools/build/buck/infra_macros/macro_lib'
+                    '/convert/container_image/buck_macros:image_feature)'
                 ),
                 out=quote(json.dumps(out_dict, sort_keys=True)),
             ),

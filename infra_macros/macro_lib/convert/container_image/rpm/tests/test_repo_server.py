@@ -28,7 +28,7 @@ def _no_date(headers: 'Mapping[str, str]') -> 'Mapping[str, str]':
     Comparing headers between two adjacent requests can break if they
     straddle a 00:00:01 boundary. So, ignore the date.
     '''
-    return {k.lower(): v for k, v in headers.items() if k.lower != 'date'}
+    return {k.lower(): v for k, v in headers.items() if k.lower() != 'date'}
 
 
 class RepoServerTestCase(unittest.TestCase):
