@@ -52,11 +52,13 @@ def import_macro_lib(path):
     return ret
 
 
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-parse_target = target_utils.parse_target
+
+load(  # noqa: F821
+    '@fbcode_macros//build_defs:target_utils.bzl', 'target_utils',
+)
+target_utils = target_utils  # noqa: F821
 
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -281,7 +283,7 @@ class ImageFeatureConverter(base.Converter):
     ):
 
         def normalize_target(target):
-            parsed = parse_target(
+            parsed = target_utils.parse_target(
                 target,
                 # $(query_targets ...) omits the current repo/cell name
                 default_repo='',
@@ -345,7 +347,7 @@ class ImageFeatureConverter(base.Converter):
                 deps=' '.join(
                     '$(location {})'.format(t)
                         for t in sorted(target_tagger.targets)
-                # Add on a self-dependency (see `fake_macro_library` docblock)
+                    # Add on a self-dependency (see `fake_macro_library` doc)
                 ) + (
                     '$(location //tools/build/buck/infra_macros/macro_lib'
                     '/convert/container_image/buck_macros:image_feature)'

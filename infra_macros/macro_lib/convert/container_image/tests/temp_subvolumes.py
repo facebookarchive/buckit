@@ -71,11 +71,11 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         for subvol in self.subvols:
             try:
                 subvol.set_readonly(False)
-            except:
+            except BaseException:  # Ctrl-C does not interrupt cleanup
                 pass
         for subvol in reversed(self.subvols):
             try:
                 subvol.delete()
-            except:
+            except BaseException:  # Ctrl-C does not interrupt cleanup
                 pass
         return self._temp_dir_ctx.__exit__(exc_type, exc_val, exc_tb)

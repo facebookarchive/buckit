@@ -100,14 +100,18 @@ def import_macro_lib(path):
     return ret
 
 
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load(":image_utils.bzl", "image_utils")
-
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 image_feature = import_macro_lib(
     'convert/container_image/buck_macros/image_feature'
 )
+
+load(  # noqa: F821
+    '@fbcode_macros//build_defs:target_utils.bzl', 'target_utils',
+)
+target_utils = target_utils  # noqa: F821
+load(':image_utils.bzl', 'image_utils')  # noqa: F821
+image_utils = image_utils  # noqa: F821
 
 
 class ImageLayerConverter(base.Converter):
@@ -185,10 +189,10 @@ class ImageLayerConverter(base.Converter):
                 $(exe {base_dir}/compiler:subvolume-on-disk) \
                   "$subvolumes_dir" \
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
-                '''.format(
-                    from_sendstream=from_sendstream,
-                    base_dir=image_utils.BASE_DIR,
-                )
+            '''.format(
+                from_sendstream=from_sendstream,
+                base_dir=image_utils.BASE_DIR,
+            )
 
         rules.append(Rule('genrule', collections.OrderedDict(
             name=name,
@@ -313,32 +317,32 @@ class ImageLayerConverter(base.Converter):
               --child-dependencies \
                 $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
                   > "$OUT"
-            '''.format(
-                base_dir=image_utils.BASE_DIR,
-                rule_name_quoted=quote(rule_name),
-                parent_layer_json_quoted='$(location {})'.format(parent_layer)
-                    if parent_layer else "''",
-                current_target_quoted=quote(target_utils.to_label(
-                    self._context.config.get_current_repo_name(),
-                    base_path,
-                    rule_name,
-                )),
-                my_feature_target=feature_target,
-                my_deps_query=this_layer_feature_query,
-                maybe_quoted_yum_from_repo_snapshot_args=''
-                    if not yum_from_repo_snapshot else
-                        # In terms of **dependency** structure, we want this
-                        # to be `exe` (see `image_package.py` for why).
-                        # However the string output of the `exe` macro may
-                        # actually be a shell snippet, which would break
-                        # here.  To work around this, we add a no-op $(exe)
-                        # dependency via `maybe_yum_from_repo_snapshot_dep`.
-                        '--yum-from-repo-snapshot $(location {})'.format(
-                            yum_from_repo_snapshot,
-                        ),
-                maybe_yum_from_repo_snapshot_dep=''
-                    if not yum_from_repo_snapshot else
-                        'echo $(exe {}) > /dev/null'.format(
-                            yum_from_repo_snapshot,
-                        ),
-            )
+        '''.format(
+            base_dir=image_utils.BASE_DIR,
+            rule_name_quoted=quote(rule_name),
+            parent_layer_json_quoted='$(location {})'.format(parent_layer)
+                if parent_layer else "''",
+            current_target_quoted=quote(target_utils.to_label(
+                self._context.config.get_current_repo_name(),
+                base_path,
+                rule_name,
+            )),
+            my_feature_target=feature_target,
+            my_deps_query=this_layer_feature_query,
+            maybe_quoted_yum_from_repo_snapshot_args=''
+                if not yum_from_repo_snapshot else
+                    # In terms of **dependency** structure, we want this
+                    # to be `exe` (see `image_package.py` for why).
+                    # However the string output of the `exe` macro may
+                    # actually be a shell snippet, which would break
+                    # here.  To work around this, we add a no-op $(exe)
+                    # dependency via `maybe_yum_from_repo_snapshot_dep`.
+                    '--yum-from-repo-snapshot $(location {})'.format(
+                        yum_from_repo_snapshot,
+                    ),
+            maybe_yum_from_repo_snapshot_dep=''
+                if not yum_from_repo_snapshot else
+                    'echo $(exe {}) > /dev/null'.format(
+                        yum_from_repo_snapshot,
+                    ),
+        )

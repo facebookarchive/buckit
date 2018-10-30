@@ -18,10 +18,11 @@ def import_macro_lib(path):
     return ret
 
 
-load(":image_utils.bzl", "image_utils")
-
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+
+load(':image_utils.bzl', 'image_utils')  # noqa: F821
+image_utils = image_utils  # noqa: F821
 
 
 class ImagePackageConverter(base.Converter):
