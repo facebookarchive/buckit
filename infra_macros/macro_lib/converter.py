@@ -92,9 +92,16 @@ discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
-image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
-image_layer = absolute_import('//fs_image/buck_macros/image_layer.py')
-image_package = absolute_import('//fs_image/buck_macros/image_package.py')
+try:
+    image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
+    image_layer = absolute_import('//fs_image/buck_macros/image_layer.py')
+    image_package = absolute_import('//fs_image/buck_macros/image_package.py')
+except IOError:
+    # Some sparse checkouts don't need `image_*` macros, and fbcode/fs_image
+    # is not currently part of the sparse base (while `infra_macros` are).
+    image_feature = None
+    image_layer = None
+    image_package = None
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
@@ -173,9 +180,6 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_ghci'),
         haskell.HaskellConverter(context, 'haskell_haddock'),
-        image_feature.ImageFeatureConverter(context),
-        image_layer.ImageLayerConverter(context),
-        image_package.ImagePackageConverter(context),
         lua.LuaConverter(context, 'lua_library'),
         lua.LuaConverter(context, 'lua_binary'),
         lua.LuaConverter(context, 'lua_unittest'),
@@ -196,6 +200,12 @@ def convert(context, base_path, rule):
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
     ]
+    if image_feature:
+        converters.append(image_feature.ImageFeatureConverter(context))
+    if image_layer:
+        converters.append(image_layer.ImageLayerConverter(context))
+    if image_package:
+        converters.append(image_package.ImagePackageConverter(context))
 
     converters += get_fbonly_converters(context)
 
