@@ -1,12 +1,10 @@
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 # NB: For anything that runs at Facebook, depend on `facebook:storage`, but
 # import the outer `rpm.storage` module.
 python_library(
     name = "base_storage",
     srcs = ["storage.py"],
     base_module = "rpm.storage",
-    deps = [BASE_DIR + "/rpm:pluggable"],
+    deps = ["//fs_image/rpm:pluggable"],
 )
 
 python_library(

@@ -1,5 +1,3 @@
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 def _wrap_bash_build_in_common_boilerplate(
         self_dependency,
         bash,
@@ -23,13 +21,13 @@ def _wrap_bash_build_in_common_boilerplate(
     # even if the user moves the repo.  `exe` vs `location` is explained in
     # `image_package.py`.  We need `binary_path` because the `exe` macro
     # won't get expanded inside a \\$( ...  ) context.
-    binary_path=( $(exe {base_dir}:artifacts-dir) )
+    binary_path=( $(exe //fs_image:artifacts-dir) )
     artifacts_dir=\\$( "${{binary_path[@]}}"  )
 
     # Future-proofing: keep all Buck target subvolumes under
     # "targets/" in the per-repo volume, so that we can easily
     # add other types of subvolumes in the future.
-    binary_path=( $(exe {base_dir}:volume-for-repo) )
+    binary_path=( $(exe //fs_image:volume-for-repo) )
     volume_dir=\\$( "${{binary_path[@]}}" "$artifacts_dir" {min_free_bytes} )
     subvolumes_dir="$volume_dir/targets"
     mkdir -m 0700 -p "$subvolumes_dir"
@@ -75,7 +73,6 @@ def _wrap_bash_build_in_common_boilerplate(
       find "$OUT" '!' -type d -print0 | xargs -0 --no-run-if-empty chmod a-w
     ) &> "$my_log"
     """.format(
-        base_dir = BASE_DIR,
         bash = bash,
         min_free_bytes = volume_min_free_bytes,
         log_description = log_description,
@@ -83,7 +80,6 @@ def _wrap_bash_build_in_common_boilerplate(
     )
 
 image_utils = struct(
-    BASE_DIR = BASE_DIR,
     wrap_bash_build_in_common_boilerplate =
         _wrap_bash_build_in_common_boilerplate,
 )

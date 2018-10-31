@@ -5,8 +5,8 @@ This tool wraps `yum`, with two changes to ensure more hermetic behavior:
   - The `yum.conf`, the repo metadata, and the RPM contents are all served
     out of a directory produced `snapshot-repos`, **not** against some kind
     of live, external RPM repo collection.  So if both the snapshot, and
-    `container_images/rpm` are committed to the same version control, then a
-    single version ID completely determines the outcome of a yum command.
+    `fs_images/rpm` are committed to the same version control, then a single
+    version ID completely determines the outcome of a yum command.
 
   - The `yum` invocation runs in a Linux namespaces sandbox with an isolated
     network, and with some additional bind mounts that are intended to

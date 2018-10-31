@@ -348,10 +348,7 @@ class ImageFeatureConverter(base.Converter):
                     '$(location {})'.format(t)
                         for t in sorted(target_tagger.targets)
                     # Add on a self-dependency (see `fake_macro_library` doc)
-                ) + (
-                    '$(location //tools/build/buck/infra_macros/macro_lib'
-                    '/convert/container_image/buck_macros:image_feature)'
-                ),
+                ) + '$(location //fs_image/buck_macros:image_feature)',
                 out=quote(json.dumps(out_dict, sort_keys=True)),
             ),
             visibility=visibility,

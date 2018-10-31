@@ -7,11 +7,7 @@ from ..items import (
 )
 
 
-# Our target names are too long :(
-T_BASE = (
-    '//tools/build/buck/infra_macros/macro_lib/convert/container_image/'
-    'compiler/tests'
-)
+T_BASE = '//fs_image/compiler/tests'
 # Use the "debug", human-readable forms of the image_feature targets here,
 # since that's what we are testing.
 T_DIRS = f'{T_BASE}:feature_dirs'

@@ -6,10 +6,10 @@ max-line-length = 80
 #         .foo()
 #         .bar())
 # E124 fires on this perfectly reasonable formatting:
-#     cat_final_repr = ('(Dir)', { 
+#     cat_final_repr = ('(Dir)', {
 #         'dog': '(File m744)',
 #         'dir_to_del': ('(Dir)', {'fifo_to_del': '(FIFO)'}),
-#     })    
+#     })
 # E741 bans variable names like `l` and `O`. They are not ambiguous
 #      in any sane programming font, so this is spurious.
 # E266 (no doubled # in comments) removes a useful emphasis mechanism.

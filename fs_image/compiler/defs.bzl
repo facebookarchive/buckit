@@ -1,7 +1,4 @@
-TEST_TARGET_PREFIX = (
-    "//tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
-    "compiler/tests:"
-)
+TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 
 def READ_MY_DOC_image_feature_target(name):
     """

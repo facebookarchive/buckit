@@ -1,5 +1,3 @@
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 ##
 ## image_feature: The goal of this section is to get good coverage for all
 ## the syntax variants supported by the `image_feature` converter.  The unit
@@ -107,7 +105,7 @@ image_layer(
     features = [":feature_dirs"],
     parent_layer = ":hello_world_base",
     rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
-    yum_from_repo_snapshot = BASE_DIR + "/rpm:yum-from-test-snapshot",
+    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
 )
 
 image_layer(
@@ -132,7 +130,7 @@ image_layer(
             "into_dir": "/foo/more_extracted_hello",
         },
     ],
-    yum_from_repo_snapshot = BASE_DIR + "/rpm:yum-from-test-snapshot",
+    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
 )
 
 image_package(name = "child_layer.sendstream")
@@ -147,9 +145,7 @@ python_binary(
     base_module = "",
     main_module = "save_demo_sendstream",
     par_style = "zip",  # testlib_demo_sendstreams needs this in @mode/opt
-    deps = [
-        BASE_DIR + "/btrfs_diff:testlib_demo_sendstreams",
-    ],
+    deps = ["//fs_image/btrfs_diff:testlib_demo_sendstreams"],
 )
 
 # Future: it'd be neat to add `mutate_ops`, but that requires some wrangling

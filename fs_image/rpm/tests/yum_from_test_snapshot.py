@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''
-Runs `yum` against a snapshot of the `container_image/rpm` test repos that
-are built by `tests/build_repos.py`. Used in the image compiler unit tests.
+Runs `yum` against a snapshot of the `fs_image/rpm` test repos that are
+built by `tests/build_repos.py`.  Used in the image compiler unit tests.
 '''
 import json
 import os

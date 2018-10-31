@@ -1,5 +1,3 @@
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 python_library(
     name = "pluggable",
     srcs = ["pluggable.py"],
@@ -123,7 +121,7 @@ python_library(
         ":common",
         ":repo_objects",
         ":repo_snapshot",
-        BASE_DIR + "/rpm/storage/facebook:storage",
+        "//fs_image/rpm/storage/facebook:storage",
     ],
 )
 

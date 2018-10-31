@@ -3,8 +3,6 @@
 
 load(":defs.bzl", "READ_MY_DOC_image_feature_target", "TEST_TARGET_PREFIX", "image_feature_python_unittest")
 
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 python_library(
     name = "subvolume_on_disk",
     srcs = ["subvolume_on_disk.py"],
@@ -81,7 +79,7 @@ python_library(
     deps = [
         ":requires_provides",
         ":subvolume_on_disk",
-        BASE_DIR + ":subvol_utils",
+        "//fs_image:subvol_utils",
     ],
 )
 
@@ -95,13 +93,13 @@ python_unittest(
     )],
     par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
     resources = {
-        BASE_DIR + "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
+        "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
-        BASE_DIR + ":testlib_temp_subvolumes",
-        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
+        "//fs_image:testlib_temp_subvolumes",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )
 
@@ -183,7 +181,7 @@ image_feature_python_unittest(
         ":compiler",
     )],
     resources = {
-        BASE_DIR + "/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
+        "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },
     test_image_feature_transitive_deps = TEST_IMAGE_FEATURE_TRANSITIVE_DEPS,
     deps = [
@@ -224,9 +222,9 @@ python_unittest(
     # As with `test-image-feature`, we cannot get `image_layer.py` coverage.
     deps = [
         ":subvolume_on_disk",
-        BASE_DIR + ":artifacts_dir",
-        BASE_DIR + ":volume_for_repo",
-        BASE_DIR + "/btrfs_diff:testlib_demo_sendstreams",
-        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
+        "//fs_image:artifacts_dir",
+        "//fs_image:volume_for_repo",
+        "//fs_image/btrfs_diff:testlib_demo_sendstreams",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )

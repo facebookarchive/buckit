@@ -18,16 +18,20 @@ import os
 ALWAYS_ALLOWED_ARGS = {'visibility'}
 
 
-def import_macro_lib(path):
-    # Hack to make internal Buck macros flake8-clean until we switch to
-    # buildozer.
+# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
+def absolute_import(path):
     global _import_macro_lib__imported
-    include_defs('{}/{}.py'.format(  # noqa: F821
-        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
-    ), '_import_macro_lib__imported')
+    include_defs(path, '_import_macro_lib__imported')  # noqa: F821
     ret = _import_macro_lib__imported
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
+
+
+def import_macro_lib(path):
+    return absolute_import('{}/{}.py'.format(
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ))
+
 
 load("@fbcode_macros//build_defs:export_files.bzl",  # noqa F821
         "export_file", "export_files", "buck_export_file")
@@ -88,9 +92,9 @@ discard = import_macro_lib('convert/discard')
 go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
-image_feature = import_macro_lib('convert/container_image/buck_macros/image_feature')
-image_layer = import_macro_lib('convert/container_image/buck_macros/image_layer')
-image_package = import_macro_lib('convert/container_image/buck_macros/image_package')
+image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
+image_layer = absolute_import('//fs_image/buck_macros/image_layer.py')
+image_package = absolute_import('//fs_image/buck_macros/image_package.py')
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')

@@ -1,5 +1,3 @@
-BASE_DIR = "//tools/build/buck/infra_macros/macro_lib/convert/container_image"
-
 python_library(
     name = "testlib_temp_subvolumes",
     srcs = [
@@ -7,9 +5,9 @@ python_library(
     ],
     base_module = "",
     deps = [
+        ":artifacts_dir",
         ":subvol_utils",
-        BASE_DIR + ":artifacts_dir",
-        BASE_DIR + ":volume_for_repo",
+        ":volume_for_repo",
     ],
 )
 
@@ -123,7 +121,7 @@ python_binary(
 python_binary(
     name = "compiler",
     main_module = "compiler.compiler",
-    deps = [BASE_DIR + "/compiler:compiler"],
+    deps = ["//fs_image/compiler:compiler"],
 )
 
 python_binary(
@@ -152,11 +150,11 @@ python_binary(
     main_module = "package_image",
     deps = [
         ":subvol_utils",
-        BASE_DIR + "/compiler:subvolume_on_disk",
+        "//fs_image/compiler:subvolume_on_disk",
     ],
 )
 
-TEST_TARGET_PREFIX = BASE_DIR + "/compiler/tests:"
+TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 
 # Also tests the Buck macro `image_package.py`, but we cannot assert coverage.
 python_unittest(
@@ -175,6 +173,6 @@ python_unittest(
         ":artifacts_dir",
         ":package-image-library",
         ":volume_for_repo",
-        BASE_DIR + "/btrfs_diff:testlib_render_subvols",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )

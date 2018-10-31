@@ -90,21 +90,23 @@ from pipes import quote
 
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
-def import_macro_lib(path):
+def absolute_import(path):
     global _import_macro_lib__imported
-    include_defs('{}/{}.py'.format(  # noqa: F821
-        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
-    ), '_import_macro_lib__imported')
+    include_defs(path, '_import_macro_lib__imported')  # noqa: F821
     ret = _import_macro_lib__imported
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
 
+def import_macro_lib(path):
+    return absolute_import('{}/{}.py'.format(
+        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
+    ))
+
+
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-image_feature = import_macro_lib(
-    'convert/container_image/buck_macros/image_feature'
-)
+image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
 
 load(  # noqa: F821
     '@fbcode_macros//build_defs:target_utils.bzl', 'target_utils',
@@ -186,13 +188,10 @@ class ImageLayerConverter(base.Converter):
                     echo "$subvol"
                 )
                 # `exe` vs `location` is explained in `image_package.py`
-                $(exe {base_dir}/compiler:subvolume-on-disk) \
+                $(exe //fs_image/compiler:subvolume-on-disk) \
                   "$subvolumes_dir" \
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
-            '''.format(
-                from_sendstream=from_sendstream,
-                base_dir=image_utils.BASE_DIR,
-            )
+            '''.format(from_sendstream=from_sendstream)
 
         rules.append(Rule('genrule', collections.OrderedDict(
             name=name,
@@ -203,7 +202,7 @@ class ImageLayerConverter(base.Converter):
             # the docs for BuildRule::isCacheable.
             cacheable=False,
             bash=image_utils.wrap_bash_build_in_common_boilerplate(
-                self_dependency=image_utils.BASE_DIR + '/buck_macros:image_layer',
+                self_dependency='//fs_image/buck_macros:image_layer',
                 bash='''
                 # We want subvolume names to be user-controllable. To permit
                 # this, we wrap each subvolume in a temporary subdirectory.
@@ -219,7 +218,7 @@ class ImageLayerConverter(base.Converter):
                 #
                 # `exe` vs `location` is explained in `image_package.py`.
                 # `exe` won't expand in \\$( ... ), so we need `binary_path`.
-                binary_path=( $(exe {base_dir}:subvolume-version) )
+                binary_path=( $(exe //fs_image:subvolume-version) )
                 subvolume_ver=\\$( "${{binary_path[@]}}" )
                 subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
@@ -237,7 +236,7 @@ class ImageLayerConverter(base.Converter):
                 # debugging failed builds a bit more predictable.
                 refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
                 # `exe` vs `location` is explained in `image_package.py`
-                $(exe {base_dir}:subvolume-garbage-collector) \
+                $(exe //fs_image:subvolume-garbage-collector) \
                   --refcounts-dir "$refcounts_dir" \
                   --subvolumes-dir "$subvolumes_dir" \
                   --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
@@ -245,7 +244,6 @@ class ImageLayerConverter(base.Converter):
 
                 {make_subvol_cmd}
                 '''.format(
-                    base_dir=image_utils.BASE_DIR,
                     rule_name_quoted=quote(name),
                     refcounts_dir_quoted=os.path.join(
                         '$GEN_DIR',
@@ -306,7 +304,7 @@ class ImageLayerConverter(base.Converter):
             # `image_feature` to those targets' outputs.
             #
             # `exe` vs `location` is explained in `image_package.py`.
-            $(exe {base_dir}:compiler) \
+            $(exe //fs_image:compiler) \
               --subvolumes-dir "$subvolumes_dir" \
               --subvolume-rel-path \
                 "$subvolume_wrapper_dir/"{rule_name_quoted} \
@@ -318,7 +316,6 @@ class ImageLayerConverter(base.Converter):
                 $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
                   > "$OUT"
         '''.format(
-            base_dir=image_utils.BASE_DIR,
             rule_name_quoted=quote(rule_name),
             parent_layer_json_quoted='$(location {})'.format(parent_layer)
                 if parent_layer else "''",

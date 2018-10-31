@@ -156,8 +156,7 @@ python_library(
     ],
     base_module = "btrfs_diff",
     deps = [
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image/" +
-        "compiler:enriched_namedtuple",
+        "//fs_image/compiler:enriched_namedtuple",
     ],
 )
 
@@ -183,8 +182,7 @@ python_library(
     deps = [
         ":testlib_render_subvols",
         ":testlib_subvolume_utils",
-        "//tools/build/buck/infra_macros/macro_lib/convert/container_image" +
-        ":testlib_temp_subvolumes",
+        "//fs_image:testlib_temp_subvolumes",
     ],
 )
 
