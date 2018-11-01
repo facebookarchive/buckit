@@ -91,7 +91,9 @@ python_unittest(
         100,
         ":items",
     )],
-    par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
+    # "fastzip" would break :volume_for_repo in @mode/opt.  "xar" fails
+    # since `root` cannot access the content of an unprivileged XAR.
+    par_style = "zip",
     resources = {
         "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },

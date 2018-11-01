@@ -32,23 +32,12 @@ python_unittest(
     ],
 )
 
-# For `test_volume_for_repo.py`. At build time, we find use `dirname(__file__)`
-export_file(name = "set_up_volume.sh")
-
-# A separate library because otherwise `pyunitcoveragerunner.py` will demand
-# coverage on the `.sh` file.
-python_library(
-    name = "set_up_volume.sh-proxy",
-    base_module = "",
-    # `get_volume_for_current_repo()` needs this to be our sibling in the PAR.
-    gen_srcs = {":set_up_volume.sh": "set_up_volume.sh"},
-)
-
 python_library(
     name = "volume_for_repo",
     srcs = ["volume_for_repo.py"],
     base_module = "",
-    deps = [":set_up_volume.sh-proxy"],
+    # `get_volume_for_current_repo()` needs this to be our sibling in the PAR.
+    resources = {"set_up_volume.sh"},
 )
 
 python_unittest(
@@ -162,7 +151,9 @@ python_unittest(
     srcs = ["tests/test_package_image.py"],
     base_module = "compiler",
     needed_coverage = [(100, ":package-image-library")],
-    par_style = "xar",  # Ensures we can read resources in @mode/opt
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     resources = {
         # Same comment re: mutate_ops as in `test_layer_from_demo_sendstreams`.
         TEST_TARGET_PREFIX + "create_ops-original.sendstream": "tests/create_ops-original.sendstream",
