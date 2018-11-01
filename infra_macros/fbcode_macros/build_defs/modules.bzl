@@ -259,19 +259,18 @@ def _gen_module(
         # debug.  In the meantime, we'll perform the compilation twice to try
         # to detect these cases, log the issue and artifact for debugging, and
         # try to recover with a third compilation.
-        "! { compile module.pcm; } 2>/dev/null",
-        "compile module2.pcm",
-        'if ! cmp -s "$TMP/module.pcm" "$TMP/module2.pcm"; then',
-        '  >&2 echo "Detected non-deterministic output.  Retrying..."',
-        # Perform a third build to try determine the bad output, in an attempt
-        # to recover the build.
-        "  compile module3.pcm 2>/dev/null",
-        '  if ! cmp -s "$TMP/module.pcm" "$TMP/module3.pcm"; then',
-        '    mv -fT "$TMP/module.pcm" "$TMP/bad.pcm"',
-        '    mv -fT "$TMP/module3.pcm" "$TMP/module.pcm"',
-        "  else",
-        '    mv -fT "$TMP/module2.pcm" "$TMP/bad.pcm"',
-        "  fi",
+        "! { compile prev.pcm; } 2>/dev/null",
+        "compile module.pcm",
+        'if ! cmp -s "$TMP/prev.pcm" "$TMP/module.pcm"; then',
+        '  >&2 echo "Detected non-determinism building module {}.  Retrying..."'
+            .format(module_name),
+        # Keep rebuilding the module until we get successive builds that are the
+        # same, saving the "corrupted" module for logging.
+        '  while ! cmp -s "$TMP/prev.pcm" "$TMP/module.pcm"; do',
+        '    mv -fT "$TMP/prev.pcm" "$TMP/bad.pcm"',
+        '    mv -fT "$TMP/module.pcm" "$TMP/prev.pcm"',
+        "    compile module.pcm 2>/dev/null",
+        "  done",
         # Log the build for debugging.  Do this in a block which ignores errors.
         "  ! {",
         '    archive="$TMP/archive.tgz"',
@@ -285,7 +284,9 @@ def _gen_module(
         '          {\\"everstore_handle\\": \\"$handle\\", \\',
         '           \\"build_target\\": \\"//{}:{}\\", \\'
             .format(native.package_name(), name),
-        '           \\"build_uuid\\": \\"$BUCK_BUILD_ID\\"}}";',
+        '           \\"build_uuid\\": \\"$BUCK_BUILD_ID\\", \\',
+        '           \\"sandcastle_alias\\": \\"${SANDCASTLE_ALIAS:-}\\", \\',
+        '           \\"sanscastle_job_info\\": \\"${SANDCASTLE_NONCE:-}/${SANDCASTLE_INSTANCE_ID:-}\\"}}";',
         "  }",
         "fi",
         'mv -nT "$TMP/module.pcm" "$OUT"',
