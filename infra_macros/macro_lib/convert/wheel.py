@@ -180,8 +180,6 @@ class PyWheel(base.Converter):
         # Setup all the remote_file and prebuilt_python_library targets
         # urls have #sha1=<sha1> at the end.
         for url in urls:
-            if url is None:
-                continue
             if compiled_wheel.search(url):
                 compiled = True
             orig_url, _, sha1 = url.rpartition('#sha1=')
@@ -198,25 +196,15 @@ class PyWheel(base.Converter):
         attrs['name'] = version
         if visibility is not None:
             attrs['visibility'] = visibility
-        # Create the ability to override the platform that wheels use
-        wheel_platform = read_config("python", "wheel_platform_override")
-
         # Use platform_deps to rely on the correct wheel target for
         # each platform
         attrs['platform_deps'] = [
-            ('{}$'.format(re.escape(py_platform)), None if url is None else [wheel_targets[url]])
+            ('{}$'.format(re.escape(py_platform)), [wheel_targets[url]])
             for py_platform, url in sorted(platform_urls.items())
-            # Some platforms just do not have wheels available. In this case, we remove
-            # that platform from platform deps. You just won't get a whl on those
-            # platforms. HOWEVER: Due to how platforms work in buck, if there's a
-            # wheel_platform, we want to keep this platform. We keep it because a user
-            # might still get something like 'gcc5-blah' as the buck native platform
-            # even when we've overwritten all urls with say a mac specific url.
-            # It sucks, and when select() and platform support is in buck and handled
-            # properly by all rules, this will be wholly re-evaluated.
-            if not url or wheel_platform
         ]
 
+        # Create the ability to override the platform that wheels use
+        wheel_platform = read_config("python", "wheel_platform_override")
         if wheel_platform:
             attrs['platform_deps'] = _override_wheels(attrs['platform_deps'], wheel_platform)
 
