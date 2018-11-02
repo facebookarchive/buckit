@@ -42,6 +42,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
@@ -918,10 +919,13 @@ class PythonConverter(base.Converter):
                     out_resources[dst] = src
             out_versioned_srcs.append((vcollection, out_srcs))
             out_versioned_resources.append((vcollection, out_resources))
+
         if out_versioned_srcs:
-            attributes['versioned_srcs'] = out_versioned_srcs
+            attributes['versioned_srcs'] = \
+                python_versioning.add_flavored_versions(out_versioned_srcs)
         if out_versioned_resources:
-            attributes['versioned_resources'] = out_versioned_resources
+            attributes['versioned_resources'] = \
+                python_versioning.add_flavored_versions(out_versioned_resources)
 
         dependencies = []
         if third_party.is_tp2(base_path):

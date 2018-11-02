@@ -4,6 +4,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:modules.bzl", "modules")
+load("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -212,7 +213,8 @@ def cpp_library_external(
         exported_linker_flags = exported_linker_flags,
         exported_preprocessor_flags = propagated_pp_flags,
         exported_lang_preprocessor_flags = lang_ppflags,
-        versioned_exported_lang_preprocessor_flags = versioned_lang_ppflags,
+        versioned_exported_lang_preprocessor_flags =
+            python_versioning.add_flavored_versions(versioned_lang_ppflags),
         exported_deps = exported_deps,
         supports_merged_linking = supports_omnibus,
         provided = force_shared,
@@ -221,10 +223,14 @@ def cpp_library_external(
         static_pic_lib = static_pic_lib,
         shared_lib = shared_lib,
         header_dirs = include_dir,
-        versioned_static_lib = versioned_static_lib,
-        versioned_static_pic_lib = versioned_static_pic_lib,
-        versioned_shared_lib = versioned_shared_lib,
-        versioned_header_dirs = versioned_header_dirs,
+        versioned_static_lib =
+            python_versioning.add_flavored_versions(versioned_static_lib),
+        versioned_static_pic_lib =
+            python_versioning.add_flavored_versions(versioned_static_pic_lib),
+        versioned_shared_lib =
+            python_versioning.add_flavored_versions(versioned_shared_lib),
+        versioned_header_dirs =
+            python_versioning.add_flavored_versions(versioned_header_dirs),
         soname = soname,
         link_without_soname = link_without_soname,
     )

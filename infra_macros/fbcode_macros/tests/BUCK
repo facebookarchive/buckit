@@ -44,6 +44,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:platform_utils.bzl",
     "fbcode_macros//build_defs:platform_overrides.bzl",
     "fbcode_macros//build_defs:python_typing.bzl",
+    "fbcode_macros//build_defs:python_versioning.bzl",
     "fbcode_macros//build_defs:prebuilt_jar.bzl",
     "fbcode_macros//build_defs:rust_external_library.bzl",
     "fbcode_macros//build_defs:sanitizers.bzl",
@@ -267,6 +268,12 @@ skylark_integration_test(
 skylark_integration_test(
     name = "python_typing_test",
     srcs = ["python_typing_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "python_versioning_test",
+    srcs = ["python_versioning_test.py"],
     deps = [":utils"],
 )
 
