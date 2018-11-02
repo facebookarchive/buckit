@@ -252,7 +252,7 @@ def _install_converted_rules(globals, **context_kwargs):
     # only a small set of rules are supported for folks building on laptop.
     enabled_rule_types = read_config('fbcode', 'enabled_rule_types', None)
     if enabled_rule_types is not None:
-        enabled_rule_types = map(unicode.strip, enabled_rule_types.split(','))
+        enabled_rule_types = (r.strip() for r in enabled_rule_types.split(','))
         for rule_type in set(all_rule_types) - set(enabled_rule_types):
             globals[rule_type] = functools.partial(ignored_buck_rule, rule_type)
 
