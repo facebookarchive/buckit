@@ -616,11 +616,10 @@ class Converter(object):
             raise ValueError(
                 'cannot use `full` build info when `cxx.cache_links` is set')
 
-        # Pass the build info mode to the linker.
-        ldflags.append('--build-info=' + mode)
-
         # Add in explicit build info args.
         if mode != 'none':
+            # Pass the build info mode to the linker.
+            ldflags.append('--build-info=' + mode)
             explicit = (
                 build_info.get_explicit_build_info(
                     base_path,
