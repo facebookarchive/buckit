@@ -189,8 +189,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
             rule.type in CXX_RULES and
             AutoHeaders.RECURSIVE_GLOB == cpp.CppConverter.get_auto_headers(
                 rule.attributes.get('headers'),
-                rule.attributes.get('auto_headers'),
-                read_config)):
+                rule.attributes.get('auto_headers'))):
         deps = list(rule.attributes.get('deps', []))
         deps.append(require_default_headers_rule())
         rule.attributes['deps'] = deps

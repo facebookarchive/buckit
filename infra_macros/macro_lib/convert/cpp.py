@@ -55,6 +55,7 @@ load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -407,7 +408,7 @@ class CppConverter(base.Converter):
     def get_buck_rule_type(self):
         rule_type = self.RULE_TYPE_MAP[self._rule_type]
         if callable(rule_type):
-            rule_type = rule_type(self._context.mode)
+            rule_type = rule_type(config.get_build_mode())
         return rule_type
 
     def split_matching_extensions_and_other(self, srcs, exts):
@@ -436,7 +437,6 @@ class CppConverter(base.Converter):
         Return the headers likely associated with the given sources.
         """
 
-        glob = self._context.buck_ops.glob
         source_exts = self.SOURCE_EXTS  # use a local for faster lookups in a loop
         # Check for // in case this src is a rule
         split_srcs = (
@@ -444,7 +444,7 @@ class CppConverter(base.Converter):
             for src in srcs
             if '//' not in src and not src.startswith(':'))
 
-        headers = glob([
+        headers = native.glob([
             base + hext
             for base, ext in split_srcs if ext in source_exts
             for hext in cxx_sources.HEADER_SUFFIXES])
@@ -568,7 +568,7 @@ class CppConverter(base.Converter):
         return '_'.join(['luaopen'] + parts + [name])
 
     @classmethod
-    def get_auto_headers(cls, headers, auto_headers, read_config):
+    def get_auto_headers(cls, headers, auto_headers):
         """
         Get the level of auto-headers to apply to the rule.
         """
@@ -583,7 +583,7 @@ class CppConverter(base.Converter):
             return headers
 
         # If it's `None`, then return the global default.
-        return read_config(
+        return native.read_config(
             'cxx',
             'auto_headers',
             AutoHeaders.SOURCES)
@@ -947,10 +947,11 @@ class CppConverter(base.Converter):
 
         # Parse the `header_namespace` parameter.
         if header_namespace is not None:
-            if (base_path, name) not in self._context.config.get_header_namespace_whitelist() and not any(
+            header_namespace_whitelist = config.get_header_namespace_whitelist()
+            if (base_path, name) not in header_namespace_whitelist and not any(
                 # Check base path prefix in header_namespace_whitelist
                 len(t) == 1 and base_path.startswith(t[0])
-                for t in self._context.config.get_header_namespace_whitelist()
+                for t in header_namespace_whitelist
             ):
                 raise ValueError(
                     '{}(): the `header_namespace` parameter is *not* '
@@ -981,7 +982,7 @@ class CppConverter(base.Converter):
                 list(itertools.chain(
                     *[('-_NVCC_', flag) for flag in nvcc_flags]))))
 
-        clang_profile = self._context.buck_ops.read_config('cxx', 'profile')
+        clang_profile = native.read_config('cxx', 'profile')
         if clang_profile is not None:
             compiler.require_global_compiler(
                 "cxx.profile only supported by modes using clang globally",
@@ -1111,10 +1112,10 @@ class CppConverter(base.Converter):
             if sanitizers.get_sanitizer() is not None:
                 out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
-            if (self._context.buck_ops.read_config('fbcode', 'gdb-index') and
+            if (native.read_config('fbcode', 'gdb-index') and
                   not core_tools.is_core_tool(base_path, name)):
                 out_ldflags.append('-Wl,--gdb-index')
-            ld_threads = self._context.buck_ops.read_config('fbcode', 'ld-threads')
+            ld_threads = native.read_config('fbcode', 'ld-threads')
             # lld does not (yet?) support the --thread-count option, so prevent
             # it from being forwarded when using lld.  bfd seems to be in the
             # same boat, and this happens on aarch64 machines.
@@ -1188,7 +1189,7 @@ class CppConverter(base.Converter):
         # tree. Ignore these arugments on OSX, as the linker doesn't support
         # them
         if (self.get_buck_rule_type() == 'cxx_library' and
-                self._context.mode.startswith('dev') and
+                config.get_build_mode().startswith('dev') and
                 plat.system() == 'Linux'):
             if link_whole is True:
                 out_exported_ldflags.append('-Wl,--no-as-needed')
@@ -1235,8 +1236,7 @@ class CppConverter(base.Converter):
         auto_headers = (
             self.get_auto_headers(
                 headers,
-                auto_headers,
-                self._context.buck_ops.read_config))
+                auto_headers))
         if auto_headers == AutoHeaders.SOURCES:
             src_headers = set(self.get_headers_from_sources(base_path, srcs))
             src_headers -= set(out_headers)
@@ -1302,13 +1302,13 @@ class CppConverter(base.Converter):
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
                 # via the link-style and ignore for now.
-                self._context.link_style == 'shared' and
+                config.get_default_link_style() == 'shared' and
                 not undefined_symbols):
             out_ldflags.append('-Wl,--no-undefined')
 
         # Get any linker flags for the current OS
         for os_short_name, flags in os_linker_flags:
-            if os_short_name == self._context.config.get_current_os():
+            if os_short_name == config.get_current_os():
                 out_exported_ldflags.extend(flags)
 
         # Set the linker flags parameters.
@@ -1334,11 +1334,11 @@ class CppConverter(base.Converter):
                 gtest_deps = [
                     d.strip()
                     for d in re.split(
-                        ",", self._context.config.get_gtest_lib_dependencies())
+                        ",", config.get_gtest_lib_dependencies())
                 ]
                 if use_default_test_main:
                     gtest_deps.append(
-                        self._context.config.get_gtest_main_dependency())
+                        config.get_gtest_main_dependency())
                 dependencies.extend(
                     [target_utils.parse_target(dep) for dep in gtest_deps])
             else:
@@ -1376,7 +1376,7 @@ class CppConverter(base.Converter):
                 *[
                     dep
                     for os, dep in os_deps
-                    if os == self._context.config.get_current_os()
+                    if os == config.get_current_os()
                 ]):
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
 
@@ -1508,7 +1508,7 @@ class CppConverter(base.Converter):
                 # symlink tree.
                 override_module_home=(
                     'buck-out/{}/gen/{}/{}#header-mode-symlink-tree-with-header-map,headers%s'
-                    .format(self._context.mode, base_path, name)),
+                    .format(config.get_build_mode(), base_path, name)),
                 headers=out_headers,
                 flags=module_flags,
                 platform_flags=module_platform_flags,
@@ -1611,7 +1611,7 @@ class CppConverter(base.Converter):
         if cpp_src_count != len(out_srcs):
             return None
         # Return the default PCH setting from config (`None` if absent).
-        ret = self._context.buck_ops.read_config('fbcode', 'default_pch', None)
+        ret = native.read_config('fbcode', 'default_pch', None)
         # Literally the word 'None'?  This is to support disabling via command
         # line or in a .buckconfig from e.g. a unit test (see lua_cpp_main.py).
         if ret == "None":
@@ -1643,7 +1643,7 @@ class CppConverter(base.Converter):
         #   '//dsi/logger/cpp/compiler:logger_cpp_gen' \
         #   ...  | sort -u
         # See tools/build/buck/config.py for CORE_TOOLS list.
-        for pattern in self._context.config.get_auto_pch_blacklist():
+        for pattern in config.get_auto_pch_blacklist():
             if path.startswith(pattern):
                 return True
 
@@ -1670,7 +1670,7 @@ class CppConverter(base.Converter):
         # enabled C/C++ binary, which also requires us generating the rule
         # under a different name, so we can use the user-facing name to
         # wrap the C/C++ binary in a prebuilt C/C++ library.
-        if not self._context.mode.startswith('dev'):
+        if not config.get_build_mode().startswith('dev'):
             real_name = name
             name = name + '-extension'
             soname = (
@@ -1694,7 +1694,7 @@ class CppConverter(base.Converter):
         # If we're building the monolithic extension, then setup additional
         # rules to wrap the extension in a prebuilt C/C++ library consumable
         # by Java dependents.
-        if not self._context.mode.startswith('dev'):
+        if not config.get_build_mode().startswith('dev'):
 
             # Wrap the extension in a `prebuilt_cxx_library` rule
             # using the user-facing name.  This is what Java library
