@@ -56,6 +56,7 @@ with such a value.
 """
 ABSENT = tuple()
 
+
 class CppConverter(base.Converter):
 
     def __init__(self, context, rule_type):
@@ -1138,66 +1139,6 @@ class CppConverter(base.Converter):
 
         return [Rule(buck_rule_type, attributes)] + extra_rules
 
-    def convert_java_extension(
-            self,
-            base_path,
-            name,
-            dlopen_enabled=None,
-            lib_name=None,
-            visibility=None,
-            **kwargs):
-        """
-        Convert a C/C++ Java extension.
-        """
-
-        rules = []
-
-        # If we're not building in `dev` mode, then build extensions as
-        # monolithic statically linked C/C++ shared libs.  We do this by
-        # overriding some parameters to generate the extension as a dlopen-
-        # enabled C/C++ binary, which also requires us generating the rule
-        # under a different name, so we can use the user-facing name to
-        # wrap the C/C++ binary in a prebuilt C/C++ library.
-        if not config.get_build_mode().startswith('dev'):
-            real_name = name
-            name = name + '-extension'
-            soname = (
-                'lib{}.so'.format(
-                    lib_name or
-                    paths.join(base_path, name).replace('/', '_')))
-            dlopen_enabled = {'soname': soname}
-            lib_name = None
-
-        # Delegate to the main conversion function, using potentially altered
-        # parameters from above.
-        rules.extend(
-            self.convert_rule(
-                base_path,
-                name,
-                dlopen_enabled=dlopen_enabled,
-                lib_name=lib_name,
-                visibility=visibility,
-                **kwargs))
-
-        # If we're building the monolithic extension, then setup additional
-        # rules to wrap the extension in a prebuilt C/C++ library consumable
-        # by Java dependents.
-        if not config.get_build_mode().startswith('dev'):
-
-            # Wrap the extension in a `prebuilt_cxx_library` rule
-            # using the user-facing name.  This is what Java library
-            # dependents will depend on.
-            attrs = collections.OrderedDict()
-            attrs['name'] = real_name
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['soname'] = soname
-            platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            attrs['shared_lib'] = ':{}#{}'.format(name, platform)
-            rules.append(Rule('prebuilt_cxx_library', attrs))
-
-        return rules
-
     def convert_node_extension(
             self,
             base_path,
@@ -1363,8 +1304,8 @@ class CppConverter(base.Converter):
 
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'cpp_java_extension':
-            rules.extend(
-                self.convert_java_extension(base_path, name, visibility=visibility, **kwargs))
+            # This logic is contained in the CppJavaExtensionConverter
+            fail("cpp_java_extension called incorrectly")
         elif rtype == 'cpp_node_extension':
             rules.extend(
                 self.convert_node_extension(base_path, name, visibility=visibility, **kwargs))
@@ -1485,16 +1426,67 @@ class CppJavaExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppJavaExtensionConverter, self).__init__(context, 'cpp_java_extension')
 
-    def convert(self, *args, **kwargs):
-        return super(CppJavaExtensionConverter, self).convert(
-            buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
-            is_library = False,
-            is_buck_binary = False,
-            is_test = False,
-            is_deployable = False,
+    def convert(
+            self,
+            base_path,
+            name,
+            visibility=None,
+            lib_name=None,
+            dlopen_enabled=None,
             *args,
-            **kwargs
-        )
+            **kwargs):
+
+        rules = []
+
+        # If we're not building in `dev` mode, then build extensions as
+        # monolithic statically linked C/C++ shared libs.  We do this by
+        # overriding some parameters to generate the extension as a dlopen-
+        # enabled C/C++ binary, which also requires us generating the rule
+        # under a different name, so we can use the user-facing name to
+        # wrap the C/C++ binary in a prebuilt C/C++ library.
+        if not config.get_build_mode().startswith('dev'):
+            real_name = name
+            name = name + '-extension'
+            soname = (
+                'lib{}.so'.format(
+                    lib_name or
+                    paths.join(base_path, name).replace('/', '_')))
+            dlopen_enabled = {'soname': soname}
+            lib_name = None
+
+        # Delegate to the main conversion function, using potentially altered
+        # parameters from above.
+        rules.extend(
+            super(CppJavaExtensionConverter, self).convert_rule(
+                base_path,
+                name,
+                buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
+                is_library = False,
+                is_buck_binary = False,
+                is_test = False,
+                is_deployable = False,
+                dlopen_enabled=dlopen_enabled,
+                lib_name=lib_name,
+                visibility=visibility,
+                **kwargs))
+
+        # If we're building the monolithic extension, then setup additional
+        # rules to wrap the extension in a prebuilt C/C++ library consumable
+        # by Java dependents.
+        if not config.get_build_mode().startswith('dev'):
+
+            # Wrap the extension in a `prebuilt_cxx_library` rule
+            # using the user-facing name.  This is what Java library
+            # dependents will depend on.
+            platform = platform_utils.get_buck_platform_for_base_path(base_path)
+            native.prebuilt_cxx_library(
+                name = real_name,
+                visibility = visibility,
+                soname = soname,
+                shared_lib = ':{}#{}'.format(name, platform),
+            )
+
+        return rules
 
 class CppLuaExtensionConverter(CppConverter):
     def __init__(self, context):
