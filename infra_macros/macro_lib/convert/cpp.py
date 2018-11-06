@@ -313,6 +313,7 @@ class CppConverter(base.Converter):
             buck_rule_type,
             is_library,
             is_buck_binary,
+            is_test,
             base_module=None,
             module_name=None,
             srcs=[],
@@ -916,7 +917,7 @@ class CppConverter(base.Converter):
 
         attributes['labels'] = list(tags)
 
-        if self.is_test(buck_rule_type):
+        if is_test:
             attributes['labels'].extend(label_utils.convert_labels(platform, 'c++'))
             if coverage.is_coverage_enabled(base_path):
                 attributes['labels'].append('coverage')
@@ -1437,6 +1438,7 @@ class CppLibraryConverter(CppConverter):
             buck_rule_type = 'cxx_library',
             is_library = True,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1450,6 +1452,7 @@ class CppBinaryConverter(CppConverter):
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1463,6 +1466,7 @@ class CppUnittestConverter(CppConverter):
             buck_rule_type = 'cxx_test',
             is_library = False,
             is_buck_binary = True,
+            is_test = True,
             *args,
             **kwargs
         )
@@ -1476,6 +1480,7 @@ class CppBenchmarkConverter(CppConverter):
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1489,6 +1494,7 @@ class CppNodeExtensionConverter(CppConverter):
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1502,6 +1508,7 @@ class CppPrecompiledHeaderConverter(CppConverter):
             buck_rule_type = 'cxx_precompiled_header',
             is_library = False,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1515,6 +1522,7 @@ class CppPythonExtensionConverter(CppConverter):
             buck_rule_type = 'cxx_python_extension',
             is_library = False,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1528,6 +1536,7 @@ class CppJavaExtensionConverter(CppConverter):
             buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
             is_library = False,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1541,6 +1550,7 @@ class CppLuaExtensionConverter(CppConverter):
             buck_rule_type = 'cxx_lua_extension',
             is_library = False,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
@@ -1554,6 +1564,7 @@ class CppLuaMainModuleConverter(CppConverter):
             buck_rule_type = 'cxx_library',
             is_library = False,
             is_buck_binary = False,
+            is_test = False,
             *args,
             **kwargs
         )
