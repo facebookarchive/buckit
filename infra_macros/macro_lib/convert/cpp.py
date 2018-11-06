@@ -45,11 +45,6 @@ load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
 
-# A regex matching preprocessor flags trying to pull in system include paths.
-# These are bad as they can cause headers for system packages to mask headers
-# from third-party.
-SYS_INC = re.compile('^(?:-I|-isystem)?/usr(?:/local)?/include')
-
 def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, compiler):
     return compiler_specific_flags.get("gcc" if cuda else compiler)
 
@@ -303,52 +298,6 @@ class CppConverter(base.Converter):
             deps.append(target_utils.ThirdPartyRuleTarget('libgcc', 'atomic'))
 
         return deps
-
-    def verify_linker_flags(self, flags):
-        """
-        Check for invalid linker flags.
-        """
-
-        # PLEASE DON'T UPDATE WITHOUT REACHING OUT TO FBCODE FOUNDATION FIRST.
-        # Using arbitrary linker flags in libraries can cause unexpected issues
-        # for upstream dependencies, so we make sure to restrict to a safe(r)
-        # subset of potential flags.
-        prefixes = [
-            '-L',
-            '-u',
-            '-rpath',
-            '--wrap',
-            '--dynamic-list',
-            '--export-dynamic',
-            '--enable-new-dtags',
-        ]
-
-        for flag in flags:
-            if not re.match('|'.join(prefixes), flag):
-                fail('using disallowed linker flag in a library: ' + flag)
-
-    def verify_preprocessor_flags(self, param, flags):
-        """
-        Make sure the given flags are valid preprocessor flags.
-        """
-
-        # Check that we're getting an actual preprocessor flag (e.g. and not a
-        # compiler flag).
-        for flag in flags:
-            if not re.match('-[DI]', flag):
-                fail(
-                    '`{}`: invalid preprocessor flag (expected `-[DI]*`): {}'
-                    .format(param, flag))
-
-        # Check for includes pointing to system paths.
-        bad_flags = [flag for flag in flags if SYS_INC.search(flag)]
-        if bad_flags:
-            fail(
-                'The flags \"{}\" in \'preprocessor_flags\' would pull in '
-                'system include paths which could cause incompatible '
-                'header files to be used instead of correct versions from '
-                'third-party.'
-                .format(' '.join(bad_flags)))
 
     def parse_modules_val(self, val, source, base_path, name):
         """
@@ -700,7 +649,7 @@ class CppConverter(base.Converter):
             if sanitizers.get_sanitizer() != None:
                 out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
             out_preprocessor_flags.extend(coverage.get_coverage_flags(base_path))
-        self.verify_preprocessor_flags(
+        cpp_common.assert_preprocessor_flags(
             'preprocessor_flags',
             preprocessor_flags)
         out_preprocessor_flags.extend(preprocessor_flags)
@@ -762,7 +711,7 @@ class CppConverter(base.Converter):
             attributes['soname'] = 'lib{}.so'.format(lib_name)
 
         exported_pp_flags = []
-        self.verify_preprocessor_flags(
+        cpp_common.assert_preprocessor_flags(
             'propagated_pp_flags',
             propagated_pp_flags)
         exported_pp_flags.extend(propagated_pp_flags)
@@ -856,7 +805,7 @@ class CppConverter(base.Converter):
 
         # Add in user-specified linker flags.
         if self.is_library():
-            self.verify_linker_flags(linker_flags)
+            cpp_common.assert_linker_flags(linker_flags)
 
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         for flag in linker_flags:

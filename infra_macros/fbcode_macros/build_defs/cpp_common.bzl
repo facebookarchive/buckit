@@ -24,6 +24,24 @@ _HEADER_EXTS = (
     ".cuh",
 )
 
+# PLEASE DON'T UPDATE WITHOUT REACHING OUT TO FBCODE FOUNDATION FIRST.
+# Using arbitrary linker flags in libraries can cause unexpected issues
+# for upstream dependencies, so we make sure to restrict to a safe(r)
+# subset of potential flags.
+_VALID_LINKER_FLAG_PREFIXES = (
+    "-L",
+    "-u",
+    "-rpath",
+    "--wrap",
+    "--dynamic-list",
+    "--export-dynamic",
+    "--enable-new-dtags",
+)
+
+_VALID_PREPROCESSOR_FLAG_PREFIXES = ("-D", "-I")
+
+_INVALID_PREPROCESSOR_FLAG_PREFIXES = ("-I/usr/local/include", "-I/usr/include")
+
 _DEFAULT_HEADERS_RULE_NAME = "__default_headers__"
 
 _DEFAULT_HEADERS_RULE_TARGET = ":__default_headers__"
@@ -124,8 +142,62 @@ def _exclude_from_auto_pch(base_path, name):
     # No reason to disable auto-PCH, that we know of.
     return False
 
+def _assert_linker_flags(flags):
+    """
+    Verifies that linker flags match a whilelist
+
+    This fails the build if an invalid linker flag is provided
+
+    Args:
+        flags: A list of linker flags
+    """
+    for flag in flags:
+        if not flag.startswith(_VALID_LINKER_FLAG_PREFIXES):
+            fail("using disallowed linker flag in a library: " + flag)
+
+def _assert_preprocessor_flags(param, flags):
+    """
+    Make sure the given flags are valid preprocessor flags.
+
+    This fails the build if any invalid flags are provided
+
+    Args:
+        param: The name of the paramter that is using these flags. Used for error messages
+        flags: A list of preprocessor flags
+    """
+
+    # Check that we're getting an actual preprocessor flag (e.g. and not a
+    # compiler flag).
+    for flag in flags:
+        if not flag.startswith(_VALID_PREPROCESSOR_FLAG_PREFIXES):
+            fail(
+                "`{}`: invalid preprocessor flag (expected `-[DI]*`): {}".format(param, flag),
+            )
+
+    # Check for includes pointing to system paths.
+    bad_flags = [
+        flag
+        for flag in flags
+        # We already filter out -isystem above, and we shouldn't really have absolute
+        # paths to include directories
+        # We filter on ending with 'include' right now, because there are a couple of
+        # dirs we accept (namely a JDK include dir that ends in include/linux) that
+        # should not get caught here
+        if flag.startswith(_INVALID_PREPROCESSOR_FLAG_PREFIXES)
+    ]
+    if bad_flags:
+        fail(
+            ('The flags \"{}\" in \'{}\' would pull in ' +
+             "system include paths which could cause incompatible " +
+             "header files to be used instead of correct versions from " +
+             "third-party.")
+                .format(" ".join(bad_flags), param),
+        )
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
+    assert_linker_flags = _assert_linker_flags,
+    assert_preprocessor_flags = _assert_preprocessor_flags,
     default_headers_library = _default_headers_library,
     exclude_from_auto_pch = _exclude_from_auto_pch,
     get_fbcode_default_pch = _get_fbcode_default_pch,
