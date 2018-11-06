@@ -52,19 +52,12 @@ SYS_INC = re.compile('^(?:-I|-isystem)?/usr(?:/local)?/include')
 def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, compiler):
     return compiler_specific_flags.get("gcc" if cuda else compiler)
 
-class AbsentParameter(object):
-    """
-    A marker class which helps us differentiate between empty/falsey/None values
-    defaulted in a function's arg list, vs. actually passed in from the caller
-    with such a value.
-    """
-
-    def __len__(self):
-        "If `len` is zero, this is considered falsey by `if (x)` or `bool(x)`."
-        return 0
-
-
-ABSENT = AbsentParameter()
+"""
+A marker which helps us differentiate between empty/falsey/None values
+defaulted in a function's arg list, vs. actually passed in from the caller
+with such a value.
+"""
+ABSENT = tuple()
 
 
 class CppConverter(base.Converter):
@@ -632,7 +625,7 @@ class CppConverter(base.Converter):
         # Don't build precompiled headers with modules.
         if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
             out_modules = False
-        if precompiled_header is not ABSENT:
+        if precompiled_header != ABSENT:
             out_modules = False
 
         attributes = collections.OrderedDict()
@@ -1303,7 +1296,7 @@ class CppConverter(base.Converter):
                 'cpp_library', 'cpp_binary', 'cpp_unittest',
                 'cxx_library', 'cxx_binary', 'cxx_test'):
             # Was completely left out in the rule? (vs. None to disable autoPCH)
-            if precompiled_header is ABSENT:
+            if precompiled_header == ABSENT:
                 precompiled_header = \
                     self.get_fbcode_default_pch(out_srcs, base_path, name)
 
