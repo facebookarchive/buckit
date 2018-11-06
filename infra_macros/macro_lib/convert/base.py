@@ -612,45 +612,6 @@ class Converter(object):
 
         return ldflags
 
-    def get_binary_link_deps(
-            self,
-            base_path,
-            name,
-            linker_flags=(),
-            allocator='malloc',
-            default_deps=True):
-        """
-        Return a list of dependencies that should apply to *all* binary rules
-        that link C/C++ code.
-        """
-
-        deps = []
-        rules = []
-
-        # If we're not using a sanitizer add allocator deps.
-        if sanitizers.get_sanitizer() is None:
-            deps.extend(allocators.get_allocator_deps(allocator))
-
-        # Add in any dependencies required for sanitizers.
-        deps.extend(sanitizers.get_sanitizer_binary_deps())
-        deps.append(
-            cpp_common.create_sanitizer_configuration(
-                base_path,
-                name,
-                linker_flags,
-            )
-        )
-
-        # Add in any dependencies required for code coverage
-        if coverage.get_coverage():
-            deps.extend(coverage.get_coverage_binary_deps())
-
-        # We link in our own implementation of `kill` to binaries (S110576).
-        if default_deps:
-            deps.append(target_utils.RootRuleTarget('common/init', 'kill'))
-
-        return deps, rules
-
     def create_cxx_build_info_rule(
             self,
             base_path,

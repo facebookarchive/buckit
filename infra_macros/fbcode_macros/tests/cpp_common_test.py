@@ -162,3 +162,52 @@ class CppCommonTest(tests.utils.TestCase):
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected_tsan[1])
         root.updateBuckconfig("defaults.cxx_library", "type", "static_pic")
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected_tsan[2])
+
+    @tests.utils.with_project(run_buckd=True)
+    def test_get_binary_link_deps(self, root):
+        commands = [
+            'cpp_common.get_binary_link_deps("foo", "bar", ["-fuse-ld=gold"], allocator="jemalloc", default_deps=True)',
+            'cpp_common.get_binary_link_deps("foo", "baz", ["-fuse-ld=gold"], allocator="jemalloc", default_deps=False)',
+        ]
+
+        expected = [
+            [
+                self.rule_target(base_path="common/memory", name="jemalloc", repo=None),
+                self.rule_target(
+                    base_path="foo", name="bar-san-conf-__generated-lib__", repo=None
+                ),
+                self.rule_target(base_path="common/init", name="kill", repo=None),
+            ],
+            [
+                self.rule_target(base_path="common/memory", name="jemalloc", repo=None),
+                self.rule_target(
+                    base_path="foo", name="baz-san-conf-__generated-lib__", repo=None
+                ),
+            ],
+        ]
+
+        expected_san = [
+            [
+                self.rule_target(
+                    base_path="tools/build/sanitizers", name="asan-cpp", repo=None
+                ),
+                self.rule_target(
+                    base_path="foo", name="bar-san-conf-__generated-lib__", repo=None
+                ),
+                self.rule_target(base_path="common/init", name="kill", repo=None),
+            ],
+            [
+                self.rule_target(
+                    base_path="tools/build/sanitizers", name="asan-cpp", repo=None
+                ),
+                self.rule_target(
+                    base_path="foo", name="baz-san-conf-__generated-lib__", repo=None
+                ),
+            ],
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+        root.updateBuckconfig("fbcode", "global_compiler", "clang")
+        root.updateBuckconfig("fbcode", "sanitizer", "address")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected_san)

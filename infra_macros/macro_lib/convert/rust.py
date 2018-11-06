@@ -93,14 +93,14 @@ class RustConverter(base.Converter):
 
         allocator = allocators.normalize_allocator(allocator)
 
-        d, r = self.get_binary_link_deps(
-            base_path,
-            name,
-            linker_flags,
-            allocator,
+        deps.extend(
+            cpp_common.get_binary_link_deps(
+                base_path,
+                name,
+                linker_flags,
+                allocator,
+            )
         )
-        deps.extend(d)
-        rules.extend(r)
 
         # Always explicitly add libc - except for sanitizer modes, since
         # they already add them

@@ -20,6 +20,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -291,14 +292,14 @@ class LuaConverter(base.Converter):
             out_deps.append(DEFAULT_CPP_MAIN)
 
         # Add in binary-specific link deps.
-        d, r = self.get_binary_link_deps(
-            base_path,
-            name,
-            cpp_main_attrs['linker_flags'],
-            allocator=allocator,
+        out_deps.extend(
+            cpp_common.get_binary_link_deps(
+                base_path,
+                name,
+                cpp_main_attrs['linker_flags'],
+                allocator=allocator,
+            )
         )
-        out_deps.extend(d)
-        rules.extend(r)
 
         # Set the deps attr.
         cpp_main_attrs['deps'], cpp_main_attrs['platform_deps'] = (

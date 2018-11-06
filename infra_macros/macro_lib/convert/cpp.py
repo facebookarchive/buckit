@@ -821,15 +821,15 @@ class CppConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if is_binary:
-            d, r = self.get_binary_link_deps(
-                base_path,
-                name,
-                attributes['linker_flags'],
-                default_deps=not nodefaultlibs,
-                allocator=allocator,
+            dependencies.extend(
+                cpp_common.get_binary_link_deps(
+                    base_path,
+                    name,
+                    attributes['linker_flags'],
+                    default_deps=not nodefaultlibs,
+                    allocator=allocator,
+                )
             )
-            dependencies.extend(d)
-            extra_rules.extend(r)
 
         if rule_specific_deps != None:
             dependencies.extend(rule_specific_deps)

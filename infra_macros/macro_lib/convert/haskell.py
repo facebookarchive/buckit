@@ -510,9 +510,8 @@ class HaskellConverter(base.Converter):
         # parameter that we rely on to support multi-platform builds.  So use
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
-        d, r = self.get_binary_link_deps(base_path, deps_name)
+        d = cpp_common.get_binary_link_deps(base_path, deps_name)
         rules.append(self._get_dep_rule(base_path, deps_name, deps + d, visibility))
-        rules.extend(r)
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
@@ -551,9 +550,8 @@ class HaskellConverter(base.Converter):
         # parameter that we rely on to support multi-platform builds.  So use
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
-        d, r = self.get_binary_link_deps(base_path, deps_name)
+        d = cpp_common.get_binary_link_deps(base_path, deps_name)
         rules.append(self._get_dep_rule(base_path, deps_name, deps + d, visibility))
-        rules.extend(r)
 
         out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
 
@@ -632,7 +630,7 @@ class HaskellConverter(base.Converter):
         if self.get_fbconfig_rule_type() == 'haskell_ghci':
             out_compiler_flags.append('-fexternal-interpreter')
             # Mark binary_link_deps to be preloaded
-            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
+            d = cpp_common.get_binary_link_deps(base_path, name, allocator=allocator)
             attributes['preload_deps'], attributes['platform_preload_deps'] = \
                 src_and_dep_helpers.format_all_deps(d)
 
@@ -651,7 +649,6 @@ class HaskellConverter(base.Converter):
                         base_path, name) +
                     'Template file names must be unique and not same as ' +
                     'the TARGET name')
-            rules.extend(r)
 
         if ghci_bin_dep is not None:
             bin_dep_target = src_and_dep_helpers.convert_build_target(base_path, ghci_bin_dep)
@@ -825,15 +822,13 @@ class HaskellConverter(base.Converter):
         # Add in binary-specific link deps.
         add_preload_deps = self.get_fbconfig_rule_type() in ('haskell_library', 'haskell_binary')
         if self.is_binary() or add_preload_deps:
-            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
+            d = cpp_common.get_binary_link_deps(base_path, name, allocator=allocator)
             if self.is_binary():
                 dependencies.extend(d)
             # Mark binary_link_deps to be preloaded
             if add_preload_deps:
                 attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
                     src_and_dep_helpers.format_all_deps(d)
-
-            rules.extend(r)
 
         attributes['deps'], attributes['platform_deps'] = (
             src_and_dep_helpers.format_all_deps(dependencies))

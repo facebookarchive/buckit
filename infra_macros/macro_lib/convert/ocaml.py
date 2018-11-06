@@ -18,6 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -112,13 +113,13 @@ class OCamlConverter(base.Converter):
 
         # Add in binary-specific link deps.
         if self.is_binary():
-            d, r = self.get_binary_link_deps(
-                base_path,
-                name,
-                default_deps=not nodefaultlibs,
+            dependencies.extend(
+                cpp_common.get_binary_link_deps(
+                    base_path,
+                    name,
+                    default_deps=not nodefaultlibs,
+                )
             )
-            dependencies.extend(d)
-            extra_rules.extend(r)
 
         # If any deps were specified, add them to the output attrs.
         if dependencies:

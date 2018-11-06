@@ -172,7 +172,7 @@ class GoConverter(base.Converter):
                 link_style = cpp_common.get_link_style()
 
             attributes['linker_flags'] = linker_flags
-            d, r = self.get_binary_link_deps(
+            d = cpp_common.get_binary_link_deps(
                 base_path,
                 name,
                 attributes['linker_flags'] if 'linker_flags' in attributes else [],
@@ -185,19 +185,20 @@ class GoConverter(base.Converter):
                 )
             )
 
-            r.append(Rule('genrule', {
-                'name' : 'gen-asan-lib',
-                'cmd' : 'echo \'package asan\nimport "C"\' > $OUT',
-                'out' : 'asan.go',
-            }))
-
-            r.append(Rule('cgo_library', {
-                'name' : 'cgo-asan-lib',
-                'package_name' : 'asan',
-                'srcs' : [':gen-asan-lib'],
-                'deps' : formatted_deps,
-                'link_style' : link_style,
-            }))
+            r = [
+                Rule('genrule', {
+                    'name' : 'gen-asan-lib',
+                    'cmd' : 'echo \'package asan\nimport "C"\' > $OUT',
+                    'out' : 'asan.go',
+                }),
+                Rule('cgo_library', {
+                    'name' : 'cgo-asan-lib',
+                    'package_name' : 'asan',
+                    'srcs' : [':gen-asan-lib'],
+                    'deps' : formatted_deps,
+                    'link_style' : link_style,
+                }),
+            ]
 
             dependencies.append(":cgo-asan-lib")
             extra_rules.extend(r)

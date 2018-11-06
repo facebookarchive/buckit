@@ -6,7 +6,9 @@ load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_un
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
+load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -361,6 +363,61 @@ def _sanitizer_config_line(name, default_options, extra_options):
         ]),
     )
 
+_COMMON_INIT_KILL = target_utils.RootRuleTarget("common/init", "kill")
+
+def _get_binary_link_deps(
+        base_path,
+        name,
+        linker_flags = (),
+        allocator = "malloc",
+        default_deps = True):
+    """
+    Return a list of dependencies that should apply to *all* binary rules that link C/C++ code.
+
+    This also creates a sanitizer configuration rule if necessary, so this function
+    should not be called more than once for a given rule.
+
+    Args:
+        base_path: The package path
+        name: The name of the rule
+        linker_flags: If provided, flags to pass to allocator/converage/sanitizers to
+                      make sure proper dependent rules are generated.
+        allocator: The allocator to use. This is generally set by a configuration option
+                   and retreived in alloctors.bzl
+        default_deps: If set, add in a list of "default deps", dependencies that
+                      should generally be added to make sure binaries work consistently.
+                      e.g. common/init
+
+    Returns:
+        A list of `RuleTarget` structs that should be added as dependencies.
+    """
+
+    deps = []
+
+    # If we're not using a sanitizer add allocator deps.
+    if sanitizers.get_sanitizer() == None:
+        deps.extend(allocators.get_allocator_deps(allocator))
+
+    # Add in any dependencies required for sanitizers.
+    deps.extend(sanitizers.get_sanitizer_binary_deps())
+    deps.append(
+        _create_sanitizer_configuration(
+            base_path,
+            name,
+            linker_flags,
+        ),
+    )
+
+    # Add in any dependencies required for code coverage
+    if coverage.get_coverage():
+        deps.extend(coverage.get_coverage_binary_deps())
+
+    # We link in our own implementation of `kill` to binaries (S110576).
+    if default_deps:
+        deps.append(_COMMON_INIT_KILL)
+
+    return deps
+
 # This unfortunately has to be here to get around a circular import in sanitizers.bzl
 def _create_sanitizer_configuration(
         base_path,
@@ -489,6 +546,7 @@ cpp_common = struct(
     exclude_from_auto_pch = _exclude_from_auto_pch,
     format_source_with_flags = _format_source_with_flags,
     format_source_with_flags_list = _format_source_with_flags_list,
+    get_binary_link_deps = _get_binary_link_deps,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_implicit_deps = _get_implicit_deps,
     get_link_style = _get_link_style,

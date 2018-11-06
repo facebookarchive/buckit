@@ -18,6 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -100,12 +101,16 @@ class DConverter(base.Converter):
                 platform=platform))
         # Add in binary-specific link deps.
         if self.is_binary():
-            d, r = self.get_binary_link_deps(
-                base_path,
-                name,
-                attributes['linker_flags'])
-            dependencies.extend(src_and_dep_helpers.format_deps(d, platform=platform))
-            rules.extend(r)
+            dependencies.extend(
+                src_and_dep_helpers.format_deps(
+                    cpp_common.get_binary_link_deps(
+                        base_path,
+                        name,
+                        attributes['linker_flags'],
+                    ),
+                    platform=platform,
+                )
+            )
         attributes['deps'] = dependencies
 
         return [Rule(self.get_buck_rule_type(), attributes)] + rules
