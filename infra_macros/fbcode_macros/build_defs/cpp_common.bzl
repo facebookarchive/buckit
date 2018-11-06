@@ -6,6 +6,7 @@ load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 _SourceWithFlags = provider(fields = [
@@ -283,6 +284,35 @@ def _normalize_dlopen_enabled(dlopen_enabled):
 
     return dlopen_info
 
+_IMPLICIT_DEPS = [target_utils.ThirdPartyRuleTarget("libgcc", "atomic")]
+
+_IMPLICIT_PCH_DEPS = []
+
+def _get_implicit_deps(is_precompiled_header):
+    """
+    Gets the list of `RuleTargets` that should be added as implicit dependencies for cpp rules
+
+    Args:
+        is_precompiled_header: Whether we're fetching dependencies for a
+                               cpp_precompiled_header rule which has different
+                               dependencies.
+
+    Returns:
+        A list of `RuleTarget`s that should be added to deps/versioned_deps/platform_deps
+    """
+
+    # TODO(#13588666): When using clang with the gcc-5-glibc-2.23 platform,
+    # `-latomic` isn't automatically added to the link line, meaning uses
+    # of `std::atomic<T>` fail to link with undefined reference errors.
+    # So implicitly add this dep here.
+    #
+    # TODO(#17067102): `cpp_precompiled_header` rules currently don't
+    # support `platform_deps` parameter.
+    if is_precompiled_header:
+        return _IMPLICIT_PCH_DEPS
+    else:
+        return _IMPLICIT_DEPS
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -293,6 +323,7 @@ cpp_common = struct(
     format_source_with_flags = _format_source_with_flags,
     format_source_with_flags_list = _format_source_with_flags_list,
     get_fbcode_default_pch = _get_fbcode_default_pch,
+    get_implicit_deps = _get_implicit_deps,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
 )

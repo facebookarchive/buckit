@@ -205,26 +205,6 @@ class CppConverter(base.Converter):
         parts = self.get_lua_base_module_parts(base_path, base_module)
         return '_'.join(['luaopen'] + parts + [name])
 
-    def get_implicit_deps(self):
-        """
-        Add additional dependencies we need to implicitly add to the build for
-        various reasons.
-        """
-
-        deps = []
-
-        # TODO(#13588666): When using clang with the gcc-5-glibc-2.23 platform,
-        # `-latomic` isn't automatically added to the link line, meaning uses
-        # of `std::atomic<T>` fail to link with undefined reference errors.
-        # So implicitly add this dep here.
-        #
-        # TODO(#17067102): `cpp_precompiled_header` rules currently don't
-        # support `platform_deps` parameter.
-        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
-            deps.append(target_utils.ThirdPartyRuleTarget('libgcc', 'atomic'))
-
-        return deps
-
     def parse_modules_val(self, val, source, base_path, name):
         """
         Parse a config value used to enabled/disable modules.
@@ -1001,7 +981,9 @@ class CppConverter(base.Converter):
 
         # Add in implicit deps.
         if not nodefaultlibs:
-            dependencies.extend(self.get_implicit_deps())
+            dependencies.extend(
+                cpp_common.get_implicit_deps(
+                    self.get_fbconfig_rule_type() == 'cpp_precompiled_header'))
 
         # Add implicit toolchain module deps.
         if module_utils.enabled() and out_modules:
