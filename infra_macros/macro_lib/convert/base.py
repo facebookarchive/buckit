@@ -65,6 +65,7 @@ build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:config.bzl", "config")
@@ -428,21 +429,6 @@ class Converter(object):
         else:
             raise Exception('invalid strip mode: ' + mode)
 
-    def get_link_style(self):
-        """
-        The link style to use for native binary rules.
-        """
-
-        # Initialize the link style using the one set via `gen_modes.py`.
-        link_style = self._context.link_style
-
-        # If we're using TSAN, we need to build PIEs, which requires PIC deps.
-        # So upgrade to `static_pic` if we're building `static`.
-        if sanitizers.get_sanitizer() == 'thread' and link_style == 'static':
-            link_style = 'static_pic'
-
-        return link_style
-
     def get_build_info_linker_flags(
             self,
             base_path,
@@ -525,7 +511,7 @@ class Converter(object):
         # object files from sources immediately owned by `cpp_binary` rules,
         # this shouldn't have much of a performance issue.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        if (self.get_link_style() == 'shared' and
+        if (cpp_common.get_link_style() == 'shared' and
                 self.read_shlib_interfaces(buck_platform) == 'defined_only'):
             ldflags.append('-Wl,--export-dynamic')
 

@@ -21,6 +21,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -606,7 +607,7 @@ class HaskellConverter(base.Converter):
         rules = []
         out_compiler_flags = []
         out_linker_flags = []
-        out_link_style = self.get_link_style()
+        out_link_style = cpp_common.get_link_style()
         platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()

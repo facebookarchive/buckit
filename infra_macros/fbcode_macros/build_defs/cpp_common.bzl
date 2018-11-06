@@ -3,9 +3,11 @@ load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
@@ -313,6 +315,21 @@ def _get_implicit_deps(is_precompiled_header):
     else:
         return _IMPLICIT_DEPS
 
+def _get_link_style():
+    """
+    The link style to use for native binary rules.
+    """
+
+    # Initialize the link style using the one set via `gen_modes.py`.
+    link_style = config.get_default_link_style()
+
+    # If we're using TSAN, we need to build PIEs, which requires PIC deps.
+    # So upgrade to `static_pic` if we're building `static`.
+    if sanitizers.get_sanitizer() == "thread" and link_style == "static":
+        link_style = "static_pic"
+
+    return link_style
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -324,6 +341,7 @@ cpp_common = struct(
     format_source_with_flags_list = _format_source_with_flags_list,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_implicit_deps = _get_implicit_deps,
+    get_link_style = _get_link_style,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
 )

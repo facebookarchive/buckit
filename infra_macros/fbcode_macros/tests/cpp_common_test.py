@@ -140,3 +140,25 @@ class CppCommonTest(tests.utils.TestCase):
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project(run_buckd=True)
+    def test_get_link_style(self, root):
+        commands = ["cpp_common.get_link_style()"]
+
+        expected = ["static", "shared", "static_pic"]
+        expected_tsan = ["static_pic", "shared", "static_pic"]
+
+        root.updateBuckconfig("defaults.cxx_library", "type", "static")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected[0])
+        root.updateBuckconfig("defaults.cxx_library", "type", "shared")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected[1])
+        root.updateBuckconfig("defaults.cxx_library", "type", "static_pic")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected[2])
+
+        root.updateBuckconfig("fbcode", "sanitizer", "thread")
+        root.updateBuckconfig("defaults.cxx_library", "type", "static")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected_tsan[0])
+        root.updateBuckconfig("defaults.cxx_library", "type", "shared")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected_tsan[1])
+        root.updateBuckconfig("defaults.cxx_library", "type", "static_pic")
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected_tsan[2])

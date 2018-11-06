@@ -140,7 +140,7 @@ class CppConverter(base.Converter):
         # which allows us to pass `--no-undefined` to the linker to prevent
         # undefined symbols.
         if (sanitizer.startswith('address') and
-                self.get_link_style() == 'shared'):
+                cpp_common.get_link_style() == 'shared'):
             deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
@@ -275,7 +275,7 @@ class CppConverter(base.Converter):
         dependencies = []
         os_deps = os_deps or []
         os_linker_flags = os_linker_flags or []
-        out_link_style = self.get_link_style()
+        out_link_style = cpp_common.get_link_style()
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         dlopen_info = cpp_common.normalize_dlopen_enabled(dlopen_enabled)
         # `dlopen_enabled=True` binaries are really libraries.

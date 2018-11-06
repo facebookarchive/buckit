@@ -29,6 +29,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
@@ -164,11 +165,11 @@ class GoConverter(base.Converter):
             attributes['external_linker_flags'] = external_linker_flags
 
         if self.is_cgo() and link_style == None:
-            link_style = self.get_link_style()
+            link_style = cpp_common.get_link_style()
 
         if (self.is_binary() or self.is_test()) and cgo == True:
             if link_style == None:
-                link_style = self.get_link_style()
+                link_style = cpp_common.get_link_style()
 
             attributes['linker_flags'] = linker_flags
             d, r = self.get_binary_link_deps(

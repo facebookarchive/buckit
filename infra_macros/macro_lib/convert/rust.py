@@ -20,6 +20,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -185,7 +186,7 @@ class RustConverter(base.Converter):
         if self.is_binary():
             platform = platform_utils.get_platform_for_base_path(base_path)
             if not link_style:
-                link_style = self.get_link_style()
+                link_style = cpp_common.get_link_style()
 
             attributes['link_style'] = link_style
 
@@ -338,7 +339,7 @@ class RustConverter(base.Converter):
         elif 'features' in attributes:
             test_attributes['features'] = attributes['features']
 
-        link_style = self.get_link_style()
+        link_style = cpp_common.get_link_style()
         if test_link_style:
             link_style = test_link_style
         elif 'link_style' in attributes:
