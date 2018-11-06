@@ -85,18 +85,6 @@ def _get_auto_fdo_enabled():
     # cxx.profile is the target containing the AutoFDO profile feedback data
     return native.read_config("cxx", "profile") != None
 
-def _get_auto_pch_blacklist():
-    """
-    Gets directories that should not have precopmied headers
-
-    If provided, a list of directories that should be opted out of automatically
-    receiving precompiled headers when pch is enabled
-
-    Returns:
-        A list of directories that should not receive precompiled headers
-    """
-    return read_list("fbcode", "auto_pch_blacklist", [], delimiter = ",")
-
 def _get_build_mode():
     """
     Gets the name of the build mode.
@@ -407,7 +395,6 @@ config = struct(
     get_allocators = _get_allocators,
     get_asm_filter = _get_asm_filter,
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
-    get_auto_pch_blacklist = _get_auto_pch_blacklist,
     get_build_mode = _get_build_mode,
     get_current_os = _get_current_host_os,
     get_current_repo_name = _get_current_repo_name,

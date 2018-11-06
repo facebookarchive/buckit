@@ -22,6 +22,8 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:new_sets.bzl", "sets")
+load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
@@ -1311,20 +1313,13 @@ class CppConverter(base.Converter):
             return True
         path += '/'
 
-        # t13036847 -- These are distilled from lists of dependencies for
-        # things listed as core tools.  Instead of listing out every possible
-        # specific dep here, I did exclude some directories pretty broadly,
-        # to make maintaining this list simpler, and decrease the chance that
-        # some other new core tool ends up picking a new dep not on this list.
-        # Try this command to find stuff to add to this list:
-        # buck query 'deps(%s, 1000)' \
-        #   '//admarket/libadmarket/if:libadmarket_enum_map_gen' \
-        #   '//dsi/logger/cpp/compiler:logger_cpp_gen' \
-        #   ...  | sort -u
-        # See tools/build/buck/config.py for CORE_TOOLS list.
-        for pattern in config.get_auto_pch_blacklist():
-            if path.startswith(pattern):
+        slash_idx = len(path)
+        for _ in range(slash_idx):
+            if slash_idx == -1:
+                break
+            if sets.contains(auto_pch_blacklist, path[0:slash_idx]):
                 return True
+            slash_idx = path.rfind("/", 0, slash_idx)
 
         # No reason to disable auto-PCH, that we know of.
         return False

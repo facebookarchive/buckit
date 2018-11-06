@@ -34,7 +34,6 @@ class ConfigTest(tests.utils.TestCase):
                 "malloc": [],
             },  # get_allocators
             False,  # get_auto_fdo_enabled
-            [],  # get_auto_pch_blacklist
             "dev",  # get_build_mode
             "gcc",  # get_default_compiler_family
             None,  # get_global_compiler_family
@@ -70,7 +69,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_add_auto_headers_glob()",
             "config.get_allocators()",
             "config.get_auto_fdo_enabled()",
-            "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_default_compiler_family()",
             "config.get_global_compiler_family()",
@@ -125,7 +123,6 @@ class ConfigTest(tests.utils.TestCase):
                 "allocators.jemalloc_debug": "//foo:jemalloc_debug",
                 "allocators.tcmalloc": "//foo:tcmalloc",
                 "allocators.malloc": "//foo:malloc",
-                "auto_pch_blacklist": "/foo,/bar",
                 "build_mode": "opt",
                 "global_compiler": "clang",
                 "current_repo_name": "third-party",
@@ -168,7 +165,6 @@ class ConfigTest(tests.utils.TestCase):
                 "malloc": ["//foo:malloc"],
             },  # get_allocators
             True,  # get_auto_fdo_enabled
-            ["/foo", "/bar"],  # get_auto_pch_blacklist
             "opt",  # get_build_mode
             "clang",  # get_global_compiler_family
             current_os,  # get_coverage
@@ -206,7 +202,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_add_auto_headers_glob()",
             "config.get_allocators()",
             "config.get_auto_fdo_enabled()",
-            "config.get_auto_pch_blacklist()",
             "config.get_build_mode()",
             "config.get_global_compiler_family()",
             "config.get_current_os()",
