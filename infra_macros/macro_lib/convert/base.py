@@ -517,68 +517,6 @@ class Converter(object):
 
         return ldflags
 
-    def get_lto_level(self):
-        """
-        Returns the user-specific LTO parallelism level.
-        """
-
-        default = 32 if self._context.lto_type else 0
-        return self.read_int('cxx', 'lto', default)
-
-    def is_lto_enabled(self):
-        """
-        Returns whether to use LTO for this build.
-        """
-
-        return self.get_lto_level() > 0
-
-    def get_gcc_lto_ldflags(self, base_path, platform):
-        """
-        Get linker flags required for gcc LTO.
-        """
-
-        flags = []
-
-        # Verify we're running with a build mode that supports LTO.
-        if self._context.lto_type != 'fat':
-            raise ValueError('build mode doesn\'t support {} LTO'.format(
-                self._context.lto_type))
-
-        # Read the LTO parallelism level from the config, where `0` disables
-        # LTO.
-        lto_level = self.get_lto_level()
-        assert lto_level > 0, lto_level
-
-        # When linking with LTO, we need to pass compiler flags that affect
-        # code generation back into the linker.  Since we don't actually
-        # discern code generation flags from language specific flags, just
-        # pass all our C/C++ compiler flags in.
-        buck_platform = platform_utils.to_buck_platform(platform, 'gcc')
-        compiler_flags = cpp_flags.get_compiler_flags(base_path)
-        section = 'cxx#{}'.format(buck_platform)
-        flags.extend(read_flags(section, 'cflags', []))
-        for plat_re, cflags in compiler_flags['c_cpp_output']:
-            if re.search(plat_re, buck_platform):
-                flags.extend(cflags)
-        flags.extend(read_flags(section, 'cxxflags', []))
-        for plat_re, cflags in compiler_flags['cxx_cpp_output']:
-            if re.search(plat_re, buck_platform):
-                flags.extend(cflags)
-
-        flags.extend([
-            # Some warnings that only show up at lto time.
-            '-Wno-free-nonheap-object',
-            '-Wno-odr',
-            '-Wno-lto-type-mismatch',
-
-            # Set the linker that flags that will run LTO.
-            '-fuse-linker-plugin',
-            '-flto={}'.format(lto_level),
-            '--param=lto-partitions={}'.format(lto_level * 2),
-        ])
-
-        return flags
-
     def get_ldflags(
             self,
             base_path,
@@ -638,7 +576,7 @@ class Converter(object):
                     compiler.get_compiler_for_current_buildfile()))
 
         # 5. If enabled, add in LTO linker flags.
-        if self.is_lto_enabled():
+        if cpp_flags.get_lto_is_enabled():
             compiler.require_global_compiler(
                 'can only use LTO in modes with a fixed global compiler')
             if self._context.global_compiler == 'clang':
@@ -665,7 +603,7 @@ class Converter(object):
                 # and object code and then conditionally opt-in here, at link-
                 # time, based on "enable_lto" in the TARGETS file.
                 if lto:
-                    ldflags.extend(self.get_gcc_lto_ldflags(base_path, platform))
+                    ldflags.extend(cpp_flags.get_gcc_lto_ldflags(base_path, platform))
                 else:
                     ldflags.append('-fno-lto')
 
@@ -766,7 +704,7 @@ class Converter(object):
 
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
-        if self.is_lto_enabled():
+        if cpp_flags.get_lto_is_enabled():
             lib_attrs['platform_linker_flags'] = (
                 src_and_dep_helpers.format_platform_param(
                     partial.make(_lto_linker_flags_partial)))
@@ -933,7 +871,7 @@ class Converter(object):
 
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
-        if self.is_lto_enabled():
+        if cpp_flags.get_lto_is_enabled():
             lib_attrs['platform_linker_flags'] = (
                 src_and_dep_helpers.format_platform_param(
                     partial.make(_lto_linker_flags_partial)))

@@ -1,7 +1,9 @@
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
-load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
+load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags", "read_int")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 
@@ -119,6 +121,74 @@ def _get_compiler_flags(base_path):
 
     return compiler_flags
 
+def _get_lto_level():
+    """
+    Returns the user-specific LTO parallelism level.
+    """
+
+    default = 32 if config.get_lto_type() else 0
+    return read_int("cxx", "lto", default)
+
+def _get_lto_is_enabled():
+    """
+    Returns whether to use LTO for this build.
+    """
+
+    return _get_lto_level() > 0
+
+def _get_gcc_lto_ldflags(base_path, platform):
+    """
+    Get linker flags required for gcc LTO.
+
+    Args:
+        base_path: The package path
+        platform: The fbcode platform in use
+    """
+
+    flags = []
+
+    lto_type = config.get_lto_type()
+
+    # Verify we're running with a build mode that supports LTO.
+    if lto_type != "fat":
+        fail("build mode doesn't support {} LTO".format(lto_type))
+
+    # Read the LTO parallelism level from the config, where `0` disables
+    # LTO.
+    lto_level = _get_lto_level()
+    if lto_level <= 0:
+        fail("lto_level was {}, must be greater than zero".format(lto_level))
+
+    # When linking with LTO, we need to pass compiler flags that affect
+    # code generation back into the linker.  Since we don't actually
+    # discern code generation flags from language specific flags, just
+    # pass all our C/C++ compiler flags in.
+    buck_platform = platform_utils.to_buck_platform(platform, "gcc")
+    compiler_flags = _get_compiler_flags(base_path)
+    section = "cxx#{}".format(buck_platform)
+    flags.extend(read_flags(section, "cflags", []))
+    for plat_re, cflags in compiler_flags["c_cpp_output"]:
+        if buck_platform in plat_re:
+            flags.extend(cflags)
+    flags.extend(read_flags(section, "cxxflags", []))
+    for plat_re, cflags in compiler_flags["cxx_cpp_output"]:
+        if buck_platform in plat_re:
+            flags.extend(cflags)
+
+    flags.extend([
+        # Some warnings that only show up at lto time.
+        "-Wno-free-nonheap-object",
+        "-Wno-odr",
+        "-Wno-lto-type-mismatch",
+
+        # Set the linker that flags that will run LTO.
+        "-fuse-linker-plugin",
+        "-flto={}".format(lto_level),
+        "--param=lto-partitions={}".format(lto_level * 2),
+    ])
+
+    return flags
+
 cpp_flags = struct(
     COMPILER_LANGS = _COMPILER_LANGS,
     get_compiler_flags = _get_compiler_flags,
@@ -127,4 +197,6 @@ cpp_flags = struct(
     get_extra_cxxflags = _get_extra_cxxflags,
     get_extra_cxxppflags = _get_extra_cxxppflags,
     get_extra_ldflags = _get_extra_ldflags,
+    get_gcc_lto_ldflags = _get_gcc_lto_ldflags,
+    get_lto_is_enabled = _get_lto_is_enabled,
 )
