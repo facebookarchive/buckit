@@ -93,3 +93,50 @@ class CppCommonTest(tests.utils.TestCase):
             False,
             False,
         )
+
+    @tests.utils.with_project()
+    def test_exclude_from_auto_pch(self, root):
+        root.project.cells["fbcode_macros"].addFile(
+            "build_defs/auto_pch_blacklist.bzl",
+            dedent(
+                """
+                load("@bazel_skylib//lib:new_sets.bzl", "sets")
+                auto_pch_blacklist = sets.make(["exclude", "exclude2/subdir"])
+                """
+            ),
+        )
+        commands = [
+            'cpp_common.exclude_from_auto_pch("//test", "path")',
+            'cpp_common.exclude_from_auto_pch("test//test", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude2", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude2//exclude2", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude//exclude", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude/dir1", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude//exclude/dir1", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude/dir1/dir2", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude//exclude/dir1/dir2", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude2/subdir", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude2//exclude2/subdir", "path")',
+            'cpp_common.exclude_from_auto_pch("//exclude2/subdir/dir2", "path")',
+            'cpp_common.exclude_from_auto_pch("exclude2//exclude2/subdir/dir2", "path")',
+        ]
+
+        expected = [
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

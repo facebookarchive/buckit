@@ -39,44 +39,6 @@ class CppLibraryConverterTest(utils.ConverterTestCase):
                 self._state.context,
                 'cpp_library'))
 
-    def test_exclude_from_auto_pch(self):
-        self.assertFalse(
-            self._converter.exclude_from_auto_pch('//test', 'path'))
-        self.assertFalse(
-            self._converter.exclude_from_auto_pch('test//test', 'path'))
-        self.assertFalse(
-            self._converter.exclude_from_auto_pch('//exclude2', 'path'))
-        self.assertFalse(
-            self._converter.exclude_from_auto_pch('exclude2//exclude2', 'path'))
-
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch('//exclude', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch('exclude//exclude', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch('//exclude/dir1', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                'exclude//exclude/dir1', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                '//exclude/dir1/dir2', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                'exclude//exclude/dir1/dir2', 'path'))
-
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch('//exclude2/subdir', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                'exclude2//exclude2/subdir', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                '//exclude2/subdir/dir2', 'path'))
-        self.assertTrue(
-            self._converter.exclude_from_auto_pch(
-                'exclude2//exclude2/subdir/dir2', 'path'))
-
     def test_does_not_allow_unknown_oses(self):
         with self.assertRaises(Exception) as ec:
             with mock.patch('platform.system', return_value='blargl'):

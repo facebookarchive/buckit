@@ -22,7 +22,6 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
@@ -1264,8 +1263,7 @@ class CppConverter(base.Converter):
                 'cxx_library', 'cxx_binary', 'cxx_test'):
             # Was completely left out in the rule? (vs. None to disable autoPCH)
             if precompiled_header == ABSENT:
-                precompiled_header = \
-                    self.get_fbcode_default_pch(out_srcs, base_path, name)
+                precompiled_header = cpp_common.get_fbcode_default_pch(out_srcs, base_path, name)
 
         if precompiled_header:
             attributes['precompiled_header'] = precompiled_header
@@ -1275,54 +1273,6 @@ class CppConverter(base.Converter):
                 self.get_version_universe(versions.items()))
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
-
-    def get_fbcode_default_pch(self, out_srcs, base_path, name):
-        """
-        Determine a default precompiled_header rule to use in this build.
-        Return `None` if no default PCH configured / applicable to this rule.
-        """
-        # Don't mess with core tools + deps (mainly to keep rule keys stable).
-        if self.exclude_from_auto_pch(base_path, name):
-            return None
-        # No sources to compile?  Then no point in precompiling.
-        if not out_srcs:
-            return None
-        # Don't allow this to be used for anything non-C++.
-        cpp_src_count = len([s for s in out_srcs if cpp_common.is_cpp_source(str(s))])
-        if cpp_src_count != len(out_srcs):
-            return None
-        # Return the default PCH setting from config (`None` if absent).
-        ret = native.read_config('fbcode', 'default_pch', None)
-        # Literally the word 'None'?  This is to support disabling via command
-        # line or in a .buckconfig from e.g. a unit test (see lua_cpp_main.py).
-        if ret == "None":
-            ret = None
-        return ret
-
-    def exclude_from_auto_pch(self, base_path, name):
-        """
-        Some cxx_library rules should not get PCHs auto-added; for the most
-        part this is for core tools and their dependencies, so we don't
-        change their rule keys.
-        """
-        if core_tools.is_core_tool(base_path, name):
-            return True
-        path = base_path.split('//', 1)[-1]
-
-        if not path:
-            return True
-        path += '/'
-
-        slash_idx = len(path)
-        for _ in range(slash_idx):
-            if slash_idx == -1:
-                break
-            if sets.contains(auto_pch_blacklist, path[0:slash_idx]):
-                return True
-            slash_idx = path.rfind("/", 0, slash_idx)
-
-        # No reason to disable auto-PCH, that we know of.
-        return False
 
     def convert_java_extension(
             self,
