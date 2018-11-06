@@ -206,8 +206,7 @@ class PythonSwigConverter(SwigLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(PythonSwigConverter, self).__init__(context, *args, **kwargs)
-        self._cpp_python_extension_converter = (
-            cpp.CppConverter(context, 'cpp_python_extension'))
+        self._cpp_python_extension_converter = cpp.CppPythonExtensionConverter(context)
 
     def get_lang(self):
         return 'py'

@@ -96,15 +96,11 @@ class Converter(base.Converter):
 
     def __init__(self, context):
         super(Converter, self).__init__(context)
-        self.cpp_library = cpp.CppConverter(
-            context, 'cpp_library',
-        )
+        self.cpp_library = cpp.CppLibraryConverter(context)
         self.python_library = python.PythonConverter(
             context, 'python_library',
         )
-        self.cpp_python_extension = cpp.CppConverter(
-            context, 'cpp_python_extension',
-        )
+        self.cpp_python_extension = cpp.CppPythonExtensionConverter(context)
 
     def get_fbconfig_rule_type(self):
         return 'cython_library'

@@ -298,7 +298,7 @@ class CppThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(CppThriftConverter, self).__init__(context, *args, **kwargs)
-        self._cpp_converter = cpp.CppConverter(context, 'cpp_library')
+        self._cpp_converter = cpp.CppLibraryConverter(context)
 
     def get_additional_compiler(self):
         return self._context.config.get_thrift2_compiler()
