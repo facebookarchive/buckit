@@ -215,9 +215,9 @@ def _format_source_with_flags(src_with_flags, platform = None):
     Format a `SourceWithFlags` object into a label useable by buck native rules
 
     Args:
-        srcs_with_flags: A `SourceWithFlags` object
+        src_with_flags: A `SourceWithFlags` object
         platform: If provided, use this to format the source component of
-                  `srcs_with_flags` into a buck label
+                  `src_with_flags` into a buck label
 
     Returns:
         Either a tuple of (<buck label>, [<flags for this source file>]) or just the
@@ -476,7 +476,7 @@ def _create_sanitizer_configuration(
     if sanitizer and sanitizer == "thread":
         configuration_src.append(_sanitizer_config_line(
             "kTsanDefaultOptions",
-            _TSAN_DEFAULT_OPTIONS,
+            sanitizers.TSAN_DEFAULT_OPTIONS,
             build_mode.tsan_options if build_mode else None,
         ))
 
