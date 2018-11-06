@@ -22,6 +22,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
@@ -973,7 +974,7 @@ class CppConverter(base.Converter):
             else:
                 attributes['framework'] = type
 
-        allocator = self.get_allocator(allocator)
+        allocator = allocators.normalize_allocator(allocator)
 
         # C/C++ Lua main modules get statically linked into a special extension
         # module.

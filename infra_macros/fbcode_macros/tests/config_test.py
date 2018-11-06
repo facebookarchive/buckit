@@ -27,12 +27,6 @@ class ConfigTest(tests.utils.TestCase):
 
         expected = [
             False,  # get_add_auto_headers_glob
-            {
-                "jemalloc": ["jemalloc//jemalloc:jemalloc"],
-                "jemalloc_debug": ["jemalloc//jemalloc:jemalloc_debug"],
-                "tcmalloc": ["tcmalloc//tcmalloc:tcmalloc"],
-                "malloc": [],
-            },  # get_allocators
             False,  # get_auto_fdo_enabled
             "dev",  # get_build_mode
             "gcc",  # get_default_compiler_family
@@ -40,7 +34,6 @@ class ConfigTest(tests.utils.TestCase):
             current_os,  # get_coverage
             "fbcode",  # get_current_repo_name
             None,  # get_cython_compiler
-            "malloc",  # get_default_allocator
             "static",  # get_default_link_style
             False,  # get_fbcode_style_deps
             True,  # get_fbcode_style_deps_are_third_party
@@ -67,7 +60,6 @@ class ConfigTest(tests.utils.TestCase):
 
         statements = [
             "config.get_add_auto_headers_glob()",
-            "config.get_allocators()",
             "config.get_auto_fdo_enabled()",
             "config.get_build_mode()",
             "config.get_default_compiler_family()",
@@ -75,7 +67,6 @@ class ConfigTest(tests.utils.TestCase):
             "config.get_current_os()",
             "config.get_current_repo_name()",
             "config.get_cython_compiler()",
-            "config.get_default_allocator()",
             "config.get_default_link_style()",
             "config.get_fbcode_style_deps()",
             "config.get_fbcode_style_deps_are_third_party()",
@@ -158,19 +149,12 @@ class ConfigTest(tests.utils.TestCase):
 
         expected = [
             True,  # get_add_auto_headers_glob
-            {
-                "jemalloc": ["//foo:jemalloc", "//foo:jemalloc_other"],
-                "jemalloc_debug": ["//foo:jemalloc_debug"],
-                "tcmalloc": ["//foo:tcmalloc"],
-                "malloc": ["//foo:malloc"],
-            },  # get_allocators
             True,  # get_auto_fdo_enabled
             "opt",  # get_build_mode
             "clang",  # get_global_compiler_family
             current_os,  # get_coverage
             "third-party",  # get_current_repo_name
             "//tools:cython",  # get_cython_compiler
-            "jemalloc",  # get_default_allocator
             "shared",  # get_default_link_style
             True,  # get_fbcode_style_deps
             False,  # get_fbcode_style_deps_are_third_party
@@ -200,14 +184,12 @@ class ConfigTest(tests.utils.TestCase):
 
         statements = [
             "config.get_add_auto_headers_glob()",
-            "config.get_allocators()",
             "config.get_auto_fdo_enabled()",
             "config.get_build_mode()",
             "config.get_global_compiler_family()",
             "config.get_current_os()",
             "config.get_current_repo_name()",
             "config.get_cython_compiler()",
-            "config.get_default_allocator()",
             "config.get_default_link_style()",
             "config.get_fbcode_style_deps()",
             "config.get_fbcode_style_deps_are_third_party()",

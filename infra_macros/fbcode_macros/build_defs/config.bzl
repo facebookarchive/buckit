@@ -40,37 +40,6 @@ def _get_add_auto_headers_glob():
     """
     return read_boolean("fbcode", "add_auto_headers_glob", False)
 
-def _get_allocators():
-    """
-    Get the targets used for various types of allocators
-    """
-    return {
-        "jemalloc": read_list(
-            "fbcode",
-            "allocators.jemalloc",
-            ["jemalloc//jemalloc:jemalloc"],
-            delimiter = ",",
-        ),
-        "jemalloc_debug": read_list(
-            "fbcode",
-            "allocators.jemalloc_debug",
-            ["jemalloc//jemalloc:jemalloc_debug"],
-            delimiter = ",",
-        ),
-        "tcmalloc": read_list(
-            "fbcode",
-            "allocators.tcmalloc",
-            ["tcmalloc//tcmalloc:tcmalloc"],
-            delimiter = ",",
-        ),
-        "malloc": read_list(
-            "fbcode",
-            "allocators.malloc",
-            [],
-            delimiter = ",",
-        ),
-    }
-
 def _get_asm_filter():
     """
     Get the ASM stream filter utility; it's a C++ app, which is very minimal
@@ -160,15 +129,6 @@ def _get_cython_compiler():
     The target that will provide cython compiler
     """
     return read_string("cython", "cython_compiler", None)
-
-def _get_default_allocator():
-    """
-    Which allocator to use when not specified explicitly
-
-    Returns:
-        The allocator from fbcode.allocators that should be used by default
-    """
-    return read_string("fbcode", "default_allocator", "malloc")
 
 def _get_default_link_style():
     """
@@ -392,14 +352,12 @@ def _get_use_custom_par_args():
 
 config = struct(
     get_add_auto_headers_glob = _get_add_auto_headers_glob,
-    get_allocators = _get_allocators,
     get_asm_filter = _get_asm_filter,
     get_auto_fdo_enabled = _get_auto_fdo_enabled,
     get_build_mode = _get_build_mode,
     get_current_os = _get_current_host_os,
     get_current_repo_name = _get_current_repo_name,
     get_cython_compiler = _get_cython_compiler,
-    get_default_allocator = _get_default_allocator,
     get_default_compiler_family = _get_default_compiler_family,
     get_default_link_style = _get_default_link_style,
     get_fbcode_style_deps = _get_fbcode_style_deps,

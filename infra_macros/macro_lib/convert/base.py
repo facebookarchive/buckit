@@ -62,6 +62,7 @@ def import_macro_lib(path):
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
 build_info = import_macro_lib('build_info')
+load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
@@ -79,18 +80,6 @@ load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
-
-# Support the `allocators` parameter, which uses a keyword to select
-# a memory allocator dependency. These are pulled from in buckconfig's
-# fbcode.allocators.X property. The value is a comma delimited list of
-# targets
-ALLOCATORS = {
-    'jemalloc',
-    'jemalloc_debug',
-    'tcmalloc',
-    'malloc',
-}
-
 
 MACRO_PATTERN = (
     re.compile('\\$\\((?P<name>[^)\\s]+)(?: (?P<args>[^)]*))?\\)'))
@@ -716,7 +705,7 @@ class Converter(object):
 
         # If we're not using a sanitizer add allocator deps.
         if sanitizers.get_sanitizer() is None:
-            deps.extend(self.get_allocator_deps(allocator))
+            deps.extend(allocators.get_allocator_deps(allocator))
 
         # Add in any dependencies required for sanitizers.
         deps.extend(sanitizers.get_sanitizer_binary_deps())
@@ -737,28 +726,6 @@ class Converter(object):
             deps.append(target_utils.RootRuleTarget('common/init', 'kill'))
 
         return deps, rules
-
-    def get_allocator_deps(self, allocator):
-        return [
-            target_utils.parse_target(rdep)
-            for rdep in self._context.config.get_allocators()[allocator]
-        ]
-
-    def get_allocators(self):
-        return {
-            allocator: self._context.config.get_allocators()[allocator]
-            for allocator in ALLOCATORS
-        }
-
-    # Normalize the `allocator` parameter, throwing away the version
-    # constraint (if there is one), since Buck doesn't support multiple
-    # versions.
-    def get_allocator(self, allocator=None):
-        if allocator is None:
-            allocator = self._context.config.get_default_allocator()
-        elif isinstance(allocator, tuple):
-            allocator = allocator[0]
-        return allocator
 
     def create_cxx_build_info_rule(
             self,

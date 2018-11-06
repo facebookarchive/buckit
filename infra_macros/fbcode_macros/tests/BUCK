@@ -9,6 +9,8 @@ load(
 BUILD_DEFS = [
     "fbcode_macros//build_defs:auto_pch_blacklist.bzl",
     "fbcode_macros//build_defs:antlr3_srcs.bzl",
+    "fbcode_macros//build_defs:allocators.bzl",
+    "fbcode_macros//build_defs:allocator_targets.bzl",
     "fbcode_macros//build_defs:build_info.bzl",
     "fbcode_macros//build_defs:build_mode.bzl",
     "fbcode_macros//build_defs:build_mode_overrides.bzl",
@@ -108,6 +110,12 @@ python_library(
         "fbcode_macros//tests/third-party/setuptools:setuptools",
         "fbcode_macros//tests/third-party/six:six",
     ],
+)
+
+skylark_integration_test(
+    name = "allocators_test",
+    srcs = ["allocators_test.py"],
+    deps = [":utils"],
 )
 
 skylark_integration_test(

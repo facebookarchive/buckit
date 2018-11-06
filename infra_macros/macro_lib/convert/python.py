@@ -35,6 +35,7 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 build_info = import_macro_lib('build_info')
+load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
@@ -721,7 +722,7 @@ class PythonConverter(base.Converter):
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.
         if allocator is not None and sanitizer is None:
-            allocator_deps = self.get_allocator_deps(allocator)
+            allocator_deps = allocators.get_allocator_deps(allocator)
             if allocator.startswith('jemalloc') and jemalloc_conf is not None:
                 conf_dep, conf_rules = (
                     self.get_jemalloc_malloc_conf_dep(
@@ -1026,7 +1027,7 @@ class PythonConverter(base.Converter):
                                                    flavor=py_flavor)
 
         if allocator is None:
-            allocator = self.get_allocator(allocator)
+            allocator = allocators.normalize_allocator(allocator)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name

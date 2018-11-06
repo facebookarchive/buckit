@@ -20,6 +20,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -89,7 +90,7 @@ class RustConverter(base.Converter):
         deps = []
         rules = []
 
-        allocator = self.get_allocator(allocator)
+        allocator = allocators.normalize_allocator(allocator)
 
         d, r = self.get_binary_link_deps(
             base_path,
