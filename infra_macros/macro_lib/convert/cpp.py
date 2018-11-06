@@ -58,6 +58,7 @@ with such a value.
 """
 ABSENT = tuple()
 
+
 class CppConverter(base.Converter):
 
     def __init__(self, context, rule_type):
@@ -239,7 +240,6 @@ class CppConverter(base.Converter):
             yacc_args=(),
             runtime_files=(),
             additional_coverage_targets=(),
-            embed_deps=True,
             py3_sensitive_deps=(),
             timeout=None,
             dlls={},
@@ -253,7 +253,9 @@ class CppConverter(base.Converter):
             undefined_symbols=False,
             modular_headers=None,
             modules=None,
-            overridden_link_style=None):
+            overridden_link_style=None,
+            rule_specific_deps=None,
+            rule_specific_preprocessor_flags=None):
 
         visibility = get_visibility(visibility, name)
 
@@ -463,14 +465,8 @@ class CppConverter(base.Converter):
             'preprocessor_flags',
             preprocessor_flags)
         out_preprocessor_flags.extend(preprocessor_flags)
-        if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':
-            out_preprocessor_flags.append('-Dmain=lua_main')
-            out_preprocessor_flags.append(
-                '-includetools/make_lar/lua_main_decl.h')
-        if self.get_fbconfig_rule_type() == 'cpp_lua_extension':
-            out_preprocessor_flags.append(
-                '-DLUAOPEN={}'.format(
-                    lua_common.get_lua_init_symbol(base_path, name, base_module)))
+        if rule_specific_preprocessor_flags != None:
+            out_preprocessor_flags.extend(rule_specific_preprocessor_flags)
         if out_preprocessor_flags:
             attributes['preprocessor_flags'] = out_preprocessor_flags
         if prefix_header:
@@ -835,28 +831,8 @@ class CppConverter(base.Converter):
             dependencies.extend(d)
             extra_rules.extend(r)
 
-        if self.get_fbconfig_rule_type() == 'cpp_python_extension':
-            dependencies.append(target_utils.ThirdPartyRuleTarget('python', 'python'))
-            # Generate an empty typing_config
-            extra_rules.append(self.gen_typing_config(name, visibility=visibility))
-
-        # Lua main module rules depend on are custom lua main.
-        if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':
-            dependencies.append(
-                target_utils.RootRuleTarget('tools/make_lar', 'lua_main_decl'))
-            dependencies.append(target_utils.ThirdPartyRuleTarget('LuaJIT', 'luajit'))
-
-            # When `embed_deps` is set, auto-dep deps on to the embed restore
-            # libraries, which will automatically restore special env vars used
-            # for loading the binary.
-            if embed_deps:
-                dependencies.append(target_utils.RootRuleTarget('common/embed', 'lua'))
-                dependencies.append(target_utils.RootRuleTarget('common/embed', 'python'))
-
-        # All Node extensions get the node headers.
-        if self.get_fbconfig_rule_type() == 'cpp_node_extension':
-            dependencies.append(
-                target_utils.ThirdPartyRuleTarget('node', 'node-headers'))
+        if rule_specific_deps != None:
+            dependencies.extend(rule_specific_deps)
 
         # Add external deps.
         for dep in external_deps:
@@ -1253,8 +1229,10 @@ class CppNodeExtensionConverter(CppConverter):
             dlopen_enabled=True,
             visibility=visibility,
             overridden_link_style = 'static_pic',
-            **kwargs
-        )
+            rule_specific_deps = [
+                target_utils.ThirdPartyRuleTarget('node', 'node-headers')
+            ],
+            **kwargs)
 
         # This is a bit weird, but `prebuilt_cxx_library` rules can only
         # accepted generated libraries that reside in a directory.  So use
@@ -1291,16 +1269,25 @@ class CppPythonExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppPythonExtensionConverter, self).__init__(context, 'cpp_python_extension')
 
-    def convert(self, *args, **kwargs):
-        return super(CppPythonExtensionConverter, self).convert(
+    def convert(self, base_path, name, visibility=None, *args, **kwargs):
+        ret = super(CppPythonExtensionConverter, self).convert(
+            base_path = base_path,
+            name = name,
+            visibility = visibility,
             buck_rule_type = 'cxx_python_extension',
             is_library = False,
             is_buck_binary = False,
             is_test = False,
             is_deployable = False,
+            rule_specific_deps = [
+                target_utils.ThirdPartyRuleTarget('python', 'python')
+            ],
             *args,
             **kwargs
         )
+        # Generate an empty typing_config
+        ret.append(self.gen_typing_config(name, visibility=visibility))
+        return ret
 
 class CppJavaExtensionConverter(CppConverter):
     def __init__(self, context):
@@ -1382,6 +1369,10 @@ class CppLuaExtensionConverter(CppConverter):
             base_module = lua_common.get_lua_base_module(base_path, base_module),
             base_path = base_path,
             name = name,
+            rule_specific_preprocessor_flags = [
+                '-DLUAOPEN={}'.format(
+                    lua_common.get_lua_init_symbol(base_path, name, base_module))
+            ],
             *args,
             **kwargs
         )
@@ -1390,13 +1381,38 @@ class CppLuaMainModuleConverter(CppConverter):
     def __init__(self, context):
         super(CppLuaMainModuleConverter, self).__init__(context, 'cpp_lua_main_module')
 
-    def convert(self, *args, **kwargs):
+    def convert(self, base_path, name, embed_deps=True, *args, **kwargs):
+        # Lua main module rules depend on are custom lua main.
+        #
+        # When `embed_deps` is set, auto-dep deps on to the embed restore
+        # libraries, which will automatically restore special env vars used
+        # for loading the binary.
+        if embed_deps:
+            rule_specific_deps = [
+                target_utils.RootRuleTarget('tools/make_lar', 'lua_main_decl'),
+                target_utils.ThirdPartyRuleTarget('LuaJIT', 'luajit'),
+                target_utils.RootRuleTarget('common/embed', 'lua'),
+                target_utils.RootRuleTarget('common/embed', 'python'),
+            ]
+        else:
+            rule_specific_deps = [
+                target_utils.RootRuleTarget('tools/make_lar', 'lua_main_decl'),
+                target_utils.ThirdPartyRuleTarget('LuaJIT', 'luajit'),
+            ]
+
         return super(CppLuaMainModuleConverter, self).convert(
+            base_path = base_path,
+            name = name,
             buck_rule_type = 'cxx_library',
             is_library = False,
             is_buck_binary = False,
             is_test = False,
             is_deployable = False,
+            rule_specific_preprocessor_flags = [
+                '-Dmain=lua_main',
+                '-includetools/make_lar/lua_main_decl.h',
+            ],
+            rule_specific_deps = rule_specific_deps,
             *args,
             **kwargs
         )
