@@ -1171,18 +1171,15 @@ class CppConverter(base.Converter):
         # Add in user-specified linker flags.
         if self.is_library():
             self.verify_linker_flags(linker_flags)
+
+        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         for flag in linker_flags:
             macro_handlers = {}
-            if self.is_binary(dlopen_info):
-                macro_handlers['platform'] = (
-                    lambda: platform_utils.get_buck_platform_for_base_path(base_path))
             if flag != '--enable-new-dtags':
-                out_exported_ldflags.extend(
-                    ['-Xlinker',
-                     self.convert_blob_with_macros(
-                         base_path,
-                         flag,
-                         extra_handlers=macro_handlers)])
+                linker_text = self.convert_blob_with_macros(base_path, flag)
+                if self.is_binary(dlopen_info):
+                    linker_text = linker_text.replace("$(platform)", buck_platform)
+                out_exported_ldflags.extend(['-Xlinker', linker_text])
 
         # Link non-link-whole libs with `--no-as-needed` to avoid adding
         # unnecessary DT_NEEDED tags during dynamic linking.  Libs marked

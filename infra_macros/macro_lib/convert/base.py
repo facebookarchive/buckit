@@ -374,47 +374,11 @@ class Converter(object):
             self,
             base_path,
             blob,
-            extra_handlers=None,
             platform=None):
         """
         Convert build targets inside macros.
         """
-
-        handlers = {}
-
-        def convert_target_expander(name, target):
-            return '$({} {})'.format(
-                name,
-                src_and_dep_helpers.convert_build_target(base_path, target, platform=platform))
-
-        def as_is_converter(name, *args):
-            return '$({})'.format(' '.join([name] + list(args)))
-
-        # Install handlers to convert the build targets inside the `exe` and
-        # `location` macros.
-        handlers['exe'] = functools.partial(convert_target_expander, 'exe')
-        handlers['classpath'] = (
-            functools.partial(convert_target_expander, 'classpath'))
-        handlers['location'] = (
-            functools.partial(convert_target_expander, 'location'))
-        handlers['FBMAKE_BIN_ROOT'] = (
-            functools.partial(as_is_converter, 'FBMAKE_BIN_ROOT'))
-
-        # Install extra, passed in handlers.
-        if extra_handlers is not None:
-            handlers.update(extra_handlers)
-
-        def repl(m):
-            name = m.group('name')
-            args = m.group('args')
-            handler = handlers.get(name)
-            if handler is None:
-                raise ValueError(
-                    'unsupported macro {!r} in {!r}'
-                    .format(name, blob))
-            return handler(args) if args is not None else handler()
-
-        return MACRO_PATTERN.sub(repl, blob)
+        return third_party.replace_third_party_repo(blob, platform=platform)
 
     def convert_args_with_macros(self, base_path, blobs, platform=None):
         return [self.convert_blob_with_macros(base_path, b, platform=platform)
