@@ -56,8 +56,6 @@ with such a value.
 """
 ABSENT = tuple()
 
-
-
 class CppConverter(base.Converter):
 
     def __init__(self, context, rule_type):
@@ -88,9 +86,6 @@ class CppConverter(base.Converter):
 
     def is_buck_binary(self, buck_rule_type):
         return buck_rule_type in ('cxx_binary', 'cxx_test')
-
-    def is_library(self):
-        return self.get_fbconfig_rule_type() == 'cpp_library'
 
     def is_extension(self):
         return self.get_fbconfig_rule_type() in (
@@ -325,6 +320,7 @@ class CppConverter(base.Converter):
             base_path,
             name,
             buck_rule_type,
+            is_library,
             base_module=None,
             module_name=None,
             srcs=[],
@@ -541,7 +537,7 @@ class CppConverter(base.Converter):
         if module_name != None:
             attributes['module_name'] = module_name
 
-        if self.is_library():
+        if is_library:
             if preferred_linkage:
                 attributes['preferred_linkage'] = preferred_linkage
             if link_whole:
@@ -783,7 +779,7 @@ class CppConverter(base.Converter):
                 out_link_style = 'static_pic'
 
         # Add in user-specified linker flags.
-        if self.is_library():
+        if is_library:
             cpp_common.assert_linker_flags(linker_flags)
 
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
@@ -902,7 +898,7 @@ class CppConverter(base.Converter):
 
         # Some libraries need to opt-out of linker errors about undefined
         # symbols.
-        if (self.is_library() and
+        if (is_library and
                 # TODO(T23121628): The way we build shared libs in non-ASAN
                 # sanitizer modes leaves undefined references to *SAN symbols.
                 (sanitizers.get_sanitizer() == None or
@@ -1055,7 +1051,7 @@ class CppConverter(base.Converter):
                 map(target_utils.parse_target, module_utils.get_implicit_module_deps()))
 
         # Modularize libraries.
-        if module_utils.enabled() and self.is_library() and out_modular_headers:
+        if module_utils.enabled() and is_library and out_modular_headers:
 
             # If we're using modules, we need to add in the `module.modulemap`
             # file and make sure it gets installed at the root of the include
@@ -1149,7 +1145,7 @@ class CppConverter(base.Converter):
         if dependencies:
             deps_param, plat_deps_param = (
                 ('exported_deps', 'exported_platform_deps')
-                if self.is_library()
+                if is_library
                 else ('deps', 'platform_deps'))
             out_deps, out_plat_deps = src_and_dep_helpers.format_all_deps(dependencies)
             attributes[deps_param] = out_deps
@@ -1447,6 +1443,7 @@ class CppLibraryConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppLibraryConverter, self).convert(
             buck_rule_type = 'cxx_library',
+            is_library = True,
             *args,
             **kwargs
         )
@@ -1458,6 +1455,7 @@ class CppBinaryConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppBinaryConverter, self).convert(
             buck_rule_type = 'cxx_binary',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1469,6 +1467,7 @@ class CppUnittestConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppUnittestConverter, self).convert(
             buck_rule_type = 'cxx_test',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1480,6 +1479,7 @@ class CppBenchmarkConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppBenchmarkConverter, self).convert(
             buck_rule_type = 'cxx_binary',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1491,6 +1491,7 @@ class CppNodeExtensionConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppNodeExtensionConverter, self).convert(
             buck_rule_type = 'cxx_binary',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1502,6 +1503,7 @@ class CppPrecompiledHeaderConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppPrecompiledHeaderConverter, self).convert(
             buck_rule_type = 'cxx_precompiled_header',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1513,6 +1515,7 @@ class CppPythonExtensionConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppPythonExtensionConverter, self).convert(
             buck_rule_type = 'cxx_python_extension',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1524,6 +1527,7 @@ class CppJavaExtensionConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppJavaExtensionConverter, self).convert(
             buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1535,6 +1539,7 @@ class CppLuaExtensionConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppLuaExtensionConverter, self).convert(
             buck_rule_type = 'cxx_lua_extension',
+            is_library = False,
             *args,
             **kwargs
         )
@@ -1546,6 +1551,7 @@ class CppLuaMainModuleConverter(CppConverter):
     def convert(self, *args, **kwargs):
         return super(CppLuaMainModuleConverter, self).convert(
             buck_rule_type = 'cxx_library',
+            is_library = False,
             *args,
             **kwargs
         )
