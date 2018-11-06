@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import tests.utils
+from tests.utils import dedent
 
 
 class HaskellCommonTest(tests.utils.TestCase):
@@ -54,3 +55,49 @@ class HaskellCommonTest(tests.utils.TestCase):
         expected = [True, True, True, ["CFOO", "CBAR"], ["LFOO", "LBAR"]]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_convert_dlls_parses(self, root):
+        commands = [
+            dedent(
+                """
+            haskell_common.convert_dlls(
+                "hs_server",
+                "default",
+                "default-clang",
+                {
+                    "lib_engine.so": (
+                        "//si:interface",
+                        "haskell_library",
+                        "//hs/repo:.*",
+                        "shared",
+                    )
+                },
+                ["PUBLIC"],
+            )
+            """
+            )
+        ]
+
+        expected = (
+            [
+                self.rule_target(
+                    repo=None,
+                    base_path="some_package",
+                    name="hs_server.dlls#default-clang",
+                )
+            ],
+            [
+                "$(location :hs_server-syms-linker-script)",
+                "-Xlinker",
+                "--export-dynamic",
+            ],
+            [
+                '(deps( deps(deps(//some_package:hs_server.lib_engine.so, 4000, kind("^haskell_library$",  filter("^//hs/repo:.*$",   filter("^(((?!//third-party-buck/.{0,100}).*)|(//third-party-buck/default/.*))(?<!__generated-lib__)$", first_order_deps())))), 4000, kind("haskell_library", filter("^(((?!//third-party-buck/.{0,100}).*)|(//third-party-buck/default/.*))(?<!__generated-lib__)$", first_order_deps()))), 1, kind("library", filter("^(((?!//third-party-buck/.{0,100}).*)|(//third-party-buck/default/.*))(?<!__generated-lib__)$", first_order_deps())))- deps(//some_package:hs_server.lib_engine.so, 4000, kind("^haskell_library$",  filter("^//hs/repo:.*$",   filter("^(((?!//third-party-buck/.{0,100}).*)|(//third-party-buck/default/.*))(?<!__generated-lib__)$", first_order_deps())))))'
+            ],
+        )
+
+        self.assertSuccess(
+            root.runUnitTests(self.includes, commands, buckfile="some_package/BUCK"),
+            expected,
+        )

@@ -37,6 +37,8 @@ load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -49,243 +51,6 @@ SYS_INC = re.compile('^(?:-I|-isystem)?/usr(?:/local)?/include')
 
 def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, compiler):
     return compiler_specific_flags.get("gcc" if cuda else compiler)
-
-def create_dll_needed_syms_list_rule(name, dlls, visibility):
-    attrs = collections.OrderedDict()
-    attrs['name'] = '{}-syms'.format(name)
-    if visibility != None:
-        attrs['visibility'] = visibility
-    attrs['out'] = 'symbols.txt'
-    attrs['cmd'] = (
-        'nm -gPu {} | awk \'{{print $1}}\' | '
-        'grep -v ^BuildInfo_k | sort > $OUT'
-        .format(' '.join(['$(location {})'.format(d) for d in dlls])))
-    return Rule('cxx_genrule', attrs)
-
-
-def create_dll_syms_linker_script_rule(name, symbols_rule, visibility):
-    attrs = collections.OrderedDict()
-    attrs['name'] = '{}-syms-linker-script'.format(name)
-    if visibility != None:
-        attrs['visibility'] = visibility
-    attrs['out'] = 'extern_symbols.txt'
-    attrs['cmd'] = (
-        'cat $(location {}) | awk \'{{print "EXTERN("$1")"}}\' > "$OUT"'
-        .format(symbols_rule))
-    return Rule('cxx_genrule', attrs)
-
-
-def create_dll_syms_dynamic_list_rule(name, symbols_rule, visibility):
-    attrs = collections.OrderedDict()
-    attrs['name'] = '{}-syms-dynamic-list'.format(name)
-    if visibility != None:
-        attrs['visibility'] = visibility
-    attrs['out'] = 'extern_symbols.txt'
-    attrs['cmd'] = ' && '.join([
-        'echo "{" > $OUT',
-        'cat $(location {}) | awk \'{{print "  "$1";"}}\' >> "$OUT"'
-        .format(symbols_rule),
-        'echo "};" >>$OUT',
-    ])
-    return Rule('cxx_genrule', attrs)
-
-
-def create_dll_rules(
-        name,
-        lib_name,
-        dll_root,
-        rule_type_filter,
-        rule_name_filter,
-        dll_type,
-        fbcode_dir,
-        visibility):
-    """
-    Create a rule to link a DLL.
-    """
-
-    rules = []
-
-    cmd = []
-    cmd.append('$(ld)')
-
-    # Build a shared library.
-    if dll_type == 'static' or dll_type == 'static-pic':
-        cmd.append('-r')
-    elif dll_type == 'shared':
-        cmd.append('-shared')
-    else:
-        fail('dll_type must be one of static, static-pic or shared')
-    cmd.append('-nostdlib')
-    cmd.extend(['-o', '$OUT'])
-
-    # When GHC links DSOs, it sets this flag to prevent non-PIC symbols
-    # from leaking to the dynamic symbol table, as it breaks linking.
-    cmd.append('-Wl,-Bsymbolic')
-
-    # Add-in the macro to add the transitive deps to the link line.  For
-    # shared link styles, we do a shared link, but for anything else (i.e.
-    # static, static-pic), we always do a `static` link, as we need to
-    # support profiled builds with DSOs and this requires that we issue
-    # an `-hisuf p_hi`, which we can't supply in addition to the 'dyn_hi'
-    # suffix that a `-dynamic -fPIC` (i.e. static-pic) compilation rquires.
-    # This is fine for GHC-built DSOs. To quote https://fburl.com/ze4ni010:
-    # "Profiled code isn't yet really position-independent even when -fPIC
-    # is specified. Building profiled dynamic libraries therefore fails on
-    # Mac OS X (Linux silently accepts relocations - it's just slightly bad
-    # for performance)." We also set a "filter" here so we only get haskell
-    # rules in the link.
-    if dll_type == 'shared' or dll_type == 'static-pic':
-        dll_type_filter = 'ldflags-static-pic-filter'
-    else: # 'static'
-        dll_type_filter = 'ldflags-static-filter'
-    cmd.append(
-        '$({} ^{}[(]{}[)]$ {})'
-        .format(
-            dll_type_filter,
-            rule_type_filter or '.*',
-            rule_name_filter or '.*',
-            dll_root))
-
-    attributes = collections.OrderedDict()
-    attributes['name'] = name
-    if visibility != None:
-        attributes['visibility'] = visibility
-    attributes['out'] = lib_name
-    fbcode = paths.join('$GEN_DIR', fbcode_dir)
-    attributes['cmd'] = 'cd {} && '.format(fbcode) + ' '.join(cmd)
-    rules.append(Rule('cxx_genrule', attributes))
-
-    return rules
-
-# TODO: Remove the default value when haskell rules get converted
-def convert_dlls(
-        base_path,
-        name,
-        platform,
-        buck_platform,
-        dlls,
-        fbcode_dir,
-        visibility=None):
-    """
-    """
-
-    assert dlls
-
-    rules = []
-    deps = []
-    ldflags = []
-    dep_queries = []
-
-    # Generate the rules that link the DLLs.
-    dll_targets = {}
-    for dll_lib_name, (dll_root, type_filter, name_filter, dll_type) in dlls.items():
-        dll_name = name + '.' + dll_lib_name
-        dll_targets[dll_lib_name] = ':' + dll_name
-        rules.extend(
-            create_dll_rules(
-                dll_name,
-                dll_lib_name,
-                dll_root + '-dll-root',
-                type_filter,
-                name_filter,
-                dll_type,
-                fbcode_dir,
-                visibility))
-
-    # Create the rule which extracts the symbols from all DLLs.
-    sym_rule = (
-        create_dll_needed_syms_list_rule(name, dll_targets.values(), visibility))
-    sym_target = ':{}'.format(sym_rule.attributes['name'])
-    rules.append(sym_rule)
-
-    # Create the rule which sets up a linker script with all missing DLL
-    # symbols marked as extern.
-    syms_linker_script = (
-        create_dll_syms_linker_script_rule(name, sym_target, visibility))
-    rules.append(syms_linker_script)
-    ldflags.append(
-        '$(location :{})'
-        .format(syms_linker_script.attributes['name']))
-
-    # Make sure all symbols needed by the DLLs are exported to the binary's
-    # dynamic symbol table.
-    ldflags.append('-Xlinker')
-    ldflags.append('--export-dynamic')
-
-    # Form a sub-query which matches all deps relevant to the current
-    # platform.
-    first_order_dep_res = [
-        # Match any non-third-party deps.
-        '(?!//third-party-buck/.{0,100}).*',
-        # Match any third-party deps for the current platform.
-        '//third-party-buck/{0}/.*'.format(platform),
-    ]
-
-    # Form a sub-query to exclude all of the generated-lib deps, in particular
-    # sanitizer-configuration libraries
-    generated_lib = r'(?<!{})'.format(base.GENERATED_LIB_SUFFIX)
-    first_order_deps = (
-        'filter("^({prefix}){exclude_generated}$", first_order_deps())'
-        .format(
-            prefix='|'.join('(' + r + ')' for r in first_order_dep_res),
-            exclude_generated=generated_lib,
-        )
-    )
-
-    # Form a query which resolve to all the first-order deps of all DLLs.
-    # These form roots which need to be linked into the top-level binary.
-    dll_deps = []
-    for dll_lib_name, (_, type_filter, name_filter, _) in dlls.items():
-        dll_nodes = (
-            # The `deps` function's second argument is the depth of the
-            # search and while we don't actually want to override its
-            # default value, we need to set it in order to use the third
-            # argument, so just set it to some arbitrarily high value.
-            'deps({root}, 4000,'
-            ' kind("^{type_filter}$",'
-            '  filter("^{name_filter}$",'
-            '   {deps})))'
-            .format(
-                root='//{}:{}.{}'.format(base_path, name, dll_lib_name),
-                type_filter=type_filter or '.*',
-                name_filter=name_filter or '.*',
-                deps=first_order_deps))
-        # We need to link deep on Haskell libraries because of cross-module
-        # optimizations like inlining.
-        # Eg. we import A, inline something from A that refers to B and now
-        # have a direct symbol reference to B.
-        dll_deps.append(
-            'deps('
-            ' deps({nodes}, 4000, kind("haskell_library", {first_order_deps})),'
-            ' 1,'
-            ' kind("library", {first_order_deps}))'
-            '- {nodes}'
-            .format(nodes=dll_nodes,first_order_deps=first_order_deps))
-    dep_query = ' union '.join('({})'.format(d) for d in dll_deps)
-    dep_queries.append(dep_query)
-    # This code is currently only used for Haskell code in Sigma
-    # Search for Note [Sigma hot-swapping code]
-
-    # Create the rule which copies the DLLs into the output location.
-    attrs = collections.OrderedDict()
-    attrs['name'] = name + '.dlls'
-    if visibility != None:
-        attrs['visibility'] = visibility
-    attrs['out'] = "out"
-    cmds = []
-    cmds.append('mkdir -p $OUT')
-    for dll_name, dll_target in dll_targets.items():
-        cmds.append(
-            'cp $(location {}) "$OUT"/{}'
-            .format(dll_target, dll_name))
-    attrs['cmd'] = ' && '.join(cmds)
-    rules.append(Rule('cxx_genrule', attrs))
-    deps.append(
-        target_utils.RootRuleTarget(
-            base_path,
-            '{}#{}'.format(attrs['name'], buck_platform)))
-    return rules, deps, ldflags, dep_queries
-
 
 class AbsentParameter(object):
     """
@@ -729,6 +494,8 @@ class CppConverter(base.Converter):
             undefined_symbols=False,
             modular_headers=None,
             modules=None):
+
+        visibility = get_visibility(visibility, name)
 
         if not isinstance(compiler_flags, (list, tuple)):
             fail(
@@ -1230,10 +997,9 @@ class CppConverter(base.Converter):
         # Handle DLL deps.
         if dlls:
             buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                convert_dlls(base_path, name, platform, buck_platform, dlls,
-                             self.get_fbcode_dir_from_gen_dir(), visibility))
-            extra_rules.extend(dll_rules)
+            dll_deps, dll_ldflags, dll_dep_queries = (
+                haskell_common.convert_dlls(
+                    name, platform, buck_platform, dlls, visibility))
             dependencies.extend(dll_deps)
             out_ldflags.extend(dll_ldflags)
             if not dont_link_prerequisites:
@@ -1631,7 +1397,7 @@ class CppConverter(base.Converter):
             soname = (
                 'lib{}.so'.format(
                     lib_name or
-                    paths.join(base_path, name).replace("/", '_')))
+                    paths.join(base_path, name).replace('/', '_')))
             dlopen_enabled = {'soname': soname}
             lib_name = None
 

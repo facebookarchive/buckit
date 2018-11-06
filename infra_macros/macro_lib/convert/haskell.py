@@ -18,7 +18,6 @@ import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/cpp.py".format(macro_root), "cpp")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
@@ -784,11 +783,9 @@ class HaskellConverter(base.Converter):
         out_dep_queries = []
         if dlls:
             buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            dll_rules, dll_deps, dll_ldflags, dll_dep_queries = (
-                cpp.convert_dlls(base_path, name, platform, buck_platform,
-                                 dlls, self.get_fbcode_dir_from_gen_dir(),
-                                 visibility=visibility))
-            rules.extend(dll_rules)
+            dll_deps, dll_ldflags, dll_dep_queries = (
+                haskell_common.convert_dlls(
+                    name, platform, buck_platform, dlls, visibility=visibility))
             dependencies.extend(dll_deps)
             optlflags = []
             for f in dll_ldflags:
