@@ -22,7 +22,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs:lex.bzl", "lex")
+load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -42,7 +42,6 @@ load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
-LEX_LIB = target_utils.ThirdPartyRuleTarget('flex', 'fl')
 
 # A regex matching preprocessor flags trying to pull in system include paths.
 # These are bad as they can cause headers for system packages to mask headers
@@ -78,10 +77,6 @@ class CppConverter(base.Converter):
         '.tcc',
         '-inl.h',
         '-defs.h',
-    )
-
-    LEX_EXTS = (
-        '.ll',
     )
 
     RULE_TYPE_MAP = {
@@ -915,8 +910,7 @@ class CppConverter(base.Converter):
                 out_exported_ldflags.append('-Wl,--as-needed')
 
         # Generate rules to handle lex sources.
-        lex_srcs, srcs = self.split_matching_extensions_and_other(
-            srcs, self.LEX_EXTS)
+        lex_srcs, srcs = self.split_matching_extensions_and_other(srcs, LEX_EXTS)
         for lex_src in lex_srcs:
             header, source = lex(name, lex_args, lex_src, platform, visibility)
             out_headers.append(header)

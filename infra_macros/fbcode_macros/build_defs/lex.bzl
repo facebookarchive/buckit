@@ -13,6 +13,10 @@ _LEX_CMD = (
     """perl -pi -e 's!\\Q'"\\$(realpath "$GEN_DIR/{fbcode}")"'/\\E!!'  "$OUT"/{src} "$OUT"/{header}"""
 )
 
+LEX_EXTS = (".ll",)
+
+LEX_LIB = target_utils.ThirdPartyRuleTarget("flex", "fl")
+
 def lex(name, lex_flags, lex_src, platform, visibility):
     """
     Create rules to generate a C/C++ header and source from the given lex file
