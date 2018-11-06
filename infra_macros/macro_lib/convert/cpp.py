@@ -72,7 +72,7 @@ def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, comp
 def create_dll_needed_syms_list_rule(name, dlls, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms'.format(name)
-    if visibility is not None:
+    if visibility != None:
         attrs['visibility'] = visibility
     attrs['out'] = 'symbols.txt'
     attrs['cmd'] = (
@@ -85,7 +85,7 @@ def create_dll_needed_syms_list_rule(name, dlls, visibility):
 def create_dll_syms_linker_script_rule(name, symbols_rule, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms-linker-script'.format(name)
-    if visibility is not None:
+    if visibility != None:
         attrs['visibility'] = visibility
     attrs['out'] = 'extern_symbols.txt'
     attrs['cmd'] = (
@@ -97,7 +97,7 @@ def create_dll_syms_linker_script_rule(name, symbols_rule, visibility):
 def create_dll_syms_dynamic_list_rule(name, symbols_rule, visibility):
     attrs = collections.OrderedDict()
     attrs['name'] = '{}-syms-dynamic-list'.format(name)
-    if visibility is not None:
+    if visibility != None:
         attrs['visibility'] = visibility
     attrs['out'] = 'extern_symbols.txt'
     attrs['cmd'] = ' && '.join([
@@ -167,7 +167,7 @@ def create_dll_rules(
 
     attributes = collections.OrderedDict()
     attributes['name'] = name
-    if visibility is not None:
+    if visibility != None:
         attributes['visibility'] = visibility
     attributes['out'] = lib_name
     fbcode = os.path.join('$GEN_DIR', fbcode_dir)
@@ -288,7 +288,7 @@ def convert_dlls(
     # Create the rule which copies the DLLs into the output location.
     attrs = collections.OrderedDict()
     attrs['name'] = name + '.dlls'
-    if visibility is not None:
+    if visibility != None:
         attrs['visibility'] = visibility
     attrs['out'] = os.curdir
     cmds = []
@@ -384,7 +384,7 @@ class CppConverter(base.Converter):
         """
 
         # `dlopen_enabled=True` binaries are really libraries.
-        if dlopen_info is not None:
+        if dlopen_info != None:
             return False
 
         return self.is_deployable()
@@ -472,7 +472,7 @@ class CppConverter(base.Converter):
         """
 
         sanitizer = sanitizers.get_sanitizer()
-        assert sanitizer is not None
+        assert sanitizer != None
 
         flags = []
 
@@ -489,7 +489,7 @@ class CppConverter(base.Converter):
         """
 
         sanitizer = sanitizers.get_sanitizer()
-        assert sanitizer is not None
+        assert sanitizer != None
 
         deps = []
 
@@ -509,7 +509,7 @@ class CppConverter(base.Converter):
         """
 
         for dep in dependencies:
-            if dep.repo is not None and dep.base_path == 'cuda':
+            if dep.repo != None and dep.base_path == 'cuda':
                 return True
 
         return False
@@ -547,7 +547,7 @@ class CppConverter(base.Converter):
         """
 
         # If base module is unset, prepare a default.
-        if base_module is None:
+        if base_module == None:
             return ['fbcode'] + base_path.split(os.sep)
 
         # If base module is empty, return the empty list.
@@ -800,7 +800,7 @@ class CppConverter(base.Converter):
                 return [f for f in flags if f not in banned_flags]
 
             def filter_flags_dict(flags_dict):
-                if flags_dict is None:
+                if flags_dict == None:
                     return None
                 ret = {}
                 for compiler, flags in flags_dict.items():
@@ -858,14 +858,14 @@ class CppConverter(base.Converter):
         # Check the global, build mode default.
         global_modular_headers = (
             self.read_bool('cxx', 'modular_headers_default', required=False))
-        if global_modular_headers is not None:
+        if global_modular_headers != None:
             out_modular_headers = global_modular_headers
         # Check the build mode file override.
-        if (build_mode is not None and
-                build_mode.cxx_modular_headers is not None):
+        if (build_mode != None and
+                build_mode.cxx_modular_headers != None):
             out_modular_headers = build_mode.cxx_modular_headers
         # Check the rule override.
-        if modular_headers is not None:
+        if modular_headers != None:
             out_modular_headers = modular_headers
 
         # Figure out whether this rule should be built using clang modules (in
@@ -873,13 +873,13 @@ class CppConverter(base.Converter):
         out_modules = True
         # Check the global, build mode default.
         global_modules = self.read_modules_default(base_path, name)
-        if global_modules is not None:
+        if global_modules != None:
             out_modules = global_modules
         # Check the build mode file override.
-        if build_mode is not None and build_mode.cxx_modules is not None:
+        if build_mode != None and build_mode.cxx_modules != None:
             out_modules = build_mode.cxx_modules
         # Check the rule override.
-        if modules is not None:
+        if modules != None:
             out_modules = modules
         # Don't build precompiled headers with modules.
         if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
@@ -891,7 +891,7 @@ class CppConverter(base.Converter):
 
         attributes['name'] = name
 
-        if visibility is not None:
+        if visibility != None:
             attributes['visibility'] = visibility
 
         # Set the base module.
@@ -899,10 +899,10 @@ class CppConverter(base.Converter):
         if rule_type == 'cpp_lua_extension':
             attributes['base_module'] = (
                 self.get_lua_base_module(base_path, base_module))
-        elif rule_type == 'cpp_python_extension' and base_module is not None:
+        elif rule_type == 'cpp_python_extension' and base_module != None:
             attributes['base_module'] = base_module
 
-        if module_name is not None:
+        if module_name != None:
             attributes['module_name'] = module_name
 
         if self.is_library():
@@ -923,7 +923,7 @@ class CppConverter(base.Converter):
                                             for sym in global_symbols]
 
         # Parse the `header_namespace` parameter.
-        if header_namespace is not None:
+        if header_namespace != None:
             header_namespace_whitelist = config.get_header_namespace_whitelist()
             if (base_path, name) not in header_namespace_whitelist and not any(
                 # Check base path prefix in header_namespace_whitelist
@@ -960,7 +960,7 @@ class CppConverter(base.Converter):
                     *[('-_NVCC_', flag) for flag in nvcc_flags]))))
 
         clang_profile = native.read_config('cxx', 'profile')
-        if clang_profile is not None:
+        if clang_profile != None:
             compiler.require_global_compiler(
                 "cxx.profile only supported by modes using clang globally",
                 "clang")
@@ -989,7 +989,7 @@ class CppConverter(base.Converter):
         # Form preprocessor flags.
         out_preprocessor_flags = []
         if not cuda:
-            if sanitizers.get_sanitizer() is not None:
+            if sanitizers.get_sanitizer() != None:
                 out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
             out_preprocessor_flags.extend(coverage.get_coverage_flags(base_path))
         self.verify_preprocessor_flags(
@@ -1011,7 +1011,7 @@ class CppConverter(base.Converter):
 
         # Form language-specific preprocessor flags.
         out_lang_preprocessor_flags = collections.defaultdict(list)
-        if build_mode is not None:
+        if build_mode != None:
             if build_mode.aspp_flags:
                 out_lang_preprocessor_flags['assembler_with_cpp'].extend(
                     build_mode.aspp_flags)
@@ -1050,7 +1050,7 @@ class CppConverter(base.Converter):
             attributes['platform_preprocessor_flags'] = (
                 out_platform_preprocessor_flags)
 
-        if lib_name is not None:
+        if lib_name != None:
             attributes['soname'] = 'lib{}.so'.format(lib_name)
 
         exported_pp_flags = []
@@ -1082,11 +1082,11 @@ class CppConverter(base.Converter):
 
         # Add non-binary sanitizer dependencies.
         if (not self.is_binary(dlopen_info) and
-                sanitizers.get_sanitizer() is not None):
+                sanitizers.get_sanitizer() != None):
             dependencies.extend(self.get_sanitizer_non_binary_deps())
 
         if self.is_binary(dlopen_info):
-            if sanitizers.get_sanitizer() is not None:
+            if sanitizers.get_sanitizer() != None:
                 out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
             if (native.read_config('fbcode', 'gdb-index') and
@@ -1114,7 +1114,7 @@ class CppConverter(base.Converter):
         if nodefaultlibs:
             out_ldflags.append('-nodefaultlibs')
 
-        if emails or owner is not None:
+        if emails or owner != None:
             attributes['contacts'] = (
                 self.convert_contacts(owner=owner, emails=emails))
 
@@ -1125,10 +1125,10 @@ class CppConverter(base.Converter):
             attributes['args'] = self.convert_args_with_macros(base_path, args)
 
         # Handle `dlopen_enabled` binaries.
-        if dlopen_info is not None:
+        if dlopen_info != None:
 
             # We don't support allocators with dlopen-enabled binaries.
-            if allocator is not None:
+            if allocator != None:
                 fail(
                     'Cannot use "allocator" parameter with dlopen enabled '
                     'binaries')
@@ -1138,7 +1138,7 @@ class CppConverter(base.Converter):
 
             # If an explicit soname was specified, pass that in.
             soname = dlopen_info.get('soname')
-            if soname is not None:
+            if soname != None:
                 out_ldflags.append('-Wl,-soname=' + soname)
 
             # Lastly, since we're building a shared lib, use the `static_pic`
@@ -1271,7 +1271,7 @@ class CppConverter(base.Converter):
         if (self.is_library() and
                 # TODO(T23121628): The way we build shared libs in non-ASAN
                 # sanitizer modes leaves undefined references to *SAN symbols.
-                (sanitizers.get_sanitizer() is None or
+                (sanitizers.get_sanitizer() == None or
                  sanitizers.get_sanitizer().startswith('address')) and
                 # TODO(T23121628): Building python binaries with omnibus causes
                 # undefined references in preloaded libraries, so detect this
@@ -1563,7 +1563,7 @@ class CppConverter(base.Converter):
         if precompiled_header:
             attributes['precompiled_header'] = precompiled_header
 
-        if self.is_binary(dlopen_info) and versions is not None:
+        if self.is_binary(dlopen_info) and versions != None:
             attributes['version_universe'] = (
                 self.get_version_universe(versions.items()))
 
@@ -1675,7 +1675,7 @@ class CppConverter(base.Converter):
             # dependents will depend on.
             attrs = collections.OrderedDict()
             attrs['name'] = real_name
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['soname'] = soname
             platform = platform_utils.get_buck_platform_for_base_path(base_path)
@@ -1714,7 +1714,7 @@ class CppConverter(base.Converter):
         dest = os.path.join('node_modules', name, name + '.node')
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = name + '-modules'
         attrs['cmd'] = ' && '.join([
