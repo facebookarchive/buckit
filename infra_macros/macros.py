@@ -64,7 +64,7 @@ load('@fbcode_macros//build_defs:config.bzl', 'config')
 load('@fbcode_macros//build_defs:coverage.bzl', 'coverage')
 load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
-load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
@@ -187,8 +187,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
     # specify their dependencies, and it will be going away in the future
     if (config.get_add_auto_headers_glob() and
             rule.type in CXX_RULES and
-            AutoHeaders.RECURSIVE_GLOB == cpp.CppConverter.get_auto_headers(
-                rule.attributes.get('headers'),
+            AutoHeaders.RECURSIVE_GLOB == get_auto_headers(
                 rule.attributes.get('auto_headers'))):
         deps = list(rule.attributes.get('deps', []))
         deps.append(require_default_headers_rule())

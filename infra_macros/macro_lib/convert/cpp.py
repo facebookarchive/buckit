@@ -47,7 +47,7 @@ load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", module_utils="modules")
-load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
+load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -566,27 +566,6 @@ class CppConverter(base.Converter):
     def get_lua_init_symbol(self, base_path, name, base_module):
         parts = self.get_lua_base_module_parts(base_path, base_module)
         return '_'.join(['luaopen'] + parts + [name])
-
-    @classmethod
-    def get_auto_headers(cls, headers, auto_headers):
-        """
-        Get the level of auto-headers to apply to the rule.
-        """
-
-        # If `auto_headers` is set, use that.
-        if auto_headers is not None:
-            return auto_headers
-
-        # For backwards compatibility, if the `headers` parameter is a string,
-        # then it refers to an auto-headers setting.
-        if isinstance(headers, basestring):
-            return headers
-
-        # If it's `None`, then return the global default.
-        return native.read_config(
-            'cxx',
-            'auto_headers',
-            AutoHeaders.SOURCES)
 
     def get_implicit_deps(self):
         """
@@ -1233,10 +1212,7 @@ class CppConverter(base.Converter):
             out_headers.update(converted)
 
         # x in automatically inferred headers.
-        auto_headers = (
-            self.get_auto_headers(
-                headers,
-                auto_headers))
+        auto_headers = get_auto_headers(auto_headers)
         if auto_headers == AutoHeaders.SOURCES:
             src_headers = set(self.get_headers_from_sources(base_path, srcs))
             src_headers -= set(out_headers)
