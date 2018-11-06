@@ -314,7 +314,8 @@ class CppConverter(base.Converter):
             autodeps_keep=False,
             undefined_symbols=False,
             modular_headers=None,
-            modules=None):
+            modules=None,
+            overridden_link_style=None):
 
         visibility = get_visibility(visibility, name)
 
@@ -896,7 +897,7 @@ class CppConverter(base.Converter):
 
         # For binaries, set the link style.
         if is_buck_binary:
-            attributes['link_style'] = out_link_style
+            attributes['link_style'] = overridden_link_style or out_link_style
 
         # Translate runtime files into resources.
         if runtime_files:
@@ -1139,46 +1140,6 @@ class CppConverter(base.Converter):
 
         return [Rule(buck_rule_type, attributes)] + extra_rules
 
-    def convert_node_extension(
-            self,
-            base_path,
-            name,
-            dlopen_enabled=None,
-            visibility=None,
-            **kwargs):
-        """
-        Convert a C/C++ Java extension.
-        """
-
-        rules = []
-
-        # Delegate to the main conversion function, making sure that we build
-        # the extension into a statically linked monolithic DSO.
-        rules.extend(
-            self.convert_rule(
-                base_path,
-                name + '-extension',
-                dlopen_enabled=True,
-                visibility=visibility,
-                **kwargs))
-        rules[0].attributes['link_style'] = 'static_pic'
-
-        # This is a bit weird, but `prebuilt_cxx_library` rules can only
-        # accepted generated libraries that reside in a directory.  So use
-        # a genrule to copy the library into a lib dir using it's soname.
-        dest = paths.join('node_modules', name, name + '.node')
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = name + '-modules'
-        attrs['cmd'] = ' && '.join([
-            'mkdir -p $OUT/{}'.format(paths.dirname(dest)),
-            'cp $(location :{}-extension) $OUT/{}'.format(name, dest),
-        ])
-        rules.append(Rule('genrule', attrs))
-
-        return rules
 
     def get_allowed_args(self):
         """
@@ -1300,20 +1261,14 @@ class CppConverter(base.Converter):
         """
         Entry point for converting C/C++ rules.
         """
-        rules = []
-
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'cpp_java_extension':
             # This logic is contained in the CppJavaExtensionConverter
             fail("cpp_java_extension called incorrectly")
         elif rtype == 'cpp_node_extension':
-            rules.extend(
-                self.convert_node_extension(base_path, name, visibility=visibility, **kwargs))
-        else:
-            rules.extend(
-                self.convert_rule(base_path, name, visibility=visibility, **kwargs))
-
-        return rules
+            # This logic is contained in the CppNodeExtensionConverter
+            fail("cpp_node_extension called incorrectly")
+        return self.convert_rule(base_path, name, visibility=visibility, **kwargs)
 
 
 # TODO: These are temporary until all logic is extracted into cpp_common
@@ -1381,16 +1336,45 @@ class CppNodeExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppNodeExtensionConverter, self).__init__(context, 'cpp_node_extension')
 
-    def convert(self, *args, **kwargs):
-        return super(CppNodeExtensionConverter, self).convert(
+    def convert(
+            self,
+            base_path,
+            name,
+            dlopen_enabled=None,
+            visibility=None,
+            **kwargs):
+
+        # Delegate to the main conversion function, making sure that we build
+        # the extension into a statically linked monolithic DSO.
+        rules = self.convert_rule(
+            base_path,
+            name + '-extension',
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
             is_test = False,
             is_deployable = False,
-            *args,
+            dlopen_enabled=True,
+            visibility=visibility,
+            overridden_link_style = 'static_pic',
             **kwargs
         )
+
+        # This is a bit weird, but `prebuilt_cxx_library` rules can only
+        # accepted generated libraries that reside in a directory.  So use
+        # a genrule to copy the library into a lib dir using it's soname.
+        dest = paths.join('node_modules', name, name + '.node')
+        native.genrule(
+            name = name,
+            visibility = visibility,
+            out = name + "-modules",
+            cmd = ' && '.join([
+                'mkdir -p $OUT/{}'.format(paths.dirname(dest)),
+                'cp $(location :{}-extension) $OUT/{}'.format(name, dest),
+            ]),
+        )
+
+        return rules
 
 class CppPrecompiledHeaderConverter(CppConverter):
     def __init__(self, context):
