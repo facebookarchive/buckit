@@ -134,10 +134,6 @@ Tp2ProjectBuild = collections.namedtuple(
 )
 
 
-SourceWithFlags = (
-    collections.namedtuple('SourceWithFlags', ['src', 'flags']))
-
-
 CXX_BUILD_INFO_TEMPLATE = """\
 #include <stdint.h>
 
@@ -255,40 +251,6 @@ class Converter(object):
             return os.path.join(self.get_third_party_root(platform), 'build', project)
         else:
             return project
-
-
-    def format_source_with_flags(self, src_with_flags, platform=None):  # type: (SourceWithFlags[Union[str, RuleTarget], List[str]], str) -> Union[str, (str, List[str])]
-        """
-        Parse a source with flags.
-        """
-
-        src = src_and_dep_helpers.format_source(src_with_flags.src, platform=platform)
-        return (src, src_with_flags.flags) if src_with_flags.flags else src
-
-    def format_source_with_flags_list(self, srcs_with_flags):  # type: List[SourceWithFlags[Union[str, RuleTarget], List[str]]] -> List[Union[str, (str, List[str])]]
-        """
-        Format the given parsed sources with flags list.
-        """
-        def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):
-            return [self.format_source_with_flags(src, platform=platform) for src in tp2_dep_srcs]
-
-
-        # All path sources and fbcode source references are installed via the
-        # `srcs` parameter.
-        out_srcs = []
-        for src in srcs_with_flags:
-            if not third_party.is_tp2_src_dep(src.src):
-                out_srcs.append(self.format_source_with_flags(src))
-
-        # All third-party sources references are installed via `platform_srcs`
-        # so that they're platform aware.
-        tp2_dep_srcs = [src
-                        for src in srcs_with_flags if third_party.is_tp2_src_dep(src.src)]
-        out_platform_srcs = (
-            src_and_dep_helpers.format_platform_param(
-                partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs)))
-
-        return src_and_dep_helpers.PlatformParam(out_srcs, out_platform_srcs)
 
     def without_platforms(self, formatted):  # type: PlatformParam[Any, List[Tuple[str, Any]]] -> Any
         """

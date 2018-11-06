@@ -1,9 +1,17 @@
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
+load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_unicode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+
+_SourceWithFlags = provider(fields = [
+    "src",
+    "flags",
+])
 
 _C_SOURCE_EXTS = (
     ".c",
@@ -194,12 +202,72 @@ def _assert_preprocessor_flags(param, flags):
                 .format(" ".join(bad_flags), param),
         )
 
+def _format_source_with_flags(src_with_flags, platform = None):
+    """
+    Format a `SourceWithFlags` object into a label useable by buck native rules
+
+    Args:
+        srcs_with_flags: A `SourceWithFlags` object
+        platform: If provided, use this to format the source component of
+                  `srcs_with_flags` into a buck label
+
+    Returns:
+        Either a tuple of (<buck label>, [<flags for this source file>]) or just the
+        buck label if no flags were provided for this source
+    """
+
+    src = src_and_dep_helpers.format_source(src_with_flags.src, platform = platform)
+    return (src, src_with_flags.flags) if src_with_flags.flags else src
+
+def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):
+    return [
+        _format_source_with_flags(src, platform = platform)
+        for src in tp2_dep_srcs
+    ]
+
+def _format_source_with_flags_list(srcs_with_flags):
+    """
+    Convert the provided SourceWithFlags objects into objects useable by buck native rules
+
+    Args:
+        srcs_with_flags: A list of SourceWithFlags objects
+
+    Returns:
+        A `PlatformParam` struct that contains both platform and non platform
+        sources and flags in a way that buck understands. These are either strings,
+        or tuples of (source, list of flags that should be used with the corresponding
+        source).
+    """
+
+    # All path sources and fbcode source references are installed via the
+    # `srcs` parameter.
+    out_srcs = []
+    tp2_dep_srcs = []
+    for src in srcs_with_flags:
+        if third_party.is_tp2_src_dep(src.src):
+            # All third-party sources references are installed via `platform_srcs`
+            # so that they're platform aware.
+            tp2_dep_srcs.append(src)
+        else:
+            out_srcs.append(_format_source_with_flags(src))
+
+    out_platform_srcs = (
+        src_and_dep_helpers.format_platform_param(
+            partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs),
+        )
+    )
+
+    return src_and_dep_helpers.PlatformParam(out_srcs, out_platform_srcs)
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
+    SourceWithFlags = _SourceWithFlags,
     assert_linker_flags = _assert_linker_flags,
     assert_preprocessor_flags = _assert_preprocessor_flags,
     default_headers_library = _default_headers_library,
     exclude_from_auto_pch = _exclude_from_auto_pch,
+    format_source_with_flags = _format_source_with_flags,
+    format_source_with_flags_list = _format_source_with_flags_list,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     is_cpp_source = _is_cpp_source,
 )

@@ -835,7 +835,7 @@ class CppConverter(base.Converter):
         for lex_src in lex_srcs:
             header, source = lex(name, lex_args, lex_src, platform, visibility)
             out_headers.append(header)
-            out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
+            out_srcs.append(cpp_common.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
 
         # Generate rules to handle yacc sources.
         yacc_srcs, srcs = self.split_matching_extensions_and_other(
@@ -848,7 +848,7 @@ class CppConverter(base.Converter):
                 platform,
                 visibility)
             out_headers.extend(yacc_headers)
-            out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
+            out_srcs.append(cpp_common.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
 
         # Convert and add in any explicitly mentioned headers into our output
         # headers.
@@ -885,9 +885,9 @@ class CppConverter(base.Converter):
                     (known_warnings and
                      self.get_parsed_src_name(src) in known_warnings)):
                 flags = ['-Wno-error']
-            out_srcs.append(base.SourceWithFlags(src, flags))
+            out_srcs.append(cpp_common.SourceWithFlags(src, flags))
 
-        formatted_srcs = self.format_source_with_flags_list(out_srcs)
+        formatted_srcs = cpp_common.format_source_with_flags_list(out_srcs)
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
             attributes['srcs'], attributes['platform_srcs'] = formatted_srcs
         else:
