@@ -61,6 +61,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 # /macros/macros.py
 load('@fbcode_macros//build_defs:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
+load('@fbcode_macros//build_defs:cpp_common.bzl', 'cpp_common')
 load('@fbcode_macros//build_defs:coverage.bzl', 'coverage')
 load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs:visibility.bzl', 'get_visibility_for_base_path')
@@ -153,26 +154,6 @@ CXX_RULES = set([
     'cpp_unittest',
 ])
 
-
-HEADERS_RULE_CACHE = set()
-
-
-def require_default_headers_rule():
-    name = '__default_headers__'
-    if get_base_path() not in HEADERS_RULE_CACHE:
-        HEADERS_RULE_CACHE.add(get_base_path())
-        buck_platform = platform_utils.get_buck_platform_for_current_buildfile()
-        native.cxx_library(
-            name=name,
-            default_platform=buck_platform,
-            defaults={'platform': buck_platform},
-            exported_headers=(
-                glob(['**/*' + ext for ext in cxx_sources.HEADER_EXTS])
-            ),
-        )
-    return ':' + name
-
-
 def rule_handler(context, globals, rule_type, **kwargs):
     """
     Callback that fires when a TARGETS rule is evaluated, converting it into
@@ -190,7 +171,7 @@ def rule_handler(context, globals, rule_type, **kwargs):
             AutoHeaders.RECURSIVE_GLOB == get_auto_headers(
                 rule.attributes.get('auto_headers'))):
         deps = list(rule.attributes.get('deps', []))
-        deps.append(require_default_headers_rule())
+        deps.append(cpp_common.default_headers_library())
         rule.attributes['deps'] = deps
 
     # Convert the fbconfig/fbmake rule into one or more Buck rules.
