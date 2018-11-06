@@ -21,6 +21,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:core_tools.bzl",
     "fbcode_macros//build_defs:cpp_common.bzl",
     "fbcode_macros//build_defs:cpp_flags.bzl",
+    "fbcode_macros//build_defs:cuda.bzl",
     "fbcode_macros//build_defs:create_build_mode.bzl",
     "fbcode_macros//build_defs:cpp_library_external.bzl",
     "fbcode_macros//build_defs:d_library_external.bzl",
@@ -188,6 +189,15 @@ skylark_integration_test(
     name = "cpp_library_external_test",
     srcs = ["cpp_library_external_test.py"],
     deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "cuda_test",
+    srcs = ["cuda_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(

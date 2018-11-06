@@ -28,6 +28,7 @@ load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
+load("@fbcode_macros//build_defs:cuda.bzl", "cuda")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", module_utils="modules")
@@ -46,8 +47,8 @@ load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
 
-def _cuda_compiler_specific_flags_partial(compiler_specific_flags, cuda, _, compiler):
-    return compiler_specific_flags.get("gcc" if cuda else compiler)
+def _cuda_compiler_specific_flags_partial(compiler_specific_flags, has_cuda_srcs, _, compiler):
+    return compiler_specific_flags.get("gcc" if has_cuda_srcs else compiler)
 
 """
 A marker which helps us differentiate between empty/falsey/None values
@@ -143,44 +144,6 @@ class CppConverter(base.Converter):
 
         return deps
 
-    def has_cuda_dep(self, dependencies):
-        """
-        Returns whether there is any dependency on CUDA tp2.
-        """
-
-        for dep in dependencies:
-            if dep.repo != None and dep.base_path == 'cuda':
-                return True
-
-        return False
-
-    def is_cuda_src(self, src):
-        """
-        Return whether this `srcs` entry is a CUDA source file.
-        """
-        # If this is a generated rule reference, then extract the source
-        # name.
-        if '=' in src:
-            src = src.rsplit('=', 1)[1]
-
-        # Assume generated sources without explicit extensions are non-CUDA
-        if src.startswith(('@', ':', '//')):
-            return False
-
-        # If the source extension is `.cu` it's cuda.
-        _, ext = paths.split_extension(src)
-        return ext == '.cu'
-
-    def has_cuda_srcs(self, srcs):
-        """
-        Return whether this rule has CUDA sources.
-        """
-
-        for src in srcs:
-            if self.is_cuda_src(src):
-                return True
-        return False
-
     def get_lua_base_module_parts(self, base_path, base_module):
         """
         Get the list of base module parts for this rule.
@@ -215,7 +178,7 @@ class CppConverter(base.Converter):
             return None
 
         # First, try parse as an fixed point probability against the hash of
-        # this rule's name.
+#this rule's name.
         try:
             prob = int(val)
         except ValueError:
@@ -225,7 +188,7 @@ class CppConverter(base.Converter):
                 raise ValueError(
                     '`{}` probability must be between'
                     ' 0 and 100: {!r}'.format(source, prob))
-            # Weak attempt at consistent hashing
+# Weak attempt at consistent hashing
             val = 0
             for c in (base_path + ':' + name):
                 val += ord(c) ^ val
@@ -349,7 +312,7 @@ class CppConverter(base.Converter):
                 # file.
                 else ''))
 
-        cuda = self.has_cuda_srcs(srcs)
+        has_cuda_srcs = cuda.has_cuda_srcs(srcs)
 
         # TODO(lucian, pbrady, T24109997): this was a temp hack when CUDA doesn't
         # support platform007
@@ -359,7 +322,7 @@ class CppConverter(base.Converter):
         # unblock migration. Once CUDA supports gcc of the new platform,
         # cuda_deps should be merged back into deps.
         if platform.startswith('platform008'):
-            cuda = False
+            has_cuda_srcs = False
 
             def filter_flags(flags):
                 banned_flags = [
@@ -418,7 +381,7 @@ class CppConverter(base.Converter):
             def is_banned_src(src):
                 return any(r.match(src) for r in banned_cuda_srcs_re)
 
-            cuda_srcs = [s for s in srcs if self.is_cuda_src(s) or is_banned_src(base_path + '/' + s)]
+            cuda_srcs = [s for s in srcs if cuda.is_cuda_src(s) or is_banned_src(base_path + '/' + s)]
             srcs = [s for s in srcs if s not in cuda_srcs]
             if cuda_srcs:
                 print('Warning: no CUDA on platform007: rule {}:{} ignoring cuda_srcs: {}'
@@ -523,7 +486,7 @@ class CppConverter(base.Converter):
                     partial.make(
                         _cuda_compiler_specific_flags_partial,
                         compiler_specific_flags,
-                        cuda)))
+                        has_cuda_srcs)))
 
         out_lang_plat_compiler_flags.setdefault('cuda_cpp_output', [])
         out_lang_plat_compiler_flags['cuda_cpp_output'].extend(
@@ -560,7 +523,7 @@ class CppConverter(base.Converter):
 
         # Form preprocessor flags.
         out_preprocessor_flags = []
-        if not cuda:
+        if not has_cuda_srcs:
             if sanitizers.get_sanitizer() != None:
                 out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
             out_preprocessor_flags.extend(coverage.get_coverage_flags(base_path))
@@ -969,7 +932,8 @@ class CppConverter(base.Converter):
 
         # Add in any CUDA deps.  We only add this if it's not always present,
         # it's common to explicitly depend on the cuda runtime.
-        if cuda and not self.has_cuda_dep(dependencies):
+        if has_cuda_srcs and not cuda.has_cuda_dep(dependencies):
+            # TODO: If this won't work, should it just fail?
             print('Warning: rule {}:{} with .cu files has to specify CUDA '
                   'external_dep to work.'.format(base_path, name))
 
