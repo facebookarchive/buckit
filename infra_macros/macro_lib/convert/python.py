@@ -887,19 +887,22 @@ class PythonConverter(base.Converter):
             # Need to split the srcs into srcs & resources as Buck
             # expects all test srcs to be python modules.
             if self.is_test():
-                attributes['srcs'], attributes['platform_srcs'] = (
-                    self.format_source_map(
-                        {k: v
-                         for k, v in parsed_srcs.iteritems()
-                         if k.endswith('.py')}))
-                attributes['resources'], attributes['platform_resources'] = (
-                    self.format_source_map(
-                        {k: v
-                         for k, v in parsed_srcs.iteritems()
-                         if not k.endswith('.py')}))
+                formatted_srcs = src_and_dep_helpers.format_source_map({
+                    k: v
+                    for k, v in parsed_srcs.iteritems()
+                    if k.endswith('.py')
+                })
+                formatted_resources = src_and_dep_helpers.format_source_map({
+                    k: v
+                    for k, v in parsed_srcs.iteritems()
+                    if not k.endswith('.py')
+                })
+                attributes['resources'] = formatted_resources.value
+                attributes['platform_resources'] = formatted_resources.platform_value
             else:
-                attributes['srcs'], attributes['platform_srcs'] = (
-                    self.format_source_map(parsed_srcs))
+                formatted_srcs = src_and_dep_helpers.format_source_map(parsed_srcs)
+            attributes['srcs'] = formatted_srcs.value
+            attributes['platform_srcs'] = formatted_srcs.platform_value
 
         # Emit platform-specific sources.  We split them between the
         # `platform_srcs` and `platform_resources` parameter based on their
@@ -910,9 +913,9 @@ class PythonConverter(base.Converter):
         for vcollection, ver_srcs in all_versioned_srcs:
             out_srcs = collections.OrderedDict()
             out_resources = collections.OrderedDict()
-            for dst, src in (
-                    self.without_platforms(
-                        self.format_source_map(ver_srcs))).items():
+            non_platform_ver_srcs = self.without_platforms(
+                src_and_dep_helpers.format_source_map(ver_srcs))
+            for dst, src in non_platform_ver_srcs.items():
                 if dst.endswith('.py') or dst.endswith('.so'):
                     out_srcs[dst] = src
                 else:
@@ -965,7 +968,7 @@ class PythonConverter(base.Converter):
             # For resources of the form {":target": "dest/path"}, we have to
             # format the parsed `RuleTarget` struct as a string before
             # passing it to Buck.
-            k: self.format_source(v) for k, v in self.parse_srcs(
+            k: src_and_dep_helpers.format_source(v) for k, v in self.parse_srcs(
                 base_path, 'resources', resources,
             ).items()
         })

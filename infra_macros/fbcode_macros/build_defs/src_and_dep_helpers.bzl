@@ -6,6 +6,12 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
+# Container for values which have regular and platform-specific parameters.
+_PlatformParam = provider(fields = [
+    "value",
+    "platform_value",
+])
+
 def _extract_source_name(src):
     """ Takes a string of the format foo=bar, and returns bar """
     parts = src.split("=")
@@ -107,6 +113,9 @@ def _convert_source_map(base_path, srcs):
     Args:
         base_path: The package that should be used when parsing relative labels
         srcs: A mapping of destination path -> source path / source target
+
+    Returns:
+        A mapping of the original name to a full buck label / source path
     """
     converted = {}
     for k, v in srcs.items():
@@ -330,7 +339,66 @@ def _normalize_external_dep(raw_target, lang_suffix = "", parse_version = False)
 
     return parsed if not parse_version else (parsed, version)
 
+def _format_source(src, platform = None):  # type: (Union[str, RuleTarget], str) -> str
+    """
+    Converts a 'source' to a string that can be used by buck native rules
+
+    Args:
+        src: Either a string (for a source file), or a RuleTarget that needs converted to a label
+        platform: The platform to use to convert RuleTarget objects
+
+    Returns:
+        A string with either the source path, or a full buck label
+    """
+
+    if target_utils.is_rule_target(src):
+        if src.repo != None and platform == None:
+            fail("Invalid RuleTarget ({}) and platform ({}) provided".format(src, platform))
+        return target_utils.target_to_label(src, platform = platform)
+
+    return src
+
+def _format_source_map_partial(tp2_srcs, platform, _):
+    return {
+        name: _format_source(src, platform = platform)
+        for name, src in tp2_srcs.items()
+    }
+
+def _format_source_map(srcs):
+    """
+    Converts a map that is used by 'srcs' to a map that buck can use natively.
+
+    Args:
+        srcs: A map of file location -> string (filename) or RuleTarget
+
+    Returns:
+        A `PlatformParam` struct that contains both platform and non platform
+        sources in formats that buck understands natively (map of file location ->
+        buck label / source file)
+    """
+
+    # All path sources and fbcode source references are installed via the
+    # `srcs` parameter.
+    out_srcs = {}
+    tp2_srcs = {}
+    for name, src in srcs.items():
+        if third_party.is_tp2_src_dep(src):
+            tp2_srcs[name] = src
+        else:
+            # All third-party sources references are installed via `platform_srcs`
+            # so that they're platform aware.
+            out_srcs[name] = _format_source(src)
+
+    out_platform_srcs = (
+        src_and_dep_helpers.format_platform_param(
+            partial.make(_format_source_map_partial, tp2_srcs),
+        )
+    )
+
+    return _PlatformParam(platform_value = out_platform_srcs, value = out_srcs)
+
 src_and_dep_helpers = struct(
+    PlatformParam = _PlatformParam,
     convert_build_target = _convert_build_target,
     convert_external_build_target = _convert_external_build_target,
     convert_source = _convert_source,
@@ -341,6 +409,8 @@ src_and_dep_helpers = struct(
     format_deps = _format_deps,
     format_platform_deps = _format_platform_deps,
     format_platform_param = _format_platform_param,
+    format_source = _format_source,
+    format_source_map = _format_source_map,
     get_source_name = _get_source_name,
     normalize_external_dep = _normalize_external_dep,
     parse_source = _parse_source,

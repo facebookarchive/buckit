@@ -33,7 +33,6 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             "path/to/baz3.cpp",
         )
 
-
     @tests.utils.with_project()
     def test_extract_source_name_works(self, root):
         self.assertSuccess(
@@ -368,4 +367,63 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
 
         expected = ["//foo:bar", "//bar:baz", "//third-party-buck/plat/build/bar:baz"]
 
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_format_source(self, root):
+        commands = [
+            'src_and_dep_helpers.format_source("foo/bar.cpp")',
+            'src_and_dep_helpers.format_source(target_utils.RootRuleTarget("foo", "bar"))',
+            'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), platform="gcc5")',
+            (
+                "src_and_dep_helpers.format_source_map({\n"
+                '    "foo/foo.c": "foo/bar/foo.c",\n'
+                '    "foo/bar.c": target_utils.RootRuleTarget("foo","bar"),\n'
+                '    "foo/baz.c": target_utils.ThirdPartyRuleTarget("foo","baz"),\n'
+                "})"
+            ),
+        ]
+
+        expected = [
+            "foo/bar.cpp",
+            "//foo:bar",
+            "//third-party-buck/gcc5/build/foo:baz",
+            self.struct(
+                value={"foo/foo.c": "foo/bar/foo.c", "foo/bar.c": "//foo:bar"},
+                platform_value=[
+                    (
+                        "^default-clang$",
+                        {"foo/baz.c": "//third-party-buck/default/build/foo:baz"},
+                    ),
+                    (
+                        "^default-gcc$",
+                        {"foo/baz.c": "//third-party-buck/default/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc5-clang$",
+                        {"foo/baz.c": "//third-party-buck/gcc5/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc5-gcc$",
+                        {"foo/baz.c": "//third-party-buck/gcc5/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc6-clang$",
+                        {"foo/baz.c": "//third-party-buck/gcc6/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc6-gcc$",
+                        {"foo/baz.c": "//third-party-buck/gcc6/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc7-clang$",
+                        {"foo/baz.c": "//third-party-buck/gcc7/build/foo:baz"},
+                    ),
+                    (
+                        "^gcc7-gcc$",
+                        {"foo/baz.c": "//third-party-buck/gcc7/build/foo:baz"},
+                    ),
+                ],
+            ),
+        ]
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

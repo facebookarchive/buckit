@@ -134,11 +134,6 @@ Tp2ProjectBuild = collections.namedtuple(
 )
 
 
-# Container for values which have regular and platform-specific parameters.
-PlatformParam = (
-    collections.namedtuple('PlatformParam', ['value', 'platform_value']))
-
-
 SourceWithFlags = (
     collections.namedtuple('SourceWithFlags', ['src', 'flags']))
 
@@ -261,48 +256,14 @@ class Converter(object):
         else:
             return project
 
-    def format_source(self, src, platform=None):  # type: (Union[str, RuleTarget], str) -> str
-        """
-        Format the given source path.
-        """
-
-        if target_utils.is_rule_target(src):
-            assert src.repo is None or platform is not None, str(src)
-            return target_utils.target_to_label(src, platform=platform)
-
-        return src
 
     def format_source_with_flags(self, src_with_flags, platform=None):  # type: (SourceWithFlags[Union[str, RuleTarget], List[str]], str) -> Union[str, (str, List[str])]
         """
         Parse a source with flags.
         """
 
-        src = self.format_source(src_with_flags.src, platform=platform)
+        src = src_and_dep_helpers.format_source(src_with_flags.src, platform=platform)
         return (src, src_with_flags.flags) if src_with_flags.flags else src
-
-    def format_source_list(self, srcs):  # type: List[Union[str, RuleTarget]] -> PlatformParam[List[str], List[Union[str, List[str]]]]
-        """
-        Format the given parsed source list.
-        """
-        def _format_source_list_partial(tp2_dep_srcs, platform, _):
-            return [self.format_source(src, platform=platform) for src in tp2_dep_srcs]
-
-
-        # All path sources and fbcode source references are installed via the
-        # `srcs` parameter.
-        out_srcs = []
-        for src in srcs:
-            if not third_party.is_tp2_src_dep(src):
-                out_srcs.append(self.format_source(src))
-
-        # All third-party sources references are installed via `platform_srcs`
-        # so that they're platform aware.
-        tp2_dep_srcs = [src for src in srcs if third_party.is_tp2_src_dep(src)]
-        out_platform_srcs = (
-            src_and_dep_helpers.format_platform_param(
-                partial.make(_format_source_list_partial, tp2_dep_srcs)))
-
-        return PlatformParam(out_srcs, out_platform_srcs)
 
     def format_source_with_flags_list(self, srcs_with_flags):  # type: List[SourceWithFlags[Union[str, RuleTarget], List[str]]] -> List[Union[str, (str, List[str])]]
         """
@@ -327,35 +288,7 @@ class Converter(object):
             src_and_dep_helpers.format_platform_param(
                 partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs)))
 
-        return PlatformParam(out_srcs, out_platform_srcs)
-
-    def format_source_map(self, srcs):  # type: Dict[str, Union[str, RuleTarget]] -> PlatformParam[Dict[str, str], List[Tuple[str, Dict[str, str]]]]
-        """
-        Format the given source map.
-        """
-        def _format_source_map_partial(tp2_srcs, platform, _):
-            return {
-                name: self.format_source(src, platform=platform)
-                for name, src in tp2_srcs.items()
-            }
-
-
-        # All path sources and fbcode source references are installed via the
-        # `srcs` parameter.
-        out_srcs = {}
-        for name, src in srcs.items():
-            if not third_party.is_tp2_src_dep(src):
-                out_srcs[name] = self.format_source(src)
-
-        # All third-party sources references are installed via `platform_srcs`
-        # so that they're platform aware.
-        tp2_srcs = {name: src
-                    for name, src in srcs.items() if third_party.is_tp2_src_dep(src)}
-        out_platform_srcs = (
-            src_and_dep_helpers.format_platform_param(
-                partial.make(_format_source_map_partial, tp2_srcs)))
-
-        return PlatformParam(out_srcs, out_platform_srcs)
+        return src_and_dep_helpers.PlatformParam(out_srcs, out_platform_srcs)
 
     def without_platforms(self, formatted):  # type: PlatformParam[Any, List[Tuple[str, Any]]] -> Any
         """
