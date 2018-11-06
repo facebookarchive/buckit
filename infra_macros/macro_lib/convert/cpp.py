@@ -12,28 +12,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# TODO(T20914511): Until the macro lib has been completely ported to
-# `include_defs()`, we need to support being loaded via both `import` and
-# `include_defs()`.  These ugly preamble is thus here to consistently provide
-# `allow_unsafe_import()` regardless of how we're loaded.
-import contextlib
-try:
-    allow_unsafe_import
-except NameError:
-    @contextlib.contextmanager
-    def allow_unsafe_import(*args, **kwargs):
-        yield
-
 import collections
 import itertools
-import pipes
 import re
-
-with allow_unsafe_import():
-    from distutils.version import LooseVersion
-    import os
-    import platform as plat
-    import shlex
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
@@ -170,7 +151,7 @@ def create_dll_rules(
     if visibility != None:
         attributes['visibility'] = visibility
     attributes['out'] = lib_name
-    fbcode = os.path.join('$GEN_DIR', fbcode_dir)
+    fbcode = paths.join('$GEN_DIR', fbcode_dir)
     attributes['cmd'] = 'cd {} && '.format(fbcode) + ' '.join(cmd)
     rules.append(Rule('cxx_genrule', attributes))
 
@@ -290,7 +271,7 @@ def convert_dlls(
     attrs['name'] = name + '.dlls'
     if visibility != None:
         attrs['visibility'] = visibility
-    attrs['out'] = os.curdir
+    attrs['out'] = "out"
     cmds = []
     cmds.append('mkdir -p $OUT')
     for dll_name, dll_target in dll_targets.items():
@@ -423,7 +404,7 @@ class CppConverter(base.Converter):
         leftovers = []
 
         for src in (srcs or []):
-            base, ext = os.path.splitext(src)
+            base, ext = paths.split_extension(src)
             if ext in exts:
                 matches.append(src)
             else:
@@ -439,7 +420,7 @@ class CppConverter(base.Converter):
         source_exts = self.SOURCE_EXTS  # use a local for faster lookups in a loop
         # Check for // in case this src is a rule
         split_srcs = (
-            os.path.splitext(src)
+            paths.split_extension(src)
             for src in srcs
             if '//' not in src and not src.startswith(':'))
 
@@ -528,7 +509,7 @@ class CppConverter(base.Converter):
             return False
 
         # If the source extension is `.cu` it's cuda.
-        _, ext = os.path.splitext(src)
+        _, ext = paths.split_extension(src)
         return ext == '.cu'
 
     def has_cuda_srcs(self, srcs):
@@ -548,7 +529,7 @@ class CppConverter(base.Converter):
 
         # If base module is unset, prepare a default.
         if base_module == None:
-            return ['fbcode'] + base_path.split(os.sep)
+            return ['fbcode'] + base_path.split('/')
 
         # If base module is empty, return the empty list.
         elif not base_module:
@@ -1167,7 +1148,7 @@ class CppConverter(base.Converter):
         # them
         if (self.get_buck_rule_type() == 'cxx_library' and
                 config.get_build_mode().startswith('dev') and
-                plat.system() == 'Linux'):
+                native.host_info().os.is_linux):
             if link_whole is True:
                 out_exported_ldflags.append('-Wl,--no-as-needed')
             else:
@@ -1650,7 +1631,7 @@ class CppConverter(base.Converter):
             soname = (
                 'lib{}.so'.format(
                     lib_name or
-                    os.path.join(base_path, name).replace(os.sep, '_')))
+                    paths.join(base_path, name).replace("/", '_')))
             dlopen_enabled = {'soname': soname}
             lib_name = None
 
@@ -1711,14 +1692,14 @@ class CppConverter(base.Converter):
         # This is a bit weird, but `prebuilt_cxx_library` rules can only
         # accepted generated libraries that reside in a directory.  So use
         # a genrule to copy the library into a lib dir using it's soname.
-        dest = os.path.join('node_modules', name, name + '.node')
+        dest = paths.join('node_modules', name, name + '.node')
         attrs = collections.OrderedDict()
         attrs['name'] = name
         if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = name + '-modules'
         attrs['cmd'] = ' && '.join([
-            'mkdir -p $OUT/{}'.format(os.path.dirname(dest)),
+            'mkdir -p $OUT/{}'.format(paths.dirname(dest)),
             'cp $(location :{}-extension) $OUT/{}'.format(name, dest),
         ])
         rules.append(Rule('genrule', attrs))
