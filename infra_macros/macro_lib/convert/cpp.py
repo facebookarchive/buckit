@@ -87,12 +87,6 @@ class CppConverter(base.Converter):
     def is_buck_binary(self, buck_rule_type):
         return buck_rule_type in ('cxx_binary', 'cxx_test')
 
-    def is_extension(self):
-        return self.get_fbconfig_rule_type() in (
-            'cpp_python_extension',
-            'cpp_java_extension',
-            'cpp_lua_extension')
-
     def get_fbconfig_rule_type(self):
         return self._rule_type
 
