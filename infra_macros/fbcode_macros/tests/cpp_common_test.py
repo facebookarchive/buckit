@@ -12,6 +12,8 @@ from tests.utils import dedent
 
 
 class CppCommonTest(tests.utils.TestCase):
+    includes = [("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")]
+
     @tests.utils.with_project()
     def test_default_headers_library_works(self, root):
         buckfile = "subdir/BUCK"
@@ -73,3 +75,21 @@ class CppCommonTest(tests.utils.TestCase):
         }
 
         self.validateAudit(expected, root.runAudit([buckfile]))
+
+    @tests.utils.with_project()
+    def test_is_cpp_source(self, root):
+        self.assertSuccess(
+            root.runUnitTests(
+                self.includes,
+                [
+                    'cpp_common.is_cpp_source("foo.cpp")',
+                    'cpp_common.is_cpp_source("foo.cc")',
+                    'cpp_common.is_cpp_source("foo.c")',
+                    'cpp_common.is_cpp_source("foo.h")',
+                ],
+            ),
+            True,
+            True,
+            False,
+            False,
+        )

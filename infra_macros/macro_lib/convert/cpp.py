@@ -24,6 +24,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -60,24 +61,6 @@ ABSENT = tuple()
 
 
 class CppConverter(base.Converter):
-
-    C_SOURCE_EXTS = (
-        '.c',
-    )
-
-    CPP_SOURCE_EXTS = (
-        '.cc',
-        '.cpp',
-    )
-
-    SOURCE_EXTS = frozenset(C_SOURCE_EXTS + CPP_SOURCE_EXTS)
-
-    HEADER_EXTS = (
-        '.h',
-        '.tcc',
-        '-inl.h',
-        '-defs.h',
-    )
 
     RULE_TYPE_MAP = {
         'cpp_library': 'cxx_library',
@@ -170,7 +153,7 @@ class CppConverter(base.Converter):
         Return the headers likely associated with the given sources.
         """
 
-        source_exts = self.SOURCE_EXTS  # use a local for faster lookups in a loop
+        source_exts = cpp_common.SOURCE_EXTS  # use a local for faster lookups in a loop
         # Check for // in case this src is a rule
         split_srcs = (
             paths.split_extension(src)
@@ -365,18 +348,6 @@ class CppConverter(base.Converter):
                 'header files to be used instead of correct versions from '
                 'third-party.'
                 .format(' '.join(bad_flags)))
-
-    @classmethod
-    def has_file_ext(cls, filename, extensions):
-        return [ext for ext in extensions if filename.endswith(ext)]
-
-    @classmethod
-    def is_c_source(cls, filename):
-        return cls.has_file_ext(filename, cls.C_SOURCE_EXTS)
-
-    @classmethod
-    def is_cpp_source(cls, filename):
-        return cls.has_file_ext(filename, cls.CPP_SOURCE_EXTS)
 
     def parse_modules_val(self, val, source, base_path, name):
         """
@@ -1315,7 +1286,7 @@ class CppConverter(base.Converter):
         if not out_srcs:
             return None
         # Don't allow this to be used for anything non-C++.
-        cpp_src_count = len([s for s in out_srcs if self.is_cpp_source(str(s))])
+        cpp_src_count = len([s for s in out_srcs if cpp_common.is_cpp_source(str(s))])
         if cpp_src_count != len(out_srcs):
             return None
         # Return the default PCH setting from config (`None` if absent).

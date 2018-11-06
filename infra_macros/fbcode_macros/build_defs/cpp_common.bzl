@@ -1,6 +1,17 @@
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
+_C_SOURCE_EXTS = (
+    ".c",
+)
+
+_CPP_SOURCE_EXTS = (
+    ".cc",
+    ".cpp",
+)
+
+_SOURCE_EXTS = _C_SOURCE_EXTS + _CPP_SOURCE_EXTS
+
 _HEADER_EXTS = (
     ".h",
     ".hh",
@@ -37,6 +48,15 @@ def _default_headers_library():
     )
     return _DEFAULT_HEADERS_RULE_TARGET
 
+def _is_cpp_source(filename):
+    """ Whether the specified `filename` looks like a c++ source """
+    for ext in _CPP_SOURCE_EXTS:
+        if filename.endswith(ext):
+            return True
+    return False
+
 cpp_common = struct(
+    SOURCE_EXTS = _SOURCE_EXTS,
     default_headers_library = _default_headers_library,
+    is_cpp_source = _is_cpp_source,
 )
