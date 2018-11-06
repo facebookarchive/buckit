@@ -62,17 +62,6 @@ class CppConverter(base.Converter):
         super(CppConverter, self).__init__(context)
         self._rule_type = rule_type
 
-    def is_deployable(self):
-        """
-        Return whether this rule's output is meant to be deployed outside of
-        fbcode.
-        """
-
-        return self.get_fbconfig_rule_type() in (
-            'cpp_binary',
-            'cpp_unittest',
-            'cpp_benchmark')
-
     def get_fbconfig_rule_type(self):
         return self._rule_type
 
@@ -287,6 +276,7 @@ class CppConverter(base.Converter):
             is_library,
             is_buck_binary,
             is_test,
+            is_deployable,
             base_module=None,
             module_name=None,
             srcs=[],
@@ -367,7 +357,7 @@ class CppConverter(base.Converter):
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         dlopen_info = cpp_common.normalize_dlopen_enabled(dlopen_enabled)
         # `dlopen_enabled=True` binaries are really libraries.
-        is_binary = False if dlopen_info != None else self.is_deployable()
+        is_binary = False if dlopen_info != None else is_deployable
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
             platform_utils.get_platform_for_base_path(
@@ -671,14 +661,14 @@ class CppConverter(base.Converter):
                 name,
                 self.get_fbconfig_rule_type(),
                 binary=is_binary,
-                deployable=self.is_deployable(),
+                deployable=is_deployable,
                 # Never apply stripping flags to library rules, as they only
                 # get linked in `dev` mode which we avoid stripping in anyway,
                 # any adding unused linker flags affects rule keys up the tree.
-                strip_mode=None if self.is_deployable() else 'none',
-                build_info=self.is_deployable(),
+                strip_mode=None if is_deployable else 'none',
+                build_info=is_deployable,
                 lto=enable_lto,
-                platform=platform if self.is_deployable() else None))
+                platform=platform if is_deployable else None))
 
         # Add non-binary sanitizer dependencies.
         if (not is_binary and
@@ -1006,7 +996,7 @@ class CppConverter(base.Converter):
         if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
             buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             attributes['default_platform'] = buck_platform
-            if not self.is_deployable():
+            if not is_deployable:
                 attributes['defaults'] = {'platform': buck_platform}
 
         # Add in implicit deps.
@@ -1414,6 +1404,7 @@ class CppLibraryConverter(CppConverter):
             is_library = True,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1428,6 +1419,7 @@ class CppBinaryConverter(CppConverter):
             is_library = False,
             is_buck_binary = True,
             is_test = False,
+            is_deployable = True,
             *args,
             **kwargs
         )
@@ -1442,6 +1434,7 @@ class CppUnittestConverter(CppConverter):
             is_library = False,
             is_buck_binary = True,
             is_test = True,
+            is_deployable = True,
             *args,
             **kwargs
         )
@@ -1456,6 +1449,7 @@ class CppBenchmarkConverter(CppConverter):
             is_library = False,
             is_buck_binary = True,
             is_test = False,
+            is_deployable = True,
             *args,
             **kwargs
         )
@@ -1470,6 +1464,7 @@ class CppNodeExtensionConverter(CppConverter):
             is_library = False,
             is_buck_binary = True,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1484,6 +1479,7 @@ class CppPrecompiledHeaderConverter(CppConverter):
             is_library = False,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1498,6 +1494,7 @@ class CppPythonExtensionConverter(CppConverter):
             is_library = False,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1512,6 +1509,7 @@ class CppJavaExtensionConverter(CppConverter):
             is_library = False,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1526,6 +1524,7 @@ class CppLuaExtensionConverter(CppConverter):
             is_library = False,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
@@ -1540,6 +1539,7 @@ class CppLuaMainModuleConverter(CppConverter):
             is_library = False,
             is_buck_binary = False,
             is_test = False,
+            is_deployable = False,
             *args,
             **kwargs
         )
