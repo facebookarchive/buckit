@@ -43,6 +43,7 @@ load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs:lua_common.bzl", "lua_common")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -56,7 +57,6 @@ defaulted in a function's arg list, vs. actually passed in from the caller
 with such a value.
 """
 ABSENT = tuple()
-
 
 class CppConverter(base.Converter):
 
@@ -143,31 +143,6 @@ class CppConverter(base.Converter):
             deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
-
-    def get_lua_base_module_parts(self, base_path, base_module):
-        """
-        Get the list of base module parts for this rule.
-        """
-
-        # If base module is unset, prepare a default.
-        if base_module == None:
-            return ['fbcode'] + base_path.split('/')
-
-        # If base module is empty, return the empty list.
-        elif not base_module:
-            return []
-
-        # Otherwise, split it on the module separater.
-        else:
-            return base_module.split('.')
-
-    def get_lua_base_module(self, base_path, base_module):
-        parts = self.get_lua_base_module_parts(base_path, base_module)
-        return '.'.join(parts)
-
-    def get_lua_init_symbol(self, base_path, name, base_module):
-        parts = self.get_lua_base_module_parts(base_path, base_module)
-        return '_'.join(['luaopen'] + parts + [name])
 
     def parse_modules_val(self, val, source, base_path, name):
         """
@@ -391,10 +366,7 @@ class CppConverter(base.Converter):
 
         # Set the base module.
         rule_type = self.get_fbconfig_rule_type()
-        if rule_type == 'cpp_lua_extension':
-            attributes['base_module'] = (
-                self.get_lua_base_module(base_path, base_module))
-        elif rule_type == 'cpp_python_extension' and base_module != None:
+        if base_module != None:
             attributes['base_module'] = base_module
 
         if module_name != None:
@@ -498,7 +470,7 @@ class CppConverter(base.Converter):
         if self.get_fbconfig_rule_type() == 'cpp_lua_extension':
             out_preprocessor_flags.append(
                 '-DLUAOPEN={}'.format(
-                    self.get_lua_init_symbol(base_path, name, base_module)))
+                    lua_common.get_lua_init_symbol(base_path, name, base_module)))
         if out_preprocessor_flags:
             attributes['preprocessor_flags'] = out_preprocessor_flags
         if prefix_header:
@@ -1400,13 +1372,16 @@ class CppLuaExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppLuaExtensionConverter, self).__init__(context, 'cpp_lua_extension')
 
-    def convert(self, *args, **kwargs):
+    def convert(self, base_path, name, base_module=None, *args, **kwargs):
         return super(CppLuaExtensionConverter, self).convert(
             buck_rule_type = 'cxx_lua_extension',
             is_library = False,
             is_buck_binary = False,
             is_test = False,
             is_deployable = False,
+            base_module = lua_common.get_lua_base_module(base_path, base_module),
+            base_path = base_path,
+            name = name,
             *args,
             **kwargs
         )
