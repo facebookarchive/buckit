@@ -31,6 +31,8 @@ OVERRIDES = (
     ("ipython_genutils", "ipython-genutils"),
     ("jsonpickle", "jsonpickle"),
     ("mock", "mock"),
+    ("mypy", "mypy"),
+    ("mypy_extensions", "mypy-extensions"),
     ("pathlib2", "pathlib2"),
     ("pexpect", "pexpect"),
     ("pexpect-u", "pexpect"),
