@@ -40,6 +40,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -715,9 +716,7 @@ class PythonConverter(base.Converter):
                     'tools/build/sanitizers',
                     '{}-py'.format(sanitizer)))
         # Generate sanitizer configuration even if sanitizers are not used
-        d, r = self.create_sanitizer_configuration(base_path, name)
-        deps.extend(d)
-        rules.extend(r)
+        deps.append(cpp_common.create_sanitizer_configuration(base_path, name))
 
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.

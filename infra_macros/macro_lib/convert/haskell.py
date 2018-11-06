@@ -818,23 +818,22 @@ class HaskellConverter(base.Converter):
             if self.get_fbconfig_rule_type() != 'haskell_ghci':
                 attributes['link_style'] = out_link_style
 
-        # Add in binary-specific link deps.
-        if self.is_binary():
-            d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
-            dependencies.extend(d)
-            rules.extend(r)
         if self.is_test():
             dependencies.append(self.get_dep_for_package('HUnit'))
             dependencies.append(target_utils.RootRuleTarget('tools/test/stubs', 'fbhsunit'))
 
-
-        if self.get_fbconfig_rule_type() in ['haskell_library', 'haskell_binary']:
-            # Mark binary_link_deps to be preloaded
+        # Add in binary-specific link deps.
+        add_preload_deps = self.get_fbconfig_rule_type() in ('haskell_library', 'haskell_binary')
+        if self.is_binary() or add_preload_deps:
             d, r = self.get_binary_link_deps(base_path, name, allocator=allocator)
-            attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
-                src_and_dep_helpers.format_all_deps(d)
-            if self.get_fbconfig_rule_type() == 'haskell_library':
-                rules.extend(r)
+            if self.is_binary():
+                dependencies.extend(d)
+            # Mark binary_link_deps to be preloaded
+            if add_preload_deps:
+                attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
+                    src_and_dep_helpers.format_all_deps(d)
+
+            rules.extend(r)
 
         attributes['deps'], attributes['platform_deps'] = (
             src_and_dep_helpers.format_all_deps(dependencies))

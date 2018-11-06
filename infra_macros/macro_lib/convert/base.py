@@ -633,13 +633,13 @@ class Converter(object):
 
         # Add in any dependencies required for sanitizers.
         deps.extend(sanitizers.get_sanitizer_binary_deps())
-        d, r = self.create_sanitizer_configuration(
-            base_path,
-            name,
-            linker_flags,
+        deps.append(
+            cpp_common.create_sanitizer_configuration(
+                base_path,
+                name,
+                linker_flags,
+            )
         )
-        deps.extend(d)
-        rules.extend(r)
 
         # Add in any dependencies required for code coverage
         if coverage.get_coverage():
@@ -760,134 +760,6 @@ class Converter(object):
             int(read_config('build_info', 'upstream_revision_epochtime', '0')))
         build_info['user'] = read_config('build_info', 'user', '')
         return build_info
-
-    def create_sanitizer_configuration(
-            self,
-            base_path,
-            name,
-            linker_flags=()):
-        """
-        Create rules to generate a C/C++ library with sanitizer configuration
-        """
-
-        deps = []
-        rules = []
-
-        sanitizer = sanitizers.get_sanitizer()
-        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
-
-        configuration_src = []
-
-        sanitizer_variable_format = 'const char* const {name} = "{options}";'
-
-        def gen_options_var(name, default_options, extra_options):
-            if extra_options:
-                options = default_options.copy()
-                options.update(extra_options)
-            else:
-                options = default_options
-
-            s = sanitizer_variable_format.format(
-                name=name,
-                options=':'.join([
-                    '{}={}'.format(k, v)
-                    for k, v in sorted(options.iteritems())
-                ])
-            )
-            return s
-
-        if sanitizer and sanitizer.startswith('address'):
-            configuration_src.append(gen_options_var(
-                'kAsanDefaultOptions',
-                sanitizers.ASAN_DEFAULT_OPTIONS,
-                build_mode.asan_options if build_mode else None,
-            ))
-            configuration_src.append(gen_options_var(
-                'kUbsanDefaultOptions',
-                sanitizers.UBSAN_DEFAULT_OPTIONS,
-                build_mode.ubsan_options if build_mode else None,
-            ))
-
-            if build_mode and build_mode.lsan_suppressions:
-                lsan_suppressions = build_mode.lsan_suppressions
-            else:
-                lsan_suppressions = sanitizers.LSAN_DEFAULT_SUPPRESSIONS
-            configuration_src.append(
-                sanitizer_variable_format.format(
-                    name='kLSanDefaultSuppressions',
-                    options='\\n'.join([
-                        'leak:{}'.format(l) for l in lsan_suppressions
-                    ])
-                )
-            )
-
-        if sanitizer and sanitizer == 'thread':
-            configuration_src.append(gen_options_var(
-                'kTsanDefaultOptions',
-                sanitizers.TSAN_DEFAULT_OPTIONS,
-                build_mode.tsan_options if build_mode else None,
-            ))
-
-        lib_name = name + '-san-conf-' + GENERATED_LIB_SUFFIX
-        # Setup a rule to generate the sanitizer configuration C file.
-        source_gen_name = name + '-san-conf'
-        source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_gen_name
-        source_attrs['visibility'] = [
-            '//{base_path}:{lib_name}'
-            .format(base_path=base_path, lib_name=lib_name)
-        ]
-        source_attrs['out'] = 'san-conf.c'
-        source_attrs['cmd'] = (
-            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
-            .format(pipes.quote('\n'.join(configuration_src))))
-        rules.append(Rule('genrule', source_attrs))
-
-        # Setup a rule to compile the sanitizer configuration C file
-        # into a library.
-        lib_attrs = collections.OrderedDict()
-        lib_attrs['name'] = lib_name
-        lib_attrs['visibility'] = [
-            '//{base_path}:{name}'
-            .format(base_path=base_path, name=name)
-        ]
-        lib_attrs['srcs'] = [':' + source_gen_name]
-        lib_attrs['compiler_flags'] = cpp_flags.get_extra_cflags()
-
-        # Setup platform default for compilation DB, and direct building.
-        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        lib_attrs['default_platform'] = buck_platform
-        lib_attrs['defaults'] = {'platform': buck_platform}
-
-        lib_linker_flags = []
-        if linker_flags:
-            lib_linker_flags = (
-                list(cpp_flags.get_extra_ldflags()) +
-                ['-nodefaultlibs'] +
-                list(linker_flags)
-            )
-        if lib_linker_flags:
-            lib_attrs['linker_flags'] = lib_linker_flags
-
-        # Clang does not support fat LTO objects, so we build everything
-        # as IR only, and must also link everything with -flto
-        if cpp_flags.get_lto_is_enabled():
-            lib_attrs['platform_linker_flags'] = (
-                src_and_dep_helpers.format_platform_param(
-                    partial.make(_lto_linker_flags_partial)))
-
-
-        # Use link_whole to make sure the build info symbols are always
-        # added to the binary, even if the binary does not refer to them.
-        lib_attrs['link_whole'] = True
-        # Use force_static so that the build info symbols are always put
-        # directly in the main binary, even if dynamic linking is used.
-        lib_attrs['force_static'] = True
-
-        rules.append(Rule('cxx_library', lib_attrs))
-        deps.append(target_utils.RootRuleTarget(base_path, lib_name))
-
-        return deps, rules
 
     def convert_contacts(self, owner=None, emails=None):
         """

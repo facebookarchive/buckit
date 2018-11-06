@@ -1,10 +1,13 @@
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
+load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
@@ -330,11 +333,158 @@ def _get_link_style():
 
     return link_style
 
+_THIN_LTO_FLAG = ["-flto=thin"]
+
+_LTO_FLAG = ["-flto"]
+
+def _lto_linker_flags_partial(_, compiler):
+    if compiler != "clang":
+        return []
+    if config.get_lto_type() == "thin":
+        return _THIN_LTO_FLAG
+    return _LTO_FLAG
+
+_SANITIZER_VARIABLE_FORMAT = 'const char* const {name} = "{options}";'
+
+def _sanitizer_config_line(name, default_options, extra_options):
+    if extra_options:
+        options = dict(default_options)
+        options.update(extra_options)
+    else:
+        options = default_options
+
+    return _SANITIZER_VARIABLE_FORMAT.format(
+        name = name,
+        options = ":".join([
+            "{}={}".format(k, v)
+            for k, v in sorted(options.items())
+        ]),
+    )
+
+# This unfortunately has to be here to get around a circular import in sanitizers.bzl
+def _create_sanitizer_configuration(
+        base_path,
+        name,
+        linker_flags = ()):
+    """
+    Create rules to generate a C/C++ library with sanitizer configuration
+
+    Outputs:
+        {name}-san-conf-__generated-lib__: The cxx_library that contains sanitizer
+                                           configs
+
+    Args:
+        base_path: The base path to the package, used for restricting visibility
+        name: The name of the original rule that a sanitizer configuration is being
+              created for. Also used when calculating visibility.
+        linker_flags: If provided, a list of extra linker flags to add to the
+                      generated library
+
+    Returns:
+        A `RootRuleTarget` for the generated cxx_library
+
+    """
+
+    sanitizer = sanitizers.get_sanitizer()
+    build_mode = _build_mode.get_build_mode_for_base_path(base_path)
+
+    configuration_src = []
+
+    if sanitizer and sanitizer.startswith("address"):
+        configuration_src.append(_sanitizer_config_line(
+            "kAsanDefaultOptions",
+            sanitizers.ASAN_DEFAULT_OPTIONS,
+            build_mode.asan_options if build_mode else None,
+        ))
+        configuration_src.append(_sanitizer_config_line(
+            "kUbsanDefaultOptions",
+            sanitizers.UBSAN_DEFAULT_OPTIONS,
+            build_mode.ubsan_options if build_mode else None,
+        ))
+
+        if build_mode and build_mode.lsan_suppressions:
+            lsan_suppressions = build_mode.lsan_suppressions
+        else:
+            lsan_suppressions = sanitizers.LSAN_DEFAULT_SUPPRESSIONS
+        configuration_src.append(
+            _SANITIZER_VARIABLE_FORMAT.format(
+                name = "kLSanDefaultSuppressions",
+                options = "\\n".join([
+                    "leak:{}".format(l)
+                    for l in lsan_suppressions
+                ]),
+            ),
+        )
+
+    if sanitizer and sanitizer == "thread":
+        configuration_src.append(_sanitizer_config_line(
+            "kTsanDefaultOptions",
+            _TSAN_DEFAULT_OPTIONS,
+            build_mode.tsan_options if build_mode else None,
+        ))
+
+    lib_name = name + "-san-conf-__generated-lib__"
+
+    # Setup a rule to generate the sanitizer configuration C file.
+    source_gen_name = name + "-san-conf"
+
+    fb_native.genrule(
+        name = source_gen_name,
+        visibility = [
+            "//{base_path}:{lib_name}".format(base_path = base_path, lib_name = lib_name),
+        ],
+        out = "san-conf.c",
+        cmd = "mkdir -p `dirname $OUT` && echo {0} > $OUT".format(
+            shell.quote("\n".join(configuration_src)),
+        ),
+    )
+
+    # Setup platform default for compilation DB, and direct building.
+    buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+
+    lib_linker_flags = None
+    if linker_flags:
+        lib_linker_flags = (
+            list(cpp_flags.get_extra_ldflags()) + ["-nodefaultlibs"] + list(linker_flags)
+        )
+
+    # Clang does not support fat LTO objects, so we build everything
+    # as IR only, and must also link everything with -flto
+    platform_linker_flags = None
+    if cpp_flags.get_lto_is_enabled():
+        platform_linker_flags = src_and_dep_helpers.format_platform_param(
+            partial.make(_lto_linker_flags_partial),
+        )
+
+    # Setup a rule to compile the sanitizer configuration C file
+    # into a library.
+    fb_native.cxx_library(
+        name = lib_name,
+        visibility = [
+            "//{base_path}:{name}".format(base_path = base_path, name = name),
+        ],
+        srcs = [":" + source_gen_name],
+        compiler_flags = cpp_flags.get_extra_cflags(),
+        linker_flags = lib_linker_flags,
+        platform_linker_flags = platform_linker_flags,
+        # Use link_whole to make sure the build info symbols are always
+        # added to the binary, even if the binary does not refer to them.
+        link_whole = True,
+        # Use force_static so that the build info symbols are always put
+        # directly in the main binary, even if dynamic linking is used.
+        force_static = True,
+        defaults = {"platform": buck_platform},
+        default_platform = buck_platform,
+    )
+
+    return target_utils.RootRuleTarget(base_path, lib_name)
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
     assert_linker_flags = _assert_linker_flags,
     assert_preprocessor_flags = _assert_preprocessor_flags,
+    create_sanitizer_configuration = _create_sanitizer_configuration,
     default_headers_library = _default_headers_library,
     exclude_from_auto_pch = _exclude_from_auto_pch,
     format_source_with_flags = _format_source_with_flags,
