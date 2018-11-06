@@ -1,7 +1,7 @@
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_unicode")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -259,6 +259,30 @@ def _format_source_with_flags_list(srcs_with_flags):
 
     return src_and_dep_helpers.PlatformParam(out_srcs, out_platform_srcs)
 
+def _normalize_dlopen_enabled(dlopen_enabled):
+    """
+    Normalizes the dlopen_enabled attribute of cpp rules
+
+    Args:
+        dlopen_enabled: Whether the library/binary is dlopen enabled. one of None,
+                        True/False, or a dictionary of information for modifying dlopen
+                        behavior.
+
+    Returns:
+        None, or a dictionary of dlopen_info to be used by cpp rules
+    """
+
+    dlopen_info = None
+
+    if dlopen_enabled:
+        dlopen_info = {}
+        if is_string(dlopen_enabled) or is_unicode(dlopen_enabled):
+            dlopen_info["soname"] = dlopen_enabled
+        elif is_dict(dlopen_enabled):
+            dlopen_info.update(dlopen_enabled)
+
+    return dlopen_info
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -270,4 +294,5 @@ cpp_common = struct(
     format_source_with_flags_list = _format_source_with_flags_list,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     is_cpp_source = _is_cpp_source,
+    normalize_dlopen_enabled = _normalize_dlopen_enabled,
 )

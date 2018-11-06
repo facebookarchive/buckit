@@ -126,22 +126,6 @@ class CppConverter(base.Converter):
             for hext in cxx_sources.HEADER_SUFFIXES])
         return headers
 
-    def get_dlopen_info(self, dlopen_enabled):
-        """
-        Parse the `dlopen_enabled` parameter into a dictionary.
-        """
-
-        dlopen_info = None
-
-        if dlopen_enabled:
-            dlopen_info = {}
-            if isinstance(dlopen_enabled, str):
-                dlopen_info['soname'] = dlopen_enabled
-            elif isinstance(dlopen_enabled, dict):
-                dlopen_info.update(dlopen_enabled)
-
-        return dlopen_info
-
     def get_sanitizer_binary_ldflags(self):
         """
         Return any linker flags to use when linking binaries with sanitizer
@@ -392,7 +376,7 @@ class CppConverter(base.Converter):
         os_linker_flags = os_linker_flags or []
         out_link_style = self.get_link_style()
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
-        dlopen_info = self.get_dlopen_info(dlopen_enabled)
+        dlopen_info = cpp_common.normalize_dlopen_enabled(dlopen_enabled)
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
             platform_utils.get_platform_for_base_path(
