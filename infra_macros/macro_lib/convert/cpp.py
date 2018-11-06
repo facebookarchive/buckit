@@ -133,8 +133,7 @@ def create_dll_rules(
     elif dll_type == 'shared':
         cmd.append('-shared')
     else:
-        raise AttributeError(
-                'dll_type must be one of static, static-pic or shared')
+        fail('dll_type must be one of static, static-pic or shared')
     cmd.append('-nostdlib')
     cmd.extend(['-o', '$OUT'])
 
@@ -608,8 +607,7 @@ class CppConverter(base.Converter):
 
         for flag in flags:
             if not re.match('|'.join(prefixes), flag):
-                raise ValueError(
-                    'using disallowed linker flag in a library: ' + flag)
+                fail('using disallowed linker flag in a library: ' + flag)
 
     def verify_preprocessor_flags(self, param, flags):
         """
@@ -620,14 +618,14 @@ class CppConverter(base.Converter):
         # compiler flag).
         for flag in flags:
             if not re.match('-[DI]', flag):
-                raise ValueError(
+                fail(
                     '`{}`: invalid preprocessor flag (expected `-[DI]*`): {}'
                     .format(param, flag))
 
         # Check for includes pointing to system paths.
         bad_flags = [flag for flag in flags if SYS_INC.search(flag)]
         if bad_flags:
-            raise ValueError(
+            fail(
                 'The flags \"{}\" in \'preprocessor_flags\' would pull in '
                 'system include paths which could cause incompatible '
                 'header files to be used instead of correct versions from '
@@ -752,7 +750,7 @@ class CppConverter(base.Converter):
             modules=None):
 
         if not isinstance(compiler_flags, (list, tuple)):
-            raise TypeError(
+            fail(
                 "Expected compiler_flags to be a list or a tuple, got {0!r} instead.".
                 format(compiler_flags)
             )
@@ -932,7 +930,7 @@ class CppConverter(base.Converter):
                 len(t) == 1 and base_path.startswith(t[0])
                 for t in header_namespace_whitelist
             ):
-                raise ValueError(
+                fail(
                     '{}(): the `header_namespace` parameter is *not* '
                     'supported in fbcode -- `#include` paths must match '
                     'their fbcode-relative path. ({}/{})'
@@ -1131,7 +1129,7 @@ class CppConverter(base.Converter):
 
             # We don't support allocators with dlopen-enabled binaries.
             if allocator is not None:
-                raise ValueError(
+                fail(
                     'Cannot use "allocator" parameter with dlopen enabled '
                     'binaries')
 
