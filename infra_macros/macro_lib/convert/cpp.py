@@ -84,9 +84,6 @@ class CppConverter(base.Converter):
 
         return self.is_deployable()
 
-    def is_buck_binary(self, buck_rule_type):
-        return buck_rule_type in ('cxx_binary', 'cxx_test')
-
     def get_fbconfig_rule_type(self):
         return self._rule_type
 
@@ -315,6 +312,7 @@ class CppConverter(base.Converter):
             name,
             buck_rule_type,
             is_library,
+            is_buck_binary,
             base_module=None,
             module_name=None,
             srcs=[],
@@ -950,7 +948,7 @@ class CppConverter(base.Converter):
             attributes['preferred_linkage'] = 'static'
 
         # For binaries, set the link style.
-        if self.is_buck_binary(buck_rule_type):
+        if is_buck_binary:
             attributes['link_style'] = out_link_style
 
         # Translate runtime files into resources.
@@ -1438,6 +1436,7 @@ class CppLibraryConverter(CppConverter):
         return super(CppLibraryConverter, self).convert(
             buck_rule_type = 'cxx_library',
             is_library = True,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
@@ -1450,6 +1449,7 @@ class CppBinaryConverter(CppConverter):
         return super(CppBinaryConverter, self).convert(
             buck_rule_type = 'cxx_binary',
             is_library = False,
+            is_buck_binary = True,
             *args,
             **kwargs
         )
@@ -1462,6 +1462,7 @@ class CppUnittestConverter(CppConverter):
         return super(CppUnittestConverter, self).convert(
             buck_rule_type = 'cxx_test',
             is_library = False,
+            is_buck_binary = True,
             *args,
             **kwargs
         )
@@ -1474,6 +1475,7 @@ class CppBenchmarkConverter(CppConverter):
         return super(CppBenchmarkConverter, self).convert(
             buck_rule_type = 'cxx_binary',
             is_library = False,
+            is_buck_binary = True,
             *args,
             **kwargs
         )
@@ -1486,6 +1488,7 @@ class CppNodeExtensionConverter(CppConverter):
         return super(CppNodeExtensionConverter, self).convert(
             buck_rule_type = 'cxx_binary',
             is_library = False,
+            is_buck_binary = True,
             *args,
             **kwargs
         )
@@ -1498,6 +1501,7 @@ class CppPrecompiledHeaderConverter(CppConverter):
         return super(CppPrecompiledHeaderConverter, self).convert(
             buck_rule_type = 'cxx_precompiled_header',
             is_library = False,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
@@ -1510,6 +1514,7 @@ class CppPythonExtensionConverter(CppConverter):
         return super(CppPythonExtensionConverter, self).convert(
             buck_rule_type = 'cxx_python_extension',
             is_library = False,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
@@ -1522,6 +1527,7 @@ class CppJavaExtensionConverter(CppConverter):
         return super(CppJavaExtensionConverter, self).convert(
             buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
             is_library = False,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
@@ -1534,6 +1540,7 @@ class CppLuaExtensionConverter(CppConverter):
         return super(CppLuaExtensionConverter, self).convert(
             buck_rule_type = 'cxx_lua_extension',
             is_library = False,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
@@ -1546,6 +1553,7 @@ class CppLuaMainModuleConverter(CppConverter):
         return super(CppLuaMainModuleConverter, self).convert(
             buck_rule_type = 'cxx_library',
             is_library = False,
+            is_buck_binary = False,
             *args,
             **kwargs
         )
