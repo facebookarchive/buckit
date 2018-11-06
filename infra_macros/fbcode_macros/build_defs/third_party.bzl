@@ -11,7 +11,7 @@ Various helpers to get labels for use in third-party
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:default_platform.bzl", "get_default_platform")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 
@@ -207,7 +207,7 @@ def _replace_third_party_repo(string, platform):
 
     # TODO: OSS
     if platform == None:
-        platform = platform_utils.get_default_platform()
+        platform = get_default_platform()
     return string.replace(
         "@/third-party-tools:",
         _get_tools_target_prefix(platform),

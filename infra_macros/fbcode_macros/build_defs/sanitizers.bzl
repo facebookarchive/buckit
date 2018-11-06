@@ -1,5 +1,5 @@
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_string")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:global_compiler.bzl", "require_global_compiler")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 # Maps sanitizer type to a shortname used in rules and tags/labels
@@ -126,7 +126,7 @@ def _get_sanitizer_binary_deps():
     if sanitizer == None:
         return []
 
-    compiler.require_global_compiler(
+    require_global_compiler(
         "can only use sanitizers with build modes that use clang globally",
         "clang",
     )
@@ -144,7 +144,7 @@ def _get_sanitizer_flags():
     if sanitizer == None:
         fail("No sanitizer was specified")
 
-    compiler.require_global_compiler(
+    require_global_compiler(
         "can only use sanitizers with build modes that use clang globally",
         "clang",
     )

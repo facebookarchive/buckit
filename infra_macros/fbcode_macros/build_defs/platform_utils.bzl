@@ -10,6 +10,7 @@ Helpers to discover information about platforms as defined by fbcode
 """
 
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
+load("@fbcode_macros//build_defs:default_platform.bzl", _get_default_platform = "get_default_platform")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
@@ -105,10 +106,6 @@ def _get_platform_overrides():
         transformed by _transform_platform_overrides
     """
     return _platform_overrides
-
-def _get_default_platform():
-    """ Returns the default fbcode platform to use """
-    return native.read_config("fbcode", "default_platform", "default")
 
 def _get_platform_override():
     """ Returns the user-specified fbcode platform override """
