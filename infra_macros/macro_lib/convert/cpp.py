@@ -73,17 +73,6 @@ class CppConverter(base.Converter):
             'cpp_unittest',
             'cpp_benchmark')
 
-    def is_binary(self, dlopen_info):
-        """
-        Return whether this rule builds a binary.
-        """
-
-        # `dlopen_enabled=True` binaries are really libraries.
-        if dlopen_info != None:
-            return False
-
-        return self.is_deployable()
-
     def get_fbconfig_rule_type(self):
         return self._rule_type
 
@@ -377,6 +366,8 @@ class CppConverter(base.Converter):
         out_link_style = self.get_link_style()
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
         dlopen_info = cpp_common.normalize_dlopen_enabled(dlopen_enabled)
+        # `dlopen_enabled=True` binaries are really libraries.
+        is_binary = False if dlopen_info != None else self.is_deployable()
         exported_lang_pp_flags = collections.defaultdict(list)
         platform = (
             platform_utils.get_platform_for_base_path(
@@ -679,7 +670,7 @@ class CppConverter(base.Converter):
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),
-                binary=self.is_binary(dlopen_info),
+                binary=is_binary,
                 deployable=self.is_deployable(),
                 # Never apply stripping flags to library rules, as they only
                 # get linked in `dev` mode which we avoid stripping in anyway,
@@ -690,11 +681,11 @@ class CppConverter(base.Converter):
                 platform=platform if self.is_deployable() else None))
 
         # Add non-binary sanitizer dependencies.
-        if (not self.is_binary(dlopen_info) and
+        if (not is_binary and
                 sanitizers.get_sanitizer() != None):
             dependencies.extend(self.get_sanitizer_non_binary_deps())
 
-        if self.is_binary(dlopen_info):
+        if is_binary:
             if sanitizers.get_sanitizer() != None:
                 out_ldflags.extend(self.get_sanitizer_binary_ldflags())
             out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
@@ -764,7 +755,7 @@ class CppConverter(base.Converter):
             macro_handlers = {}
             if flag != '--enable-new-dtags':
                 linker_text = self.convert_blob_with_macros(base_path, flag)
-                if self.is_binary(dlopen_info):
+                if is_binary:
                     linker_text = linker_text.replace("$(platform)", buck_platform)
                 out_exported_ldflags.extend(['-Xlinker', linker_text])
 
@@ -966,7 +957,7 @@ class CppConverter(base.Converter):
             dependencies.append(LEX_LIB)
 
         # Add in binary-specific link deps.
-        if self.is_binary(dlopen_info):
+        if is_binary:
             d, r = self.get_binary_link_deps(
                 base_path,
                 name,
@@ -1169,7 +1160,7 @@ class CppConverter(base.Converter):
         if precompiled_header:
             attributes['precompiled_header'] = precompiled_header
 
-        if self.is_binary(dlopen_info) and versions != None:
+        if is_binary and versions != None:
             attributes['version_universe'] = (
                 self.get_version_universe(versions.items()))
 
