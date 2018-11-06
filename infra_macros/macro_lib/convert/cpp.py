@@ -54,15 +54,11 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
+load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
-#LEX = target_utils.ThirdPartyRuleTarget('flex', 'flex')
 LEX_LIB = target_utils.ThirdPartyRuleTarget('flex', 'fl')
-
-YACC = target_utils.ThirdPartyRuleTarget('bison', 'bison')
-YACC_FLAGS = ['-y', '-d']
-
 
 # A regex matching preprocessor flags trying to pull in system include paths.
 # These are bad as they can cause headers for system packages to mask headers
@@ -349,10 +345,6 @@ class CppConverter(base.Converter):
         '.ll',
     )
 
-    YACC_EXTS = (
-        '.yy',
-    )
-
     RULE_TYPE_MAP = {
         'cpp_library': 'cxx_library',
         'cpp_binary': 'cxx_binary',
@@ -511,127 +503,6 @@ class CppConverter(base.Converter):
             deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
 
         return deps
-
-    def convert_yacc(self, base_path, name, yacc_flags, yacc_src, platform, visibility):
-        """
-        Create rules to generate a C/C++ header and source from the given yacc
-        file.
-        """
-
-        is_cpp = ('--skeleton=lalr1.cc' in yacc_flags)
-
-        name_base = '{}={}'.format(name.replace(os.sep, '-'), yacc_src)
-        header_name = name_base + '.h'
-        source_name = name_base + '.cc'
-
-        base = yacc_src
-        header = base + '.h'
-        source = base + '.cc'
-
-        if is_cpp:
-            stack_header_name = '{}=stack.hh'.format(name.replace(os.sep, '-'))
-            stack_header = 'stack.hh'
-        else:
-            stack_header = None
-
-        commands = [
-            'mkdir -p $OUT',
-            '$(exe {yacc}) {args} -o "$OUT/{base}.c" $SRCS',
-
-            # Sanitize the header and source files of original source line-
-            # markers and include guards.
-            'sed -i'
-            r""" -e 's|'"$SRCS"'|'{src}'|g' """
-            r""" -e 's|YY_YY_.*_INCLUDED|YY_YY_{defn}_INCLUDED|g' """
-            ' "$OUT/{base}.c" "$OUT/{base}.h"',
-
-            # Sanitize the source file of self-referencing line-markers.
-            'sed -i'
-            r""" -e 's|\b{base}\.c\b|{base}.cc|g' """
-            r""" -e 's|'"$OUT"'/'{base}'\.cc\b|'{out_cc}'|g' """
-            ' "$OUT/{base}.c"',
-
-            # Sanitize the header file of self-referencing line-markers.
-            'sed -i'
-            r""" -e 's|'"$OUT"'/'{base}'\.h\b|'{out_h}'|g' """
-            ' "$OUT/{base}.h"',
-            'mv "$OUT/{base}.c" "$OUT/{base}.cc"'
-        ]
-
-        if is_cpp:
-            commands.append(
-                # Patch the header file to add include header file prefix
-                # e.g.: thrifty.yy.h => thrift/compiler/thrifty.yy.h
-                'sed -i'
-                r""" -e 's|#include "{base}.h"|#include "{base_path}/{base}.h"|g' """
-                ' "$OUT/{base}.cc"'
-            )
-            commands.append(
-                # Sanitize the stack header file's line-markers.
-                'sed -i'
-                r""" -e 's|#\(.*\)YY_YY_[A-Z0-9_]*_FBCODE_|#\1YY_YY_FBCODE_|g' """
-                r""" -e 's|#line \([0-9]*\) "/.*/fbcode/|#line \1 "fbcode/|g' """
-                r""" -e 's|\\file /.*/fbcode/|\\file fbcode/|g' """
-                ' "$OUT/{stack_header}"',
-            )
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name_base
-        attrs['out'] = base + '.d'
-        attrs['srcs'] = [yacc_src]
-        attrs['cmd'] = ' && '.join(commands).format(
-            yacc=self.get_tool_target(YACC, platform),
-            args=' '.join(
-                [pipes.quote(f) for f in YACC_FLAGS + list(yacc_flags)]),
-            src=pipes.quote(os.path.join(base_path, yacc_src)),
-            out_cc=pipes.quote(
-                os.path.join(
-                    'buck-out',
-                    'gen',
-                    base_path,
-                    base + '.cc',
-                    base + '.cc')),
-            out_h=pipes.quote(
-                os.path.join(
-                    'buck-out',
-                    'gen',
-                    base_path,
-                    base + '.h',
-                    base + '.h')),
-            defn=re.sub('[./]', '_', os.path.join(base_path, header)).upper(),
-            base=pipes.quote(base),
-            base_path=base_path,
-            stack_header=stack_header,
-        )
-
-        rules = []
-        rules.append(Rule('genrule', attrs))
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/{}'.format(name_base, header),
-                header_name,
-                header,
-                visibility=visibility))
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/{}'.format(name_base, source),
-                source_name,
-                source,
-                visibility=visibility))
-
-        if is_cpp:
-            rules.append(
-                self.copy_rule(
-                    '$(location :{})/{}'.format(name_base, stack_header),
-                    stack_header_name,
-                    stack_header,
-                    visibility=visibility))
-
-        returned_headers = [':' + header_name]
-        if is_cpp:
-            returned_headers.append(':' + stack_header_name)
-
-        return (returned_headers, ':' + source_name, rules)
 
     def has_cuda_dep(self, dependencies):
         """
@@ -1337,19 +1208,16 @@ class CppConverter(base.Converter):
 
         # Generate rules to handle yacc sources.
         yacc_srcs, srcs = self.split_matching_extensions_and_other(
-            srcs, self.YACC_EXTS)
+            srcs, YACC_EXTS)
         for yacc_src in yacc_srcs:
-            yacc_headers, source, rules = (
-                self.convert_yacc(
-                    base_path,
-                    name,
-                    yacc_args,
-                    yacc_src,
-                    platform,
-                    visibility))
+            yacc_headers, source = yacc(
+                name,
+                yacc_args,
+                yacc_src,
+                platform,
+                visibility)
             out_headers.extend(yacc_headers)
             out_srcs.append(base.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
-            extra_rules.extend(rules)
 
         # Convert and add in any explicitly mentioned headers into our output
         # headers.

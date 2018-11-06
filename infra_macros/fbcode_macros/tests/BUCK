@@ -1,3 +1,4 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(
     "@fbcode_macros//tests:skylark_integration_test.bzl",
     "skylark_integration_test",
@@ -58,6 +59,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:visibility.bzl",
     "fbcode_macros//build_defs:visibility_exceptions.bzl",
+    "fbcode_macros//build_defs:yacc.bzl",
     "fbcode_macros//build_defs/config:read_configs.bzl",
     "fbcode_macros//tools:get_build_mode.py",
     "fbcode_macros//tools:get_platform.py",
@@ -333,5 +335,11 @@ skylark_integration_test(
 skylark_integration_test(
     name = "visibility_test",
     srcs = ["visibility_test.py"],
+    deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "yacc_test",
+    srcs = ["yacc_test.py"],
     deps = [":utils"],
 )
