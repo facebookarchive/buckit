@@ -31,6 +31,7 @@ _UBSAN_DEFAULT_OPTIONS = {
 _LSAN_DEFAULT_SUPPRESSIONS = [
     "boost::python::",
     "CRYPTO_malloc",
+    "CRYPTO_zalloc",
     "_d_run_main",
     "/lib/libpython",
     "libluajit-5.1.so.2",
