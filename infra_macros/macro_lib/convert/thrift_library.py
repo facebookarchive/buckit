@@ -47,6 +47,7 @@ load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -2260,9 +2261,19 @@ class RustThriftConverter(ThriftLangConverter):
             attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
+
+        # Hacky hack to deal with `codegen`s dynamic dependency on
+        # proc_macro.so in the rust libraries, via the `quote` crate.
+        # At least avoid hard-coding platform and arch.
+        rustc_path = os.path.abspath(
+            third_party.get_tool_path(
+                'rust/lib/rustlib/{arch}/lib/'
+                    .format(arch = 'x86_64-unknown-linux-gnu'),
+                'platform007'))
         attrs['cmd'] = \
-            '$(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
+            'env LD_LIBRARY_PATH={rustc} $(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
             .format(
+                rustc = rustc_path,
                 sources=' '.join('$(location %s)' % s for s in sources),
                 options=' '.join(self.format_options(options)),
                 crate_maps=' '.join(crate_maps))
