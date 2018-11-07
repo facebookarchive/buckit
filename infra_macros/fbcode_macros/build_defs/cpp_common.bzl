@@ -1,5 +1,6 @@
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
@@ -561,6 +562,30 @@ def _convert_contacts(owner, emails):
 
     return contacts
 
+def _split_matching_extensions_and_other(srcs, exts):
+    """
+    Split a list into two based on the extension of the items.
+
+    Args:
+        srcs: A list of source file names
+        exts: A collection of extensions to partition on
+
+    Returns:
+        A tuple of (<srcs with extensions in `exts`>, <srcs with extensions not in `exts`>)
+    """
+
+    matches = []
+    leftovers = []
+
+    for src in (srcs or ()):
+        _, ext = paths.split_extension(src)
+        if ext in exts:
+            matches.append(src)
+        else:
+            leftovers.append(src)
+
+    return (matches, leftovers)
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -578,4 +603,5 @@ cpp_common = struct(
     get_link_style = _get_link_style,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
+    split_matching_extensions_and_other = _split_matching_extensions_and_other,
 )

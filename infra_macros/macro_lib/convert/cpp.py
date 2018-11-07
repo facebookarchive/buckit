@@ -69,27 +69,6 @@ class CppConverter(base.Converter):
     def get_fbconfig_rule_type(self):
         return self._rule_type
 
-    def split_matching_extensions_and_other(self, srcs, exts):
-        """
-        Split a list into two based on the extension of the items.
-
-        Returns a tuple (mathing, other), where matching is a list of
-        items from srcs whose extensions are in exts and other is a
-        list of the remaining items from srcs.
-        """
-
-        matches = []
-        leftovers = []
-
-        for src in (srcs or []):
-            base, ext = paths.split_extension(src)
-            if ext in exts:
-                matches.append(src)
-            else:
-                leftovers.append(src)
-
-        return (matches, leftovers)
-
     def get_headers_from_sources(self, base_path, srcs):
         """
         Return the headers likely associated with the given sources.
@@ -638,14 +617,14 @@ class CppConverter(base.Converter):
                 out_exported_ldflags.append('-Wl,--as-needed')
 
         # Generate rules to handle lex sources.
-        lex_srcs, srcs = self.split_matching_extensions_and_other(srcs, LEX_EXTS)
+        lex_srcs, srcs = cpp_common.split_matching_extensions_and_other(srcs, LEX_EXTS)
         for lex_src in lex_srcs:
             header, source = lex(name, lex_args, lex_src, platform, visibility)
             out_headers.append(header)
             out_srcs.append(cpp_common.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
 
         # Generate rules to handle yacc sources.
-        yacc_srcs, srcs = self.split_matching_extensions_and_other(
+        yacc_srcs, srcs = cpp_common.split_matching_extensions_and_other(
             srcs, YACC_EXTS)
         for yacc_src in yacc_srcs:
             yacc_headers, source = yacc(
