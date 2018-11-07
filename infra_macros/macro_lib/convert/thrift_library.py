@@ -333,7 +333,7 @@ class CppThriftConverter(ThriftLangConverter):
 
         thrift_base = (
             os.path.splitext(
-                os.path.basename(self.get_source_name(thrift_src)))[0])
+                os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
 
         genfiles = []
 
@@ -1198,7 +1198,7 @@ class JsThriftConverter(ThriftLangConverter):
             cmds.append('rsync -a $(location {})/ "$OUT"'.format(dep))
 
         for dst, raw_src in sources.iteritems():
-            src = self.get_source_name(raw_src)
+            src = src_and_dep_helpers.get_source_name(raw_src)
             dst = os.path.join('"$OUT"', dst)
             cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
             cmds.append('cp {} {}'.format(os.path.basename(src), dst))
@@ -1873,7 +1873,7 @@ class Python3ThriftConverter(ThriftLangConverter):
         """
 
         def generated(src, thrift_src):
-            thrift_src = self.get_source_name(thrift_src)
+            thrift_src = src_and_dep_helpers.get_source_name(thrift_src)
             thrift_name = self.thrift_name(thrift_src)
             thrift_package = os.path.join(thrift_name, src)
             if src in self.CXX_RPC_GENFILES:
@@ -2232,7 +2232,7 @@ class RustThriftConverter(ThriftLangConverter):
             **kwargs):
         thrift_base = (
             os.path.splitext(
-                os.path.basename(self.get_source_name(thrift_src)))[0])
+                os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
         namespace = rs_namespace or ''
 
         genfiles = ["%s.ast" % thrift_base]
@@ -2354,7 +2354,7 @@ class RustThriftConverter(ThriftLangConverter):
 
         crate_map = []
         for src in thrift_srcs.keys():
-            src = os.path.join(base_path, self.get_source_name(src))
+            src = os.path.join(base_path, src_and_dep_helpers.get_source_name(src))
             modname = os.path.splitext(os.path.basename(src))[0]
             if len(thrift_srcs) > 1:
                 crate_map.append("{} {} {} {}"
@@ -2547,7 +2547,7 @@ class ThriftLibraryConverter(base.Converter):
         for thrift_src, services in thrift_srcs.iteritems():
             thrift_base = (
                 os.path.splitext(
-                    os.path.basename(self.get_source_name(thrift_src)))[0])
+                    os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
             for service in services:
                 attrs = collections.OrderedDict()
                 attrs['name'] = '{}-{}-pyremote'.format(name, service)
@@ -2603,7 +2603,7 @@ class ThriftLibraryConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = (
-            '{}-{}-{}'.format(name, lang, self.get_source_name(source)))
+            '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir
@@ -2734,7 +2734,7 @@ class ThriftLibraryConverter(base.Converter):
 
             all_gen_srcs = collections.OrderedDict()
             for thrift_src, services in thrift_srcs.iteritems():
-                thrift_name = self.get_source_name(thrift_src)
+                thrift_name = src_and_dep_helpers.get_source_name(thrift_src)
 
                 # Generate the thrift compile rules.
                 compile_rule = (

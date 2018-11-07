@@ -107,7 +107,7 @@ class Converter(base.Converter):
 
     def get_source_with_path(self, package, src):
         """Attach the package to the src path to get a full module path"""
-        return os.path.join(package, self.get_source_name(src))
+        return os.path.join(package, src_and_dep_helpers.get_source_name(src))
 
     def get_module_name_and_path(self, package, src):
         module_path = os.path.relpath(os.path.splitext(src)[0], package)
@@ -341,7 +341,7 @@ class Converter(base.Converter):
         if api_headers:
             # Add all the api_headers to our headers
             if isinstance(headers, dict):
-                headers.update({self.get_source_name(h): h for h in api_headers})
+                headers.update({src_and_dep_helpers.get_source_name(h): h for h in api_headers})
             else:  # Its a list, if it was a unicode we would have rasied already
                 headers.extend(api_headers)
 

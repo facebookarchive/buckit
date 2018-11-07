@@ -19,6 +19,22 @@ def _extract_source_name(src):
         fail("generated source target {} is missing `=<name>` suffix".format(src))
     return parts[1]
 
+def _get_parsed_source_name(src):
+    """
+    Get the filename for a `src`
+
+    Args:
+        src: Either a `RuleTarget`, or a string representing a filename
+
+    Returns:
+        Either the original source, or the filename, extracted from the target name.
+    """
+    rule_name = getattr(src, "name", None)
+    if rule_name != None:
+        return _extract_source_name(rule_name)
+    else:
+        return src
+
 def _get_source_name(src):
     """
     Gets the filename for a `src`.
@@ -411,6 +427,7 @@ src_and_dep_helpers = struct(
     format_platform_param = _format_platform_param,
     format_source = _format_source,
     format_source_map = _format_source_map,
+    get_parsed_source_name = _get_parsed_source_name,
     get_source_name = _get_source_name,
     normalize_external_dep = _normalize_external_dep,
     parse_source = _parse_source,

@@ -669,7 +669,7 @@ class CppConverter(base.Converter):
             flags = None
             if (known_warnings is True or
                     (known_warnings and
-                     self.get_parsed_src_name(src) in known_warnings)):
+                     src_and_dep_helpers.get_parsed_source_name(src) in known_warnings)):
                 flags = ['-Wno-error']
             out_srcs.append(cpp_common.SourceWithFlags(src, flags))
 
@@ -855,7 +855,7 @@ class CppConverter(base.Converter):
             # dict so that we can make sure it's only applied to the user-
             # provided headers and not the module map.
             if base.is_collection(out_headers):
-                out_headers = {paths.join(out_header_namespace, self.get_source_name(h)): h
+                out_headers = {paths.join(out_header_namespace, src_and_dep_helpers.get_source_name(h)): h
                                for h in out_headers}
             else:
                 out_headers = {paths.join(out_header_namespace, h): s

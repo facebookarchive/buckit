@@ -423,7 +423,7 @@ class SwigLibraryConverter(base.Converter):
 
         platform = platform_utils.get_platform_for_base_path(base_path)
         converter = self._converters[lang]
-        base, _ = os.path.splitext(self.get_source_name(interface))
+        base, _ = os.path.splitext(src_and_dep_helpers.get_source_name(interface))
         hdr = base + '.h'
         src = base + '.cc'
 

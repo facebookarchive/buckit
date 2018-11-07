@@ -263,35 +263,6 @@ class Converter(object):
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
-    def get_parsed_src_name(self, src):
-        """
-        Get the logical name of the given source.
-        """
-
-        # If this is a build target, extract the name from the `=<name>`
-        # suffix.
-        rule_name = getattr(src, "name", None)
-        if rule_name != None:
-            return src_and_dep_helpers.extract_source_name(rule_name)
-
-        # Otherwise, the name is the source itself.
-        else:
-            return src
-
-    def get_source_name(self, src):
-        """
-        Get the logical name of the given source.
-        """
-
-        # If this is a build target, extract the name from the `=<name>`
-        # suffix.
-        if src[0] in '/@:':
-            return src_and_dep_helpers.extract_source_name(src)
-
-        # Otherwise, the name is the source itself.
-        else:
-            return src
-
     def read_choice(self, section, field, choices, default=None):
         """
         Read a string from `.buckconfig` which can be one of the values given
@@ -763,7 +734,7 @@ class Converter(object):
         for dep in sorted(deps):
             cmds.append('rsync -a $(location {})/ "$OUT"'.format(dep))
         for src in sorted(paths):
-            src = self.get_source_name(src)
+            src = src_and_dep_helpers.get_source_name(src)
             dst = os.path.join('"$OUT"', base_path, src)
             cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
             cmds.append('cp {} {}'.format(src, dst))
