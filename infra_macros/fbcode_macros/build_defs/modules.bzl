@@ -256,19 +256,22 @@ def _gen_module(
 
         # TODO(T35721516): We currently see rare cases of apparent non-
         # determinism from module compilations which are proving difficult to
-        # debug.  In the meantime, we'll perform the compilation twice to try
+        # debug.  In the meantime, we'll perform the compilation thrice to try
         # to detect these cases, log the issue and artifact for debugging, and
         # try to recover with a third compilation.
-        "! { compile prev.pcm; } 2>/dev/null",
+        "! { compile prev2.pcm; compile prev1.pcm; } 2>/dev/null",
         "compile module.pcm",
-        'if ! cmp -s "$TMP/prev.pcm" "$TMP/module.pcm"; then',
+        'if ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
+        '   ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm"; then',
         '  >&2 echo "Detected non-determinism building module {}.  Retrying..."'
             .format(module_name),
-        # Keep rebuilding the module until we get successive builds that are the
-        # same, saving the "corrupted" module for logging.
-        '  while ! cmp -s "$TMP/prev.pcm" "$TMP/module.pcm"; do',
-        '    mv -fT "$TMP/prev.pcm" "$TMP/bad.pcm"',
-        '    mv -fT "$TMP/module.pcm" "$TMP/prev.pcm"',
+        # Keep rebuilding the module until we get three successive builds that
+        # are the same, saving the "corrupted" module for logging.
+        '  while ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
+        '        ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm"; do',
+        '    mv -fT "$TMP/prev2.pcm" "$TMP/bad.pcm"',
+        '    mv -fT "$TMP/prev1.pcm" "$TMP/prev2.pcm"',
+        '    mv -fT "$TMP/module.pcm" "$TMP/prev1.pcm"',
         "    compile module.pcm 2>/dev/null",
         "  done",
         # Log the build for debugging.  Do this in a block which ignores errors.
@@ -285,6 +288,7 @@ def _gen_module(
         '           \\"build_target\\": \\"//{}:{}\\", \\'
             .format(native.package_name(), name),
         '           \\"build_uuid\\": \\"$BUCK_BUILD_ID\\", \\',
+        '           \\"gvfs_version\\": \\"\\$(cd / && getfattr -L --only-values -n user.gvfs.version mnt/gvfs)\\", \\',
         '           \\"sandcastle_alias\\": \\"${SANDCASTLE_ALIAS:-}\\", \\',
         '           \\"sanscastle_job_info\\": \\"${SANDCASTLE_NONCE:-}/${SANDCASTLE_INSTANCE_ID:-}\\"}}";',
         "  }",
