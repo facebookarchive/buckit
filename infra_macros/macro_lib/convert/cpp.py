@@ -1305,14 +1305,20 @@ class CppJavaExtensionConverter(CppConverter):
 
         # Delegate to the main conversion function, using potentially altered
         # parameters from above.
+        if config.get_build_mode().startswith("dev"):
+            buck_rule_type = 'cxx_library'
+            is_buck_binary = False
+        else:
+            buck_rule_type = 'cxx_binary'
+            is_buck_binary = True
         rules.extend(
             super(CppJavaExtensionConverter, self).convert_rule(
                 base_path,
                 name,
                 cpp_rule_type = 'cpp_java_extension',
-                buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
+                buck_rule_type = buck_rule_type,
                 is_library = False,
-                is_buck_binary = False,
+                is_buck_binary = is_buck_binary,
                 is_test = False,
                 is_deployable = False,
                 dlopen_enabled=dlopen_enabled,
