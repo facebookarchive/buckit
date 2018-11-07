@@ -67,6 +67,7 @@ class CppConverter(base.Converter):
         self._rule_type = rule_type
 
     def get_fbconfig_rule_type(self):
+        # Only kept for converter.py right now. Will be removed shortly
         return self._rule_type
 
     def get_headers_from_sources(self, base_path, srcs):
@@ -172,6 +173,7 @@ class CppConverter(base.Converter):
             self,
             base_path,
             name,
+            cpp_rule_type,
             buck_rule_type,
             is_library,
             is_buck_binary,
@@ -264,7 +266,7 @@ class CppConverter(base.Converter):
         platform = (
             platform_utils.get_platform_for_base_path(
                 base_path
-                if self.get_fbconfig_rule_type() != 'cpp_node_extension'
+                if cpp_rule_type != 'cpp_node_extension'
                 # Node rules always use the platforms set in the root PLATFORM
                 # file.
                 else ''))
@@ -334,7 +336,7 @@ class CppConverter(base.Converter):
         if modules != None:
             out_modules = modules
         # Don't build precompiled headers with modules.
-        if self.get_fbconfig_rule_type() == 'cpp_precompiled_header':
+        if cpp_rule_type == 'cpp_precompiled_header':
             out_modules = False
         if precompiled_header != ABSENT:
             out_modules = False
@@ -347,7 +349,7 @@ class CppConverter(base.Converter):
             attributes['visibility'] = visibility
 
         # Set the base module.
-        rule_type = self.get_fbconfig_rule_type()
+        rule_type = cpp_rule_type
         if base_module != None:
             attributes['base_module'] = base_module
 
@@ -383,7 +385,7 @@ class CppConverter(base.Converter):
                     '{}(): the `header_namespace` parameter is *not* '
                     'supported in fbcode -- `#include` paths must match '
                     'their fbcode-relative path. ({}/{})'
-                    .format(self.get_fbconfig_rule_type(), base_path, name))
+                    .format(cpp_rule_type, base_path, name))
             out_header_namespace = header_namespace
         else:
             out_header_namespace = base_path
@@ -512,7 +514,7 @@ class CppConverter(base.Converter):
             self.get_ldflags(
                 base_path,
                 name,
-                self.get_fbconfig_rule_type(),
+                cpp_rule_type,
                 binary=is_binary,
                 deployable=is_deployable,
                 # Never apply stripping flags to library rules, as they only
@@ -674,7 +676,7 @@ class CppConverter(base.Converter):
             out_srcs.append(cpp_common.SourceWithFlags(src, flags))
 
         formatted_srcs = cpp_common.format_source_with_flags_list(out_srcs)
-        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
+        if cpp_rule_type != 'cpp_precompiled_header':
             attributes['srcs'], attributes['platform_srcs'] = formatted_srcs
         else:
             attributes['srcs'] = self.without_platforms(formatted_srcs)
@@ -763,7 +765,7 @@ class CppConverter(base.Converter):
 
         # C/C++ Lua main modules get statically linked into a special extension
         # module.
-        if self.get_fbconfig_rule_type() == 'cpp_lua_main_module':
+        if cpp_rule_type == 'cpp_lua_main_module':
             attributes['preferred_linkage'] = 'static'
 
         # For binaries, set the link style.
@@ -827,7 +829,7 @@ class CppConverter(base.Converter):
 
         # Set the build platform, via both the `default_platform` parameter and
         # the default flavors support.
-        if self.get_fbconfig_rule_type() != 'cpp_precompiled_header':
+        if cpp_rule_type != 'cpp_precompiled_header':
             buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
             attributes['default_platform'] = buck_platform
             if not is_deployable:
@@ -837,7 +839,7 @@ class CppConverter(base.Converter):
         if not nodefaultlibs:
             dependencies.extend(
                 cpp_common.get_implicit_deps(
-                    self.get_fbconfig_rule_type() == 'cpp_precompiled_header'))
+                    cpp_rule_type == 'cpp_precompiled_header'))
 
         # Add implicit toolchain module deps.
         if module_utils.enabled() and out_modules:
@@ -976,7 +978,7 @@ class CppConverter(base.Converter):
 
         # Should we use a default PCH for this C++ lib / binary?
         # Only applies to certain rule types.
-        if self._rule_type in (
+        if cpp_rule_type in (
                 'cpp_library', 'cpp_binary', 'cpp_unittest',
                 'cxx_library', 'cxx_binary', 'cxx_test'):
             # Was completely left out in the rule? (vs. None to disable autoPCH)
@@ -1113,13 +1115,6 @@ class CppConverter(base.Converter):
         """
         Entry point for converting C/C++ rules.
         """
-        rtype = self.get_fbconfig_rule_type()
-        if rtype == 'cpp_java_extension':
-            # This logic is contained in the CppJavaExtensionConverter
-            fail("cpp_java_extension called incorrectly")
-        elif rtype == 'cpp_node_extension':
-            # This logic is contained in the CppNodeExtensionConverter
-            fail("cpp_node_extension called incorrectly")
         return self.convert_rule(base_path, name, visibility=visibility, **kwargs)
 
 
@@ -1130,6 +1125,7 @@ class CppLibraryConverter(CppConverter):
 
     def convert(self, *args, **kwargs):
         return super(CppLibraryConverter, self).convert(
+            cpp_rule_type = 'cpp_library',
             buck_rule_type = 'cxx_library',
             is_library = True,
             is_buck_binary = False,
@@ -1145,6 +1141,7 @@ class CppBinaryConverter(CppConverter):
 
     def convert(self, *args, **kwargs):
         return super(CppBinaryConverter, self).convert(
+            cpp_rule_type = 'cpp_binary',
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
@@ -1160,6 +1157,7 @@ class CppUnittestConverter(CppConverter):
 
     def convert(self, *args, **kwargs):
         return super(CppUnittestConverter, self).convert(
+            cpp_rule_type = 'cpp_unittest',
             buck_rule_type = 'cxx_test',
             is_library = False,
             is_buck_binary = True,
@@ -1175,6 +1173,7 @@ class CppBenchmarkConverter(CppConverter):
 
     def convert(self, *args, **kwargs):
         return super(CppBenchmarkConverter, self).convert(
+            cpp_rule_type = 'cpp_benchmark',
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
@@ -1201,6 +1200,7 @@ class CppNodeExtensionConverter(CppConverter):
         rules = self.convert_rule(
             base_path,
             name + '-extension',
+            cpp_rule_type = 'cpp_node_extension',
             buck_rule_type = 'cxx_binary',
             is_library = False,
             is_buck_binary = True,
@@ -1236,6 +1236,7 @@ class CppPrecompiledHeaderConverter(CppConverter):
 
     def convert(self, *args, **kwargs):
         return super(CppPrecompiledHeaderConverter, self).convert(
+            cpp_rule_type = 'cpp_precompiled_header',
             buck_rule_type = 'cxx_precompiled_header',
             is_library = False,
             is_buck_binary = False,
@@ -1254,6 +1255,7 @@ class CppPythonExtensionConverter(CppConverter):
             base_path = base_path,
             name = name,
             visibility = visibility,
+            cpp_rule_type = 'cpp_python_extension',
             buck_rule_type = 'cxx_python_extension',
             is_library = False,
             is_buck_binary = False,
@@ -1307,6 +1309,7 @@ class CppJavaExtensionConverter(CppConverter):
             super(CppJavaExtensionConverter, self).convert_rule(
                 base_path,
                 name,
+                cpp_rule_type = 'cpp_java_extension',
                 buck_rule_type = 'cxx_library' if config.get_build_mode().startswith("dev") else 'cxx_binary',
                 is_library = False,
                 is_buck_binary = False,
@@ -1341,6 +1344,7 @@ class CppLuaExtensionConverter(CppConverter):
 
     def convert(self, base_path, name, base_module=None, *args, **kwargs):
         return super(CppLuaExtensionConverter, self).convert(
+            cpp_rule_type = 'cpp_lua_extension',
             buck_rule_type = 'cxx_lua_extension',
             is_library = False,
             is_buck_binary = False,
@@ -1383,6 +1387,7 @@ class CppLuaMainModuleConverter(CppConverter):
         return super(CppLuaMainModuleConverter, self).convert(
             base_path = base_path,
             name = name,
+            cpp_rule_type = 'cpp_lua_main_module',
             buck_rule_type = 'cxx_library',
             is_library = False,
             is_buck_binary = False,
