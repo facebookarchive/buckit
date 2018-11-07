@@ -37,6 +37,7 @@ load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
@@ -582,10 +583,10 @@ class CppConverter(base.Converter):
                 cpp_common.convert_contacts(owner=owner, emails=emails))
 
         if env:
-            attributes['env'] = self.convert_env_with_macros(base_path, env)
+            attributes['env'] = string_macros.convert_env_with_macros(env)
 
         if args:
-            attributes['args'] = self.convert_args_with_macros(base_path, args)
+            attributes['args'] = string_macros.convert_args_with_macros(args)
 
         # Handle `dlopen_enabled` binaries.
         if dlopen_info != None:
@@ -617,7 +618,7 @@ class CppConverter(base.Converter):
         for flag in linker_flags:
             macro_handlers = {}
             if flag != '--enable-new-dtags':
-                linker_text = self.convert_blob_with_macros(base_path, flag)
+                linker_text = string_macros.convert_blob_with_macros(flag, platform=platform)
                 if is_binary:
                     linker_text = linker_text.replace("$(platform)", buck_platform)
                 out_exported_ldflags.extend(['-Xlinker', linker_text])

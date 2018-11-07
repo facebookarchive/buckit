@@ -20,9 +20,11 @@ import re
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -64,8 +66,7 @@ class CustomUnittestConverter(base.Converter):
 
             # Convert any macros to their Buck-equivalents.
             command = (
-                self.convert_args_with_macros(
-                    base_path,
+                string_macros.convert_args_with_macros(
                     command,
                     platform=platform))
 
@@ -131,8 +132,7 @@ class CustomUnittestConverter(base.Converter):
         if env:
             out_env.update(
                 sorted(
-                    self.convert_env_with_macros(
-                        base_path,
+                    string_macros.convert_env_with_macros(
                         env,
                         platform=platform).items()))
         out_env['FBCODE_BUILD_TOOL'] = 'buck'

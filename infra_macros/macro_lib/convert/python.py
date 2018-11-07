@@ -47,6 +47,7 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 
 
@@ -1152,15 +1153,14 @@ class PythonConverter(base.Converter):
 
         if args:
             attributes['args'] = (
-                self.convert_args_with_macros(
+                string_macros.convert_args_with_macros(
                     base_path,
                     args,
                     platform=platform))
 
         if env:
             attributes['env'] = (
-                self.convert_env_with_macros(
-                    base_path,
+                string_macros.convert_env_with_macros(
                     env,
                     platform=platform))
 

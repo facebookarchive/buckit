@@ -22,6 +22,7 @@ load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
 
 
 class OCamlConverter(base.Converter):
@@ -72,8 +73,7 @@ class OCamlConverter(base.Converter):
         attributes['compiler_flags'] = ['-warn-error', '+a', '-safe-string']
         if compiler_flags:
             attributes['compiler_flags'].extend(
-                self.convert_args_with_macros(
-                    base_path,
+                string_macros.convert_args_with_macros(
                     compiler_flags,
                     platform=platform))
 

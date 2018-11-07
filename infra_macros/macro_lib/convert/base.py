@@ -255,27 +255,6 @@ class Converter(object):
 
         return param
 
-    def convert_blob_with_macros(
-            self,
-            base_path,
-            blob,
-            platform=None):
-        """
-        Convert build targets inside macros.
-        """
-        return third_party.replace_third_party_repo(blob, platform=platform)
-
-    def convert_args_with_macros(self, base_path, blobs, platform=None):
-        return [self.convert_blob_with_macros(base_path, b, platform=platform)
-                for b in blobs]
-
-    def convert_env_with_macros(self, base_path, env, platform=None):
-        new_env = {}
-        for k, v in env.iteritems():
-            new_env[k] = (
-                self.convert_blob_with_macros(base_path, v, platform=platform))
-        return new_env
-
     def merge_platform_deps(self, dst, src):
         for platform, deps in src.iteritems():
             dst.setdefault(platform, [])
