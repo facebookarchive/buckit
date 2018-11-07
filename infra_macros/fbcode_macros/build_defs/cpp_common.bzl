@@ -536,11 +536,37 @@ def _create_sanitizer_configuration(
 
     return target_utils.RootRuleTarget(base_path, lib_name)
 
+def _convert_contacts(owner, emails):
+    """
+    Normalize `owner` and `emails` parameters into Buck-style contacts
+
+    Args:
+        owners: One of None, a list, or a string of email addresses or handles
+        emails: Either None or a list of email address that will also get added to the
+                list
+
+    Returns:
+        A list of contacts (effectively coalescing owner and emails)
+    """
+    contacts = []
+
+    if owner != None:
+        if is_string(owner):
+            contacts.append(owner)
+        else:
+            contacts.extend(owner)
+
+    if emails != None:
+        contacts.extend(emails)
+
+    return contacts
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
     assert_linker_flags = _assert_linker_flags,
     assert_preprocessor_flags = _assert_preprocessor_flags,
+    convert_contacts = _convert_contacts,
     create_sanitizer_configuration = _create_sanitizer_configuration,
     default_headers_library = _default_headers_library,
     exclude_from_auto_pch = _exclude_from_auto_pch,

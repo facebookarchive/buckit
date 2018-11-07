@@ -722,25 +722,6 @@ class Converter(object):
         build_info['user'] = read_config('build_info', 'user', '')
         return build_info
 
-    def convert_contacts(self, owner=None, emails=None):
-        """
-        Convert the `owner` and `emails` parameters in Buck-style contacts.
-        """
-
-        contacts = []
-
-        # `owner` is either a string or list.
-        if owner is not None:
-            if isinstance(owner, basestring):
-                contacts.append(owner)
-            else:
-                contacts.extend(owner)
-
-        if emails is not None:
-            contacts.extend(emails)
-
-        return contacts
-
     def get_buck_out_path(self):
         return self._context.buck_ops.read_config(
             'project',

@@ -579,7 +579,7 @@ class CppConverter(base.Converter):
 
         if emails or owner != None:
             attributes['contacts'] = (
-                self.convert_contacts(owner=owner, emails=emails))
+                cpp_common.convert_contacts(owner=owner, emails=emails))
 
         if env:
             attributes['env'] = self.convert_env_with_macros(base_path, env)
