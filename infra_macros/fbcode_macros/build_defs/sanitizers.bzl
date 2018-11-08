@@ -86,6 +86,11 @@ _SANITIZER_FLAGS = {
 _SANITIZER_COMMON_FLAGS = [
     "-fno-sanitize-recover=all",
     "-fno-omit-frame-pointer",
+
+    # put function or data item into its own section
+    # and use --gc-sections to remove unused code
+    "-fdata-sections",
+    "-ffunction-sections",
 ]
 
 _FULL_SANITIZER_FLAGS = {k: _SANITIZER_COMMON_FLAGS + v for k, v in _SANITIZER_FLAGS.items()}

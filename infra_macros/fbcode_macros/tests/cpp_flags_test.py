@@ -98,6 +98,8 @@ class CppFlagsTest(tests.utils.TestCase):
         sanitizer_flags = [
             "-fno-sanitize-recover=all",
             "-fno-omit-frame-pointer",
+            "-fdata-sections",
+            "-ffunction-sections",
             "-fsanitize=thread",
         ]
         cflags = ["-Dcflag1", "-Dcflag2"]
@@ -153,6 +155,8 @@ class CppFlagsTest(tests.utils.TestCase):
         sanitizer_flags = [
             "-fno-sanitize-recover=all",
             "-fno-omit-frame-pointer",
+            "-fdata-sections",
+            "-ffunction-sections",
             "-fsanitize=thread",
         ]
         bm_clangflags = ["-DCLANG"]

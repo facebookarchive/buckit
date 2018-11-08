@@ -62,6 +62,8 @@ class SanitizersTest(tests.utils.TestCase):
         expected_flags = [
             "-fno-sanitize-recover=all",
             "-fno-omit-frame-pointer",
+            "-fdata-sections",
+            "-ffunction-sections",
             "-fsanitize=thread",
         ]
 

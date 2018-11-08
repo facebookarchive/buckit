@@ -445,6 +445,10 @@ class Converter(object):
         if sanitizers.get_sanitizer() == 'thread':
             ldflags.append('-pie')
 
+        # Remove unused section to reduce the code bloat in sanitizer modes
+        if sanitizers.get_sanitizer() is not None:
+            ldflags.append('-Wl,--gc-sections')
+
         # It's rare, but some libraries use variables defined in object files
         # in the top-level binary.  This works as, when linking the binary, the
         # linker sees this undefined reference in the dependent shared library
