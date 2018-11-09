@@ -248,6 +248,7 @@ def _gen_module(
         "function compile() {",
         # Run the command and filter stderr to fixup header paths by dropping
         # the obscure genrule sandbox directory.
+        '  echo "\\$(ls -i "$SRCDIR/module_headers/module.modulemap" | awk \'{ print $1 }\')" > "$TMP/$1.inode"',
         '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP/$1".tmp \\',
         '    | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"'
             .format(header_prefix),
@@ -262,16 +263,23 @@ def _gen_module(
         "! { compile prev2.pcm; compile prev1.pcm; } 2>/dev/null",
         "compile module.pcm",
         'if ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
-        '   ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm"; then',
+        '   ! cmp -s "$TMP/prev2.pcm.inode" "$TMP/prev1.pcm.inode" || \\',
+        '   ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm" || \\',
+        '   ! cmp -s "$TMP/prev1.pcm.inode" "$TMP/module.pcm.inode"; then',
         '  >&2 echo "Detected non-determinism building module {}.  Retrying..."'
             .format(module_name),
         # Keep rebuilding the module until we get three successive builds that
         # are the same, saving the "corrupted" module for logging.
         '  while ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
-        '        ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm"; do',
+        '        ! cmp -s "$TMP/prev2.pcm.inode" "$TMP/prev1.pcm.inode" || \\',
+        '        ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm" || \\',
+        '        ! cmp -s "$TMP/prev1.pcm.inode" "$TMP/module.pcm.inode"; do',
         '    mv -fT "$TMP/prev2.pcm" "$TMP/bad.pcm"',
+        '    mv -fT "$TMP/prev2.pcm.inode" "$TMP/bad.pcm.inode"',
         '    mv -fT "$TMP/prev1.pcm" "$TMP/prev2.pcm"',
+        '    mv -fT "$TMP/prev1.pcm.inode" "$TMP/prev2.pcm.inode"',
         '    mv -fT "$TMP/module.pcm" "$TMP/prev1.pcm"',
+        '    mv -fT "$TMP/module.pcm.inode" "$TMP/prev1.pcm.inode"',
         "    compile module.pcm 2>/dev/null",
         "  done",
         # Log the build for debugging.  Do this in a block which ignores errors.
