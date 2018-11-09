@@ -790,6 +790,7 @@ class PythonConverter(base.Converter):
         gen_srcs=(),
         deps=[],
         tests=[],
+        tags=(),
         external_deps=[],
         visibility=None,
         resources=(),
@@ -958,8 +959,8 @@ class PythonConverter(base.Converter):
                     # We support the auxiliary versions hack for neteng/Django.
                     deprecated_auxiliary_deps=True))
 
-        if self.is_test():
-            attributes['labels'] = ['unittest-library']
+        extra_labels = ['unittest-library'] if self.is_test() else []
+        attributes['labels'] = list(tags) + extra_labels
 
         # The above code does a magical dance to split `gen_srcs`, `srcs`,
         # and `versioned_srcs` into pure-Python `srcs` and "everything else"
@@ -1339,6 +1340,7 @@ class PythonConverter(base.Converter):
             gen_srcs=gen_srcs,
             deps=deps,
             tests=tests,
+            tags=tags,
             external_deps=external_deps,
             visibility=visibility,
             resources=resources,
