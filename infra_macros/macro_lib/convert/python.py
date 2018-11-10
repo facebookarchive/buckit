@@ -1007,6 +1007,7 @@ class PythonConverter(base.Converter):
         helper_deps=False,
         visibility=None,
         analyze_imports=False,
+        additional_coverage_targets=[],
     ):
         if self.is_test() and par_style is None:
             par_style = "xar"
@@ -1032,6 +1033,8 @@ class PythonConverter(base.Converter):
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
+        if self.is_test() and additional_coverage_targets:
+            attributes["additional_coverage_targets"] = additional_coverage_targets
         if visibility is not None:
             attributes['visibility'] = visibility
 
@@ -1303,6 +1306,7 @@ class PythonConverter(base.Converter):
         cpp_deps=(),  # ctypes targets
         helper_deps=False,
         analyze_imports=False,
+        additional_coverage_targets=[],
     ):
         # for binary we need a separate library
         if self.is_library():
@@ -1416,6 +1420,7 @@ class PythonConverter(base.Converter):
                 helper_deps=helper_deps,
                 visibility=visibility,
                 analyze_imports=analyze_imports,
+                additional_coverage_targets=additional_coverage_targets,
             )
             if self.is_test():
                 py_tests.append(rules[0])
