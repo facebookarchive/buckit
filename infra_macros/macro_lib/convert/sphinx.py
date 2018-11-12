@@ -119,80 +119,71 @@ Attributes:
         The name of the manpage to use.  The default is to use the target name
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 with allow_unsafe_import():  # noqa: magic
     import collections
     import json
     import os
 
-FBSPHINX_WRAPPER = '//fbsphinx:bin'
-SPHINX_WRAPPER = '//fbsphinx:sphinx'
-SPHINXCONFIG_TGT = '//:.sphinxconfig'
+FBSPHINX_WRAPPER = "//fbsphinx:bin"
+SPHINX_WRAPPER = "//fbsphinx:sphinx"
+SPHINXCONFIG_TGT = "//:.sphinxconfig"
 
 if False:
     # avoid flake8 warnings for some things
-    from . import (
-        load,
-        read_config,
-        include_defs,
-    )
+    from . import load, read_config, include_defs
 
 
 def import_macro_lib(path):
     global _import_macro_lib__imported
-    include_defs('{}/{}.py'.format(
-        read_config('fbcode', 'macro_lib', '//macro_lib'), path
-    ), '_import_macro_lib__imported')
+    include_defs(
+        "{}/{}.py".format(read_config("fbcode", "macro_lib", "//macro_lib"), path),
+        "_import_macro_lib__imported",
+    )
     ret = _import_macro_lib__imported
     del _import_macro_lib__imported  # Keep the global namespace clean
     return ret
 
 
-base = import_macro_lib('convert/base')
-Rule = import_macro_lib('rule').Rule
-python = import_macro_lib('convert/python')
-fbcode_target = import_macro_lib('fbcode_target')
-load("@fbcode_macros//build_defs:python_typing.bzl",
-     "get_typing_config_target")
-SPHINX_SECTION = 'sphinx'
+base = import_macro_lib("convert/base")
+Rule = import_macro_lib("rule").Rule
+python = import_macro_lib("convert/python")
+fbcode_target = import_macro_lib("fbcode_target")
+load("@fbcode_macros//build_defs:python_typing.bzl", "get_typing_config_target")
+SPHINX_SECTION = "sphinx"
 
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+
 
 class _SphinxConverter(base.Converter):
     """
     Produces a RuleTarget named after the base_path that points to the
     correct platform default as defined in data
     """
+
     def __init__(self, context):
         super(_SphinxConverter, self).__init__(context)
 
         self._converters = {
-            'python_binary': python.PythonConverter(context, 'python_binary'),
+            "python_binary": python.PythonConverter(context, "python_binary")
         }
 
     def get_allowed_args(self):
         return {
-            'name',
-            'python_binary_deps',
-            'python_library_deps',
-            'apidoc_modules',
-            'genrule_srcs',
-            'config',
+            "name",
+            "python_binary_deps",
+            "python_library_deps",
+            "apidoc_modules",
+            "genrule_srcs",
+            "config",
         }
 
     def get_buck_rule_type(self):
-        return 'genrule'
+        return "genrule"
 
-    def _gen_genrule_srcs_rules(
-        self,
-        base_path,
-        name,
-        genrule_srcs,
-    ):
+    def _gen_genrule_srcs_rules(self, base_path, name, genrule_srcs):
         """
         A simple genrule wrapper for running some target which generates rst
         """
@@ -201,30 +192,33 @@ class _SphinxConverter(base.Converter):
 
         for target, outdir in genrule_srcs.items():
             rule = target_utils.parse_target(target, default_base_path=base_path)
-            if '/' in outdir:
-                root, rest = outdir.split('/', 1)
+            if "/" in outdir:
+                root, rest = outdir.split("/", 1)
             else:
                 root = outdir
-                rest = '.'
-            yield Rule('genrule', collections.OrderedDict((
-                ('name', name + '-genrule_srcs-' + rule.name),
-                ('out', root),
-                ('bash', ' '.join((
-                    'mkdir -p $OUT/{rest} &&',
-                    'PYTHONWARNINGS=i $(exe {target})',
-                    '$OUT/{rest}',
-                )).format(
-                    target=target,
-                    rest=rest,
-                )),
-            )))
+                rest = "."
+            yield Rule(
+                "genrule",
+                collections.OrderedDict(
+                    (
+                        ("name", name + "-genrule_srcs-" + rule.name),
+                        ("out", root),
+                        (
+                            "bash",
+                            " ".join(
+                                (
+                                    "mkdir -p $OUT/{rest} &&",
+                                    "PYTHONWARNINGS=i $(exe {target})",
+                                    "$OUT/{rest}",
+                                )
+                            ).format(target=target, rest=rest),
+                        ),
+                    )
+                ),
+            )
 
     def _gen_apidoc_rules(
-        self,
-        base_path,
-        name,
-        fbsphinx_wrapper_target,
-        apidoc_modules,
+        self, base_path, name, fbsphinx_wrapper_target, apidoc_modules
     ):
         """
         A simple genrule wrapper for running sphinx-apidoc
@@ -233,20 +227,25 @@ class _SphinxConverter(base.Converter):
             return
 
         for module, outdir in apidoc_modules.items():
-            command = ' '.join((
-                'mkdir -p $OUT &&',
-                'PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})',
-                'buck apidoc',
-                module,
-                '$OUT',
-            )).format(
-                fbsphinx_wrapper_target=fbsphinx_wrapper_target,
+            command = " ".join(
+                (
+                    "mkdir -p $OUT &&",
+                    "PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})",
+                    "buck apidoc",
+                    module,
+                    "$OUT",
+                )
+            ).format(fbsphinx_wrapper_target=fbsphinx_wrapper_target)
+            yield Rule(
+                "genrule",
+                collections.OrderedDict(
+                    (
+                        ("name", name + "-apidoc-" + module),
+                        ("out", outdir),
+                        ("bash", command),
+                    )
+                ),
             )
-            yield Rule('genrule', collections.OrderedDict((
-                ('name', name + '-apidoc-' + module),
-                ('out', outdir),
-                ('bash', command),
-            )))
 
     def convert(
         self,
@@ -264,73 +263,74 @@ class _SphinxConverter(base.Converter):
         """
         Entry point for converting sphinx rules
         """
-        python_deps = tuple(python_library_deps) + tuple((
-            _dep + '-library'
-            for _dep
-            in tuple(python_binary_deps)
-        )) + (FBSPHINX_WRAPPER,)
-        fbsphinx_wrapper_target = '%s-fbsphinx-wrapper' % name
-        for rule in self._converters['python_binary'].convert(
+        python_deps = (
+            tuple(python_library_deps)
+            + tuple((_dep + "-library" for _dep in tuple(python_binary_deps)))
+            + (FBSPHINX_WRAPPER,)
+        )
+        fbsphinx_wrapper_target = "%s-fbsphinx-wrapper" % name
+        for rule in self._converters["python_binary"].convert(
             base_path,
             name=fbsphinx_wrapper_target,
-            par_style='xar',
-            py_version='>=3.6',
-            main_module='fbsphinx.bin.fbsphinx_wrapper',
+            par_style="xar",
+            py_version=">=3.6",
+            main_module="fbsphinx.bin.fbsphinx_wrapper",
             deps=python_deps,
         ):
             yield rule
 
         additional_doc_rules = []
         for rule in self._gen_apidoc_rules(
-            base_path,
-            name,
-            fbsphinx_wrapper_target,
-            apidoc_modules,
+            base_path, name, fbsphinx_wrapper_target, apidoc_modules
         ):
             additional_doc_rules.append(rule)
             yield rule
 
-        for rule in self._gen_genrule_srcs_rules(
-            base_path,
-            name,
-            genrule_srcs,
-        ):
+        for rule in self._gen_genrule_srcs_rules(base_path, name, genrule_srcs):
             additional_doc_rules.append(rule)
             yield rule
 
-        command = ' '.join((
-            'echo {BUCK_NONCE} >/dev/null &&',
-            'PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})',
-            'buck run',
-            '--target {target}',
-            '--builder {builder}',
-            '--sphinxconfig $(location {SPHINXCONFIG_TGT})',
-            "--config '{config}'",
-            "--generated-sources '{generated_sources}'",
-            '.',  # source dir
-            '$OUT',
-        )).format(
-            BUCK_NONCE=os.environ.get('BUCK_NONCE', ''),
+        command = " ".join(
+            (
+                "echo {BUCK_NONCE} >/dev/null &&",
+                "PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})",
+                "buck run",
+                "--target {target}",
+                "--builder {builder}",
+                "--sphinxconfig $(location {SPHINXCONFIG_TGT})",
+                "--config '{config}'",
+                "--generated-sources '{generated_sources}'",
+                ".",  # source dir
+                "$OUT",
+            )
+        ).format(
+            BUCK_NONCE=os.environ.get("BUCK_NONCE", ""),
             fbsphinx_wrapper_target=fbsphinx_wrapper_target,
-            target='//{}:{}'.format(base_path, name),
+            target="//{}:{}".format(base_path, name),
             builder=self.get_builder(),
             SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
             config=json.dumps(config or {}),
-            generated_sources=json.dumps([
-                '$(location {})'.format(rule.target_name)
-                for rule
-                in additional_doc_rules
-            ]),
+            generated_sources=json.dumps(
+                [
+                    "$(location {})".format(rule.target_name)
+                    for rule in additional_doc_rules
+                ]
+            ),
         )
 
-        yield Rule('genrule', collections.OrderedDict((
-            ('name', name),
-            ('type', self.get_fbconfig_rule_type()),
-            ('out', 'builder=%s' % self.get_builder()),
-            ('bash', command),
-            ('srcs', srcs),
-            ('labels', self.get_labels(name, **kwargs)),
-        )))
+        yield Rule(
+            "genrule",
+            collections.OrderedDict(
+                (
+                    ("name", name),
+                    ("type", self.get_fbconfig_rule_type()),
+                    ("out", "builder=%s" % self.get_builder()),
+                    ("bash", command),
+                    ("srcs", srcs),
+                    ("labels", self.get_labels(name, **kwargs)),
+                )
+            ),
+        )
 
     def get_labels(self, name, **kwargs):
         return ()
@@ -343,62 +343,57 @@ class SphinxWikiConverter(_SphinxConverter):
     """
     Concrete class for converting sphinx_wiki rules
     """
+
     def get_allowed_args(self):
         allowed_args = super(SphinxWikiConverter, self).get_allowed_args()
-        allowed_args.update({
-            'srcs',
-            'wiki_root_path',
-        })
+        allowed_args.update({"srcs", "wiki_root_path"})
         return allowed_args
 
     def get_fbconfig_rule_type(self):
-        return 'sphinx_wiki'
+        return "sphinx_wiki"
 
     def get_builder(self):
-        return 'wiki'
+        return "wiki"
 
     def get_labels(self, name, **kwargs):
-        return (
-            'wiki_root_path:%s' % kwargs.get('wiki_root_path'),
-        )
+        return ("wiki_root_path:%s" % kwargs.get("wiki_root_path"),)
 
 
 class SphinxManpageConverter(_SphinxConverter):
     """
     Concrete class for converting sphinx_manpage rules
     """
+
     def get_allowed_args(self):
         allowed_args = super(SphinxManpageConverter, self).get_allowed_args()
-        allowed_args.update({
-            'srcs',
-            'author',
-            'description',
-            'section',
-            'manpage_name',
-        })
+        allowed_args.update(
+            {"srcs", "author", "description", "section", "manpage_name"}
+        )
         return allowed_args
 
     def get_fbconfig_rule_type(self):
-        return 'sphinx_manpage'
+        return "sphinx_manpage"
 
     def get_builder(self):
-        return 'manpage'
+        return "manpage"
 
     def get_labels(self, name, **kwargs):
         return (
-            'description:%s' % kwargs.get('description'),
-            'author:%s' % kwargs.get('author'),
-            'section:%d' % kwargs.get('section', 1),
-            'manpage_name:%s' % kwargs.get('manpage_name', name),
+            "description:%s" % kwargs.get("description"),
+            "author:%s" % kwargs.get("author"),
+            "section:%d" % kwargs.get("section", 1),
+            "manpage_name:%s" % kwargs.get("manpage_name", name),
         )
 
     def get_extra_confpy_assignments(self, name, **kwargs):
         return {
-            'man_pages': [{
-                'doc': 'master_doc',
-                'name': kwargs.get('manpage_name', name),
-                'description': kwargs.get('description'),
-                'author': kwargs.get('author'),
-                'section': kwargs.get('section', 1),
-            }],
+            "man_pages": [
+                {
+                    "doc": "master_doc",
+                    "name": kwargs.get("manpage_name", name),
+                    "description": kwargs.get("description"),
+                    "author": kwargs.get("author"),
+                    "section": kwargs.get("section", 1),
+                }
+            ]
         }
