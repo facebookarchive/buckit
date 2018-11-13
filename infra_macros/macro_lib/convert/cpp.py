@@ -126,49 +126,6 @@ class CppConverter(base.Converter):
 
         return deps
 
-    def parse_modules_val(self, val, source, base_path, name):
-        """
-        Parse a config value used to enabled/disable modules.
-        """
-
-        if val is None:
-            return None
-
-        # First, try parse as an fixed point probability against the hash of
-#this rule's name.
-        try:
-            prob = int(val)
-        except ValueError:
-            pass
-        else:
-            if not (prob >= 0 and prob <= 100):
-                raise ValueError(
-                    '`{}` probability must be between'
-                    ' 0 and 100: {!r}'.format(source, prob))
-# Weak attempt at consistent hashing
-            val = 0
-            for c in (base_path + ':' + name):
-                val += ord(c) ^ val
-            val = val % 100
-            return prob > val
-
-        # Otherwise, parse as a boolean.
-        if val.lower() == 'true':
-            return True
-        elif val.lower() == 'false':
-            return False
-        else:
-            raise TypeError(
-                '`{}`: cannot coerce {!r} to bool'
-                .format(source, val))
-
-    def read_modules_default(self, base_path, name):
-        return self.parse_modules_val(
-            self._context.buck_ops.read_config('cxx', 'modules_default'),
-            'cxx.modules_default',
-            base_path,
-            name)
-
     def convert_rule(
             self,
             base_path,
@@ -326,7 +283,8 @@ class CppConverter(base.Converter):
         # supporting build modes).
         out_modules = True
         # Check the global, build mode default.
-        global_modules = self.read_modules_default(base_path, name)
+        global_modules = (
+            self.read_bool('cxx', 'modules_default', required=False))
         if global_modules != None:
             out_modules = global_modules
         # Check the build mode file override.
