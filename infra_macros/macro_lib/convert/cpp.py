@@ -903,6 +903,7 @@ class CppConverter(base.Converter):
         # libraries, we always use make these exported, since this is the
         # expected behavior in fbcode.
         if dependencies:
+            src_and_dep_helpers.restrict_repos(dependencies)
             deps_param, plat_deps_param = (
                 ('exported_deps', 'exported_platform_deps')
                 if is_library

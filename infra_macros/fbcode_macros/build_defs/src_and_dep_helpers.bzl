@@ -413,6 +413,20 @@ def _format_source_map(srcs):
 
     return _PlatformParam(platform_value = out_platform_srcs, value = out_srcs)
 
+def _restrict_repos(deps, repos = [
+    None,
+    "fbcode",
+    "third-party",
+]):
+    """
+    Emit an error if any of the deps do not come from the given list of allowed
+    repos.
+    """
+    for dep in deps:
+        if dep.repo not in repos:
+            fail('dep on restricted repo {}: "{}"'
+                .format(dep.repo, target_utils.target_to_label(dep)))
+
 src_and_dep_helpers = struct(
     PlatformParam = _PlatformParam,
     convert_build_target = _convert_build_target,
@@ -433,4 +447,5 @@ src_and_dep_helpers = struct(
     parse_source = _parse_source,
     parse_source_list = _parse_source_list,
     parse_source_map = _parse_source_map,
+    restrict_repos = _restrict_repos,
 )
