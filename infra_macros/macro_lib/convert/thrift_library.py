@@ -811,32 +811,32 @@ class HaskellThriftConverter(ThriftLangConverter):
         target_utils.RootRuleTarget('common/hs/thrift/lib/if', 'application-exception-hs2')
     ]
 
-    THRIFT_DEPS = [
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'QuickCheck'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'vector'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'text'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'hashable'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'base'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'bytestring'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'containers'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'deepseq'),
+    THRIFT_HS_PACKAGES = [
+        'base',
+        'bytestring',
+        'containers',
+        'deepseq',
+        'hashable',
+        'QuickCheck',
+        'text',
+        'unordered-containers',
+        'vector',
     ]
 
-    THRIFT_HS2_DEPS = [
-        target_utils.ThirdPartyRuleTarget('ghc', 'base'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'bytestring'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'containers'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'deepseq'),
-        target_utils.ThirdPartyRuleTarget('ghc', 'transformers'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'aeson'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'binary-parsers'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'data-default'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'hashable'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'STMonadTrans'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'text'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'unordered-containers'),
-        target_utils.ThirdPartyRuleTarget('stackage-lts', 'vector'),
+    THRIFT_HS2_PACKAGES = [
+        'aeson',
+        'base',
+        'binary-parsers',
+        'bytestring',
+        'containers',
+        'data-default',
+        'deepseq',
+        'hashable',
+        'STMonadTrans',
+        'text',
+        'transformers',
+        'unordered-containers',
+        'vector',
     ]
 
     def __init__(self, context, *args, **kwargs):
@@ -954,18 +954,20 @@ class HaskellThriftConverter(ThriftLangConverter):
 
         dependencies = []
         if not self._is_hs2:
-            dependencies.extend(self.THRIFT_DEPS)
             if 'new_deps' in options:
                 dependencies.extend(self.THRIFT_HS_LIBS)
             else:
                 dependencies.extend(self.THRIFT_HS_LIBS_DEPRECATED)
+            for pkg in self.THRIFT_HS_PACKAGES:
+                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
         else:
             for services in thrift_srcs.itervalues():
                 if services:
                     dependencies.extend(self.THRIFT_HS2_SERVICE_LIBS)
                     break
-            dependencies.extend(self.THRIFT_HS2_DEPS)
             dependencies.extend(self.THRIFT_HS2_LIBS)
+            for pkg in self.THRIFT_HS2_PACKAGES:
+                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
             for pkg in hs_packages or []:
                 dependencies.append(self._hs_converter.get_dep_for_package(pkg))
             for dep in hs2_deps:
