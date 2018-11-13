@@ -2,11 +2,24 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
+load("@fbsource//tools/build_defs:translate_to_fbsource_paths.bzl", "MISSING_CELL")
 
 # Re-export from rule_target_types so that the common case usage is to use target_utils,
 # but having a separate 'types' file allows us to break a few cyclic dependencies down
 # the road (e.g. on "third-party" when we're doing some of the path resolution in
 # to_label() and the like
+
+def _convert_missing_cell(repo, base):
+    """Converts references to MISSING_CELL to fbsource-relative paths
+
+    fbcode has a handful of references to the other cells in fbsource (mostly
+    xplat), so this function is to ensure that those references survive the
+    removal of those cells (see: https://fburl.com/mobile-unification).
+    """
+    if MISSING_CELL == None or repo != MISSING_CELL:
+        return (repo, base)
+    else:
+        return ("fbsource", "{}/{}".format(MISSING_CELL, base))
 
 def _parse_target(target, default_repo = None, default_base_path = None):
     """
@@ -35,6 +48,9 @@ def _parse_target(target, default_repo = None, default_base_path = None):
         repo, base = target.split("//", 1)
         repo = repo or default_repo
         base, name = base.split(":", 1)
+
+        # TODO(T31640489): Remove this extra step
+        repo, base = _convert_missing_cell(repo, base)
         return rule_target_types.RuleTarget(repo, base, name)
     else:
         fail('rule name must contain "//" (when absolute) or ":" (when relative): "{}"'.format(target))
