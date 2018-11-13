@@ -172,6 +172,7 @@ class CppConverter(base.Converter):
             use_default_test_main=True,
             lib_name=None,
             nvcc_flags=(),
+            hip_flags=(),
             enable_lto=False,
             hs_profile=None,
             dont_link_prerequisites=None,
@@ -367,6 +368,11 @@ class CppConverter(base.Converter):
             src_and_dep_helpers.format_platform_param(
                 list(itertools.chain(
                     *[('-_NVCC_', flag) for flag in nvcc_flags]))))
+
+        out_lang_plat_compiler_flags.setdefault('hip_cpp_output', [])
+        out_lang_plat_compiler_flags['hip_cpp_output'].extend(
+            src_and_dep_helpers.format_platform_param(
+                hip_flags))
 
         clang_profile = native.read_config('cxx', 'profile')
         if clang_profile != None:
@@ -977,6 +983,7 @@ class CppConverter(base.Converter):
             'name',
             'nodefaultlibs',
             'nvcc_flags',
+            'hip_flags',
             'precompiled_header',
             'preprocessor_flags',
             'py3_sensitive_deps',
