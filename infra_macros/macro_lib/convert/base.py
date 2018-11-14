@@ -323,27 +323,6 @@ class Converter(object):
             return default
         return val.split()
 
-    def get_strip_mode(self, base_path, name):
-        """
-        Return a flag to strip debug symbols from binaries, or `None` if
-        stripping is not enabled.
-        """
-
-        # `dev` mode has lightweight binaries, so avoid stripping to keep rule
-        # keys stable.
-        if self._context.mode.startswith('dev'):
-            return 'none'
-
-        # If this is a core tool, we never strip to keep stable rule keys.
-        if core_tools.is_core_tool(base_path, name):
-            return 'none'
-
-        # Otherwise, read the config setting.
-        return self.read_choice(
-            'misc',
-            'strip_binaries',
-            ['none', 'debug-non-line', 'full'],
-            default='none')
 
     def get_strip_ldflag(self, mode):
         """
@@ -487,7 +466,7 @@ class Converter(object):
 
         # 2. Add flag to strip debug symbols.
         if strip_mode is None:
-            strip_mode = self.get_strip_mode(base_path, name)
+            strip_mode = cpp_common.get_strip_mode(base_path, name)
         strip_ldflag = self.get_strip_ldflag(strip_mode)
         if strip_ldflag is not None:
             ldflags.append(strip_ldflag)

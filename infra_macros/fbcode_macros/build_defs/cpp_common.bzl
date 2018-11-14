@@ -4,6 +4,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:config.bzl", "config")
@@ -720,6 +721,39 @@ def _get_headers_from_sources(srcs):
         for header_ext in _HEADER_SUFFIXES
     ])
 
+_VALID_STRIP_MODES = ("none", "debug-non-line", "full")
+
+def _get_strip_mode(base_path, name):
+    """
+    Return a flag to strip debug symbols from binaries.
+
+    Args:
+        base_path: The package to check
+        name: The name of the rule to check
+
+    Returns:
+        One of none, debug-non-line, or full. This depends both on configuration, and
+        on the actual rule used (some rules are not stripped for rule-key divergence
+        reasons). Note that is "none", not the object None
+    """
+
+    # `dev` mode has lightweight binaries, so avoid stripping to keep rule
+    # keys stable.
+    if config.get_build_mode().startswith("dev"):
+        return "none"
+
+    # If this is a core tool, we never strip to keep stable rule keys.
+    if core_tools.is_core_tool(base_path, name):
+        return "none"
+
+    # Otherwise, read the config setting.
+    return read_choice(
+        "misc",
+        "strip_binaries",
+        _VALID_STRIP_MODES,
+        default = "none",
+    )
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -739,6 +773,7 @@ cpp_common = struct(
     get_platform_flags_from_arch_flags = _get_platform_flags_from_arch_flags,
     get_sanitizer_binary_ldflags = _get_sanitizer_binary_ldflags,
     get_sanitizer_non_binary_deps = _get_sanitizer_non_binary_deps,
+    get_strip_mode = _get_strip_mode,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
     split_matching_extensions_and_other = _split_matching_extensions_and_other,

@@ -86,6 +86,7 @@ BUILD_DEFS = [
     "bazel_skylib//lib:types.bzl",
     "bazel_skylib//lib:versions.bzl",
     "xplat//tools/build_defs:type_defs.bzl",
+    "fbsource//tools/build_defs:buckconfig.bzl",
     "fbsource//tools/build_defs:copy_defs.bzl",
     "fbsource//tools/build_defs:fb_native_wrapper.bzl",
     "fbsource//tools/build_defs:translate_to_fbsource_paths.bzl",

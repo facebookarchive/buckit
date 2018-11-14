@@ -745,7 +745,7 @@ class PythonConverter(base.Converter):
         # (which doesn't get stripped by default).  If either `strip_libpar`
         # is set or any level of stripping is enabled via config, we do full
         # stripping.
-        strip_mode = self.get_strip_mode(base_path, name)
+        strip_mode = cpp_common.get_strip_mode(base_path, name)
         if (not self._context.mode.startswith('dbg') and
                 (strip_mode != 'none' or strip_libpar is True)):
             strip_mode = 'full'
