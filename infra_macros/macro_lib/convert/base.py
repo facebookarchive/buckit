@@ -323,21 +323,6 @@ class Converter(object):
             return default
         return val.split()
 
-
-    def get_strip_ldflag(self, mode):
-        """
-        Return the linker flag to use for the given strip mode.
-        """
-
-        if mode == 'full':
-            return '-Wl,-S'
-        elif mode == 'debug-non-line':
-            return '-Wl,--strip-debug-non-line'
-        elif mode == 'none':
-            return None
-        else:
-            raise Exception('invalid strip mode: ' + mode)
-
     def get_build_info_linker_flags(
             self,
             base_path,
@@ -424,7 +409,7 @@ class Converter(object):
         # 2. Add flag to strip debug symbols.
         if strip_mode is None:
             strip_mode = cpp_common.get_strip_mode(base_path, name)
-        strip_ldflag = self.get_strip_ldflag(strip_mode)
+        strip_ldflag = cpp_common.get_strip_ldflag(strip_mode)
         if strip_ldflag is not None:
             ldflags.append(strip_ldflag)
 

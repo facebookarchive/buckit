@@ -754,6 +754,16 @@ def _get_strip_mode(base_path, name):
         default = "none",
     )
 
+_STRIP_LDFLAGS = {
+    "full": "-Wl,-S",
+    "debug-non-line": "-Wl,--strip-debug-non-line",
+    "none": None,
+}
+
+def _get_strip_ldflag(mode):
+    """ Return the linker flag ot use for the given strip mode """
+    return _STRIP_LDFLAGS[mode]
+
 _VALID_SHLIB_INTERFACES = ("disabled", "enabled", "defined_only")
 
 def _read_shlib_interfaces(buck_platform):
@@ -826,6 +836,7 @@ cpp_common = struct(
     get_platform_flags_from_arch_flags = _get_platform_flags_from_arch_flags,
     get_sanitizer_binary_ldflags = _get_sanitizer_binary_ldflags,
     get_sanitizer_non_binary_deps = _get_sanitizer_non_binary_deps,
+    get_strip_ldflag = _get_strip_ldflag,
     get_strip_mode = _get_strip_mode,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
