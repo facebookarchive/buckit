@@ -631,6 +631,35 @@ def _get_sanitizer_non_binary_deps():
     else:
         return []
 
+def _get_platform_flags_from_arch_flags_partial(platform_flags, platform, _):
+    return platform_flags.get(platform)
+
+def _get_platform_flags_from_arch_flags(arch_flags):
+    """
+    Format a dict of architecture names to flags into a platform flag list
+    for Buck.
+
+    Args:
+        arch_flags: A dictionary of architecture short names to flags
+
+    Returns:
+        A list of tuples of (<buck platform regex>, <list of flags>) where the
+        buck platform regexes are architecture appropriate.
+    """
+
+    platform_flags = {
+        platform: flags
+        for arch, flags in sorted(arch_flags.items())
+        for platform in platform_utils.get_platforms_for_architecture(arch)
+    }
+
+    return src_and_dep_helpers.format_platform_param(
+        partial.make(
+            _get_platform_flags_from_arch_flags_partial,
+            platform_flags,
+        ),
+    )
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -646,6 +675,7 @@ cpp_common = struct(
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_implicit_deps = _get_implicit_deps,
     get_link_style = _get_link_style,
+    get_platform_flags_from_arch_flags = _get_platform_flags_from_arch_flags,
     get_sanitizer_binary_ldflags = _get_sanitizer_binary_ldflags,
     get_sanitizer_non_binary_deps = _get_sanitizer_non_binary_deps,
     is_cpp_source = _is_cpp_source,

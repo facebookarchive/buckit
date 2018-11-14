@@ -196,26 +196,6 @@ class Converter(object):
     def get_third_party_tools_root(self, platform):
         return os.path.join(self.get_third_party_root(platform), 'tools')
 
-    def get_platform_flags_from_arch_flags(self, arch_flags):
-        """
-        Format a dict of architecture names to flags into a platform flag list
-        for Buck.
-        """
-
-        def _get_platform_flags_from_arch_flags_partial(platform_flags, platform, _):
-            return platform_flags.get(platform)
-
-
-        platform_flags = {}
-        for arch, flags in sorted(arch_flags.items()):
-            platforms = platform_utils.get_platforms_for_architecture(arch)
-            for platform in platform_utils.get_platforms_for_architecture(arch):
-                platform_flags[platform] = flags
-
-        return src_and_dep_helpers.format_platform_param(
-            partial.make(
-                _get_platform_flags_from_arch_flags_partial, platform_flags))
-
     def get_tool_version(self, platform, project):
         conf = self._context.third_party_config['platforms'][platform]
         return LooseVersion(conf['tools']['projects'][project])

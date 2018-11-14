@@ -357,12 +357,10 @@ class CppConverter(base.Converter):
                 out_lang_plat_compiler_flags)
 
         # Form platform-specific compiler flags.
-        out_platform_compiler_flags = []
-        out_platform_compiler_flags.extend(
-            self.get_platform_flags_from_arch_flags(arch_compiler_flags))
+        out_platform_compiler_flags = cpp_common.get_platform_flags_from_arch_flags(
+            arch_compiler_flags)
         if out_platform_compiler_flags:
-            attributes['platform_compiler_flags'] = (
-                out_platform_compiler_flags)
+            attributes['platform_compiler_flags'] = out_platform_compiler_flags
 
         # Form preprocessor flags.
         out_preprocessor_flags = []
@@ -415,12 +413,10 @@ class CppConverter(base.Converter):
             attributes['lang_preprocessor_flags'] = out_lang_preprocessor_flags
 
         # Form platform-specific processor flags.
-        out_platform_preprocessor_flags = []
-        out_platform_preprocessor_flags.extend(
-            self.get_platform_flags_from_arch_flags(arch_preprocessor_flags))
+        out_platform_preprocessor_flags = cpp_common.get_platform_flags_from_arch_flags(
+            arch_preprocessor_flags)
         if out_platform_preprocessor_flags:
-            attributes['platform_preprocessor_flags'] = (
-                out_platform_preprocessor_flags)
+            attributes['platform_preprocessor_flags'] = out_platform_preprocessor_flags
 
         if lib_name != None:
             attributes['soname'] = 'lib{}.so'.format(lib_name)
