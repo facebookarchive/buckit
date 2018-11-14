@@ -26,41 +26,22 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
-load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
-load("@fbcode_macros//build_defs:cuda.bzl", "cuda")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:modules.bzl", module_utils="modules")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
-load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
-load("@fbcode_macros//build_defs:yacc.bzl", "yacc", "YACC_EXTS")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:lua_common.bzl", "lua_common")
-
 load("@bazel_skylib//lib:partial.bzl", "partial")
-
-
-def _cuda_compiler_specific_flags_partial(compiler_specific_flags, has_cuda_srcs, _, compiler):
-    return compiler_specific_flags.get("gcc" if has_cuda_srcs else compiler)
-
-"""
-A marker which helps us differentiate between empty/falsey/None values
-defaulted in a function's arg list, vs. actually passed in from the caller
-with such a value.
-"""
-ABSENT = tuple()
 
 
 class CppConverter(base.Converter):
@@ -100,7 +81,7 @@ class CppConverter(base.Converter):
             arch_preprocessor_flags={},
             preprocessor_flags=(),
             prefix_header=None,
-            precompiled_header=ABSENT,
+            precompiled_header=cpp_common.ABSENT_PARAM,
             propagated_pp_flags=(),
             link_whole=None,
             global_symbols=[],
@@ -128,7 +109,6 @@ class CppConverter(base.Converter):
             runtime_files=(),
             additional_coverage_targets=(),
             py3_sensitive_deps=(),
-            timeout=None,
             dlls={},
             versions=None,
             visibility=None,
@@ -143,768 +123,75 @@ class CppConverter(base.Converter):
             overridden_link_style=None,
             rule_specific_deps=None,
             rule_specific_preprocessor_flags=None):
-
-        visibility = get_visibility(visibility, name)
-
-        if not isinstance(compiler_flags, (list, tuple)):
-            fail(
-                "Expected compiler_flags to be a list or a tuple, got {0!r} instead.".
-                format(compiler_flags)
-            )
-
-        # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
-        extra_rules = []
-        out_srcs = []  # type: List[SourceWithFlags]
-        out_headers = []
-        out_exported_ldflags = []
-        out_ldflags = []
-        out_dep_queries = []
-        dependencies = []
-        os_deps = os_deps or []
-        os_linker_flags = os_linker_flags or []
-        out_link_style = cpp_common.get_link_style()
-        build_mode = _build_mode.get_build_mode_for_base_path(base_path)
-        dlopen_info = cpp_common.normalize_dlopen_enabled(dlopen_enabled)
-        # `dlopen_enabled=True` binaries are really libraries.
-        is_binary = False if dlopen_info != None else is_deployable
-        exported_lang_pp_flags = collections.defaultdict(list)
-        platform = (
-            platform_utils.get_platform_for_base_path(
-                base_path
-                if cpp_rule_type != 'cpp_node_extension'
-                # Node rules always use the platforms set in the root PLATFORM
-                # file.
-                else ''))
-
-        has_cuda_srcs = cuda.has_cuda_srcs(srcs)
-
-        # TODO(lucian, pbrady, T24109997): this was a temp hack when CUDA doesn't
-        # support platform007
-        # We still keep it here in case CUDA is lagging on gcc support again;
-        # For projects that don't really need CUDA, but depend on CUDA through
-        # convenience transitive dependencies, we exclude the CUDA files to
-        # unblock migration. Once CUDA supports gcc of the new platform,
-        # cuda_deps should be merged back into deps.
-        if platform.startswith('platform008'):
-            has_cuda_srcs = False
-            stripped_attrs = cuda.strip_cuda_properties(
-                base_path,
-                name,
-                compiler_flags,
-                preprocessor_flags,
-                propagated_pp_flags,
-                nvcc_flags,
-                arch_compiler_flags,
-                arch_preprocessor_flags,
-                srcs,
-            )
-            compiler_flags = stripped_attrs.compiler_flags
-            preprocessor_flags = stripped_attrs.preprocessor_flags
-            propagated_pp_flags = stripped_attrs.propagated_pp_flags
-            nvcc_flags = stripped_attrs.nvcc_flags
-            arch_compiler_flags = stripped_attrs.arch_compiler_flags
-            arch_preprocessor_flags = stripped_attrs.arch_preprocessor_flags
-            srcs = stripped_attrs.srcs
-            cuda_srcs = stripped_attrs.cuda_srcs
-
-            if cuda_srcs:
-                print('Warning: no CUDA on platform007: rule {}:{} ignoring cuda_srcs: {}'
-                      .format(base_path, name, cuda_srcs))
-
-        # Figure out whether this rule's headers should be built into a clang
-        # module (in supporting build modes).
-        out_modular_headers = True
-        # Check the global, build mode default.
-        global_modular_headers = (
-            self.read_bool('cxx', 'modular_headers_default', required=False))
-        if global_modular_headers != None:
-            out_modular_headers = global_modular_headers
-        # Check the build mode file override.
-        if (build_mode != None and
-                build_mode.cxx_modular_headers != None):
-            out_modular_headers = build_mode.cxx_modular_headers
-        # Check the rule override.
-        if modular_headers != None:
-            out_modular_headers = modular_headers
-
-        # Figure out whether this rule should be built using clang modules (in
-        # supporting build modes).
-        out_modules = True
-        # Check the global, build mode default.
-        global_modules = (
-            self.read_bool('cxx', 'modules_default', required=False))
-        if global_modules != None:
-            out_modules = global_modules
-        # Check the build mode file override.
-        if build_mode != None and build_mode.cxx_modules != None:
-            out_modules = build_mode.cxx_modules
-        # Check the rule override.
-        if modules != None:
-            out_modules = modules
-        # Don't build precompiled headers with modules.
-        if cpp_rule_type == 'cpp_precompiled_header':
-            out_modules = False
-        if precompiled_header != ABSENT:
-            out_modules = False
-
-        attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-
-        if visibility != None:
-            attributes['visibility'] = visibility
-
-        # Set the base module.
-        rule_type = cpp_rule_type
-        if base_module != None:
-            attributes['base_module'] = base_module
-
-        if module_name != None:
-            attributes['module_name'] = module_name
-
-        if is_library:
-            if preferred_linkage:
-                attributes['preferred_linkage'] = preferred_linkage
-            if link_whole:
-                attributes['link_whole'] = link_whole
-            if global_symbols:
-                if platform_utils.get_platform_architecture(
-                        platform_utils.get_platform_for_base_path(base_path)) == 'aarch64':
-                    # On aarch64 we use bfd linker which doesn't support
-                    # --export-dynamic-symbol. We force link_whole instead.
-                    attributes['link_whole'] = True
-                else:
-                    flag = ('undefined' if out_link_style == 'static' else
-                            'export-dynamic-symbol')
-                    out_exported_ldflags = ['-Wl,--%s,%s' % (flag, sym)
-                                            for sym in global_symbols]
-
-        # Parse the `header_namespace` parameter.
-        if header_namespace != None:
-            header_namespace_whitelist = config.get_header_namespace_whitelist()
-            if (base_path, name) not in header_namespace_whitelist and not any(
-                # Check base path prefix in header_namespace_whitelist
-                len(t) == 1 and base_path.startswith(t[0])
-                for t in header_namespace_whitelist
-            ):
-                fail(
-                    '{}(): the `header_namespace` parameter is *not* '
-                    'supported in fbcode -- `#include` paths must match '
-                    'their fbcode-relative path. ({}/{})'
-                    .format(cpp_rule_type, base_path, name))
-            out_header_namespace = header_namespace
-        else:
-            out_header_namespace = base_path
-
-        # Form compiler flags.  We pass everything as language-specific flags
-        # so that we can can control the ordering.
-        out_lang_plat_compiler_flags = cpp_flags.get_compiler_flags(base_path)
-        for lang in cpp_flags.COMPILER_LANGS:
-            out_lang_plat_compiler_flags.setdefault(lang, [])
-            out_lang_plat_compiler_flags[lang].extend(
-                src_and_dep_helpers.format_platform_param(compiler_flags))
-            out_lang_plat_compiler_flags[lang].extend(
-                src_and_dep_helpers.format_platform_param(
-                    partial.make(
-                        _cuda_compiler_specific_flags_partial,
-                        compiler_specific_flags,
-                        has_cuda_srcs)))
-
-        out_lang_plat_compiler_flags.setdefault('cuda_cpp_output', [])
-        out_lang_plat_compiler_flags['cuda_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(
-                list(itertools.chain(
-                    *[('-_NVCC_', flag) for flag in nvcc_flags]))))
-
-        out_lang_plat_compiler_flags.setdefault('hip_cpp_output', [])
-        out_lang_plat_compiler_flags['hip_cpp_output'].extend(
-            src_and_dep_helpers.format_platform_param(
-                hip_flags))
-
-        clang_profile = native.read_config('cxx', 'profile')
-        if clang_profile != None:
-            compiler.require_global_compiler(
-                "cxx.profile only supported by modes using clang globally",
-                "clang")
-            profile_args = [
-                '-fprofile-sample-use=$(location {})'.format(clang_profile),
-                '-fdebug-info-for-profiling',
-                # '-fprofile-sample-accurate'
-            ]
-            out_lang_plat_compiler_flags['c_cpp_output'].extend(
-                src_and_dep_helpers.format_platform_param(profile_args))
-            out_lang_plat_compiler_flags['cxx_cpp_output'].extend(
-                src_and_dep_helpers.format_platform_param(profile_args))
-
-        if out_lang_plat_compiler_flags:
-            attributes['lang_platform_compiler_flags'] = (
-                out_lang_plat_compiler_flags)
-
-        # Form platform-specific compiler flags.
-        out_platform_compiler_flags = cpp_common.get_platform_flags_from_arch_flags(
-            arch_compiler_flags)
-        if out_platform_compiler_flags:
-            attributes['platform_compiler_flags'] = out_platform_compiler_flags
-
-        # Form preprocessor flags.
-        out_preprocessor_flags = []
-        if not has_cuda_srcs:
-            if sanitizers.get_sanitizer() != None:
-                out_preprocessor_flags.extend(sanitizers.get_sanitizer_flags())
-            out_preprocessor_flags.extend(coverage.get_coverage_flags(base_path))
-        cpp_common.assert_preprocessor_flags(
-            'preprocessor_flags',
-            preprocessor_flags)
-        out_preprocessor_flags.extend(preprocessor_flags)
-        if rule_specific_preprocessor_flags != None:
-            out_preprocessor_flags.extend(rule_specific_preprocessor_flags)
-        if out_preprocessor_flags:
-            attributes['preprocessor_flags'] = out_preprocessor_flags
-        if prefix_header:
-            attributes['prefix_header'] = prefix_header
-
-        # Form language-specific preprocessor flags.
-        out_lang_preprocessor_flags = collections.defaultdict(list)
-        if build_mode != None:
-            if build_mode.aspp_flags:
-                out_lang_preprocessor_flags['assembler_with_cpp'].extend(
-                    build_mode.aspp_flags)
-            if build_mode.cpp_flags:
-                out_lang_preprocessor_flags['c'].extend(
-                    build_mode.cpp_flags)
-            if build_mode.cxxpp_flags:
-                out_lang_preprocessor_flags['cxx'].extend(
-                    build_mode.cxxpp_flags)
-        out_lang_preprocessor_flags['c'].extend(
-            cpp_flags.get_extra_cppflags())
-        out_lang_preprocessor_flags['cxx'].extend(
-            cpp_flags.get_extra_cxxppflags())
-        out_lang_preprocessor_flags['assembler_with_cpp'].extend(
-            cpp_flags.get_extra_cxxppflags())
-        if module_utils.enabled() and out_modules:
-            # Add module toolchain flags.
-            out_lang_preprocessor_flags['cxx'].extend(
-                module_utils.get_toolchain_flags())
-            # Tell the compiler that C/C++ sources compiled in this rule are
-            # part of the same module as the headers (and so have access to
-            # private headers).
-            if out_modular_headers:
-                module_name = (
-                    module_utils.get_module_name('fbcode', base_path, name))
-                out_lang_preprocessor_flags['cxx'].append(
-                    '-fmodule-name=' + module_name)
-        if out_lang_preprocessor_flags:
-            attributes['lang_preprocessor_flags'] = out_lang_preprocessor_flags
-
-        # Form platform-specific processor flags.
-        out_platform_preprocessor_flags = cpp_common.get_platform_flags_from_arch_flags(
-            arch_preprocessor_flags)
-        if out_platform_preprocessor_flags:
-            attributes['platform_preprocessor_flags'] = out_platform_preprocessor_flags
-
-        if lib_name != None:
-            attributes['soname'] = 'lib{}.so'.format(lib_name)
-
-        exported_pp_flags = []
-        cpp_common.assert_preprocessor_flags(
-            'propagated_pp_flags',
-            propagated_pp_flags)
-        exported_pp_flags.extend(propagated_pp_flags)
-        for path in (system_include_paths or []):
-            exported_pp_flags.append('-isystem')
-            exported_pp_flags.append(path)
-        if exported_pp_flags:
-            attributes['exported_preprocessor_flags'] = exported_pp_flags
-
-        # Add in the base ldflags.
-        out_ldflags.extend(
-            cpp_common.get_ldflags(
-                base_path,
-                name,
-                cpp_rule_type,
-                binary=is_binary,
-                deployable=is_deployable,
-                # Never apply stripping flags to library rules, as they only
-                # get linked in `dev` mode which we avoid stripping in anyway,
-                # any adding unused linker flags affects rule keys up the tree.
-                strip_mode=None if is_deployable else 'none',
-                build_info=is_deployable,
-                lto=enable_lto,
-                platform=platform if is_deployable else None))
-
-        # Add non-binary sanitizer dependencies.
-        if (not is_binary and
-                sanitizers.get_sanitizer() != None):
-            dependencies.extend(cpp_common.get_sanitizer_non_binary_deps())
-
-        if is_binary:
-            if sanitizers.get_sanitizer() != None:
-                out_ldflags.extend(cpp_common.get_sanitizer_binary_ldflags())
-            out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
-            if (native.read_config('fbcode', 'gdb-index') and
-                  not core_tools.is_core_tool(base_path, name)):
-                out_ldflags.append('-Wl,--gdb-index')
-            ld_threads = native.read_config('fbcode', 'ld-threads')
-            # lld does not (yet?) support the --thread-count option, so prevent
-            # it from being forwarded when using lld.  bfd seems to be in the
-            # same boat, and this happens on aarch64 machines.
-            # FIXME: -fuse-ld= may take a path to an lld executable, for which
-            #        this check will not work properly. Instead, maybe Context
-            #        should have a member named 'linker', as it does with
-            #        'compiler'?
-            if ld_threads and \
-               not core_tools.is_core_tool(base_path, name) and \
-               '-fuse-ld=lld' not in out_ldflags and \
-               platform_utils.get_platform_architecture(platform_utils.get_platform_for_base_path(base_path)) \
-               != 'aarch64' and \
-               '-fuse-ld=bfd' not in out_ldflags:
-                out_ldflags.extend([
-                    '-Wl,--threads',
-                    '-Wl,--thread-count,' + ld_threads,
-                ])
-
-        if nodefaultlibs:
-            out_ldflags.append('-nodefaultlibs')
-
-        if emails or owner != None:
-            attributes['contacts'] = (
-                cpp_common.convert_contacts(owner=owner, emails=emails))
-
-        if env:
-            attributes['env'] = string_macros.convert_env_with_macros(env)
-
-        if args:
-            attributes['args'] = string_macros.convert_args_with_macros(args)
-
-        # Handle `dlopen_enabled` binaries.
-        if dlopen_info != None:
-
-            # We don't support allocators with dlopen-enabled binaries.
-            if allocator != None:
-                fail(
-                    'Cannot use "allocator" parameter with dlopen enabled '
-                    'binaries')
-
-            # We're building a shared lib.
-            out_ldflags.append('-shared')
-
-            # If an explicit soname was specified, pass that in.
-            soname = dlopen_info.get('soname')
-            if soname != None:
-                out_ldflags.append('-Wl,-soname=' + soname)
-
-            # Lastly, since we're building a shared lib, use the `static_pic`
-            # link style so that PIC is used throughout.
-            if out_link_style == 'static':
-                out_link_style = 'static_pic'
-
-        # Add in user-specified linker flags.
-        if is_library:
-            cpp_common.assert_linker_flags(linker_flags)
-
-        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        for flag in linker_flags:
-            macro_handlers = {}
-            if flag != '--enable-new-dtags':
-                linker_text = string_macros.convert_blob_with_macros(flag, platform=platform)
-                if is_binary:
-                    linker_text = linker_text.replace("$(platform)", buck_platform)
-                out_exported_ldflags.extend(['-Xlinker', linker_text])
-
-        # Link non-link-whole libs with `--no-as-needed` to avoid adding
-        # unnecessary DT_NEEDED tags during dynamic linking.  Libs marked
-        # with `link_whole=True` may contain static intializers, and so
-        # need to always generate a DT_NEEDED tag up the transitive link
-        # tree. Ignore these arugments on OSX, as the linker doesn't support
-        # them
-        if (buck_rule_type == 'cxx_library' and
-                config.get_build_mode().startswith('dev') and
-                native.host_info().os.is_linux):
-            if link_whole is True:
-                out_exported_ldflags.append('-Wl,--no-as-needed')
-            else:
-                out_exported_ldflags.append('-Wl,--as-needed')
-
-        # Generate rules to handle lex sources.
-        lex_srcs, srcs = cpp_common.split_matching_extensions_and_other(srcs, LEX_EXTS)
-        for lex_src in lex_srcs:
-            header, source = lex(name, lex_args, lex_src, platform, visibility)
-            out_headers.append(header)
-            out_srcs.append(cpp_common.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ['-w']))
-
-        # Generate rules to handle yacc sources.
-        yacc_srcs, srcs = cpp_common.split_matching_extensions_and_other(
-            srcs, YACC_EXTS)
-        for yacc_src in yacc_srcs:
-            yacc_headers, source = yacc(
-                name,
-                yacc_args,
-                yacc_src,
-                platform,
-                visibility)
-            out_headers.extend(yacc_headers)
-            out_srcs.append(cpp_common.SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
-
-        # Convert and add in any explicitly mentioned headers into our output
-        # headers.
-        if base.is_collection(headers):
-            out_headers.extend(
-                src_and_dep_helpers.convert_source_list(base_path, headers))
-        elif isinstance(headers, dict):
-            headers_iter = headers.iteritems()
-            converted = {
-                k: src_and_dep_helpers.convert_source(base_path, v) for k, v in headers_iter}
-
-            if base.is_collection(out_headers):
-                out_headers = {k: k for k in out_headers}
-
-            out_headers.update(converted)
-
-        # x in automatically inferred headers.
-        auto_headers = get_auto_headers(auto_headers)
-        if auto_headers == AutoHeaders.SOURCES:
-            src_headers = sets.make(cpp_common.get_headers_from_sources(srcs))
-            src_headers = sets.to_list(sets.difference(src_headers, sets.make(out_headers)))
-            # Looks simple, right? But if a header is explicitly added in, say, a
-            # dictionary mapping, we want to make sure to keep the original mapping
-            # and drop the F -> F mapping
-            if types.is_list(out_headers):
-                out_headers.extend(sorted(src_headers))
-            else:
-                # Let it throw AttributeError if update() can't be found neither
-                out_headers.update({k: k for k in src_headers})
-
-        # Convert the `srcs` parameter.  If `known_warnings` is set, add in
-        # flags to mute errors.
-        for src in srcs:
-            src = src_and_dep_helpers.parse_source(base_path, src)
-            flags = None
-            if (known_warnings is True or
-                    (known_warnings and
-                     src_and_dep_helpers.get_parsed_source_name(src) in known_warnings)):
-                flags = ['-Wno-error']
-            out_srcs.append(cpp_common.SourceWithFlags(src, flags))
-
-        formatted_srcs = cpp_common.format_source_with_flags_list(out_srcs)
-        if cpp_rule_type != 'cpp_precompiled_header':
-            attributes['srcs'], attributes['platform_srcs'] = formatted_srcs
-        else:
-            attributes['srcs'] = src_and_dep_helpers.without_platforms(formatted_srcs)
-
-        for lib in (shared_system_deps or []):
-            out_exported_ldflags.append('-l' + lib)
-
-        # We don't support symbols splitting, but we can at least strip the
-        # debug symbols entirely (as some builds rely on the actual binary not
-        # being bloated with debug info).
-        if split_symbols:
-            out_ldflags.append('-Wl,-S')
-
-        # Handle DLL deps.
-        if dlls:
-            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            dll_deps, dll_ldflags, dll_dep_queries = (
-                haskell_common.convert_dlls(
-                    name, platform, buck_platform, dlls, visibility))
-            dependencies.extend(dll_deps)
-            out_ldflags.extend(dll_ldflags)
-            if not dont_link_prerequisites:
-                out_dep_queries.extend(dll_dep_queries)
-
-            # We don't currently support dynamic linking with DLL support, as
-            # we don't have a great way to prevent dependency DSOs needed by
-            # the DLL, but *not* needed by the top-level binary, from being
-            # dropped from the `DT_NEEDED` tags when linking with
-            # `--as-needed`.
-            if out_link_style == 'shared':
-                out_link_style = 'static_pic'
-
-        # Some libraries need to opt-out of linker errors about undefined
-        # symbols.
-        if (is_library and
-                # TODO(T23121628): The way we build shared libs in non-ASAN
-                # sanitizer modes leaves undefined references to *SAN symbols.
-                (sanitizers.get_sanitizer() == None or
-                 sanitizers.get_sanitizer().startswith('address')) and
-                # TODO(T23121628): Building python binaries with omnibus causes
-                # undefined references in preloaded libraries, so detect this
-                # via the link-style and ignore for now.
-                config.get_default_link_style() == 'shared' and
-                not undefined_symbols):
-            out_ldflags.append('-Wl,--no-undefined')
-
-        # Get any linker flags for the current OS
-        for os_short_name, flags in os_linker_flags:
-            if os_short_name == config.get_current_os():
-                out_exported_ldflags.extend(flags)
-
-        # Set the linker flags parameters.
-        if buck_rule_type == 'cxx_library':
-            attributes['exported_linker_flags'] = out_exported_ldflags
-            attributes['linker_flags'] = out_ldflags
-        else:
-            attributes['linker_flags'] = out_exported_ldflags + out_ldflags
-
-        attributes['labels'] = list(tags)
-
-        if is_test:
-            attributes['labels'].extend(label_utils.convert_labels(platform, 'c++'))
-            if coverage.is_coverage_enabled(base_path):
-                attributes['labels'].append('coverage')
-            attributes['use_default_test_main'] = use_default_test_main
-            if 'serialize' in tags:
-                attributes['run_test_separately'] = True
-
-            # C/C++ gtest tests implicitly depend on gtest/gmock libs, and by
-            # default on our custom main
-            if type == 'gtest':
-                gtest_deps = [
-                    d.strip()
-                    for d in re.split(
-                        ",", config.get_gtest_lib_dependencies())
-                ]
-                if use_default_test_main:
-                    gtest_deps.append(
-                        config.get_gtest_main_dependency())
-                dependencies.extend(
-                    [target_utils.parse_target(dep) for dep in gtest_deps])
-            else:
-                attributes['framework'] = type
-
-        allocator = allocators.normalize_allocator(allocator)
-
-        # C/C++ Lua main modules get statically linked into a special extension
-        # module.
-        if cpp_rule_type == 'cpp_lua_main_module':
-            attributes['preferred_linkage'] = 'static'
-
-        # For binaries, set the link style.
-        if is_buck_binary:
-            attributes['link_style'] = overridden_link_style or out_link_style
-
-        # Translate runtime files into resources.
-        if runtime_files:
-            attributes['resources'] = runtime_files
-
-        # Translate additional coverage targets.
-        if additional_coverage_targets:
-            attributes['additional_coverage_targets'] = additional_coverage_targets
-
-        # Convert three things here:
-        # - Translate dependencies.
-        # - Add and translate py3 sensitive deps
-        # -  Grab OS specific dependencies and add them to the normal
-        #    list of dependencies. We bypass buck's platform support because it
-        #    requires us to parse a bunch of extra files we know we won't use,
-        #    and because it's just a little fragile
-        for dep in itertools.chain(
-                deps,
-                py3_sensitive_deps,
-                *[
-                    dep
-                    for os, dep in os_deps
-                    if os == config.get_current_os()
-                ]):
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-
-        # If we include any lex sources, implicitly add a dep on the lex lib.
-        if lex_srcs:
-            dependencies.append(LEX_LIB)
-
-        # Add in binary-specific link deps.
-        if is_binary:
-            dependencies.extend(
-                cpp_common.get_binary_link_deps(
-                    base_path,
-                    name,
-                    attributes['linker_flags'],
-                    default_deps=not nodefaultlibs,
-                    allocator=allocator,
-                )
-            )
-
-        if rule_specific_deps != None:
-            dependencies.extend(rule_specific_deps)
-
-        # Add external deps.
-        for dep in external_deps:
-            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
-
-        # Add in any CUDA deps.  We only add this if it's not always present,
-        # it's common to explicitly depend on the cuda runtime.
-        if has_cuda_srcs and not cuda.has_cuda_dep(dependencies):
-            # TODO: If this won't work, should it just fail?
-            print('Warning: rule {}:{} with .cu files has to specify CUDA '
-                  'external_dep to work.'.format(base_path, name))
-
-        # Set the build platform, via both the `default_platform` parameter and
-        # the default flavors support.
-        if cpp_rule_type != 'cpp_precompiled_header':
-            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            attributes['default_platform'] = buck_platform
-            if not is_deployable:
-                attributes['defaults'] = {'platform': buck_platform}
-
-        # Add in implicit deps.
-        if not nodefaultlibs:
-            dependencies.extend(
-                cpp_common.get_implicit_deps(
-                    cpp_rule_type == 'cpp_precompiled_header'))
-
-        # Add implicit toolchain module deps.
-        if module_utils.enabled() and out_modules:
-            dependencies.extend(
-                map(target_utils.parse_target, module_utils.get_implicit_module_deps()))
-
-        # Modularize libraries.
-        if module_utils.enabled() and is_library and out_modular_headers:
-
-            # If we're using modules, we need to add in the `module.modulemap`
-            # file and make sure it gets installed at the root of the include
-            # tree so that clang can locate it for auto-loading.  To do this,
-            # we need to clear the header namespace (which defaults to the base
-            # path) and instead propagate its value via the keys of the header
-            # dict so that we can make sure it's only applied to the user-
-            # provided headers and not the module map.
-            if base.is_collection(out_headers):
-                out_headers = {paths.join(out_header_namespace, src_and_dep_helpers.get_source_name(h)): h
-                               for h in out_headers}
-            else:
-                out_headers = {paths.join(out_header_namespace, h): s
-                               for h, s in out_headers.items()}
-            out_header_namespace = ""
-
-            # Create rule to generate the implicit `module.modulemap`.
-            module_name = module_utils.get_module_name('fbcode', base_path, name)
-            mmap_name = name + '-module-map'
-            module_utils.module_map_rule(
-                mmap_name,
-                module_name,
-                # There are a few header suffixes (e.g. '-inl.h') that indicate a
-                # "private" extension to some library interface. We generally want
-                # to keep these are non modular. So mark them private/textual.
-                {h: ['private', 'textual']
-                 if h.endswith(('-inl.h', '-impl.h', '-pre.h', '-post.h'))
-                 else []
-                 for h in out_headers})
-
-            # Add in module map.
-            out_headers["module.modulemap"] = ":" + mmap_name
-
-            # Create module compilation rule.
-            mod_name = name + '-module'
-            module_flags = []
-            module_flags.extend(out_preprocessor_flags)
-            module_flags.extend(out_lang_preprocessor_flags['cxx'])
-            module_flags.extend(exported_lang_pp_flags['cxx'])
-            module_flags.extend(exported_pp_flags)
-            module_platform_flags = []
-            module_platform_flags.extend(out_platform_preprocessor_flags)
-            module_platform_flags.extend(
-                out_lang_plat_compiler_flags['cxx_cpp_output'])
-            module_platform_flags.extend(out_platform_compiler_flags)
-            module_deps, module_platform_deps = (
-                src_and_dep_helpers.format_all_deps(dependencies))
-            module_utils.gen_module(
-                mod_name,
-                module_name,
-                # TODO(T32915747): Due to a clang bug when using module and
-                # header maps together, clang cannot update the module at load
-                # time with the correct path to it's new home location (modules
-                # are originally built in the sandbox of a Buck `genrule`, but
-                # are used from a different location: Buck's header symlink
-                # trees.  To work around this, we add support for manually
-                # fixing up the embedded module home location to be the header
-                # symlink tree.
-                override_module_home=(
-                    'buck-out/{}/gen/{}/{}#header-mode-symlink-tree-with-header-map,headers%s'
-                    .format(config.get_build_mode(), base_path, name)),
-                headers=out_headers,
-                flags=module_flags,
-                platform_flags=module_platform_flags,
-                deps=module_deps,
-                platform_deps=module_platform_deps,
-            )
-
-            # Expose module via C++ preprocessor flags.
-            exported_lang_pp_flags['cxx'].append(
-                '-fmodule-file={}=$(location :{})'
-                .format(module_name, mod_name))
-
-        # Write out our output headers.
-        if out_headers:
-            if buck_rule_type == 'cxx_library':
-                attributes['exported_headers'] = out_headers
-            else:
-                attributes['headers'] = out_headers
-
-        # Set an explicit header namespace if not the default.
-        if out_header_namespace != base_path:
-            attributes['header_namespace'] = out_header_namespace
-
-        if exported_lang_pp_flags:
-            attributes['exported_lang_preprocessor_flags'] = exported_lang_pp_flags
-
-        # If any deps were specified, add them to the output attrs.  For
-        # libraries, we always use make these exported, since this is the
-        # expected behavior in fbcode.
-        if dependencies:
-            src_and_dep_helpers.restrict_repos(dependencies)
-            deps_param, plat_deps_param = (
-                ('exported_deps', 'exported_platform_deps')
-                if is_library
-                else ('deps', 'platform_deps'))
-            out_deps, out_plat_deps = src_and_dep_helpers.format_all_deps(dependencies)
-            attributes[deps_param] = out_deps
-            if out_plat_deps:
-                attributes[plat_deps_param] = out_plat_deps
-
-        if out_dep_queries:
-            attributes['deps_query'] = ' union '.join(out_dep_queries)
-            attributes['link_deps_query_whole'] = True
-
-        # fbconfig supports a `cpp_benchmark` rule which we convert to a
-        # `cxx_binary`.  Just make sure we strip options that `cxx_binary`
-        # doesn't support.
-        if buck_rule_type == 'cxx_binary':
-            attributes.pop('args', None)
-            attributes.pop('contacts', None)
-
-        # (cpp|cxx)_precompiled_header rules take a 'src' attribute (not
-        # 'srcs', drop that one which was stored above).  Requires a deps list.
-        if buck_rule_type == 'cxx_precompiled_header':
-            attributes['src'] = src
-            exclude_names = [
-                'lang_platform_compiler_flags',
-                'lang_preprocessor_flags',
-                'linker_flags',
-                'preprocessor_flags',
-                'srcs',
-            ]
-            for exclude_name in exclude_names:
-                if exclude_name in attributes:
-                    attributes.pop(exclude_name)
-            if 'deps' not in attributes:
-                attributes['deps'] = []
-
-        # Should we use a default PCH for this C++ lib / binary?
-        # Only applies to certain rule types.
-        if cpp_rule_type in (
-                'cpp_library', 'cpp_binary', 'cpp_unittest',
-                'cxx_library', 'cxx_binary', 'cxx_test'):
-            # Was completely left out in the rule? (vs. None to disable autoPCH)
-            if precompiled_header == ABSENT:
-                precompiled_header = cpp_common.get_fbcode_default_pch(out_srcs, base_path, name)
-
-        if precompiled_header:
-            attributes['precompiled_header'] = precompiled_header
-
-        if is_binary and versions != None:
-            attributes['version_universe'] = (
-                third_party.get_version_universe(versions.items()))
-
-        return [Rule(buck_rule_type, attributes)] + extra_rules
-
+        attributes = cpp_common.convert_cpp(
+            name,
+            cpp_rule_type,
+            buck_rule_type,
+            is_library,
+            is_buck_binary,
+            is_test,
+            is_deployable,
+            base_module=base_module,
+            module_name=module_name,
+            srcs=srcs,
+            src=src,
+            deps=deps,
+            arch_compiler_flags=arch_compiler_flags,
+            compiler_flags=compiler_flags,
+            known_warnings=known_warnings,
+            headers=headers,
+            header_namespace=header_namespace,
+            compiler_specific_flags=compiler_specific_flags,
+            supports_coverage=supports_coverage,
+            tags=tags,
+            linker_flags=linker_flags,
+            arch_preprocessor_flags=arch_preprocessor_flags,
+            preprocessor_flags=preprocessor_flags,
+            prefix_header=prefix_header,
+            precompiled_header=precompiled_header,
+            propagated_pp_flags=propagated_pp_flags,
+            link_whole=link_whole,
+            global_symbols=global_symbols,
+            allocator=allocator,
+            args=args,
+            external_deps=external_deps,
+            type=type,
+            owner=owner,
+            emails=emails,
+            dlopen_enabled=dlopen_enabled,
+            nodefaultlibs=nodefaultlibs,
+            shared_system_deps=shared_system_deps,
+            system_include_paths=system_include_paths,
+            split_symbols=split_symbols,
+            env=env,
+            use_default_test_main=use_default_test_main,
+            lib_name=lib_name,
+            nvcc_flags=nvcc_flags,
+            hip_flags=hip_flags,
+            enable_lto=enable_lto,
+            hs_profile=hs_profile,
+            dont_link_prerequisites=dont_link_prerequisites,
+            lex_args=lex_args,
+            yacc_args=yacc_args,
+            runtime_files=runtime_files,
+            additional_coverage_targets=additional_coverage_targets,
+            py3_sensitive_deps=py3_sensitive_deps,
+            dlls=dlls,
+            versions=versions,
+            visibility=visibility,
+            auto_headers=auto_headers,
+            preferred_linkage=preferred_linkage,
+            os_deps=os_deps,
+            os_linker_flags=os_linker_flags,
+            autodeps_keep=autodeps_keep,
+            undefined_symbols=undefined_symbols,
+            modular_headers=modular_headers,
+            modules=modules,
+            overridden_link_style=overridden_link_style,
+            rule_specific_deps=rule_specific_deps,
+            rule_specific_preprocessor_flags=rule_specific_preprocessor_flags,
+        )
+        return [Rule(buck_rule_type, attributes)]
 
     def get_allowed_args(self):
         """
