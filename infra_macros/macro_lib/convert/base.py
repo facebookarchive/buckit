@@ -323,56 +323,6 @@ class Converter(object):
             return default
         return val.split()
 
-    def get_build_info_linker_flags(
-            self,
-            base_path,
-            name,
-            rule_type,
-            platform,
-            compiler):
-        """
-        Get the linker flags to configure how the linker embeds build info.
-        """
-
-        ldflags = []
-
-        mode = build_info.get_build_info_mode(base_path, name)
-
-        # Make sure we're not using non-deterministic build info when caching
-        # is enabled.
-        if mode == 'full' and self.read_bool('cxx', 'cache_links', True):
-            raise ValueError(
-                'cannot use `full` build info when `cxx.cache_links` is set')
-
-        # Add in explicit build info args.
-        if mode != 'none':
-            # Pass the build info mode to the linker.
-            ldflags.append('--build-info=' + mode)
-            explicit = (
-                build_info.get_explicit_build_info(
-                    base_path,
-                    name,
-                    mode,
-                    rule_type,
-                    platform,
-                    compiler))
-            ldflags.append('--build-info-build-mode=' + explicit.build_mode)
-            if explicit.package_name:
-                ldflags.append(
-                    '--build-info-package-name=' + explicit.package_name)
-            if explicit.package_release:
-                ldflags.append(
-                    '--build-info-package-release=' + explicit.package_release)
-            if explicit.package_version:
-                ldflags.append(
-                    '--build-info-package-version=' + explicit.package_version)
-            ldflags.append('--build-info-compiler=' + explicit.compiler)
-            ldflags.append('--build-info-platform=' + explicit.platform)
-            ldflags.append('--build-info-rule=' + explicit.rule)
-            ldflags.append('--build-info-rule-type=' + explicit.rule_type)
-
-        return ldflags
-
     def get_ldflags(
             self,
             base_path,
@@ -423,7 +373,7 @@ class Converter(object):
         # linker will not understand these options anyways) so skip in that case
         if build_info and self._context.config.get_use_build_info_linker_flags():
             ldflags.extend(
-                self.get_build_info_linker_flags(
+                cpp_common.get_build_info_linker_flags(
                     base_path,
                     name,
                     rule_type,

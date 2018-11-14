@@ -4,9 +4,10 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
-load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_choice")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
+load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -816,6 +817,67 @@ def _get_binary_ldflags(base_path):
 
     return ldflags
 
+def _get_build_info_linker_flags(
+        base_path,
+        name,
+        rule_type,
+        platform,
+        compiler):
+    """
+    Get the linker flags to configure how the linker embeds build info.
+
+    Args:
+        base_path: The package name
+        name: The rule name
+        rule_type: The name of the macro calling this method. Embedded in build info
+        platform: The fbcode platform
+        compiler: The compiler family (gcc/clang)
+
+    Returns:
+        A list of ldflags to add to the build.
+    """
+
+    ldflags = []
+
+    mode = build_info.get_build_info_mode(base_path, name)
+
+    # Make sure we're not using non-deterministic build info when caching
+    # is enabled.
+    if mode == "full" and read_bool("cxx", "cache_links", True):
+        fail("cannot use `full` build info when `cxx.cache_links` is set")
+
+    # Add in explicit build info args.
+    if mode != "none":
+        # Pass the build info mode to the linker.
+        ldflags.append("--build-info=" + mode)
+        explicit = build_info.get_explicit_build_info(
+            base_path,
+            name,
+            mode,
+            rule_type,
+            platform,
+            compiler,
+        )
+        ldflags.append("--build-info-build-mode=" + explicit.build_mode)
+        if explicit.package_name:
+            ldflags.append(
+                "--build-info-package-name=" + explicit.package_name,
+            )
+        if explicit.package_release:
+            ldflags.append(
+                "--build-info-package-release=" + explicit.package_release,
+            )
+        if explicit.package_version:
+            ldflags.append(
+                "--build-info-package-version=" + explicit.package_version,
+            )
+        ldflags.append("--build-info-compiler=" + explicit.compiler)
+        ldflags.append("--build-info-platform=" + explicit.platform)
+        ldflags.append("--build-info-rule=" + explicit.rule)
+        ldflags.append("--build-info-rule-type=" + explicit.rule_type)
+
+    return ldflags
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -829,6 +891,7 @@ cpp_common = struct(
     format_source_with_flags_list = _format_source_with_flags_list,
     get_binary_ldflags = _get_binary_ldflags,
     get_binary_link_deps = _get_binary_link_deps,
+    get_build_info_linker_flags = _get_build_info_linker_flags,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_headers_from_sources = _get_headers_from_sources,
     get_implicit_deps = _get_implicit_deps,
