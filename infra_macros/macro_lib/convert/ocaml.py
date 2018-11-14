@@ -132,7 +132,7 @@ class OCamlConverter(base.Converter):
 
         platform = platform_utils.get_platform_for_base_path(base_path)
 
-        ldflags = self.get_ldflags(
+        ldflags = cpp_common.get_ldflags(
             base_path,
             name,
             self.get_fbconfig_rule_type(),

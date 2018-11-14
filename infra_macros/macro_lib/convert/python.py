@@ -753,7 +753,7 @@ class PythonConverter(base.Converter):
                 (strip_mode != 'none' or strip_libpar is True)):
             strip_mode = 'full'
 
-        return super(PythonConverter, self).get_ldflags(
+        return cpp_common.get_ldflags(
             base_path,
             name,
             self.get_fbconfig_rule_type(),

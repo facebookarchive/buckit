@@ -71,7 +71,7 @@ class DConverter(base.Converter):
         out_ldflags = []
         out_ldflags.extend(linker_flags)
         out_ldflags.extend(
-            self.get_ldflags(
+            cpp_common.get_ldflags(
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),

@@ -418,7 +418,7 @@ class CppConverter(base.Converter):
 
         # Add in the base ldflags.
         out_ldflags.extend(
-            self.get_ldflags(
+            cpp_common.get_ldflags(
                 base_path,
                 name,
                 cpp_rule_type,

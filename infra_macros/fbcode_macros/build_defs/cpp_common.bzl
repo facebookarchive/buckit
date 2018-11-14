@@ -8,6 +8,7 @@ load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_choice")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -878,6 +879,137 @@ def _get_build_info_linker_flags(
 
     return ldflags
 
+def _get_ldflags(
+        base_path,
+        name,
+        rule_type,
+        binary = False,
+        deployable = None,
+        strip_mode = None,
+        build_info = False,
+        lto = False,
+        platform = None):
+    """
+    Gets linker flags that should be applied to native code
+
+    This method grabs linker flags from a number of locations such as:
+        - BUILD_MODE files
+        - strip modes
+        - build info
+        - lto configuration
+        - the cxx.extra_ldflags configuration arguments
+
+    It can fail if a number of preconditions are not met, but those should have
+    straightforward error messages.
+
+    Args:
+        base_path: The package of the rule
+        name: The name of the rule
+        rule_type: The human readable name of the macro/rule. This is used in build info
+                   flags and error messages.
+        deployable: If True/False, whether this rule outputs a deployable binary.
+                    If None, this is determined from the `binary` parameter.
+        strip_mode: The strip_mode as returned by cpp_common.get_strip_mode, or None
+                    if it should be determined for the caller.
+        build_info: If provided, build info to use in linker flags
+        lto: Whether the rule wants to utilize LTO (if lto is supported globally)
+        platform: The fbcode platform
+
+    Returns:
+        A list of additional linker flags to utilize.
+    """
+
+    # Default `deployable` to whatever `binary` was set to, as very rule
+    # types make a distinction.
+    if deployable == None:
+        deployable = binary
+
+    # The `binary`, `build_info`, and `plaform` params only make sense for
+    # "deployable" rules.
+    if not deployable:
+        if binary:
+            fail("If binary is set, it must be deployable")
+        if lto:
+            fail("lto rules must be deployable")
+        if build_info:
+            fail("build info can only be added to deployable")
+    if deployable == (platform == None):
+        fail("Deployable rules must have a platform set")
+
+    ldflags = []
+
+    # 1. Add in build-mode ldflags.
+    build_mode = _build_mode.get_build_mode_for_base_path(base_path)
+    if build_mode != None:
+        ldflags.extend(build_mode.ld_flags)
+
+    # 2. Add flag to strip debug symbols.
+    if strip_mode == None:
+        strip_mode = _get_strip_mode(base_path, name)
+    strip_ldflag = _get_strip_ldflag(strip_mode)
+    if strip_ldflag != None:
+        ldflags.append(strip_ldflag)
+
+    # 3. Add in flags specific for linking a binary.
+    if binary:
+        ldflags.extend(_get_binary_ldflags(base_path))
+
+    # 4. Add in the build info linker flags.
+    # In OSS, we don't need to actually use the build info (and the
+    # linker will not understand these options anyways) so skip in that case
+    if build_info and config.get_use_build_info_linker_flags():
+        ldflags.extend(
+            _get_build_info_linker_flags(
+                base_path,
+                name,
+                rule_type,
+                platform,
+                compiler.get_compiler_for_current_buildfile(),
+            ),
+        )
+
+    # 5. If enabled, add in LTO linker flags.
+    if cpp_flags.get_lto_is_enabled():
+        global_compiler = config.get_global_compiler_family()
+        lto_type = config.get_lto_type()
+
+        compiler.require_global_compiler(
+            "can only use LTO in modes with a fixed global compiler",
+        )
+        if global_compiler == "clang":
+            if lto_type not in ("monolithic", "thin"):
+                fail("clang does not support {} LTO".format(lto_type))
+
+            # Clang does not support fat LTO objects, so we build everything
+            # as IR only, and must also link everything with -flto
+            ldflags.append("-flto=thin" if lto_type == "thin" else "-flto")
+
+            # HACK(marksan): don't break HFSort/"Hot Text" (t19644410)
+            ldflags.append("-Wl,-plugin-opt,-function-sections")
+            ldflags.append("-Wl,-plugin-opt,-profile-guided-section-prefix=false")
+
+            # Equivalent of -fdebug-types-section for LLVM backend
+            ldflags.append("-Wl,-plugin-opt,-generate-type-units")
+        else:
+            if global_compiler != "gcc":
+                fail("Invalid global compiler '{}'".format(global_compiler))
+
+            if lto_type != "fat":
+                fail("gcc does not support {} LTO".format(cxx_mode.lto_type))
+
+            # GCC has fat LTO objects, where we build everything as both IR
+            # and object code and then conditionally opt-in here, at link-
+            # time, based on "enable_lto" in the TARGETS file.
+            if lto:
+                ldflags.extend(cpp_flags.get_gcc_lto_ldflags(base_path, platform))
+            else:
+                ldflags.append("-fno-lto")
+
+    # 6. Add in command-line ldflags.
+    ldflags.extend(cpp_flags.get_extra_ldflags())
+
+    return ldflags
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -895,6 +1027,7 @@ cpp_common = struct(
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_headers_from_sources = _get_headers_from_sources,
     get_implicit_deps = _get_implicit_deps,
+    get_ldflags = _get_ldflags,
     get_link_style = _get_link_style,
     get_platform_flags_from_arch_flags = _get_platform_flags_from_arch_flags,
     get_sanitizer_binary_ldflags = _get_sanitizer_binary_ldflags,

@@ -683,7 +683,7 @@ class HaskellConverter(base.Converter):
         validated_compiler_flags.extend(
             self.get_compiler_flags(compiler_flags, fb_haskell))
         ldflags = (
-            self.get_ldflags(
+            cpp_common.get_ldflags(
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),

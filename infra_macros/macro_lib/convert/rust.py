@@ -190,7 +190,7 @@ class RustConverter(base.Converter):
 
             attributes['link_style'] = link_style
 
-            ldflags = self.get_ldflags(
+            ldflags = cpp_common.get_ldflags(
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),
@@ -312,7 +312,7 @@ class RustConverter(base.Converter):
 
         # Regardless of the base rule type, the resulting unit test is always
         # an executable which needs to have buildinfo.
-        ldflags = self.get_ldflags(
+        ldflags = cpp_common.get_ldflags(
             base_path,
             name,
             self.get_fbconfig_rule_type(),
