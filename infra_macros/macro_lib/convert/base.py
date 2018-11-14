@@ -327,28 +327,33 @@ class Converter(object):
 
         # Default `deployable` to whatever `binary` was set to, as very rule
         # types make a distinction.
-        if deployable is None:
+        if deployable == None:
             deployable = binary
 
         # The `binary`, `build_info`, and `plaform` params only make sense for
         # "deployable" rules.
-        assert not binary or deployable
-        assert not lto or deployable
-        assert not build_info or deployable
-        assert not (deployable ^ (platform is not None))
+        if not deployable:
+            if binary:
+                fail("If binary is set, it must be deployable")
+            if lto:
+                fail("lto rules must be deployable")
+            if build_info:
+                fail("build info can only be added to deployable")
+        if deployable == (platform == None):
+            fail("Deployable rules must have a platform set")
 
         ldflags = []
 
         # 1. Add in build-mode ldflags.
         build_mode = _build_mode.get_build_mode_for_base_path(base_path)
-        if build_mode is not None:
+        if build_mode != None:
             ldflags.extend(build_mode.ld_flags)
 
         # 2. Add flag to strip debug symbols.
-        if strip_mode is None:
+        if strip_mode == None:
             strip_mode = cpp_common.get_strip_mode(base_path, name)
         strip_ldflag = cpp_common.get_strip_ldflag(strip_mode)
-        if strip_ldflag is not None:
+        if strip_ldflag != None:
             ldflags.append(strip_ldflag)
 
         # 3. Add in flags specific for linking a binary.
@@ -358,7 +363,7 @@ class Converter(object):
         # 4. Add in the build info linker flags.
         # In OSS, we don't need to actually use the build info (and the
         # linker will not understand these options anyways) so skip in that case
-        if build_info and self._context.config.get_use_build_info_linker_flags():
+        if build_info and config.get_use_build_info_linker_flags():
             ldflags.extend(
                 cpp_common.get_build_info_linker_flags(
                     base_path,
@@ -369,28 +374,28 @@ class Converter(object):
 
         # 5. If enabled, add in LTO linker flags.
         if cpp_flags.get_lto_is_enabled():
+            global_compiler = config.get_global_compiler_family()
+            lto_type = config.get_lto_type()
+
             compiler.require_global_compiler(
                 'can only use LTO in modes with a fixed global compiler')
-            if self._context.global_compiler == 'clang':
-                if self._context.lto_type not in ('monolithic', 'thin'):
-                    raise ValueError(
-                        'clang does not support {} LTO'
-                        .format(self._context.lto_type))
+            if global_compiler == 'clang':
+                if lto_type not in ('monolithic', 'thin'):
+                    fail('clang does not support {} LTO'.format(lto_type))
                 # Clang does not support fat LTO objects, so we build everything
                 # as IR only, and must also link everything with -flto
-                ldflags.append('-flto=thin' if self._context.lto_type ==
-                               'thin' else '-flto')
+                ldflags.append('-flto=thin' if lto_type == 'thin' else '-flto')
                 # HACK(marksan): don't break HFSort/"Hot Text" (t19644410)
                 ldflags.append('-Wl,-plugin-opt,-function-sections')
                 ldflags.append('-Wl,-plugin-opt,-profile-guided-section-prefix=false')
                 # Equivalent of -fdebug-types-section for LLVM backend
                 ldflags.append('-Wl,-plugin-opt,-generate-type-units')
             else:
-                assert self._context.global_compiler == 'gcc'
-                if self._context.lto_type != 'fat':
-                    raise ValueError(
-                        'gcc does not support {} LTO'
-                        .format(cxx_mode.lto_type))
+                if global_compiler != "gcc":
+                    fail("Invalid global compiler '{}'".format(global_compiler))
+
+                if lto_type != 'fat':
+                    fail('gcc does not support {} LTO'.format(cxx_mode.lto_type))
                 # GCC has fat LTO objects, where we build everything as both IR
                 # and object code and then conditionally opt-in here, at link-
                 # time, based on "enable_lto" in the TARGETS file.
