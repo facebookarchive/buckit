@@ -34,8 +34,8 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
+load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
@@ -564,11 +564,14 @@ class PythonConverter(base.Converter):
                 passthrough_args.append('--optimize')
 
             # Add arguments to populate build info.
-            assert build_info.get_build_info_mode(base_path, name) != 'none'
+            mode = build_info.get_build_info_mode(base_path, name)
+            if mode == "none":
+                fail("Invalid build info mode specified")
             info = (
                 build_info.get_explicit_build_info(
                     base_path,
                     name,
+                    mode,
                     rule_type,
                     platform,
                     compiler.get_compiler_for_current_buildfile()))

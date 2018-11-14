@@ -157,3 +157,57 @@ class BuildInfoTest(tests.utils.TestCase):
             )
         ]
         self.assertSuccess(result, *expected)
+
+    @tests.utils.with_project()
+    def test_get_build_info_mode(self, root):
+        root.updateBuckconfig("fbcode", "build_info", "full")
+        commands = [
+            'build_info.get_build_info_mode("core", "awesome_tool")',
+            'build_info.get_build_info_mode("foo", "bar")',
+        ]
+
+        expected = ["stable", "full"]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_get_explicit_build_info(self, root):
+        root.updateBuckconfigWithDict(
+            {
+                "build_info": {
+                    "package_name": "some_name",
+                    "package_version": "some_version",
+                    "package_release": "1",
+                }
+            }
+        )
+
+        commands = [
+            'build_info.get_explicit_build_info("foo", "bar", "stable", "my_rule", "gcc5", "clang")',
+            'build_info.get_explicit_build_info("foo", "bar", "full", "my_rule", "gcc5", "clang")',
+        ]
+
+        expected = [
+            self.struct(
+                build_mode="dev",
+                compiler="clang",
+                package_name=None,
+                package_release=None,
+                package_version=None,
+                platform="gcc5",
+                rule="fbcode:foo:bar",
+                rule_type="my_rule",
+            ),
+            self.struct(
+                build_mode="dev",
+                compiler="clang",
+                package_name="some_name",
+                package_release="1",
+                package_version="some_version",
+                platform="gcc5",
+                rule="fbcode:foo:bar",
+                rule_type="my_rule",
+            ),
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

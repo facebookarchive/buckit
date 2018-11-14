@@ -676,7 +676,7 @@ class TestCase(unittest.TestCase):
             dedent(
                 """
                 load("@bazel_skylib//lib:new_sets.bzl", "sets")
-                core_tools_targets = sets.make([])
+                core_tools_targets = sets.make([("core", "awesome_tool")])
                 """
             ),
         )

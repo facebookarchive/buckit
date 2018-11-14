@@ -61,8 +61,8 @@ def import_macro_lib(path):
 
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
-build_info = import_macro_lib('build_info')
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
+load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
@@ -352,6 +352,7 @@ class Converter(object):
                 build_info.get_explicit_build_info(
                     base_path,
                     name,
+                    mode,
                     rule_type,
                     platform,
                     compiler))

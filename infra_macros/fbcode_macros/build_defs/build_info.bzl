@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_int")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice", "read_int")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 
 def _create_build_info(
@@ -93,6 +93,80 @@ def _get_build_info(package_name, name, rule_type, platform):
             user = native.read_config("build_info", "user", ""),
         )
 
+# Build info settings which affect rule keys.
+_ExplicitBuildInfo = provider(fields = [
+    "build_mode",
+    "compiler",
+    "package_name",
+    "package_release",
+    "package_version",
+    "platform",
+    "rule",
+    "rule_type",
+])
+
+_VALID_BUILD_INFO_MODES = ("full", "stable", "none")
+
+def _get_build_info_mode(base_path, name):
+    """
+    Return the build info style to use for the given rule.
+    """
+
+    # Make sure we're not using full build info when building core tools,
+    # otherwise we could introduce nondeterminism in rule keys.
+    if core_tools.is_core_tool(base_path, name):
+        return "stable"
+    return read_choice("fbcode", "build_info", _VALID_BUILD_INFO_MODES, default = "none")
+
+def _get_explicit_build_info(base_path, name, mode, rule_type, platform, compiler):
+    """
+    Return the build info which can/should affect rule keys (causing rebuilds
+    if it changes), and is passed into rules via rule-key-affecting parameters.
+    This is contrast to "implicit" build info, which must not affect rule keys
+    (e.g. build time, build user), to avoid spurious rebuilds.
+
+    Args:
+        base_path: The package of the rule. Used in metadata
+        name: The name of the rule. Used in metadata
+        mode: The mode as returned from `get_build_info_mode`
+        rule_type: The type of the rule/macro, used as metadata for build info
+        platform: The fbcode platform
+        compiler: The compiler used (e.g. gcc, clang)
+
+    Returns:
+        A `ExplicitBuildInfo` struct
+    """
+
+    if mode not in ("full", "stable"):
+        fail("Build mode must be one of 'full' or 'stable'")
+
+    # We consider package build info explicit, as we must re-build binaries if
+    # it changes, regardless of whether nothing else had changed (e.g.
+    # T22942388).
+    #
+    # However, we whitelist core tools and never set this explicitly, to avoid
+    # transitively trashing rule keys.
+    package_name = None
+    package_version = None
+    package_release = None
+    if mode == "full" and not core_tools.is_core_tool(base_path, name):
+        package_name = native.read_config("build_info", "package_name")
+        package_version = native.read_config("build_info", "package_version")
+        package_release = native.read_config("build_info", "package_release")
+
+    return _ExplicitBuildInfo(
+        package_name = package_name,
+        build_mode = config.get_build_mode(),
+        compiler = compiler,
+        package_release = package_release,
+        package_version = package_version,
+        platform = platform,
+        rule = "fbcode:{}:{}".format(base_path, name),
+        rule_type = rule_type,
+    )
+
 build_info = struct(
     get_build_info = _get_build_info,
+    get_build_info_mode = _get_build_info_mode,
+    get_explicit_build_info = _get_explicit_build_info,
 )
