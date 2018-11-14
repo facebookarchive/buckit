@@ -754,6 +754,58 @@ def _get_strip_mode(base_path, name):
         default = "none",
     )
 
+_VALID_SHLIB_INTERFACES = ("disabled", "enabled", "defined_only")
+
+def _read_shlib_interfaces(buck_platform):
+    return read_choice(
+        "cxx#" + buck_platform,
+        "shlib_interfaces",
+        _VALID_SHLIB_INTERFACES,
+    )
+
+def _get_binary_ldflags(base_path):
+    """
+    Return ldflags that should be added for binaries via various `.buckconfig` settings.
+
+    Args:
+        base_path: The package name
+        platform: The fbcode platform
+
+    Returns:
+        A list of extra ldflags that should be added.
+    """
+
+    ldflags = []
+
+    # If we're using TSAN, we need to build PIEs.
+    if sanitizers.get_sanitizer() == "thread":
+        ldflags.append("-pie")
+
+    # Remove unused section to reduce the code bloat in sanitizer modes
+    if sanitizers.get_sanitizer() != None:
+        ldflags.append("-Wl,--gc-sections")
+
+    # It's rare, but some libraries use variables defined in object files
+    # in the top-level binary.  This works as, when linking the binary, the
+    # linker sees this undefined reference in the dependent shared library
+    # and so makes sure to export this symbol definition to the binary's
+    # dynamic symbol table.  However, when using shared library interfaces
+    # in `defined_only` mode, undefined references are stripped from shared
+    # libraries, so the linker never knows to export these symbols to the
+    # binary's dynamic symbol table, and the binary fails to load at
+    # runtime, as the dynamic loader can't resolve that symbol.
+    #
+    # So, when linking a binary when using shared library interfaces in
+    # `defined_only` mode, pass `--export-dynamic` to the linker to force
+    # everything onto the dynamic symbol table.  Since this only affects
+    # object files from sources immediately owned by `cpp_binary` rules,
+    # this shouldn't have much of a performance issue.
+    buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+    if (_get_link_style() == "shared" and _read_shlib_interfaces(buck_platform) == "defined_only"):
+        ldflags.append("-Wl,--export-dynamic")
+
+    return ldflags
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -765,6 +817,7 @@ cpp_common = struct(
     exclude_from_auto_pch = _exclude_from_auto_pch,
     format_source_with_flags = _format_source_with_flags,
     format_source_with_flags_list = _format_source_with_flags_list,
+    get_binary_ldflags = _get_binary_ldflags,
     get_binary_link_deps = _get_binary_link_deps,
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_headers_from_sources = _get_headers_from_sources,
