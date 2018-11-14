@@ -589,7 +589,7 @@ class CppConverter(base.Converter):
         if cpp_rule_type != 'cpp_precompiled_header':
             attributes['srcs'], attributes['platform_srcs'] = formatted_srcs
         else:
-            attributes['srcs'] = self.without_platforms(formatted_srcs)
+            attributes['srcs'] = src_and_dep_helpers.without_platforms(formatted_srcs)
 
         for lib in (shared_system_deps or []):
             out_exported_ldflags.append('-l' + lib)

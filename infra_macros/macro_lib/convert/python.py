@@ -917,7 +917,7 @@ class PythonConverter(base.Converter):
         for vcollection, ver_srcs in all_versioned_srcs:
             out_srcs = collections.OrderedDict()
             out_resources = collections.OrderedDict()
-            non_platform_ver_srcs = self.without_platforms(
+            non_platform_ver_srcs = src_and_dep_helpers.without_platforms(
                 src_and_dep_helpers.format_source_map(ver_srcs))
             for dst, src in non_platform_ver_srcs.items():
                 if dst.endswith('.py') or dst.endswith('.so'):

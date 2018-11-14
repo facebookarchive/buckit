@@ -37,7 +37,8 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
     def test_get_parsed_source_name_works(self, root):
         self.assertSuccess(
             root.runUnitTests(
-                self.includes + [("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")],
+                self.includes
+                + [("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")],
                 [
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target("//foo/bar:baz=path/to/baz1.cpp"))',
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target(":baz=path/to/baz2.cpp"))',
@@ -444,4 +445,20 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         ]
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
+    @tests.utils.with_project()
+    def test_without_platforms(self, root):
+        commands = [
+            'src_and_dep_helpers.without_platforms(src_and_dep_helpers.PlatformParam(value=["foo"], platform_value=None))'
+        ]
 
+        bad_commands = [
+            'src_and_dep_helpers.without_platforms(src_and_dep_helpers.PlatformParam(value=["foo"], platform_value=["platform-foo"]))'
+        ]
+
+        expected = ["foo"]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), expected)
+        self.assertFailureWithMessage(
+            root.runUnitTests(self.includes, bad_commands),
+            "unexpected 'platform_value'",
+        )

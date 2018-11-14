@@ -427,6 +427,22 @@ def _restrict_repos(deps, repos = [
             fail('dep on restricted repo {}: "{}"'
                 .format(dep.repo, target_utils.target_to_label(dep)))
 
+def _without_platforms(platform_param):
+    """
+    Return the non-platform specific portion of `PlatformParam`
+
+    Fail if it contains any platform-specific values
+
+    Args:
+        platform_param: A `PlatformParam` struct
+
+    Returns:
+        Whatever is in the non-platform-specific part of the struct
+    """
+    if platform_param.platform_value:
+        fail("unexpected 'platform_value' in {}")
+    return platform_param.value
+
 src_and_dep_helpers = struct(
     PlatformParam = _PlatformParam,
     convert_build_target = _convert_build_target,
@@ -448,4 +464,5 @@ src_and_dep_helpers = struct(
     parse_source_list = _parse_source_list,
     parse_source_map = _parse_source_map,
     restrict_repos = _restrict_repos,
+    without_platforms = _without_platforms,
 )

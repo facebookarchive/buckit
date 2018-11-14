@@ -222,19 +222,6 @@ class Converter(object):
         else:
             return project
 
-    def without_platforms(self, formatted):  # type: PlatformParam[Any, List[Tuple[str, Any]]] -> Any
-        """
-        Drop platform-specific component of the fiven `PlatformParam`, erroring
-        out if it contained anything.
-        """
-
-        param, platform_param = formatted
-        if platform_param:
-            raise ValueError(
-                'unexpected platform sources: {!r}'.format(platform_param))
-
-        return param
-
     def merge_platform_deps(self, dst, src):
         for platform, deps in src.iteritems():
             dst.setdefault(platform, [])
