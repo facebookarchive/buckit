@@ -274,6 +274,58 @@ def _get_tp2_platform(base_path):
     # third-party-buck/<platform>/{build,tools}/<project>
     return base_path.split("/")[1]
 
+def _get_version_universe_name(universe):
+    return ",".join(["{}-{}".format(p, v) for p, v in sorted(universe.items())])
+
+def _get_version_universes_and_names():
+    return [
+        (_get_version_universe_name(universe), universe)
+        for universe in third_party_config["version_universes"]
+    ]
+
+_VERSION_UNIVERSES_AND_NAMES = _get_version_universes_and_names()
+
+def _version_universe_matches(universe_name, universe, constraints):
+    """
+    Return whether the given universe matches the given constraints.
+    """
+
+    for project, version in constraints:
+        # Look up the version universe's version of this project.
+        universe_version = universe.get(project)
+        if universe_version == None:
+            fail(
+                ("version universe {} has no version entry for {} when considering " +
+                 "constraints: {}").format(universe_name, project, constraints),
+            )
+
+        # If it's not the same, we don't match.
+        if version != universe_version:
+            return False
+
+    return True
+
+def _get_version_universe(constraints):
+    """
+    Find a version universe that matches the given constraints.
+
+    Note that because `constraints` can be a subset of a full universe, the first
+    universe that matches the subset will be selected.
+
+    Args:
+        constraints: A list of tuples of (<constraint name>, <version>)
+
+    Returns:
+        A universe string that can be read by buck natively. If no version could be
+        found, this function fails.
+    """
+
+    for (universe_name, universe) in _VERSION_UNIVERSES_AND_NAMES:
+        if _version_universe_matches(universe_name, universe, constraints):
+            return universe_name
+
+    fail("Cannot match a version universe to constraints: {}".format(constraints))
+
 third_party = struct(
     external_dep_target = _external_dep_target,
     get_build_path = _get_build_path,
@@ -286,6 +338,7 @@ third_party = struct(
     get_tp2_platform = _get_tp2_platform,
     get_tp2_project_name = _get_tp2_project_name,
     get_tp2_project_target = _get_tp2_project_target,
+    get_version_universe = _get_version_universe,
     is_tp2 = _is_tp2,
     is_tp2_src_dep = _is_tp2_src_dep,
     is_tp2_target = _is_tp2_target,

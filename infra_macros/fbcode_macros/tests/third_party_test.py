@@ -214,3 +214,20 @@ class ThirdPartyTest(tests.utils.TestCase):
             'third_party.get_tp2_platform("third-party-buck/some_plat/tools/foo")'
         ]
         self.assertSuccess(root.runUnitTests(self.includes, commands), "some_plat")
+
+    @tests.utils.with_project()
+    def test_version_universe_matches_works(self, root):
+        commands = [
+            'third_party.get_version_universe([("python", "2.7")])',
+            'third_party.get_version_universe([("python", "3.7")])',
+            'third_party.get_version_universe([("python", "2.7"), ("openssl", "1.1.0")])',
+            'third_party.get_version_universe([("python", "3.7"), ("openssl", "1.1.0")])',
+        ]
+
+        expected = [
+            "openssl-1.0.2,python-2.7",
+            "openssl-1.0.2,python-3.7",
+            "openssl-1.1.0,python-2.7",
+            "openssl-1.1.0,python-3.7",
+        ]
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

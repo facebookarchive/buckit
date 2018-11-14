@@ -418,8 +418,7 @@ class PythonConverter(base.Converter):
         return self.read_string('python#' + platform, 'interpreter')
 
     def get_version_universe(self, python_version):
-        return super(PythonConverter, self).get_version_universe(
-            [('python', python_version.vstring)])
+        return third_party.get_version_universe([('python', python_version.vstring)])
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:

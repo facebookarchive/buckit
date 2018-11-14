@@ -729,6 +729,12 @@ class TestCase(unittest.TestCase):
                         }},
                     }},
                 }},
+                "version_universes": [
+                    {{"python": "2.7", "openssl": "1.0.2"}},
+                    {{"python": "3.7", "openssl": "1.0.2"}},
+                    {{"python": "2.7", "openssl": "1.1.0"}},
+                    {{"python": "3.7", "openssl": "1.1.0"}},
+                ],
             }}
         """.format(
                 current_arch=current_arch, other_arch=other_arch

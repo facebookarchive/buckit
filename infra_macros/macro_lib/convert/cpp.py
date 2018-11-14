@@ -34,6 +34,7 @@ load("@fbcode_macros//build_defs:cuda.bzl", "cuda")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:modules.bzl", module_utils="modules")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
@@ -900,7 +901,7 @@ class CppConverter(base.Converter):
 
         if is_binary and versions != None:
             attributes['version_universe'] = (
-                self.get_version_universe(versions.items()))
+                third_party.get_version_universe(versions.items()))
 
         return [Rule(buck_rule_type, attributes)] + extra_rules
 

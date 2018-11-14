@@ -862,47 +862,6 @@ class Converter(object):
 
         return rules
 
-    def version_universe_matches(self, universe, constraints):
-        """
-        Return whether the given universe matches the given constraints.
-        """
-
-        for project, version in constraints:
-
-            # Look up the version universes version of this project.
-            universe_version = universe.get(project)
-            if universe_version is None:
-                raise ValueError(
-                    'version universe {!r} has no version entry for {!r} '
-                    'when considering constraints: {!r}'
-                    .format(
-                        self.get_version_universe_name(universe),
-                        project,
-                        constraints))
-
-            # If it's not the same, we don't match.
-            if version != universe_version:
-                return False
-
-        return True
-
-    def get_version_universe_name(self, universe):
-        return ','.join('{}-{}'.format(p, v)
-                        for p, v in sorted(universe.items()))
-
-    def get_version_universe(self, constraints):
-        """
-        Find a version universe that matches the given constraints.
-        """
-
-        for universe in self._context.third_party_config['version_universes']:
-            if self.version_universe_matches(universe, constraints):
-                return self.get_version_universe_name(universe)
-
-        raise ValueError(
-            'cannot match a version universe to constraints: {!r}'
-            .format(constraints))
-
     def get_python_platform(self, platform, major_version, flavor=""):
         """
         Constructs a Buck Python platform string from the given parameters.
