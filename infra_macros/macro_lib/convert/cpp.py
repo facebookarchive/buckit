@@ -88,43 +88,6 @@ class CppConverter(base.Converter):
             for hext in cxx_sources.HEADER_SUFFIXES])
         return headers
 
-    def get_sanitizer_binary_ldflags(self):
-        """
-        Return any linker flags to use when linking binaries with sanitizer
-        support.
-        """
-
-        sanitizer = sanitizers.get_sanitizer()
-        assert sanitizer != None
-
-        flags = []
-
-        if sanitizer.startswith('address'):
-            flags.append(
-                '-Wl,--dynamic-list='
-                '$(location fbcode//tools/build/buck:asan_dynamic_list.txt)')
-
-        return flags
-
-    def get_sanitizer_non_binary_deps(self):
-        """
-        Return deps needed when using sanitizers.
-        """
-
-        sanitizer = sanitizers.get_sanitizer()
-        assert sanitizer != None
-
-        deps = []
-
-        # We link ASAN weak stub symbols into every DSO so that we don't leave
-        # undefined references to *SAN symbols at shared library link time,
-        # which allows us to pass `--no-undefined` to the linker to prevent
-        # undefined symbols.
-        if (sanitizer.startswith('address') and
-                cpp_common.get_link_style() == 'shared'):
-            deps.append(target_utils.RootRuleTarget('tools/build/sanitizers', 'asan-stubs'))
-
-        return deps
 
     def convert_rule(
             self,
@@ -492,11 +455,11 @@ class CppConverter(base.Converter):
         # Add non-binary sanitizer dependencies.
         if (not is_binary and
                 sanitizers.get_sanitizer() != None):
-            dependencies.extend(self.get_sanitizer_non_binary_deps())
+            dependencies.extend(cpp_common.get_sanitizer_non_binary_deps())
 
         if is_binary:
             if sanitizers.get_sanitizer() != None:
-                out_ldflags.extend(self.get_sanitizer_binary_ldflags())
+                out_ldflags.extend(cpp_common.get_sanitizer_binary_ldflags())
             out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
             if (native.read_config('fbcode', 'gdb-index') and
                   not core_tools.is_core_tool(base_path, name)):

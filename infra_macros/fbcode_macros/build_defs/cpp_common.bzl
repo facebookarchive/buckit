@@ -586,6 +586,51 @@ def _split_matching_extensions_and_other(srcs, exts):
 
     return (matches, leftovers)
 
+_ASAN_SANITIZER_BINARY_LDFLAGS = [
+    "-Wl,--dynamic-list=$(location fbcode//tools/build/buck:asan_dynamic_list.txt)",
+]
+
+def _get_sanitizer_binary_ldflags():
+    """
+    Return any linker flags to use when linking binaries with sanitizer support
+
+    Returns:
+        A list of linker flags to use for the configured sanitizer
+    """
+
+    sanitizer = sanitizers.get_sanitizer()
+    if sanitizer == None:
+        fail("Cannot get sanitizer dependencies if sanitizer is disabled")
+    if sanitizer.startswith("address"):
+        return _ASAN_SANITIZER_BINARY_LDFLAGS
+    else:
+        return []
+
+_ASAN_SANITIZER_NON_BINARY_DEPS = [
+    target_utils.RootRuleTarget("tools/build/sanitizers", "asan-stubs"),
+]
+
+def _get_sanitizer_non_binary_deps():
+    """
+    Return dependencies for library rules for the configured sanitizer / link style
+
+    Returns:
+        A list of RootRuleTarget objects
+    """
+
+    sanitizer = sanitizers.get_sanitizer()
+    if sanitizer == None:
+        fail("Cannot get sanitizer dependencies if sanitizer is disabled")
+
+    # We link ASAN weak stub symbols into every DSO so that we don't leave
+    # undefined references to *SAN symbols at shared library link time,
+    # which allows us to pass `--no-undefined` to the linker to prevent
+    # undefined symbols.
+    if (sanitizer.startswith("address") and _get_link_style() == "shared"):
+        return _ASAN_SANITIZER_NON_BINARY_DEPS
+    else:
+        return []
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -601,6 +646,8 @@ cpp_common = struct(
     get_fbcode_default_pch = _get_fbcode_default_pch,
     get_implicit_deps = _get_implicit_deps,
     get_link_style = _get_link_style,
+    get_sanitizer_binary_ldflags = _get_sanitizer_binary_ldflags,
+    get_sanitizer_non_binary_deps = _get_sanitizer_non_binary_deps,
     is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
     split_matching_extensions_and_other = _split_matching_extensions_and_other,
