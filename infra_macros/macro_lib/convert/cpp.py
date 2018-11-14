@@ -21,7 +21,9 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/cxx_sources.py".format(macro_root), "cxx_sources")
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:lex.bzl", "lex", "LEX_EXTS", "LEX_LIB")
@@ -69,25 +71,6 @@ class CppConverter(base.Converter):
     def get_fbconfig_rule_type(self):
         # Only kept for converter.py right now. Will be removed shortly
         return self._rule_type
-
-    def get_headers_from_sources(self, base_path, srcs):
-        """
-        Return the headers likely associated with the given sources.
-        """
-
-        source_exts = cpp_common.SOURCE_EXTS  # use a local for faster lookups in a loop
-        # Check for // in case this src is a rule
-        split_srcs = (
-            paths.split_extension(src)
-            for src in srcs
-            if '//' not in src and not src.startswith(':'))
-
-        headers = native.glob([
-            base + hext
-            for base, ext in split_srcs if ext in source_exts
-            for hext in cxx_sources.HEADER_SUFFIXES])
-        return headers
-
 
     def convert_rule(
             self,
@@ -579,9 +562,12 @@ class CppConverter(base.Converter):
         # x in automatically inferred headers.
         auto_headers = get_auto_headers(auto_headers)
         if auto_headers == AutoHeaders.SOURCES:
-            src_headers = set(self.get_headers_from_sources(base_path, srcs))
-            src_headers -= set(out_headers)
-            if isinstance(out_headers, list):
+            src_headers = sets.make(cpp_common.get_headers_from_sources(srcs))
+            src_headers = sets.to_list(sets.difference(src_headers, sets.make(out_headers)))
+            # Looks simple, right? But if a header is explicitly added in, say, a
+            # dictionary mapping, we want to make sure to keep the original mapping
+            # and drop the F -> F mapping
+            if types.is_list(out_headers):
                 out_headers.extend(sorted(src_headers))
             else:
                 # Let it throw AttributeError if update() can't be found neither

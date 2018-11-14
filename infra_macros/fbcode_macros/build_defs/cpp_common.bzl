@@ -41,6 +41,41 @@ _HEADER_EXTS = (
     ".cuh",
 )
 
+# These header suffixes are used to logically group C/C++ source (e.g.
+# `foo/Bar.cpp`) with headers with the following suffixes (e.g. `foo/Bar.h` and
+# `foo/Bar-inl.tcc`), such that the source provides all implementation for
+# methods/classes declared in the headers.
+#
+# This is important for a couple reasons:
+# 1) Automatic dependencies: Tooling can use this property to automatically
+#    manage TARGETS dependencies by extracting `#include` references in sources
+#    and looking up the rules which "provide" them.
+# 2) Modules: This logical group can be combined into a standalone C/C++ module
+#    (when such support is available).
+_HEADER_SUFFIXES = (
+    ".h",
+    ".hpp",
+    ".tcc",
+    "-inl.h",
+    "-inl.hpp",
+    "-inl.tcc",
+    "-defs.h",
+    "-defs.hpp",
+    "-defs.tcc",
+    "If.h",
+    "If.tcc",
+    "If-inl.h",
+    "If-inl.tcc",
+    "Impl.h",
+    "Impl.tcc",
+    "Impl-inl.h",
+    "Impl-inl.tcc",
+    "Details.h",
+    "Details.tcc",
+    "Details-inl.h",
+    "Details-inl.tcc",
+)
+
 # PLEASE DON'T UPDATE WITHOUT REACHING OUT TO FBCODE FOUNDATION FIRST.
 # Using arbitrary linker flags in libraries can cause unexpected issues
 # for upstream dependencies, so we make sure to restrict to a safe(r)
@@ -660,6 +695,31 @@ def _get_platform_flags_from_arch_flags(arch_flags):
         ),
     )
 
+def _get_headers_from_sources(srcs):
+    """
+    Return the headers likely associated with the given sources
+
+    Args:
+        srcs: A list of strings representing files or build targets
+
+    Returns:
+        A list of header files corresponding to the list of sources. These files are
+        validated to exist based on glob()
+    """
+    split_srcs = [
+        paths.split_extension(src)
+        for src in srcs
+        if "//" not in src and not src.startswith(":")
+    ]
+
+    # For e.g. foo.cpp grab a glob on foo.h, foo-inl.h, etc
+    return native.glob([
+        base + header_ext
+        for base, ext in split_srcs
+        if ext in _SOURCE_EXTS
+        for header_ext in _HEADER_SUFFIXES
+    ])
+
 cpp_common = struct(
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
@@ -673,6 +733,7 @@ cpp_common = struct(
     format_source_with_flags_list = _format_source_with_flags_list,
     get_binary_link_deps = _get_binary_link_deps,
     get_fbcode_default_pch = _get_fbcode_default_pch,
+    get_headers_from_sources = _get_headers_from_sources,
     get_implicit_deps = _get_implicit_deps,
     get_link_style = _get_link_style,
     get_platform_flags_from_arch_flags = _get_platform_flags_from_arch_flags,
