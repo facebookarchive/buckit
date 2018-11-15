@@ -107,7 +107,7 @@ genrule(
     cmd = "buck --version | awk {'print $3'} > $OUT",
 )
 
-python_library(
+fb_native.python_library(
     name = "utils",
     srcs = [
         "utils.py",
