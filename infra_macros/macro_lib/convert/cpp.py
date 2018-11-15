@@ -122,7 +122,8 @@ class CppConverter(base.Converter):
             modules=None,
             overridden_link_style=None,
             rule_specific_deps=None,
-            rule_specific_preprocessor_flags=None):
+            rule_specific_preprocessor_flags=None,
+            tests=None):
         attributes = cpp_common.convert_cpp(
             name,
             cpp_rule_type,
@@ -190,6 +191,7 @@ class CppConverter(base.Converter):
             overridden_link_style=overridden_link_style,
             rule_specific_deps=rule_specific_deps,
             rule_specific_preprocessor_flags=rule_specific_preprocessor_flags,
+            tests=tests,
         )
         return [Rule(buck_rule_type, attributes)]
 

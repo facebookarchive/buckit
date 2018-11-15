@@ -51,7 +51,6 @@ load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
-
 def split_matching_extensions(srcs, exts):
     """
     Split the lists/dict srcs/headers on the extensions.
@@ -275,25 +274,32 @@ class Converter(base.Converter):
         src,
         python_deps=(),
         python_external_deps=(),
-        cpp_compiler_flags=()
+        cpp_compiler_flags=(),
+        raw_deps=(),
+        visibility=None,
+        name=None,
+        tests=None,
     ):
-        name = os.path.join(parent, module_path)
-        rules = (
-            self.cpp_python_extension.convert(
-                base_path,
-                name=os.path.join(parent, module_path),
-                base_module=package,
-                module_name=os.path.basename(module_path),
-                srcs=[src],
-                deps=(
-                    [':' + parent + self.LIB_SUFFIX] +
-                    list(python_deps)
-                ),
-                external_deps=tuple(
-                    self.py_normalize_externals(python_external_deps)
-                ),
-                compiler_flags=['-w'] + list(cpp_compiler_flags),
-            ))
+        typing_rule_name_prefix = os.path.join(parent, module_path)
+        name = name or typing_rule_name_prefix
+        rules = self.cpp_python_extension.convert(
+            base_path,
+            name=name,
+            base_module=package,
+            module_name=os.path.basename(module_path),
+            srcs=[src],
+            deps=(
+                [':' + parent + self.LIB_SUFFIX] +
+                list(python_deps)
+            ) + list(raw_deps),
+            external_deps=tuple(
+                self.py_normalize_externals(python_external_deps)
+            ),
+            compiler_flags=['-w'] + list(cpp_compiler_flags),
+            visibility=visibility,
+            tests=tests,
+            typing_rule_name_prefix=typing_rule_name_prefix,
+        )
         return ':' + name, rules
 
     def gen_api_header(
@@ -408,6 +414,12 @@ class Converter(base.Converter):
         if isinstance(headers, unicode) and api:
             raise ValueError('"api" and AutoHeaders can not be used together')
 
+        def _get_visibility():
+            if visibility and 'PUBLIC' not in visibility:
+                return ("//" + base_path + ":", ) + tuple(visibility)
+            else:
+                return visibility
+
         def set_visibility(rule):
             if visibility:
                 # Make it harder to break subrules
@@ -454,9 +466,9 @@ class Converter(base.Converter):
 
         api_headers = []
         if pyx_srcs:
-            first_pyx = None
             extensions = []
-            for pyx_src, pyx_dst in pyx_srcs.items():
+            items = pyx_srcs.items()
+            def _create_sos(pyx_src, pyx_dst, main_name, visibility, extra_deps, update_extensions, tests):
                 pyx_dst = self.get_source_with_path(package, pyx_dst)
                 module_name, module_path = self.get_module_name_and_path(
                     package, pyx_dst)
@@ -477,19 +489,18 @@ class Converter(base.Converter):
                 so_target, so_rules = self.gen_extension_rule(
                     base_path, name, module_path, os.path.dirname(pyx_dst),
                     src_target, python_deps, python_external_deps,
-                    cpp_compiler_flags
+                    cpp_compiler_flags, raw_deps=extra_deps, visibility=visibility,
+                    name=main_name, tests=tests,
                 )
 
                 # The fist extension will not be a sub extension
                 # So we can have this rule be a cxx_python_extension
                 # and not be an empty .so
-                if not first_pyx:
-                    first_pyx = so_rules[0]
-                else:
+
+                if update_extensions:
                     extensions.append(so_target)
-                    yield set_visibility(so_rules[0])
-                for remaining_so_rule in so_rules[1:]:
-                    yield remaining_so_rule
+                for rule in so_rules:
+                    yield rule
 
                 # Generate _api.h header rules.
                 api_target, api_rule = self.gen_api_header(
@@ -499,23 +510,43 @@ class Converter(base.Converter):
                     yield set_visibility(api_rule)
                     api_headers.append(api_target)
 
-            # The first pyx will be the named target and it will depend on all
-            # the other generated extensions
-            first_pyx.attributes['name'] = name
-            first_pyx.attributes['deps'].extend(extensions)
-            # Don't forget to depend on the .so from our cython deps
-            first_pyx.attributes['deps'].extend(deps)
-            first_pyx.attributes['deps'].extend(external_deps)
+            subrule_visibility = _get_visibility()
+            for pyx_src, pyx_dst in items[1:]:
+                for rule in _create_sos(
+                        pyx_src,
+                        pyx_dst,
+                        main_name=None,
+                        visibility=subrule_visibility,
+                        extra_deps=(),
+                        update_extensions=True,
+                        tests=None):
+                    yield rule
 
+            typing_target = None
             if types:
                 typing_target, typing_rules = self.gen_typing_target(
                     name, base_path, package, types, typing_options
                 )
                 for rule in typing_rules:
                     yield set_visibility(rule)
-                first_pyx.attributes['deps'].append(typing_target)
 
-            yield set_tests(set_visibility(first_pyx))
+            pyx_src, pyx_dst = items[0]
+            first_pyx_deps = extensions + deps + external_deps
+            if typing_target:
+                first_pyx_deps.append(typing_target)
+
+            # The first pyx will be the named target and it will depend on all
+            # the other generated extensions
+            # Don't forget to depend on the .so from our cython deps
+            for rule in _create_sos(
+                    pyx_src,
+                    pyx_dst,
+                    main_name=name,
+                    visibility=visibility,
+                    extra_deps=first_pyx_deps,
+                    update_extensions=False,
+                    tests=tests):
+                yield rule
         else:
             # gen an empty cpp_library instead, so we don't get an empty .so
             # this allows use to use cython_library as a way to gather up
