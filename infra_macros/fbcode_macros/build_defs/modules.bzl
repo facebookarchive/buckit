@@ -193,12 +193,23 @@ def _gen_module(
         labels = ["generated"],
     )
 
+    # We root the moduel headers into a subdir inside the genrule's sources root
+    # so that it's trivial to symlink a header directory.
+    #
+    # NOTE: We post-process the built module in-place to update the modular home
+    # dir (see comment below).  As the replacement home dir length must be
+    # smaller than the new one, we also adjust this subdir name to make sure
+    # there's enough padding to perform the replacement (e.g. this was necessary
+    # initially for platform007, as the platform name was shorter than it's
+    # predecessor, gcc-5-glibc-2.23).
+    header_subdir = "module_header_dir"
+
     # Make headers, either from a directory or a map, available to the command
     # in a new "headers" directory.
     if headers != None:
-        srcs = {paths.join("module_headers", h): s for h, s in headers.items()}
+        srcs = {paths.join(header_subdir, h): s for h, s in headers.items()}
     else:
-        srcs = {"module_headers": header_dir}
+        srcs = {header_subdir: header_dir}
 
     commands = [
         "set -euo pipefail",
@@ -207,6 +218,9 @@ def _gen_module(
         # C/C++ compilers from the root of fbcode, so search up the dir
         # tree to find it.
         "while test ! -r .projectid -a `pwd` != / ; do cd ..; done",
+
+        # The relatie path to the module home directory.
+        'MODULE_HOME="${{SRCDIR//$PWD\//}}/"{}'.format(shell.quote(header_subdir)),
 
         # Set up the args for module compilation.
         "args=()",
@@ -229,8 +243,8 @@ def _gen_module(
         # header dir implicitly via an `-I...` flag (for implicit searches
         # for headers specified in the module map) and the
         # `module.modulemap` as the main input arg.
-        'args+=("-I$SRCDIR/module_headers")',
-        'args+=("$SRCDIR/module_headers/module.modulemap")',
+        'args+=("-I$MODULE_HOME")',
+        'args+=("$MODULE_HOME/module.modulemap")',
 
         # Output via "-" and redirect to the output file rather than going
         # directly to the output file.  This makes clang avoid embedding
@@ -248,10 +262,9 @@ def _gen_module(
         "function compile() {",
         # Run the command and filter stderr to fixup header paths by dropping
         # the obscure genrule sandbox directory.
-        '  echo "\\$(ls -i "$SRCDIR/module_headers/module.modulemap" | awk \'{ print $1 }\')" > "$TMP/$1.inode"',
+        '  echo "\\$(ls -i "$MODULE_HOME/module.modulemap" | awk \'{ print $1 }\')" > "$TMP/$1.inode"',
         '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP/$1".tmp \\',
-        '    | >&2 sed "s|${{SRCDIR//$PWD\//}}/module_headers/|{}|g"'
-            .format(header_prefix),
+        '    | >&2 sed "s|$MODULE_HOME/|"{}"|g"'.format(shell.quote(header_prefix)),
         '  mv -nT "$TMP/$1".tmp "$TMP/$1"',
         "}",
 
@@ -307,7 +320,7 @@ def _gen_module(
     # Postprocess the built module and update it with the new module home.
     if override_module_home != None:
         commands.extend([
-            'OLD="${SRCDIR//$PWD\//}"/module_headers',
+            'OLD="$MODULE_HOME"',
             'VER="\$(echo "$OLD" | grep -Po ",v[a-f0-9]{7}(?=__srcs/)"; true)"',
             'NEW="\$(printf {} "$VER")"'
                 .format(shell.quote(override_module_home)),

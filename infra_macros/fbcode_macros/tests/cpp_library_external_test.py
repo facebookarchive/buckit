@@ -17,6 +17,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
     module_cmd = (
         r"""set -euo pipefail\n"""
         r"""while test ! -r .projectid -a `pwd` != / ; do cd ..; done\n"""
+        r"""MODULE_HOME=\"${SRCDIR//$PWD\\//}/\"\'module_header_dir\'\n"""
         r"""args=()\n"""
         r"""args+=($(cxx))\n"""
         r"""args+=($(cxxppflags :MagickCore-module-helper))\n"""
@@ -26,16 +27,16 @@ class CppLibraryExternalTest(tests.utils.TestCase):
         r"""args+=(\"-fmodule-name=\"\'third-party//ImageMagick:MagickCore\')\n"""
         r"""args+=(\"-x\" \"c++-header\")\n"""
         r"args+=(\"-Xclang\" \"-fno-validate-pch\")\n"
-        r"""args+=(\"-I$SRCDIR/module_headers\")\n"""
-        r"""args+=(\"$SRCDIR/module_headers/module.modulemap\")\n"""
+        r"""args+=(\"-I$MODULE_HOME\")\n"""
+        r"""args+=(\"$MODULE_HOME/module.modulemap\")\n"""
         r"""args+=(\"-o\" \"-\")\n"""
         r"""for i in \"${!args[@]}\"; do\n"""
         r"""  args[$i]=${args[$i]//$PWD\\//}\n"""
         r"""done\n"""
         r"""function compile() {\n"""
-        r"""  echo \"\\$(ls -i \"$SRCDIR/module_headers/module.modulemap\" | awk \'{ print $1 }\')\" > \"$TMP/$1.inode\"\n"""
+        r"""  echo \"\\$(ls -i \"$MODULE_HOME/module.modulemap\" | awk \'{ print $1 }\')\" > \"$TMP/$1.inode\"\n"""
         r"""  (\"${args[@]}\" 3>&1 1>&2 2>&3 3>&-) 2>\"$TMP/$1\".tmp \\\n"""
-        r"""    | >&2 sed \"s|${SRCDIR//$PWD\\//}/module_headers/|third-party-buck/gcc5/build/ImageMagick/include/ImageMagick/|g\"\n"""
+        r"""    | >&2 sed \"s|$MODULE_HOME/|\"\'third-party-buck/gcc5/build/ImageMagick/include/ImageMagick/\'\"|g\"\n"""
         r"""  mv -nT \"$TMP/$1\".tmp \"$TMP/$1\"\n"""
         r"""}\n"""
         r"""! { compile prev2.pcm; compile prev1.pcm; } 2>/dev/null\n"""
@@ -233,7 +234,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
                   ],
                   out = "module.pcm",
                   srcs = {{
-                    "module_headers": "include/ImageMagick",
+                    "module_header_dir": "include/ImageMagick",
                   }},
                   visibility = [
                     "//third-party-buck/gcc5/build/ImageMagick:MagickCore",
