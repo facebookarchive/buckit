@@ -322,7 +322,7 @@ def _format_source_with_flags_list(srcs_with_flags):
         )
     )
 
-    return src_and_dep_helpers.PlatformParam(out_srcs, out_platform_srcs)
+    return src_and_dep_helpers.PlatformParam(value = out_srcs, platform_value = out_platform_srcs)
 
 def _normalize_dlopen_enabled(dlopen_enabled):
     """
@@ -1102,7 +1102,6 @@ def _convert_cpp(
     base_path = native.package_name()
     visibility = get_visibility(visibility, name)
 
-    # NOTE: Changed this from isinstance
     if not (is_list(compiler_flags) or is_tuple(compiler_flags)):
         fail(
             "Expected compiler_flags to be a list or a tuple, got {0!r} instead."
@@ -1175,7 +1174,7 @@ def _convert_cpp(
     out_modular_headers = True
 
     # Check the global, build mode default.
-    global_modular_headers = read_bool("cxx", "modular_headers_default", default = None)
+    global_modular_headers = read_bool("cxx", "modular_headers_default", required = False)
     if global_modular_headers != None:
         out_modular_headers = global_modular_headers
 
@@ -1193,7 +1192,7 @@ def _convert_cpp(
     out_modules = True
 
     # Check the global, build mode default.
-    global_modules = read_bool("cxx", "modules_default", default = None)
+    global_modules = read_bool("cxx", "modules_default", required = False)
     if global_modules != None:
         out_modules = global_modules
 
@@ -1542,11 +1541,12 @@ def _convert_cpp(
         out_headers.extend(
             src_and_dep_helpers.convert_source_list(base_path, headers),
         )
-    elif isinstance(headers, dict):
-        headers_iter = headers.iteritems()
+        # TODO(pjameson): hasattr is for old python code calling with dictionary-like things.
+
+    elif is_dict(headers) or hasattr(headers, "items"):
         converted = {
             k: src_and_dep_helpers.convert_source(base_path, v)
-            for k, v in headers_iter
+            for k, v in headers.items()
         }
 
         if is_list(out_headers) or is_tuple(out_headers):
@@ -1578,11 +1578,12 @@ def _convert_cpp(
             (known_warnings and
              src_and_dep_helpers.get_parsed_source_name(src) in known_warnings)):
             flags = ["-Wno-error"]
-        out_srcs.append(_SourceWithFlags(src, flags))
+        out_srcs.append(_SourceWithFlags(src = src, flags = flags))
 
     formatted_srcs = _format_source_with_flags_list(out_srcs)
     if cpp_rule_type != "cpp_precompiled_header":
-        attributes["srcs"], attributes["platform_srcs"] = formatted_srcs
+        attributes["srcs"] = formatted_srcs.value
+        attributes["platform_srcs"] = formatted_srcs.platform_value
     else:
         attributes["srcs"] = src_and_dep_helpers.without_platforms(formatted_srcs)
 

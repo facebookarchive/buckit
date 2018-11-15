@@ -368,22 +368,6 @@ class CppUnittestConverter(CppConverter):
             **kwargs
         )
 
-class CppBenchmarkConverter(CppConverter):
-    def __init__(self, context):
-        super(CppBenchmarkConverter, self).__init__(context, 'cpp_benchmark')
-
-    def convert(self, *args, **kwargs):
-        return super(CppBenchmarkConverter, self).convert(
-            cpp_rule_type = 'cpp_benchmark',
-            buck_rule_type = 'cxx_binary',
-            is_library = False,
-            is_buck_binary = True,
-            is_test = False,
-            is_deployable = True,
-            *args,
-            **kwargs
-        )
-
 class CppNodeExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppNodeExtensionConverter, self).__init__(context, 'cpp_node_extension')

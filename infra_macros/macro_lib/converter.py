@@ -57,6 +57,7 @@ load("@fbcode_macros//build_defs:antlr3_srcs.bzl", "antlr3_srcs")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
+load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
@@ -157,7 +158,6 @@ def convert(context, base_path, rule):
         cpp.CppLibraryConverter(context),
         cpp.CppBinaryConverter(context),
         cpp.CppUnittestConverter(context),
-        cpp.CppBenchmarkConverter(context),
         cpp.CppPrecompiledHeaderConverter(context),
         cpp.CppPythonExtensionConverter(context),
         cpp.CppJavaExtensionConverter(context),
@@ -248,6 +248,7 @@ def convert(context, base_path, rule):
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
         'cpp_library_external': cpp_library_external,
+        'cpp_benchmark': cpp_benchmark,  # noqa F821
         'd_library_external': d_library_external,
     }
 
