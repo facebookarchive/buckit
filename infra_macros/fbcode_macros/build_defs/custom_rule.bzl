@@ -4,7 +4,7 @@ load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
-load("@fbcode_macros//build_defs:common_paths.bzl", "get_gen_path")
+load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 _ERROR_BAD_GEN_FILES = ("custom_rule(): {}:{}: output_gen_files and " +
@@ -39,7 +39,7 @@ def get_project_root_from_gen_dir():
     """
 
     # paths.relativize doesn't work with things that traverse upward...
-    return ".." + get_gen_path().count("/") * "/.."
+    return ".." + common_paths.get_gen_path().count("/") * "/.."
 
 def _create_main_rule(
         name,

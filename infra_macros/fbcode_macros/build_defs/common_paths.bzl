@@ -9,10 +9,15 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-def get_buck_out_path():
+def _get_buck_out_path():
     """ Return the project-relative buck-out path """
     return native.read_config("project", "buck_out", "buck-out")
 
-def get_gen_path():
+def _get_gen_path():
     """ Get the project-relative buck-out/gen path """
-    return paths.join(get_buck_out_path(), "gen")
+    return paths.join(_get_buck_out_path(), "gen")
+
+common_paths = struct(
+    get_buck_out_path = _get_buck_out_path,
+    get_gen_path = _get_gen_path,
+)

@@ -7,6 +7,7 @@ load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_hea
 load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
+load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
@@ -1825,8 +1826,8 @@ def _convert_cpp(
             # fixing up the embedded module home location to be the header
             # symlink tree.
             override_module_home = (
-                "buck-out/{}/gen/{}/{}#header-mode-symlink-tree-with-header-map,headers%s"
-                    .format(config.get_build_mode(), base_path, name)
+                "{}/{}/{}#header-mode-symlink-tree-with-header-map,headers%s"
+                    .format(common_paths.get_gen_path(), base_path, name)
             ),
             headers = out_headers,
             flags = module_flags,

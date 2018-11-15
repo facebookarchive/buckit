@@ -11,18 +11,13 @@ import tests.utils
 
 
 class CommonPathTest(tests.utils.TestCase):
-    includes = [
-        (
-            "@fbcode_macros//build_defs:common_paths.bzl",
-            "get_buck_out_path",
-            "get_gen_path",
-        )
-    ]
+    includes = [("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")]
 
     @tests.utils.with_project()
     def test_returns_correct_paths_with_default(self, root):
         result = root.runUnitTests(
-            self.includes, ["get_buck_out_path()", "get_gen_path()"]
+            self.includes,
+            ["common_paths.get_buck_out_path()", "common_paths.get_gen_path()"],
         )
         self.assertSuccess(result, "buck-out", "buck-out/gen")
 
@@ -30,6 +25,7 @@ class CommonPathTest(tests.utils.TestCase):
     def test_returns_correct_paths_with_config(self, root):
         root.updateBuckconfig("project", "buck_out", "buck-out/dev")
         result = root.runUnitTests(
-            self.includes, ["get_buck_out_path()", "get_gen_path()"]
+            self.includes,
+            ["common_paths.get_buck_out_path()", "common_paths.get_gen_path()"],
         )
         self.assertSuccess(result, "buck-out/dev", "buck-out/dev/gen")
