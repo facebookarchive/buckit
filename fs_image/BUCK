@@ -1,4 +1,10 @@
 python_library(
+    name = "common",
+    srcs = ["common.py"],
+    base_module = "",
+)
+
+python_library(
     name = "testlib_temp_subvolumes",
     srcs = [
         "tests/temp_subvolumes.py",
@@ -15,6 +21,7 @@ python_library(
     name = "subvol_utils",
     srcs = ["subvol_utils.py"],
     base_module = "",
+    deps = [":common"],
 )
 
 python_unittest(

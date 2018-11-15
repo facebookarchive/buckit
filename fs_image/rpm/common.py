@@ -1,23 +1,16 @@
 #!/usr/bin/env python3
 'Utilities to make Python systems programming more palatable.'
 import hashlib
-import logging
 import os
-import subprocess
 import stat
 
 from typing import AnyStr, NamedTuple
 
-
-def get_file_logger(py_path):
-    return logging.getLogger(os.path.basename(py_path))
-
-
-def init_logging(*, debug: bool=False):
-    logging.basicConfig(
-        format='%(levelname)s %(name)s %(asctime)s %(message)s',
-        level=logging.DEBUG if debug else logging.INFO,
-    )
+# Hide the fact that some of our dependencies aren't in `rpm` any more, the
+# `rpm` library still imports them from `rpm.common`.
+from common import (  # noqa: F401
+    get_file_logger, init_logging, check_popen_returncode,
+)
 
 
 # Bite me, Python3.
@@ -72,21 +65,6 @@ def set_new_key(d, k, v):
     if k in d:
         raise KeyError(f'{k} was already set')
     d[k] = v
-
-
-def check_popen_returncode(proc: subprocess.Popen):
-    if proc.returncode != 0:  # pragma: no cover
-        # Providing a meaningful coverage test for this is annoying, so I just
-        # tested manually:
-        #   >>> import subprocess
-        #   >>> raise subprocess.CalledProcessError(returncode=5, cmd=['a'])
-        #   Traceback (most recent call last):
-        #     File "<stdin>", line 1, in <module>
-        #   subprocess.CalledProcessError: Command '['a']' returned non-zero
-        #   exit status 5.
-        raise subprocess.CalledProcessError(
-            returncode=proc.returncode, cmd=proc.args,
-        )
 
 
 class Checksum(NamedTuple):

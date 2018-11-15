@@ -8,6 +8,7 @@ python_library(
     name = "common",
     srcs = ["common.py"],
     base_module = "rpm",
+    deps = ["//fs_image:common"],
 )
 
 # NB: For anything that runs at Facebook, add `facebook:db_connection` to
