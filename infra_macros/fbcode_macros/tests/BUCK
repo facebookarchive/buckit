@@ -1,12 +1,11 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(
     "@fbcode_macros//tests:skylark_integration_test.bzl",
     "skylark_integration_test",
-    "target_to_resource_path",
     "targets_to_resource_paths",
 )
 
 BUILD_DEFS = [
+    "fbcode_macros//build_defs:auto_headers.bzl",
     "fbcode_macros//build_defs:auto_pch_blacklist.bzl",
     "fbcode_macros//build_defs:antlr3_srcs.bzl",
     "fbcode_macros//build_defs:allocators.bzl",
@@ -89,6 +88,7 @@ BUILD_DEFS = [
     "fbsource//tools/build_defs:buckconfig.bzl",
     "fbsource//tools/build_defs:copy_defs.bzl",
     "fbsource//tools/build_defs:fb_native_wrapper.bzl",
+    "fbsource//tools/build_defs:sanitizers.bzl",
     "fbsource//tools/build_defs:translate_to_fbsource_paths.bzl",
     "fbsource//tools/build_defs:type_defs.bzl",
 ]
@@ -100,6 +100,7 @@ UTIL_DEFS[".buckversion"] = ":buckversion"
 # This should change whenever the buck version meaningfully changes
 genrule(
     name = "buckversion",
+    srcs = ["fbcode_macros//:buckversion"],
     out = "buckversion",
     cmd = "buck --version | awk {'print $3'} > $OUT",
 )

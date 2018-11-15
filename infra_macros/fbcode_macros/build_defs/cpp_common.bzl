@@ -119,7 +119,7 @@ defaulted in a function's arg list, vs. actually passed in from the caller
 with such a value.
 """
 
-_ABSENT_PARAM = tuple()
+_ABSENT_PARAM = struct(_is_absent = True)
 
 def _default_headers_library():
     """
@@ -1911,7 +1911,7 @@ def _convert_cpp(
         if precompiled_header == _ABSENT_PARAM:
             precompiled_header = _get_fbcode_default_pch(out_srcs, base_path, name)
 
-    if precompiled_header:
+    if precompiled_header != _ABSENT_PARAM and precompiled_header:
         attributes["precompiled_header"] = precompiled_header
 
     if is_binary and versions != None:
