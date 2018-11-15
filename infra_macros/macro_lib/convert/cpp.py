@@ -449,7 +449,7 @@ class CppPythonExtensionConverter(CppConverter):
     def __init__(self, context):
         super(CppPythonExtensionConverter, self).__init__(context, 'cpp_python_extension')
 
-    def convert(self, base_path, name, visibility=None, *args, **kwargs):
+    def convert(self, base_path, name, visibility=None, typing_rule_name_prefix=None, *args, **kwargs):
         ret = super(CppPythonExtensionConverter, self).convert(
             base_path = base_path,
             name = name,
@@ -467,7 +467,7 @@ class CppPythonExtensionConverter(CppConverter):
             **kwargs
         )
         # Generate an empty typing_config
-        ret.append(self.gen_typing_config(name, visibility=visibility))
+        ret.append(self.gen_typing_config(typing_rule_name_prefix or name, visibility=visibility))
         return ret
 
 class CppJavaExtensionConverter(CppConverter):
