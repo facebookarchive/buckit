@@ -1097,7 +1097,8 @@ def _convert_cpp(
         modules = None,
         overridden_link_style = None,
         rule_specific_deps = None,
-        rule_specific_preprocessor_flags = None):
+        rule_specific_preprocessor_flags = None,
+        tests = None):
     base_path = native.package_name()
     visibility = get_visibility(visibility, name)
 
@@ -1214,6 +1215,9 @@ def _convert_cpp(
         "name": name,
         "visibility": visibility,
     }
+
+    if tests != None:
+        attributes["tests"] = tests
 
     # Set the base module.
     if base_module != None:
