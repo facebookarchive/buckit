@@ -361,6 +361,9 @@ class Converter(base.Converter):
             name=name + self.LIB_SUFFIX,
             srcs=list(srcs),  # cpp_library doesn't accept dict sources
             deps=cpp_deps,
+            # TODO(T36778537): Cython-generated `*_api.h` headers aren't
+            # modular.
+            modular_headers=False,
             compiler_flags=cpp_compiler_flags,
             auto_headers=AutoHeaders.NONE,
             headers=headers,
