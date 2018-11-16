@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import os
 import sys
 import tempfile
@@ -9,26 +10,38 @@ from subvol_utils import Subvol
 from .temp_subvolumes import TempSubvolumes
 
 
+def with_temp_subvols(method):
+    '''
+    Any test that needs `self.temp_subvols` muse use this decorator.
+    This is a cleaner alternative to doing this in setUp:
+
+        self.temp_subvols.__enter__()
+        self.addCleanup(self.temp_subvols.__exit__, None, None, None)
+
+    The primary reason this is bad is explained in the TempSubvolumes
+    docblock. It also fails to pass exception info to the __exit__.
+    '''
+
+    @functools.wraps(method)
+    def decorated(self, *args, **kwargs):
+        with TempSubvolumes(sys.argv[0]) as temp_subvols:
+            return method(self, temp_subvols, *args, **kwargs)
+
+    return decorated
+
+
 class SubvolTestCase(unittest.TestCase):
     '''
     NB: The test here is partially redundant with demo_sendstreams, but
     coverage easier to manage when there's a clean, separate unit test.
     '''
 
-    def setUp(self):
-        self.temp_subvols = TempSubvolumes(sys.argv[0])
-        # This is not a great pattern because the temporary directory or
-        # temporary subvolumes will not get exception information in
-        # __exit__.  However, this avoids breaking the abstraction barriers
-        # that e.g.  overloading `TestCase.run` would violate.
-        self.temp_subvols.__enter__()
-        self.addCleanup(self.temp_subvols.__exit__, None, None, None)
-
-    def test_create_and_snapshot_and_already_exists(self):
-        p = self.temp_subvols.create('parent')
+    @with_temp_subvols
+    def test_create_and_snapshot_and_already_exists(self, temp_subvols):
+        p = temp_subvols.create('parent')
         p2 = Subvol(p.path(), already_exists=True)
-        self.assertEqual(p.path(), p.path())
-        self.temp_subvols.snapshot(p2, 'child')
+        self.assertEqual(p.path(), p2.path())
+        temp_subvols.snapshot(p2, 'child')
 
     def test_does_not_exist(self):
         with tempfile.TemporaryDirectory() as td:
@@ -53,14 +66,16 @@ class SubvolTestCase(unittest.TestCase):
 
         self.assertTrue(not sv.path('.').endswith(b'/.'))
 
-    def test_run_as_root_input(self):
-        sv = self.temp_subvols.create('subvol')
+    @with_temp_subvols
+    def test_run_as_root_input(self, temp_subvols):
+        sv = temp_subvols.create('subvol')
         sv.run_as_root(['tee', sv.path('hello')], input=b'world')
         with open(sv.path('hello')) as infile:
             self.assertEqual('world', infile.read())
 
-    def test_mark_readonly_and_get_sendstream(self):
-        sv = self.temp_subvols.create('subvol')
+    @with_temp_subvols
+    def test_mark_readonly_and_get_sendstream(self, temp_subvols):
+        sv = temp_subvols.create('subvol')
         sv.run_as_root(['touch', sv.path('abracadabra')])
         sendstream = sv.mark_readonly_and_get_sendstream()
         self.assertIn(b'abracadabra', sendstream)

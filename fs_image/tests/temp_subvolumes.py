@@ -9,16 +9,41 @@ from volume_for_repo import get_volume_for_current_repo
 
 
 class TempSubvolumes(contextlib.AbstractContextManager):
-    'Tracks the subvolumes it creates, and destroys them on context exit.'
+    '''
+    Tracks the subvolumes it creates, and destroys them on context exit.
+
+    Note that relying on unittest.TestCase.addCleanup to __exit__ this
+    context is unreliable -- e.g. clean-up is NOT triggered on
+    KeyboardInterrupt. Therefore, this **will** leak subvolumes
+    during development. You can clean them up thus:
+
+        sudo btrfs sub del buck-image-out/volume/tmp/TempSubvolumes_*/subvol &&
+            rmdir buck-image-out/volume/tmp/TempSubvolumes_*
+
+    Instead of polluting `buck-image-out/volume`, it  would be possible to
+    put these on a separate `LoopbackVolume`, to rely on `Unshare` to
+    guarantee unmounting it, and to rely on `tmpwatch` to delete the stale
+    loopbacks from `/tmp/`.  At present, this doesn't seem worthwhile since
+    it would require using an `Unshare` object throughout `Subvol`.
+
+    The easier approach is to write `with TempSubvolumes() ...` in each test.
+    '''
 
     def __init__(self, path_in_repo):
         self.subvols = []
+        # The 'tmp' subdirectory simplifies cleanup of leaked temp subvolumes
+        volume_tmp_dir = os.path.join(get_volume_for_current_repo(
+            1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
+        ), 'tmp')
+        try:
+            os.mkdir(volume_tmp_dir)
+        except FileExistsError:
+            pass
         # Our exit is written with exception-safety in mind, so this
         # `_temp_dir_ctx` **should** get `__exit__`ed when this class does.
         self._temp_dir_ctx = tempfile.TemporaryDirectory(  # noqa: P201
-            dir=get_volume_for_current_repo(
-                1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
-            )
+            dir=volume_tmp_dir,
+            prefix=self.__class__.__name__ + '_',
         )
 
     def __enter__(self):

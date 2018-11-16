@@ -81,6 +81,7 @@ ensure_mounted() {
     echo "Could not enable --direct-io for $loop_dev, expect worse performance"
 
   local free_bytes
+  # Future: Consider using `btrfs filesystem usage -b "$volume" | grep "min:"`
   free_bytes=$(findmnt --bytes --noheadings --output AVAIL "$volume")
   local growth_bytes
   growth_bytes=$((min_bytes - free_bytes))
