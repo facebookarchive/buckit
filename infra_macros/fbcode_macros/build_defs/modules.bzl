@@ -258,14 +258,21 @@ def _gen_module(
         "  args[$i]=${args[$i]//$PWD\//}",
         "done",
 
+        # Function to get inode of the module map.  We use this to detect a bug
+        # in GVFS where kernel memory pressure memory pressure causes inodes to
+        # change, which break clang.
+        "function inode() {",
+        '  echo "\\$(ls -i "$MODULE_HOME/module.modulemap" | awk \'{ print $1 }\')"',
+        "}",
+
         # Function to fun the compilation.
         "function compile() {",
         # Run the command and filter stderr to fixup header paths by dropping
         # the obscure genrule sandbox directory.
-        '  echo "\\$(ls -i "$MODULE_HOME/module.modulemap" | awk \'{ print $1 }\')" > "$TMP/$1.inode"',
-        '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP/$1".tmp \\',
+        '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP"/module.pcm.tmp \\',
         '    | >&2 sed "s|$MODULE_HOME/|"{}"|g"'.format(shell.quote(header_prefix)),
-        '  mv -nT "$TMP/$1".tmp "$TMP/$1"',
+        '  mv -nT "$TMP"/module.pcm.tmp "$TMP"/module.pcm',
+        '  inode > "$TMP"/inode.txt',
         "}",
 
         # TODO(T35721516): We currently see rare cases of apparent non-
@@ -273,45 +280,32 @@ def _gen_module(
         # debug.  In the meantime, we'll perform the compilation thrice to try
         # to detect these cases, log the issue and artifact for debugging, and
         # try to recover with a third compilation.
-        "! { compile prev2.pcm; compile prev1.pcm; } 2>/dev/null",
-        "compile module.pcm",
-        'if ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
-        '   ! cmp -s "$TMP/prev2.pcm.inode" "$TMP/prev1.pcm.inode" || \\',
-        '   ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm" || \\',
-        '   ! cmp -s "$TMP/prev1.pcm.inode" "$TMP/module.pcm.inode"; then',
+        'inode > "$TMP/prev_inode.txt"',
+        "compile",
+        'if ! cmp -s "$TMP/prev_inode.txt" "$TMP/inode.txt"; then',
         '  >&2 echo "Detected non-determinism building module {}.  Retrying..."'
             .format(module_name),
         # Keep rebuilding the module until we get three successive builds that
         # are the same, saving the "corrupted" module for logging.
-        '  while ! cmp -s "$TMP/prev2.pcm" "$TMP/prev1.pcm" || \\',
-        '        ! cmp -s "$TMP/prev2.pcm.inode" "$TMP/prev1.pcm.inode" || \\',
-        '        ! cmp -s "$TMP/prev1.pcm" "$TMP/module.pcm" || \\',
-        '        ! cmp -s "$TMP/prev1.pcm.inode" "$TMP/module.pcm.inode"; do',
-        '    mv -fT "$TMP/prev2.pcm" "$TMP/bad.pcm"',
-        '    mv -fT "$TMP/prev2.pcm.inode" "$TMP/bad.pcm.inode"',
-        '    mv -fT "$TMP/prev1.pcm" "$TMP/prev2.pcm"',
-        '    mv -fT "$TMP/prev1.pcm.inode" "$TMP/prev2.pcm.inode"',
-        '    mv -fT "$TMP/module.pcm" "$TMP/prev1.pcm"',
-        '    mv -fT "$TMP/module.pcm.inode" "$TMP/prev1.pcm.inode"',
-        "    compile module.pcm 2>/dev/null",
+        '  while ! cmp -s "$TMP/prev_inode.txt" "$TMP/inode.txt"; do',
+        '    mv -fT "$TMP/inode.txt" "$TMP/prev_inode.txt"',
+        '    mv -fT "$TMP/module.pcm" "$TMP/prev.pcm"',
+        "    compile 2>/dev/null",
         "  done",
         # Log the build for debugging.  Do this in a block which ignores errors.
         "  ! {",
-        '    archive="$TMP/archive.tgz"',
-        '    tar -czf "$archive" -C "$TMP" module.pcm bad.pcm',
-        '    handle="\\$(clowder put -t FBCODE_BUCK_DEBUG_ARTIFACTS "$archive")"',
         "    scribe_cat \\",
         "      perfpipe_fbcode_buck_clang_module_errors \\",
         '      "{\\"int\\": \\',
         '          {\\"time\\": \\$(date +"%s")}, \\',
         '        \\"normal\\": \\',
-        '          {\\"everstore_handle\\": \\"$handle\\", \\',
-        '           \\"build_target\\": \\"//{}:{}\\", \\'
+        '          {{\\"build_target\\": \\"//{}:{}\\", \\'
             .format(native.package_name(), name),
         '           \\"build_uuid\\": \\"$BUCK_BUILD_ID\\", \\',
         '           \\"gvfs_version\\": \\"\\$(cd / && getfattr -L --only-values -n user.gvfs.version mnt/gvfs)\\", \\',
         '           \\"sandcastle_alias\\": \\"${SANDCASTLE_ALIAS:-}\\", \\',
-        '           \\"sanscastle_job_info\\": \\"${SANDCASTLE_NONCE:-}/${SANDCASTLE_INSTANCE_ID:-}\\"}}";',
+        '           \\"sanscastle_job_info\\": \\"${SANDCASTLE_NONCE:-}/${SANDCASTLE_INSTANCE_ID:-}\\", \\',
+        '           \\"user\\": \\"$USER\\"}}";',
         "  }",
         "fi",
         'mv -nT "$TMP/module.pcm" "$OUT"',
