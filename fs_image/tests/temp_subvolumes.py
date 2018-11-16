@@ -3,8 +3,10 @@ import contextlib
 import os
 import tempfile
 
+from typing import AnyStr
+
 from artifacts_dir import ensure_per_repo_artifacts_dir_exists
-from subvol_utils import byteme, Bytey, Subvol
+from subvol_utils import byteme, Subvol
 from volume_for_repo import get_volume_for_current_repo
 
 
@@ -50,7 +52,7 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         self._temp_dir = self._temp_dir_ctx.__enter__().encode()
         return self
 
-    def _rel_path(self, rel_path: Bytey):
+    def _rel_path(self, rel_path: AnyStr):
         '''
         Ensures subvolumes live under our temporary directory, which
         improves safety, since its permissions ought to be u+rwx to avoid
@@ -71,19 +73,19 @@ class TempSubvolumes(contextlib.AbstractContextManager):
             )
         return os.path.join(self._temp_dir, rel_path)
 
-    def create(self, rel_path: Bytey) -> Subvol:
+    def create(self, rel_path: AnyStr) -> Subvol:
         subvol = Subvol(self._rel_path(rel_path))
         subvol.create()
         self.subvols.append(subvol)
         return subvol
 
-    def snapshot(self, source: Subvol, dest_rel_path: Bytey) -> Subvol:
+    def snapshot(self, source: Subvol, dest_rel_path: AnyStr) -> Subvol:
         dest = Subvol(self._rel_path(dest_rel_path))
         dest.snapshot(source)
         self.subvols.append(dest)
         return dest
 
-    def caller_will_create(self, rel_path: Bytey) -> Subvol:
+    def caller_will_create(self, rel_path: AnyStr) -> Subvol:
         subvol = Subvol(self._rel_path(rel_path))
         # If the caller fails to create it, our __exit__ is robust enough
         # to ignore this subvolume.

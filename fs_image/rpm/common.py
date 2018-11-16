@@ -9,14 +9,8 @@ from typing import AnyStr, NamedTuple
 # Hide the fact that some of our dependencies aren't in `rpm` any more, the
 # `rpm` library still imports them from `rpm.common`.
 from common import (  # noqa: F401
-    get_file_logger, init_logging, check_popen_returncode,
+    byteme, get_file_logger, init_logging, check_popen_returncode,
 )
-
-
-# Bite me, Python3.
-def byteme(s: AnyStr) -> bytes:
-    'Byte literals are tiring, just promote strings as needed.'
-    return s.encode() if isinstance(s, str) else s
 
 
 # `pathlib` refuses to operate on `bytes`, which is the only sane way on Linux.

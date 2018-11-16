@@ -3,18 +3,9 @@ import os
 import subprocess
 
 from contextlib import contextmanager
-from typing import Iterator, Union
+from typing import AnyStr, Iterator
 
-from common import check_popen_returncode
-
-# Nibble on unicode strings with the intent of treating them as bytes.
-Bytey = Union[str, bytes]
-
-
-# Bite me, Python3
-def byteme(s: Bytey) -> bytes:
-    'Byte literals are tiring, just promote strings as needed.'
-    return s.encode() if isinstance(s, str) else s
+from common import byteme, check_popen_returncode
 
 
 # Exposed as a helper so that test_compiler.py can mock it.
@@ -70,7 +61,7 @@ class Subvol:
       subvolume e.g. in arguments to the `subvol.run_*` functions.
     '''
 
-    def __init__(self, path: Bytey, already_exists=False):
+    def __init__(self, path: AnyStr, already_exists=False):
         '''
         `Subvol` can represent not-yet-created subvolumes.  Unless
         already_exists=True, you must call create() or snapshot() to
@@ -81,7 +72,7 @@ class Subvol:
         if self._exists and not _path_is_btrfs_subvol(self._path):
             raise AssertionError(f'No btrfs subvol at {self._path}')
 
-    def path(self, path_in_subvol: Bytey=b'.') -> bytes:
+    def path(self, path_in_subvol: AnyStr=b'.') -> bytes:
         p = os.path.normpath(byteme(path_in_subvol))  # before testing for '..'
         if p.startswith(b'../') or p == b'..':
             raise AssertionError(f'{path_in_subvol} is outside the subvol')

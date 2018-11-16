@@ -4,8 +4,16 @@ import logging
 import os
 import subprocess
 
+from typing import AnyStr
 
-def get_file_logger(py_path):
+
+# Bite me, Python3.
+def byteme(s: AnyStr) -> bytes:
+    'Byte literals are tiring, just promote strings as needed.'
+    return s.encode() if isinstance(s, str) else s
+
+
+def get_file_logger(py_path: AnyStr):
     return logging.getLogger(os.path.basename(py_path))
 
 
