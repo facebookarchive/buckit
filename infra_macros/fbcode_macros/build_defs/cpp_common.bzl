@@ -1810,6 +1810,10 @@ def _convert_cpp(
         module_flags.extend(out_lang_preprocessor_flags["cxx"])
         module_flags.extend(exported_lang_pp_flags["cxx"])
         module_flags.extend(exported_pp_flags)
+
+        # Build each module header in it's own context.
+        module_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
+
         module_platform_flags = []
         module_platform_flags.extend(out_platform_preprocessor_flags)
         module_platform_flags.extend(

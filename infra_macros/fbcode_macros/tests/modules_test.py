@@ -92,11 +92,11 @@ class ModulesTest(tests.utils.TestCase):
             textwrap.dedent(
                 """\
                 module "name" {
-                  module "header1.h" {
+                  explicit module "header1.h" {
                     private header "header1.h"
                     export *
                   }
-                  module "header2.h" {
+                  explicit module "header2.h" {
                     header "header2.h"
                     export *
                   }

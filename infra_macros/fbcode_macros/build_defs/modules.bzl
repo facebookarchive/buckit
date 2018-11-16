@@ -100,7 +100,7 @@ def _get_module_map(name, headers):
     lines = []
     lines.append('module "{}" {{'.format(name))
     for header, attrs in sorted(headers.items()):
-        lines.append('  module "{}" {{'.format(header))
+        lines.append('  explicit module "{}" {{'.format(header))
         header_line = "    "
         for attr in sorted(attrs):
             header_line += attr + " "
