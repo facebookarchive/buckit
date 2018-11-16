@@ -246,9 +246,10 @@ class Sendstream(Format, format_name='sendstream'):
         # Future: rpm.common.create_ro, but it's kind of a big dep.
         # Luckily `image_package` will promptly mark this read-only.
         assert not os.path.exists(output_path)
-        with open(output_path, 'wb') as outfile:
-            Subvol(svod.subvolume_path(), already_exists=True) \
-                .mark_readonly_and_write_sendstream_to_file(outfile)
+        with open(output_path, 'wb') as outfile, Subvol(
+            svod.subvolume_path(), already_exists=True,
+        ).mark_readonly_and_write_sendstream_to_file(outfile):
+            pass
 
 
 def parse_args(argv):

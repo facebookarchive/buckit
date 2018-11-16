@@ -53,12 +53,19 @@ class SubvolTestCase(unittest.TestCase):
 
         self.assertTrue(not sv.path('.').endswith(b'/.'))
 
+    def test_run_as_root_input(self):
+        sv = self.temp_subvols.create('subvol')
+        sv.run_as_root(['tee', sv.path('hello')], input=b'world')
+        with open(sv.path('hello')) as infile:
+            self.assertEqual('world', infile.read())
+
     def test_mark_readonly_and_get_sendstream(self):
         sv = self.temp_subvols.create('subvol')
         sv.run_as_root(['touch', sv.path('abracadabra')])
         sendstream = sv.mark_readonly_and_get_sendstream()
         self.assertIn(b'abracadabra', sendstream)
         with tempfile.TemporaryFile() as outfile:
-            sv.mark_readonly_and_write_sendstream_to_file(outfile)
+            with sv.mark_readonly_and_write_sendstream_to_file(outfile):
+                pass
             outfile.seek(0)
             self.assertEqual(sendstream, outfile.read())

@@ -2,7 +2,10 @@
 import os
 import subprocess
 
-from typing import Union
+from contextlib import contextmanager
+from typing import Iterator, Union
+
+from common import check_popen_returncode
 
 # Nibble on unicode strings with the intent of treating them as bytes.
 Bytey = Union[str, bytes]
@@ -91,21 +94,33 @@ class Subvol:
             # if the supplied path is absolute.
         ).lstrip(b'/')))
 
-    # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
-    # new subvolumes, and not just touch existing ones.
-    def run_as_root(self, args, *, _subvol_exists=True, stdout=None, **kwargs):
-        if _subvol_exists != self._exists:
-            raise AssertionError(
-                f'{self.path()} exists is {self._exists}, not {_subvol_exists}'
-            )
+    @contextmanager
+    def _popen_as_root(self, args, *, stdout=None, **kwargs):
         # Ban our subcommands from writing to stdout, since many of our
         # tools (e.g. make-demo-sendstream, compiler) write structured
         # data to stdout to be usable in pipelines.
         if stdout is None:
             stdout = 2
-        return subprocess.run(
-            ['sudo', *args], stdout=stdout, **kwargs, check=True,
-        )
+        with subprocess.Popen(['sudo', *args], stdout=stdout, **kwargs) as pr:
+            yield pr
+        check_popen_returncode(pr)
+
+    # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
+    # new subvolumes, and not just touch existing ones.
+    def run_as_root(
+        self, args, *, _subvol_exists=True,
+        stdout=None, timeout=None, input=None,
+        **kwargs,
+    ):
+        if _subvol_exists != self._exists:
+            raise AssertionError(
+                f'{self.path()} exists is {self._exists}, not {_subvol_exists}'
+            )
+        if input:
+            assert 'stdin' not in kwargs
+            kwargs['stdin'] = subprocess.PIPE
+        with self._popen_as_root(args, stdout=stdout, **kwargs) as proc:
+            proc.communicate(timeout=timeout, input=input)
 
     # Future: run_in_image()
 
@@ -113,13 +128,10 @@ class Subvol:
     # For now, we shell out, but in the future, we may talk to a privileged
     # `btrfsutil` helper, or use `guestfs`.
 
-    def _btrfs_run(self, args, **kwargs):
-        return self.run_as_root(['btrfs', *args], **kwargs)
-
     def create(self):
-        self._btrfs_run(
-            ['subvolume', 'create', self.path()], _subvol_exists=False,
-        )
+        self.run_as_root([
+            'btrfs', 'subvolume', 'create', self.path(),
+        ], _subvol_exists=False)
         self._exists = True
 
     def snapshot(self, source: 'Subvol'):
@@ -130,28 +142,28 @@ class Subvol:
         self.run_as_root(
             ['test', '!', '-e', self.path()], _subvol_exists=False
         )
-        self._btrfs_run(
-            ['subvolume', 'snapshot', source.path(), self.path()],
-            _subvol_exists=False,
-        )
+        self.run_as_root([
+            'btrfs', 'subvolume', 'snapshot', source.path(), self.path()
+        ], _subvol_exists=False)
         self._exists = True
 
     def delete(self):
-        self._btrfs_run(['subvolume', 'delete', self.path()])
+        self.run_as_root(['btrfs', 'subvolume', 'delete', self.path()])
         self._exists = False
 
     def set_readonly(self, readonly: bool):
-        self._btrfs_run([
-            'property', 'set', '-ts', self.path(), 'ro',
+        self.run_as_root([
+            'btrfs', 'property', 'set', '-ts', self.path(), 'ro',
             'true' if readonly else 'false',
         ])
 
     def sync(self):
-        self._btrfs_run(['filesystem', 'sync', self.path()])
+        self.run_as_root(['btrfs', 'filesystem', 'sync', self.path()])
 
+    @contextmanager
     def _mark_readonly_and_send(
         self, *, stdout, no_data: bool=False, parent: 'Subvol'=None,
-    ) -> subprocess.CompletedProcess:
+    ) -> Iterator[subprocess.Popen]:
         self.set_readonly(True)
 
         # Btrfs bug #25329702: in some cases, a `send` without a sync will
@@ -172,19 +184,23 @@ class Subvol:
                 'getfattr', '--no-dereference', '--recursive', self.path()
             ])
 
-        return self._btrfs_run([
-            'send',
+        with self._popen_as_root([
+            'btrfs', 'send',
             *(['--no-data'] if no_data else []),
             *(['-p', parent.path()] if parent else []),
             self.path(),
-        ], stdout=stdout)
+        ], stdout=stdout) as proc:
+            yield proc
 
     def mark_readonly_and_get_sendstream(self, **kwargs) -> bytes:
-        return self._mark_readonly_and_send(
+        with self._mark_readonly_and_send(
             stdout=subprocess.PIPE, **kwargs,
-        ).stdout
+        ) as proc:
+            return proc.stdout.read()
 
+    @contextmanager
     def mark_readonly_and_write_sendstream_to_file(
         self, outfile: 'BytesIO', **kwargs,
-    ):
-        self._mark_readonly_and_send(stdout=outfile, **kwargs)
+    ) -> Iterator[None]:
+        with self._mark_readonly_and_send(stdout=outfile, **kwargs):
+            yield
