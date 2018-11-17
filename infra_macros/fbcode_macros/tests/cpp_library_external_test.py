@@ -27,6 +27,7 @@ class CppLibraryExternalTest(tests.utils.TestCase):
         r"""args+=(\"-fmodule-name=\"\'third-party//ImageMagick:MagickCore\')\n"""
         r"""args+=(\"-x\" \"c++-header\")\n"""
         r"args+=(\"-Xclang\" \"-fno-validate-pch\")\n"
+        r"""args+=(\"-DFB_BUCK_MODULE_HOME=\\\"$MODULE_HOME\\\"\")\n"""
         r"""args+=(\"-I$MODULE_HOME\")\n"""
         r"""args+=(\"$MODULE_HOME/module.modulemap\")\n"""
         r"""args+=(\"-o\" \"-\")\n"""

@@ -239,6 +239,11 @@ def _gen_module(
         'args+=("-x" "c++-header")',
         'args+=("-Xclang" "-fno-validate-pch")',
 
+        # Export the current module working directory as a macro so that
+        # libraries can use this for e.g. `__FILE__` name prefix stripping to
+        # get back to their original paths.
+        'args+=("-DFB_BUCK_MODULE_HOME=\\"$MODULE_HOME\\"")',
+
         # Setup the headers as inputs to the compilation by adding the
         # header dir implicitly via an `-I...` flag (for implicit searches
         # for headers specified in the module map) and the

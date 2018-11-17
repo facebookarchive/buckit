@@ -1336,10 +1336,6 @@ def _convert_cpp(
     out_preprocessor_flags.extend(preprocessor_flags)
     if rule_specific_preprocessor_flags != None:
         out_preprocessor_flags.extend(rule_specific_preprocessor_flags)
-    if out_preprocessor_flags:
-        attributes["preprocessor_flags"] = out_preprocessor_flags
-    if prefix_header:
-        attributes["prefix_header"] = prefix_header
 
     # Form language-specific preprocessor flags.
     out_lang_preprocessor_flags = {
@@ -1814,6 +1810,11 @@ def _convert_cpp(
         # Build each module header in it's own context.
         module_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
 
+        # TODO(T36925825): Set `FOLLY_XLOG_STRIP_PREFIXES` for module
+        # compilations, so that folly's xlog logging library can properly
+        # reconstruct path names from mangled `__FILE__` values.
+        module_flags.append("-DFOLLY_XLOG_STRIP_PREFIXES=FB_BUCK_MODULE_HOME")
+
         module_platform_flags = []
         module_platform_flags.extend(out_platform_preprocessor_flags)
         module_platform_flags.extend(
@@ -1850,6 +1851,20 @@ def _convert_cpp(
             "-fmodule-file={}=$(location :{})"
                 .format(module_name, mod_name),
         )
+
+    # TODO(T36925825): Set `FOLLY_XLOG_STRIP_PREFIXES` for non-module
+    # compilations.  We don't put anything useful here, but as xlog.h is built
+    # with this set, it then expects to find it set in all downstream users.
+    if module_utils.enabled():
+        out_preprocessor_flags.append('-DFOLLY_XLOG_STRIP_PREFIXES=""')
+
+    # Write out preprocessor flags.
+    if out_preprocessor_flags:
+        attributes["preprocessor_flags"] = out_preprocessor_flags
+
+    # Write out prefix header.
+    if prefix_header:
+        attributes["prefix_header"] = prefix_header
 
     # Write out our output headers.
     if out_headers:
