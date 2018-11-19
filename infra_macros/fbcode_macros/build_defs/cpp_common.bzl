@@ -1842,6 +1842,7 @@ def _convert_cpp(
             headers = out_headers,
             flags = module_flags,
             platform_flags = module_platform_flags,
+            default_platform = buck_platform,
             deps = module_deps,
             platform_deps = module_platform_deps,
         )

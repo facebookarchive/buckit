@@ -234,6 +234,10 @@ class CppLibraryExternalTest(tests.utils.TestCase):
 
                 cxx_library(
                   name = "MagickCore-module-helper",
+                  default_platform = "gcc5",
+                  defaults = {{
+                    "platform": "gcc5",
+                  }},
                   exported_deps = [
                     "//third-party-buck/gcc5/build/ImageMagick:__project__",
                     "//third-party-buck/gcc5/build/bzip2:bz2",
