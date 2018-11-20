@@ -33,7 +33,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-cpp = import_macro_lib('convert/cpp')
 haskell = import_macro_lib('convert/haskell')
 cython = import_macro_lib('convert/cython')
 ocaml = import_macro_lib('convert/ocaml')
@@ -43,6 +42,7 @@ Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -299,7 +299,6 @@ class CppThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(CppThriftConverter, self).__init__(context, *args, **kwargs)
-        self._cpp_converter = cpp.CppLibraryConverter(context)
 
     def get_additional_compiler(self):
         return self._context.config.get_thrift2_compiler()
@@ -527,8 +526,7 @@ class CppThriftConverter(ThriftLangConverter):
         # Create the types, services and clients rules
         # Delegate to the C/C++ library converting to add in things like
         # sanitizer and BUILD_MODE flags.
-        types_rules = self._cpp_converter.convert(
-            base_path,
+        cpp_library(
             name=name + types_suffix,
             srcs=types_sources,
             headers=types_headers,
@@ -542,8 +540,7 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-        clients_rules = self._cpp_converter.convert(
-            base_path,
+        cpp_library(
             name=name + clients_suffix,
             srcs=clients_sources,
             headers=clients_headers,
@@ -557,8 +554,7 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-        services_rules = self._cpp_converter.convert(
-            base_path,
+        cpp_library(
             name + services_suffix,
             srcs=services_sources,
             headers=services_headers,
@@ -571,8 +567,7 @@ class CppThriftConverter(ThriftLangConverter):
         )
         # Create a master rule that depends on -types, -services and -clients
         # for compatibility
-        master_rules = self._cpp_converter.convert(
-            base_path,
+        cpp_library(
             name,
             srcs=[],
             headers=[],
@@ -584,7 +579,7 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-        return types_rules + clients_rules + services_rules + master_rules
+        return []
 
 
 class DThriftConverter(ThriftLangConverter):

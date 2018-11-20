@@ -42,9 +42,9 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-cpp = import_macro_lib('convert/cpp')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
@@ -96,7 +96,6 @@ class Converter(base.Converter):
 
     def __init__(self, context):
         super(Converter, self).__init__(context)
-        self.cpp_library = cpp.CppLibraryConverter(context)
         self.python_library = python.PythonConverter(
             context, 'python_library',
         )
@@ -332,7 +331,7 @@ class Converter(base.Converter):
         return None, None
 
     def gen_shared_lib(
-        self, name, base_path, api_headers, deps, cpp_compiler_flags, cpp_deps,
+        self, name, api_headers, deps, cpp_compiler_flags, cpp_deps,
         srcs, headers, header_namespace, cpp_external_deps, visibility,
     ):
         # Ok so cxx_library header map, is dst -> src
@@ -361,8 +360,7 @@ class Converter(base.Converter):
         cpp_external_deps = list(cpp_external_deps)
         cpp_external_deps.append(('python', None, 'python'))
 
-        return self.cpp_library.convert(
-            base_path=base_path,
+        cpp_library(
             name=name + self.LIB_SUFFIX,
             srcs=list(srcs),  # cpp_library doesn't accept dict sources
             deps=cpp_deps,
@@ -550,12 +548,12 @@ class Converter(base.Converter):
             # pxd and pxi files not just create .so modules
             # This also makes generated cython dep trees possible for
             # thrift-py3 in thrift_library
-            for rule in self.cpp_library.convert(
-                base_path=base_path,
+            cpp_library(
                 name=name,
                 deps=[':' + name + self.LIB_SUFFIX],
-            ):
-                yield set_tests(set_visibility(rule))
+                visibility = _get_visibility(),
+                tests = tests,
+            )
 
         # Generate a typing_config target to gather up all types for us and
         # our deps
@@ -573,9 +571,8 @@ class Converter(base.Converter):
         # Generate the cython-lib target for allowing cython_libraries
         # to depend on other cython_libraries and inherit their cpp_deps
         # All c++ options are consumed here
-        for rule in self.gen_shared_lib(
+        self.gen_shared_lib(
             name,
-            base_path,
             api_headers,
             itertools.chain(deps, external_deps),
             cpp_compiler_flags,
@@ -585,8 +582,7 @@ class Converter(base.Converter):
             header_namespace,
             cpp_external_deps,
             visibility=visibility,
-        ):
-            yield rule
+        )
 
     def get_allowed_args(self):
         return {

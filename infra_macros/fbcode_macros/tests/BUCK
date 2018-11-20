@@ -23,6 +23,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:cpp_common.bzl",
     "fbcode_macros//build_defs:cpp_flags.bzl",
     "fbcode_macros//build_defs:cpp_java_extension.bzl",
+    "fbcode_macros//build_defs:cpp_library.bzl",
     "fbcode_macros//build_defs:cpp_lua_main_module.bzl",
     "fbcode_macros//build_defs:cpp_lua_extension.bzl",
     "fbcode_macros//build_defs:cpp_node_extension.bzl",
@@ -239,6 +240,15 @@ skylark_integration_test(
 skylark_integration_test(
     name = "cpp_common_test",
     srcs = ["cpp_common_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "cpp_library_test",
+    srcs = ["cpp_library_test.py"],
     deps = [
         "fbcode_macros//tests/facebook:utils",
         ":utils",

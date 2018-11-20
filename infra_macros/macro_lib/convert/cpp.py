@@ -320,21 +320,6 @@ class CppConverter(base.Converter):
 
 
 # TODO: These are temporary until all logic is extracted into cpp_common
-class CppLibraryConverter(CppConverter):
-    def __init__(self, context):
-        super(CppLibraryConverter, self).__init__(context, 'cpp_library')
-
-    def convert(self, *args, **kwargs):
-        return super(CppLibraryConverter, self).convert(
-            cpp_rule_type = 'cpp_library',
-            buck_rule_type = 'cxx_library',
-            is_library = True,
-            is_buck_binary = False,
-            is_test = False,
-            is_deployable = False,
-            *args,
-            **kwargs
-        )
 
 class CppBinaryConverter(CppConverter):
     def __init__(self, context):
