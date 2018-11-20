@@ -127,8 +127,7 @@ with allow_unsafe_import():  # noqa: magic
     import json
     import os
 
-FBSPHINX_WRAPPER = "//fbsphinx:bin"
-SPHINX_WRAPPER = "//fbsphinx:sphinx"
+FBSPHINX_WRAPPER = "//fbsphinx:buck"
 SPHINXCONFIG_TGT = "//:.sphinxconfig"
 
 if False:
@@ -217,9 +216,7 @@ class _SphinxConverter(base.Converter):
                 ),
             )
 
-    def _gen_apidoc_rules(
-        self, base_path, name, fbsphinx_wrapper_target, apidoc_modules
-    ):
+    def _gen_apidoc_rules(self, base_path, name, fbsphinx_buck_target, apidoc_modules):
         """
         A simple genrule wrapper for running sphinx-apidoc
         """
@@ -230,12 +227,12 @@ class _SphinxConverter(base.Converter):
             command = " ".join(
                 (
                     "mkdir -p $OUT &&",
-                    "PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})",
+                    "PYTHONWARNINGS=i $(exe :{fbsphinx_buck_target})",
                     "buck apidoc",
                     module,
                     "$OUT",
                 )
-            ).format(fbsphinx_wrapper_target=fbsphinx_wrapper_target)
+            ).format(fbsphinx_buck_target=fbsphinx_buck_target)
             yield Rule(
                 "genrule",
                 collections.OrderedDict(
@@ -268,20 +265,20 @@ class _SphinxConverter(base.Converter):
             + tuple((_dep + "-library" for _dep in tuple(python_binary_deps)))
             + (FBSPHINX_WRAPPER,)
         )
-        fbsphinx_wrapper_target = "%s-fbsphinx-wrapper" % name
+        fbsphinx_buck_target = "%s-fbsphinx-buck" % name
         for rule in self._converters["python_binary"].convert(
             base_path,
-            name=fbsphinx_wrapper_target,
+            name=fbsphinx_buck_target,
             par_style="xar",
             py_version=">=3.6",
-            main_module="fbsphinx.bin.fbsphinx_wrapper",
+            main_module="fbsphinx.bin.fbsphinx_buck",
             deps=python_deps,
         ):
             yield rule
 
         additional_doc_rules = []
         for rule in self._gen_apidoc_rules(
-            base_path, name, fbsphinx_wrapper_target, apidoc_modules
+            base_path, name, fbsphinx_buck_target, apidoc_modules
         ):
             additional_doc_rules.append(rule)
             yield rule
@@ -293,7 +290,7 @@ class _SphinxConverter(base.Converter):
         command = " ".join(
             (
                 "echo {BUCK_NONCE} >/dev/null &&",
-                "PYTHONWARNINGS=i $(exe :{fbsphinx_wrapper_target})",
+                "PYTHONWARNINGS=i $(exe :{fbsphinx_buck_target})",
                 "buck run",
                 "--target {target}",
                 "--builder {builder}",
@@ -305,7 +302,7 @@ class _SphinxConverter(base.Converter):
             )
         ).format(
             BUCK_NONCE=os.environ.get("BUCK_NONCE", ""),
-            fbsphinx_wrapper_target=fbsphinx_wrapper_target,
+            fbsphinx_buck_target=fbsphinx_buck_target,
             target="//{}:{}".format(base_path, name),
             builder=self.get_builder(),
             SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
