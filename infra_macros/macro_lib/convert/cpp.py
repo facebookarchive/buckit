@@ -317,22 +317,3 @@ class CppConverter(base.Converter):
         Entry point for converting C/C++ rules.
         """
         return self.convert_rule(base_path, name, visibility=visibility, **kwargs)
-
-
-# TODO: These are temporary until all logic is extracted into cpp_common
-
-class CppBinaryConverter(CppConverter):
-    def __init__(self, context):
-        super(CppBinaryConverter, self).__init__(context, 'cpp_binary')
-
-    def convert(self, *args, **kwargs):
-        return super(CppBinaryConverter, self).convert(
-            cpp_rule_type = 'cpp_binary',
-            buck_rule_type = 'cxx_binary',
-            is_library = False,
-            is_buck_binary = True,
-            is_test = False,
-            is_deployable = True,
-            *args,
-            **kwargs
-        )
