@@ -528,26 +528,3 @@ class CppJavaExtensionConverter(CppConverter):
             )
 
         return rules
-
-class CppLuaExtensionConverter(CppConverter):
-    def __init__(self, context):
-        super(CppLuaExtensionConverter, self).__init__(context, 'cpp_lua_extension')
-
-    def convert(self, base_path, name, base_module=None, *args, **kwargs):
-        return super(CppLuaExtensionConverter, self).convert(
-            cpp_rule_type = 'cpp_lua_extension',
-            buck_rule_type = 'cxx_lua_extension',
-            is_library = False,
-            is_buck_binary = False,
-            is_test = False,
-            is_deployable = False,
-            base_module = lua_common.get_lua_base_module(base_path, base_module),
-            base_path = base_path,
-            name = name,
-            rule_specific_preprocessor_flags = [
-                '-DLUAOPEN={}'.format(
-                    lua_common.get_lua_init_symbol(base_path, name, base_module))
-            ],
-            *args,
-            **kwargs
-        )
