@@ -71,7 +71,6 @@ include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 include_defs('//{}/convert/base.py'.format(MACRO_LIB_DIR), 'base')
-include_defs('//{}/convert/cpp.py'.format(MACRO_LIB_DIR), 'cpp')
 
 __all__ = []
 

@@ -89,7 +89,6 @@ with allow_unsafe_import():  # noqa: F821
 
 
 base = import_macro_lib('convert/base')
-cpp = import_macro_lib('convert/cpp')
 cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
