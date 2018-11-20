@@ -1658,12 +1658,12 @@ def _convert_cpp(
         if type == "gtest":
             gtest_deps = [
                 d.strip()
-                for d in config.get_gtest_lib_dependencies().split(",")
+                for d in config.get_gtest_lib_dependencies()
             ]
             if use_default_test_main:
-                gtest_deps.append(
-                    config.get_gtest_main_dependency(),
-                )
+                main_test_dep = config.get_gtest_main_dependency()
+                if main_test_dep:
+                    gtest_deps.append(main_test_dep)
             dependencies.extend(
                 [target_utils.parse_target(dep) for dep in gtest_deps],
             )

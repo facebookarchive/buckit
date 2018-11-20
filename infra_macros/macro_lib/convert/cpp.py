@@ -351,19 +351,3 @@ class CppBinaryConverter(CppConverter):
             *args,
             **kwargs
         )
-
-class CppUnittestConverter(CppConverter):
-    def __init__(self, context):
-        super(CppUnittestConverter, self).__init__(context, 'cpp_unittest')
-
-    def convert(self, *args, **kwargs):
-        return super(CppUnittestConverter, self).convert(
-            cpp_rule_type = 'cpp_unittest',
-            buck_rule_type = 'cxx_test',
-            is_library = False,
-            is_buck_binary = True,
-            is_test = True,
-            is_deployable = True,
-            *args,
-            **kwargs
-        )

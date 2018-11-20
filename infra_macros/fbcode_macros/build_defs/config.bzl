@@ -174,7 +174,7 @@ def _get_gtest_lib_dependencies():
     """
     The targets that will provide gtest C++ tests' gtest and gmock deps
     """
-    return read_string("fbcode", "gtest_lib_dependencies", None)
+    return read_list("fbcode", "gtest_lib_dependencies", [], ",")
 
 def _get_gtest_main_dependency():
     """

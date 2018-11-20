@@ -64,6 +64,7 @@ load("@fbcode_macros//build_defs:cpp_java_extension.bzl", "cpp_java_extension")
 load("@fbcode_macros//build_defs:cpp_node_extension.bzl", "cpp_node_extension")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:cpp_precompiled_header.bzl", "cpp_precompiled_header")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
@@ -163,7 +164,6 @@ def convert(context, base_path, rule):
         cpp_library_external_custom.CppLibraryExternalCustomConverter(context),
         cpp.CppLibraryConverter(context),
         cpp.CppBinaryConverter(context),
-        cpp.CppUnittestConverter(context),
         cpp_jvm_library.CppJvmLibrary(context),
         cpp_module_external.CppModuleExternalConverter(context),
         cython.Converter(context),
@@ -255,6 +255,7 @@ def convert(context, base_path, rule):
         'cpp_python_extension': cpp_python_extension,  # noqa F821
         'cpp_node_extension': cpp_node_extension,  # noqa F821
         'cpp_precompiled_header': cpp_precompiled_header,  # noqa F821
+        'cpp_unittest': cpp_unittest,
         'd_library_external': d_library_external,
     }
 

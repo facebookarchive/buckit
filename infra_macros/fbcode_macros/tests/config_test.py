@@ -37,7 +37,7 @@ class ConfigTest(tests.utils.TestCase):
             "static",  # get_default_link_style
             False,  # get_fbcode_style_deps
             True,  # get_fbcode_style_deps_are_third_party
-            None,  # get_gtest_lib_dependencies
+            [],  # get_gtest_lib_dependencies
             None,  # get_gtest_main_dependency
             [],  # get_header_namespace_whitelist
             None,  # get_lto_type
@@ -158,7 +158,7 @@ class ConfigTest(tests.utils.TestCase):
             "shared",  # get_default_link_style
             True,  # get_fbcode_style_deps
             False,  # get_fbcode_style_deps_are_third_party
-            "//third-party/gtest:gtest",  # get_gtest_lib_dependencies
+            ["//third-party/gtest:gtest"],  # get_gtest_lib_dependencies
             "//third-party/gtest:gtest_main",  # get_gtest_main_dependency
             [
                 ("//package", "rule"),
