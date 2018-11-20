@@ -414,19 +414,3 @@ class CppNodeExtensionConverter(CppConverter):
         )
 
         return rules
-
-class CppPrecompiledHeaderConverter(CppConverter):
-    def __init__(self, context):
-        super(CppPrecompiledHeaderConverter, self).__init__(context, 'cpp_precompiled_header')
-
-    def convert(self, *args, **kwargs):
-        return super(CppPrecompiledHeaderConverter, self).convert(
-            cpp_rule_type = 'cpp_precompiled_header',
-            buck_rule_type = 'cxx_precompiled_header',
-            is_library = False,
-            is_buck_binary = False,
-            is_test = False,
-            is_deployable = False,
-            *args,
-            **kwargs
-        )

@@ -62,6 +62,7 @@ load("@fbcode_macros//build_defs:cpp_lua_extension.bzl", "cpp_lua_extension")
 load("@fbcode_macros//build_defs:cpp_lua_main_module.bzl", "cpp_lua_main_module")
 load("@fbcode_macros//build_defs:cpp_java_extension.bzl", "cpp_java_extension")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
+load("@fbcode_macros//build_defs:cpp_precompiled_header.bzl", "cpp_precompiled_header")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
@@ -162,7 +163,6 @@ def convert(context, base_path, rule):
         cpp.CppLibraryConverter(context),
         cpp.CppBinaryConverter(context),
         cpp.CppUnittestConverter(context),
-        cpp.CppPrecompiledHeaderConverter(context),
         cpp.CppNodeExtensionConverter(context),
         cpp_jvm_library.CppJvmLibrary(context),
         cpp_module_external.CppModuleExternalConverter(context),
@@ -253,6 +253,7 @@ def convert(context, base_path, rule):
         'cpp_java_extension': cpp_java_extension,  # noqa F821
         'cpp_lua_main_module': cpp_lua_main_module,  # noqa F821
         'cpp_python_extension': cpp_python_extension,  # noqa F821
+        'cpp_precompiled_header': cpp_precompiled_header,  # noqa F821
         'd_library_external': d_library_external,
     }
 
