@@ -31,9 +31,9 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-cpp = import_macro_lib('convert/cpp')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
+load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
@@ -206,7 +206,6 @@ class PythonSwigConverter(SwigLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(PythonSwigConverter, self).__init__(context, *args, **kwargs)
-        self._cpp_python_extension_converter = cpp.CppPythonExtensionConverter(context)
 
     def get_lang(self):
         return 'py'
@@ -240,8 +239,7 @@ class PythonSwigConverter(SwigLangConverter):
             **kwargs):
 
         # Build the C/C++ python extension from the generated C/C++ sources.
-        for rule in self._cpp_python_extension_converter.convert(
-            base_path,
+        cpp_python_extension(
             name=name + '-ext',
             srcs=[src],
             base_module=py_base_module,
@@ -265,8 +263,7 @@ class PythonSwigConverter(SwigLangConverter):
                 (d.repo, d.base_path, None, d.name)
                 for d in cpp_deps if d.repo is not None
             ],
-        ):
-            yield rule
+        )
         # Generate the wrapping python library.
         attrs = collections.OrderedDict()
         attrs['name'] = name

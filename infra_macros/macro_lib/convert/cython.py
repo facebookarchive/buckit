@@ -45,6 +45,7 @@ base = import_macro_lib('convert/base')
 cpp = import_macro_lib('convert/cpp')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
+load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
@@ -99,7 +100,6 @@ class Converter(base.Converter):
         self.python_library = python.PythonConverter(
             context, 'python_library',
         )
-        self.cpp_python_extension = cpp.CppPythonExtensionConverter(context)
 
     def get_fbconfig_rule_type(self):
         return 'cython_library'
@@ -282,8 +282,7 @@ class Converter(base.Converter):
     ):
         typing_rule_name_prefix = os.path.join(parent, module_path)
         name = name or typing_rule_name_prefix
-        rules = self.cpp_python_extension.convert(
-            base_path,
+        cpp_python_extension(
             name=name,
             base_module=package,
             module_name=os.path.basename(module_path),
@@ -300,7 +299,7 @@ class Converter(base.Converter):
             tests=tests,
             typing_rule_name_prefix=typing_rule_name_prefix,
         )
-        return ':' + name, rules
+        return ':' + name
 
     def gen_api_header(
         self, name, cython_name, module_path, module_name, api
@@ -486,7 +485,7 @@ class Converter(base.Converter):
                 yield set_visibility(src_rule)
 
                 # generate an extension for the generated src
-                so_target, so_rules = self.gen_extension_rule(
+                so_target = self.gen_extension_rule(
                     base_path, name, module_path, os.path.dirname(pyx_dst),
                     src_target, python_deps, python_external_deps,
                     cpp_compiler_flags, raw_deps=extra_deps, visibility=visibility,
@@ -499,8 +498,6 @@ class Converter(base.Converter):
 
                 if update_extensions:
                     extensions.append(so_target)
-                for rule in so_rules:
-                    yield rule
 
                 # Generate _api.h header rules.
                 api_target, api_rule = self.gen_api_header(

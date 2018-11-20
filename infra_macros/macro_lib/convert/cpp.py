@@ -430,28 +430,3 @@ class CppPrecompiledHeaderConverter(CppConverter):
             *args,
             **kwargs
         )
-
-class CppPythonExtensionConverter(CppConverter):
-    def __init__(self, context):
-        super(CppPythonExtensionConverter, self).__init__(context, 'cpp_python_extension')
-
-    def convert(self, base_path, name, visibility=None, typing_rule_name_prefix=None, *args, **kwargs):
-        ret = super(CppPythonExtensionConverter, self).convert(
-            base_path = base_path,
-            name = name,
-            visibility = visibility,
-            cpp_rule_type = 'cpp_python_extension',
-            buck_rule_type = 'cxx_python_extension',
-            is_library = False,
-            is_buck_binary = False,
-            is_test = False,
-            is_deployable = False,
-            rule_specific_deps = [
-                target_utils.ThirdPartyRuleTarget('python', 'python')
-            ],
-            *args,
-            **kwargs
-        )
-        # Generate an empty typing_config
-        ret.append(self.gen_typing_config(typing_rule_name_prefix or name, visibility=visibility))
-        return ret
