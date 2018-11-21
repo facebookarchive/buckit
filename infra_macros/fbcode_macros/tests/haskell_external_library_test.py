@@ -24,12 +24,12 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
         load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
         haskell_external_library(
             name = "process",
-            db = "lib/ghc-8.0.2/package.conf.d",
+            db = "lib/package.conf.d",
             id = "process-1.4.3.0",
             include_dirs = [
-                "lib/ghc-8.0.2/process-1.4.3.0/include",
+                "lib/process-1.4.3.0/include",
             ],
-            lib_dir = "lib/ghc-8.0.2/process-1.4.3.0",
+            lib_dir = "lib/process-1.4.3.0",
             libs = ["HSprocess-1.4.3.0"],
             version = "1.4.3.0",
             external_deps = [
@@ -46,9 +46,9 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                 haskell_prebuilt_library(
                   name = "process",
                   cxx_header_dirs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/include",
+                    "lib/process-1.4.3.0/include",
                   ],
-                  db = "lib/ghc-8.0.2/package.conf.d",
+                  db = "lib/package.conf.d",
                   exported_compiler_flags = [
                     "-expose-package",
                     "process-1.4.3.0",
@@ -58,13 +58,13 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                   ],
                   id = "process-1.4.3.0",
                   profiled_static_libs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0_p.a",
+                    "lib/process-1.4.3.0/libHSprocess-1.4.3.0_p.a",
                   ],
                   shared_libs = {
-                    "libHSprocess-1.4.3.0-ghc8.0.2.so": "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0-ghc8.0.2.so",
+                    "libHSprocess-1.4.3.0-ghc8.0.2.so": "lib/process-1.4.3.0/libHSprocess-1.4.3.0-ghc8.0.2.so",
                   },
                   static_libs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0.a",
+                    "lib/process-1.4.3.0/libHSprocess-1.4.3.0.a",
                   ],
                   version = "1.4.3.0",
                   deps = [
@@ -93,12 +93,12 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
         load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
         haskell_external_library(
             name = "rts",
-            db = "lib/ghc-8.0.2/package.conf.d",
+            db = "lib/package.conf.d",
             id = "rts",
             include_dirs = [
-                "lib/ghc-8.0.2/include",
+                "lib/include",
             ],
-            lib_dir = "lib/ghc-8.0.2/rts",
+            lib_dir = "lib/rts",
             libs = ["HSrts_thr"],
             linker_flags = [
                 "-u",
@@ -122,9 +122,9 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                 haskell_prebuilt_library(
                   name = "rts",
                   cxx_header_dirs = [
-                    "lib/ghc-8.0.2/include",
+                    "lib/include",
                   ],
-                  db = "lib/ghc-8.0.2/package.conf.d",
+                  db = "lib/package.conf.d",
                   exported_compiler_flags = [
                     "-expose-package",
                     "rts-1.0",
@@ -142,10 +142,10 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                   ],
                   id = "rts",
                   shared_libs = {
-                    "libHSrts_thr-ghc8.0.2.so": "lib/ghc-8.0.2/rts/libHSrts_thr-ghc8.0.2.so",
+                    "libHSrts_thr-ghc8.0.2.so": "lib/rts/libHSrts_thr-ghc8.0.2.so",
                   },
                   static_libs = [
-                    "lib/ghc-8.0.2/rts/libHSrts_thr.a",
+                    "lib/rts/libHSrts_thr.a",
                   ],
                   version = "1.0",
                   deps = [
@@ -178,11 +178,11 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
         load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
         haskell_external_library(
             name = "process",
-            db = "lib/ghc-8.0.2/package.conf.d",
+            db = "lib/package.conf.d",
             include_dirs = [
-                "lib/ghc-8.0.2/process-1.4.3.0/include",
+                "lib/process-1.4.3.0/include",
             ],
-            lib_dir = "lib/ghc-8.0.2/process-1.4.3.0",
+            lib_dir = "lib/process-1.4.3.0",
             libs = ["HSprocess-1.4.3.0"],
             version = "1.4.3.0",
             external_deps = [
@@ -199,9 +199,9 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                 haskell_prebuilt_library(
                   name = "process",
                   cxx_header_dirs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/include",
+                    "lib/process-1.4.3.0/include",
                   ],
-                  db = "lib/ghc-8.0.2/package.conf.d",
+                  db = "lib/package.conf.d",
                   exported_compiler_flags = [
                     "-expose-package",
                     "process-1.4.3.0",
@@ -211,13 +211,13 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
                   ],
                   id = "process-1.4.3.0-hash",
                   profiled_static_libs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0_p.a",
+                    "lib/process-1.4.3.0/libHSprocess-1.4.3.0_p.a",
                   ],
                   shared_libs = {
-                    "libHSprocess-1.4.3.0-ghc8.0.2.so": "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0-ghc8.0.2.so",
+                    "libHSprocess-1.4.3.0-ghc8.0.2.so": "lib/process-1.4.3.0/libHSprocess-1.4.3.0-ghc8.0.2.so",
                   },
                   static_libs = [
-                    "lib/ghc-8.0.2/process-1.4.3.0/libHSprocess-1.4.3.0.a",
+                    "lib/process-1.4.3.0/libHSprocess-1.4.3.0.a",
                   ],
                   version = "1.4.3.0",
                   deps = [
@@ -245,11 +245,11 @@ class HaskellExternalLibraryTest(tests.utils.TestCase):
         load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
         haskell_external_library(
             name = "process",
-            db = "lib/ghc-8.0.2/package.conf.d",
+            db = "lib/package.conf.d",
             include_dirs = [
-                "lib/ghc-8.0.2/process-1.4.3.0/include",
+                "lib/process-1.4.3.0/include",
             ],
-            lib_dir = "lib/ghc-8.0.2/process-1.4.3.0",
+            lib_dir = "lib/process-1.4.3.0",
             libs = ["HSprocess-1.4.3.0"],
             version = "1.4.3.0",
             external_deps = [

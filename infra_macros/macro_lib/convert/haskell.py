@@ -219,7 +219,7 @@ cflags+=($(cxxflags))
 cflags+=($(cxxppflags{deps}))
 ltoflag=""
 # Needed for `template-hsc.h`.
-cflags+=(-I{ghc}/lib/ghc-8.0.2)
+cflags+=(-I{ghc}/lib)
 for cflag in "${{cflags[@]}}"; do
   if [[ "$cflag" == "-flto" || "$cflag" =~ "-flto=" ]]; then
     ltoflag="$cflag"
