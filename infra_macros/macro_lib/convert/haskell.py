@@ -74,7 +74,6 @@ INTERNAL_GHC_PACKAGES = [
     'binary',
     'bytestring',
     'Cabal',
-    'compact',
     'containers',
     'deepseq',
     'directory',
@@ -84,7 +83,6 @@ INTERNAL_GHC_PACKAGES = [
     'ghc-boot',
     'ghc-boot-th',
     'ghc-prim',
-    'hoopl',
     'hpc',
     'integer-gmp',
     'pretty',
@@ -95,6 +93,19 @@ INTERNAL_GHC_PACKAGES = [
     'time',
     'transformers',
     'unix',
+
+    # TODO: handle this programmatically without hardcoding
+    # 8.0.2 only
+    'compact',
+    'hoopl',
+
+    # 8.4.4 only
+    # 'ghc-compact',
+    # 'mtl',
+    # 'parsec',
+    # 'stm',
+    # 'text',
+    # 'xhtml',
 ]
 
 # Extensions enabled by default unless you specify fb_haskell = False
