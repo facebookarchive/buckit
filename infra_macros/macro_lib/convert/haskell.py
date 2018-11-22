@@ -46,6 +46,7 @@ VALID_WARNINGS_FLAGS_RE = re.compile('^(-f(no-)?warn-)|(-W(no-)?)')
 
 VALID_COMPILER_FLAGS_RE = re.compile(
     '^-O[0-9]*$|'
+    '^-v[0-9]*$|'
     '^(-D\w+)$|'
     '^(-D\w+=\w+)$|'
     '^(-U\w+)$|'
