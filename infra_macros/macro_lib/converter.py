@@ -55,6 +55,7 @@ load(  # noqa F821
 )
 load("@fbcode_macros//build_defs:antlr3_srcs.bzl", "antlr3_srcs")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
+load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
 load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
@@ -68,7 +69,10 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
+load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
+load("@fbcode_macros//build_defs:go_library.bzl", "go_library")
+load("@fbcode_macros//build_defs:go_unittest.bzl", "go_unittest")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
@@ -98,7 +102,6 @@ custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
 d = import_macro_lib('convert/d')
 discard = import_macro_lib('convert/discard')
-go = import_macro_lib('convert/go')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
 try:
@@ -169,10 +172,6 @@ def convert(context, base_path, rule):
         d.DConverter(context, 'd_binary'),
         d.DConverter(context, 'd_library'),
         d.DConverter(context, 'd_unittest', 'd_test'),
-        go.GoConverter(context, 'go_binary'),
-        go.GoConverter(context, 'go_library'),
-        go.GoConverter(context, 'cgo_library'),
-        go.GoConverter(context, 'go_unittest', 'go_test'),
         go_bindgen_library.GoBindgenLibraryConverter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
@@ -223,6 +222,7 @@ def convert(context, base_path, rule):
         'buck_sh_binary': buck_sh_binary,  # noqa F821
         'buck_sh_test': buck_sh_test,  # noqa F821
         'buck_zip_file': buck_zip_file,  # noqa F821
+        'cgo_library': cgo_library,  # noqa F821
         'dewey_artifact': dewey_artifact,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821
@@ -231,7 +231,10 @@ def convert(context, base_path, rule):
         'test_suite': test_suite,  # noqa F821
         'buck_command_alias': buck_command_alias,  # noqa F821
         'custom_rule': custom_rule,  # noqa F821
+        'go_binary': go_binary,  # noqa F821
         'go_external_library': go_external_library,  # noqa F821
+        'go_library': go_library,  # noqa F821
+        'go_unittest': go_unittest,  # noqa F821
         'haskell_external_library': haskell_external_library,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821

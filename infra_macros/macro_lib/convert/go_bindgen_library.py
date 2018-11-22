@@ -17,15 +17,14 @@ with allow_unsafe_import():
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/convert/go.py".format(macro_root), "go")
 include_defs("{}/rule.py".format(macro_root))
+load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 
-class GoBindgenLibraryConverter(go.GoConverter):
+class GoBindgenLibraryConverter(base.Converter):
     def __init__(self, context):
-        super(GoBindgenLibraryConverter, self).\
-            __init__(context, 'cgo_library')
+        super(GoBindgenLibraryConverter, self).__init__(context)
 
     def get_fbconfig_rule_type(self):
         return 'go_bindgen_library'
@@ -199,10 +198,12 @@ class GoBindgenLibraryConverter(go.GoConverter):
             header_includes,
             manifest)
 
-        return super(GoBindgenLibraryConverter, self).convert(
-            base_path,
-            name,
-            package_name=import_path,
-            srcs=srcs + extra_srcs,
-            headers=headers + extra_headers,
-            **kwargs) + extra_rules
+        cgo_library(
+            name =name,
+            package_name = import_path,
+            srcs = srcs + extra_srcs,
+            headers = headers + extra_headers,
+            **kwargs
+        )
+
+        return extra_rules

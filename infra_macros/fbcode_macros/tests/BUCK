@@ -14,6 +14,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:build_info.bzl",
     "fbcode_macros//build_defs:build_mode.bzl",
     "fbcode_macros//build_defs:build_mode_overrides.bzl",
+    "fbcode_macros//build_defs:cgo_library.bzl",
     "fbcode_macros//build_defs:common_paths.bzl",
     "fbcode_macros//build_defs:compiler.bzl",
     "fbcode_macros//build_defs:config.bzl",
@@ -43,7 +44,11 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:haskell_common.bzl",
     "fbcode_macros//build_defs:haskell_external_library.bzl",
     "fbcode_macros//build_defs:lex.bzl",
+    "fbcode_macros//build_defs:go_binary.bzl",
+    "fbcode_macros//build_defs:go_common.bzl",
     "fbcode_macros//build_defs:go_external_library.bzl",
+    "fbcode_macros//build_defs:go_library.bzl",
+    "fbcode_macros//build_defs:go_unittest.bzl",
     "fbcode_macros//build_defs:java_binary.bzl",
     "fbcode_macros//build_defs:java_common.bzl",
     "fbcode_macros//build_defs:java_library.bzl",
@@ -492,6 +497,42 @@ skylark_integration_test(
 skylark_integration_test(
     name = "lua_common_test",
     srcs = ["lua_common_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "cgo_library_test",
+    srcs = ["cgo_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "go_binary_test",
+    srcs = ["go_binary_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "go_library_test",
+    srcs = ["go_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "go_unittest_test",
+    srcs = ["go_unittest_test.py"],
     deps = [
         "fbcode_macros//tests/facebook:utils",
         ":utils",
