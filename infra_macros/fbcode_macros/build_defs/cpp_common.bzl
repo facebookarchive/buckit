@@ -290,6 +290,24 @@ def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):
         for src in tp2_dep_srcs
     ]
 
+def _format_if(if_func, val, empty, platform, compiler):
+    if partial.call(if_func, platform, compiler):
+        return val
+    return empty
+
+def _modules_enabled_for_platform(platform, compiler):
+    return module_utils.enabled_for_platform(platform_utils.to_buck_platform(platform, compiler))
+
+def _format_modules_param(lst):
+    return src_and_dep_helpers.format_platform_param(
+        partial.make(
+            _format_if,
+            partial.make(_modules_enabled_for_platform),
+            lst,
+            [],
+        ),
+    )
+
 def _format_source_with_flags_list(srcs_with_flags):
     """
     Convert the provided SourceWithFlags objects into objects useable by buck native rules
@@ -1123,7 +1141,7 @@ def _convert_cpp(
 
     # `dlopen_enabled=True` binaries are really libraries.
     is_binary = False if dlopen_info != None else is_deployable
-    exported_lang_pp_flags = {}
+    exported_lang_plat_pp_flags = {}
     platform = (
         platform_utils.get_platform_for_base_path(
             base_path if cpp_rule_type != "cpp_node_extension" else
@@ -1359,22 +1377,6 @@ def _convert_cpp(
     out_lang_preprocessor_flags["assembler_with_cpp"].extend(
         cpp_flags.get_extra_cxxppflags(),
     )
-    if module_utils.enabled() and out_modules:
-        # Add module toolchain flags.
-        out_lang_preprocessor_flags["cxx"].extend(
-            module_utils.get_toolchain_flags(),
-        )
-
-        # Tell the compiler that C/C++ sources compiled in this rule are
-        # part of the same module as the headers (and so have access to
-        # private headers).
-        if out_modular_headers:
-            module_name = (
-                module_utils.get_module_name("fbcode", base_path, name)
-            )
-            out_lang_preprocessor_flags["cxx"].append(
-                "-fmodule-name=" + module_name,
-            )
     if out_lang_preprocessor_flags:
         attributes["lang_preprocessor_flags"] = out_lang_preprocessor_flags
 
@@ -1399,6 +1401,29 @@ def _convert_cpp(
         exported_pp_flags.append(path)
     if exported_pp_flags:
         attributes["exported_preprocessor_flags"] = exported_pp_flags
+
+    # Form platform and language specific processor flags.
+    out_lang_plat_pp_flags = {}
+    if module_utils.enabled() and out_modules:
+        out_lang_plat_pp_flags.setdefault("cxx", [])
+
+        # Add module toolchain flags.
+        out_lang_plat_pp_flags["cxx"].extend(
+            _format_modules_param(module_utils.get_toolchain_flags()),
+        )
+
+        # Tell the compiler that C/C++ sources compiled in this rule are
+        # part of the same module as the headers (and so have access to
+        # private headers).
+        if out_modular_headers:
+            module_name = (
+                module_utils.get_module_name("fbcode", base_path, name)
+            )
+            out_lang_plat_pp_flags["cxx"].extend(
+                _format_modules_param(["-fmodule-name=" + module_name]),
+            )
+    if out_lang_plat_pp_flags:
+        attributes["lang_platform_preprocessor_flags"] = out_lang_plat_pp_flags
 
     # Add in the base ldflags.
     out_ldflags.extend(
@@ -1760,7 +1785,7 @@ def _convert_cpp(
 
     # Modularize libraries.
     if module_utils.enabled() and is_library and out_modular_headers:
-        exported_lang_pp_flags.setdefault("cxx", [])
+        exported_lang_plat_pp_flags.setdefault("cxx", [])
 
         # If we're using modules, we need to add in the `module.modulemap`
         # file and make sure it gets installed at the root of the include
@@ -1804,7 +1829,6 @@ def _convert_cpp(
         module_flags = []
         module_flags.extend(out_preprocessor_flags)
         module_flags.extend(out_lang_preprocessor_flags["cxx"])
-        module_flags.extend(exported_lang_pp_flags["cxx"])
         module_flags.extend(exported_pp_flags)
 
         # Build each module header in it's own context.
@@ -1816,6 +1840,7 @@ def _convert_cpp(
         module_flags.append("-DFOLLY_XLOG_STRIP_PREFIXES=FB_BUCK_MODULE_HOME")
 
         module_platform_flags = []
+        module_platform_flags.extend(exported_lang_plat_pp_flags["cxx"])
         module_platform_flags.extend(out_platform_preprocessor_flags)
         module_platform_flags.extend(
             out_lang_plat_compiler_flags["cxx_cpp_output"],
@@ -1848,9 +1873,11 @@ def _convert_cpp(
         )
 
         # Expose module via C++ preprocessor flags.
-        exported_lang_pp_flags["cxx"].append(
-            "-fmodule-file={}=$(location :{})"
-                .format(module_name, mod_name),
+        exported_lang_plat_pp_flags["cxx"].extend(
+            _format_modules_param(
+                ["-fmodule-file={}=$(location :{})"
+                    .format(module_name, mod_name)],
+            ),
         )
 
     # TODO(T36925825): Set `FOLLY_XLOG_STRIP_PREFIXES` for non-module
@@ -1878,8 +1905,8 @@ def _convert_cpp(
     if out_header_namespace != base_path:
         attributes["header_namespace"] = out_header_namespace
 
-    if exported_lang_pp_flags:
-        attributes["exported_lang_preprocessor_flags"] = exported_lang_pp_flags
+    if exported_lang_plat_pp_flags:
+        attributes["exported_lang_platform_preprocessor_flags"] = exported_lang_plat_pp_flags
 
     # If any deps were specified, add them to the output attrs.  For
     # libraries, we always use make these exported, since this is the

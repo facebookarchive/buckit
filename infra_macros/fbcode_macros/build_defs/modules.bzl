@@ -20,6 +20,12 @@ def _enabled():
         )
     return enabled
 
+def _enabled_for_platform(platform):
+    """
+    Return whether this platform explicitly opts out of modules.
+    """
+    return read_boolean("cxx#{}".format(platform), "modules", True)
+
 # Flags to apply to compilations to enabled modules.
 _TOOLCHAIN_FLAGS = [
     # Enable modules.
@@ -424,6 +430,7 @@ def _gen_tp2_cpp_module(
 
 modules = struct(
     enabled = _enabled,
+    enabled_for_platform = _enabled_for_platform,
     gen_module = _gen_module,
     gen_tp2_cpp_module = _gen_tp2_cpp_module,
     get_implicit_module_deps = _get_implicit_module_deps,
