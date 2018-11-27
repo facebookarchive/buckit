@@ -36,6 +36,8 @@ _LSAN_DEFAULT_SUPPRESSIONS = [
     "/lib/libpython",
     "libluajit-5.1.so.2",
     "/src/cpython",
+    # T37141809: libgit2 is leaky in multi-threaded programs.
+    "giterr_set",
 ]
 
 _TSAN_DEFAULT_OPTIONS = {
