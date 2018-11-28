@@ -21,6 +21,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
+load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
 load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
@@ -86,34 +87,6 @@ class RustConverter(base.Converter):
             ok |= set(['preferred_linkage', 'proc_macro'])
 
         return ok
-
-    def get_rust_binary_deps(self, base_path, name, linker_flags, allocator):
-        deps = []
-        rules = []
-
-        allocator = allocators.normalize_allocator(allocator)
-
-        deps.extend(
-            cpp_common.get_binary_link_deps(
-                base_path,
-                name,
-                linker_flags,
-                allocator,
-            )
-        )
-
-        # Always explicitly add libc - except for sanitizer modes, since
-        # they already add them
-        libc = target_utils.ThirdPartyRuleTarget('glibc', 'c')
-        if libc not in deps:
-            deps.append(libc)
-
-        # Always explicitly add libstdc++ - except for sanitizer modes, since
-        # they already add them
-        libgcc = target_utils.ThirdPartyRuleTarget('libgcc', 'stdc++')
-        if libgcc not in deps:
-            deps.append(libgcc)
-        return deps, rules
 
     def convert(self,
                 base_path,
@@ -267,14 +240,13 @@ class RustConverter(base.Converter):
         # Do this after creating the test rule, so that it doesn't pick this
         # up as well (it will add its own binary deps as needed)
         if self.is_binary():
-            d, r = self.get_rust_binary_deps(
+            d = rust_common.get_rust_binary_deps(
                 base_path,
                 name,
                 linker_flags,
                 allocator,
             )
             dependencies.extend(d)
-            extra_rules.extend(r)
 
         # If any deps were specified, add them to the output attrs.
         if dependencies:
@@ -360,14 +332,13 @@ class RustConverter(base.Converter):
         for dep in test_external_deps or []:
             deps.append(src_and_dep_helpers.normalize_external_dep(dep))
 
-        d, r = self.get_rust_binary_deps(
+        d = rust_common.get_rust_binary_deps(
             base_path,
             name,
             test_attributes['linker_flags'],
             allocator,
         )
         deps.extend(d)
-        rules.extend(r)
 
         test_attributes['deps'], test_attributes['platform_deps'] = (
             src_and_dep_helpers.format_all_deps(deps))

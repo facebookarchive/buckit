@@ -376,4 +376,5 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
 
 rust_common = struct(
     convert_rust = _convert_rust,
+    get_rust_binary_deps = _get_rust_binary_deps,
 )
