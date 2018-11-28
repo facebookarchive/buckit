@@ -34,10 +34,24 @@ python_unittest(
 )
 
 python_library(
+    name = "btrfs_loopback",
+    srcs = ["btrfs_loopback.py"],
+    base_module = "",
+    deps = [
+        ":common",
+        ":unshare",
+    ],
+)
+
+python_library(
     name = "subvol_utils",
     srcs = ["subvol_utils.py"],
     base_module = "",
-    deps = [":common"],
+    deps = [
+        ":btrfs_loopback",
+        ":common",
+        ":unshare",
+    ],
 )
 
 python_unittest(
@@ -186,6 +200,7 @@ python_unittest(
     deps = [
         ":artifacts_dir",
         ":package-image-library",
+        ":unshare",
         ":volume_for_repo",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],

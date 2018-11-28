@@ -212,9 +212,11 @@ base images. Specific advantages to this include:
 '''
 import argparse
 import os
+import stat
 
 from typing import Mapping
 
+from common import init_logging
 from compiler.subvolume_on_disk import SubvolumeOnDisk
 from subvol_utils import Subvol
 
@@ -250,6 +252,23 @@ class Sendstream(Format, format_name='sendstream'):
             svod.subvolume_path(), already_exists=True,
         ).mark_readonly_and_write_sendstream_to_file(outfile):
             pass
+
+
+class BtrfsImage(Format, format_name='btrfs'):
+    '''
+    Packages the subvolume as a btrfs-formatted disk image, usage:
+      mount -t btrfs image.btrfs dest/ -o loop
+    '''
+    def package_full(self, svod: SubvolumeOnDisk, output_path: str):
+        Subvol(
+            svod.subvolume_path(), already_exists=True,
+        ).mark_readonly_and_send_to_new_loopback(output_path)
+        # Paranoia: images are read-only after being built
+        os.chmod(
+            output_path,
+            stat.S_IMODE(os.stat(output_path).st_mode)
+                & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH),
+        )
 
 
 def parse_args(argv):
@@ -337,4 +356,5 @@ def package_image(argv):
 
 if __name__ == '__main__':  # pragma: no cover
     import sys
+    init_logging()
     package_image(sys.argv[1:])

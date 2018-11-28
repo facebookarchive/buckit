@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 from subvol_utils import Subvol
 
@@ -84,3 +85,30 @@ class SubvolTestCase(unittest.TestCase):
                 pass
             outfile.seek(0)
             self.assertEqual(sendstream, outfile.read())
+
+    @with_temp_subvols
+    def test_mark_readonly_and_send_to_new_loopback(self, temp_subvols):
+        sv = temp_subvols.create('subvol')
+        sv.run_as_root([
+            'dd', 'if=/dev/zero', b'of=' + sv.path('d'), 'bs=1M', 'count=200',
+        ])
+        sv.run_as_root(['mkdir', sv.path('0')])
+        sv.run_as_root(['tee', sv.path('0/0')], input=b'0123456789')
+        with tempfile.NamedTemporaryFile() as loop_path:
+            # The default waste factor succeeds in 1 try, but a too-low
+            # factor results in 2 tries.
+            waste_too_low = 1.0001
+            self.assertEqual(2, sv.mark_readonly_and_send_to_new_loopback(
+                loop_path.name, waste_factor=waste_too_low,
+            ))
+            self.assertEqual(
+                1, sv.mark_readonly_and_send_to_new_loopback(loop_path.name),
+            )
+            # Same 2-try run, but this time, exercise the free space check
+            # instead of relying on parsing `btrfs receive` output.
+            with unittest.mock.patch(
+                'subvol_utils.Subvol._OUT_OF_SPACE_SUFFIX', b'cypa',
+            ):
+                self.assertEqual(2, sv.mark_readonly_and_send_to_new_loopback(
+                    loop_path.name, waste_factor=waste_too_low,
+                ))

@@ -4,7 +4,8 @@ import logging
 import os
 import subprocess
 
-from typing import AnyStr
+from typing import AnyStr, Iterable
+from contextlib import contextmanager
 
 
 # Bite me, Python3.
@@ -37,3 +38,21 @@ def check_popen_returncode(proc: subprocess.Popen):
         raise subprocess.CalledProcessError(
             returncode=proc.returncode, cmd=proc.args,
         )
+
+
+def run_stdout_to_err(
+    args: Iterable[AnyStr], *, stdout: None=None, **kwargs
+) -> subprocess.CompletedProcess:
+    '''
+    Use this instead of `subprocess.{run,call,check_call}()` to prevent
+    subprocesses from accidentally polluting stdout.
+    '''
+    assert stdout is None, 'run_stdout_to_err does not take a stdout kwarg'
+    return subprocess.run(args, **kwargs, stdout=2)  # Redirect to stderr
+
+
+@contextmanager
+def pipe():
+    r_fd, w_fd = os.pipe2(os.O_CLOEXEC)
+    with os.fdopen(r_fd, 'rb') as r, os.fdopen(w_fd, 'wb') as w:
+        yield r, w

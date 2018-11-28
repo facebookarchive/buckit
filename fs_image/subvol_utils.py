@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 import os
+import platform
 import subprocess
+import time
 
 from contextlib import contextmanager
 from typing import AnyStr, Iterator
 
-from common import byteme, check_popen_returncode
+from btrfs_loopback import LoopbackVolume, run_stdout_to_err
+from common import byteme, check_popen_returncode, get_file_logger, pipe
+from unshare import Namespace, nsenter_as_root, nsenter_as_user, Unshare
+
+log = get_file_logger(__file__)
+MiB = 2 ** 20
 
 
 # Exposed as a helper so that test_compiler.py can mock it.
@@ -168,9 +175,9 @@ class Subvol:
         # up in the `send` stream unless that metadata is `fsync`ed.  For
         # some dogscience reason, `getfattr` on a file actually triggers
         # such an `fsync`.  We do this on a read-only filesystem to improve
-        # consistency.
-        kernel_ver = subprocess.check_output(['uname', '-r'])
-        if kernel_ver.startswith(b'4.6.'):  # pragma: no cover
+        # consistency. Coverage: manually tested this on a 4.11 machine:
+        #   platform.uname().release.startswith('4.11.')
+        if platform.uname().release.startswith('4.6.'):  # pragma: no cover
             self.run_as_root([
                 'getfattr', '--no-dereference', '--recursive', self.path()
             ])
@@ -195,3 +202,222 @@ class Subvol:
     ) -> Iterator[None]:
         with self._mark_readonly_and_send(stdout=outfile, **kwargs):
             yield
+
+    def mark_readonly_and_send_to_new_loopback(
+        self, output_path, waste_factor=1.15,
+    ) -> int:
+        '''
+        Overwrites `ouput_path` with a new btrfs image, and send this
+        subvolume to this new volume.  The image is populated as a loopback
+        mount, which will be unmounted before this function returns.
+
+        Since btrfs sizing facilities are unreliable, we size the new
+        filesystem by guesstimating the content size of the filesystem, and
+        multiplying it by `waste_factor` to ensure that `receive` does not
+        run out of space.  If out-of-space does occur, this function repeats
+        multiply-send-receive until we succeed, so a low `waste_factor` can
+        make image builds much slower.
+
+        ## Notes on setting `waste_factor`
+
+          - This is exposed for unit tests, you should probably not surface
+            it to users.  We should improve the auto-sizing instead.
+
+          - Even though sparse files make it fairly cheap to allocate a
+            much larger loopback than what is required to contain the
+            subvolume, we want to try to keep the loopback filesystem as
+            full as possible. The primary rationale is that parts of
+            our image distribution filesystem do not support sparse files
+            (to be fixed). Secondarily, btrfs seems to increase the
+            amount of overhead it permits itself as the base filesystem
+            becomes larger. I have not carefully measured the loopback
+            size after accounting for sparseness, but this needs to
+            be tested before considering much larger waste factors.
+
+          - While we resize down to `min-dev-size` after populating the
+            volume, setting a higher waste factor is still not free.  The
+            reason is that btrfs auto-allocates more metadata blocks for
+            larger filesystems, but `resize` does not release them.  So if
+            you start with a larger waste factor, your post-shrink
+            filesystem will be larger, too.  This is one of the reasons why
+            we should just `findmnt -o SIZE` to determine a safe size of the
+            loopback (the other reason is below).
+
+          - The default of 15% is very conservative, with the goal of
+            never triggering an expensive send+receive combo. This seeks to
+            optimize developer happiness.  In my tests, I have not seen a
+            filesystem that needed more than 5%.  Later, we can add
+            monitoring and gradually dial this down.
+
+          - If your subvolume's `_estimate_content_bytes` is X, and it
+            fits in a loopback of size Y, it is not guaranteed that you
+            could have used `waste_factor = Y / X`, because lazy writes make
+            it possible to resize a populated filesystem to have a size
+            **below** what you would have needed to populate its content.
+
+          - There is an alternative strategy to "multiply by waste_factor &
+            re-send", which is to implement a `pv`-style function that
+            sits on a pipe between `send` and `receive`, and does the
+            following to make sure `receive` never runs out of space:
+              - `btrfs filesystem sync`, `usage`, and if "min" free space
+                drops too low, `resize`
+              - `splice` (via `ctypes`, or write this interposition program
+                in C) a chunk from `send` to `receive`. Using `splice`
+                instead of copying through userspace is not **necessarily**
+                essential, but in order to minimize latency, it's important
+                that we starve the `receive` end as rarely as possible,
+                which may require some degree of concurrency between reading
+                from `send` and writing to `receive`.  To clarify: a naive
+                Python prototype that read & wrote 2MB at a time -- a buffer
+                that's large enough that we'd frequently starve `receive` or
+                stall `send` -- experienced a 30% increase in wall time
+                compared to `send | receive`.
+              - Monitor usage much more frequently than the free space to
+                chunk size ratio would indicate, since something may buffer.
+                Don't use a growth increment that is TOO small.
+              - Since there are no absolute guarantees that btrfs won't
+                run out of space on `receive`, there should still be an
+                outer retry layer, but it ought to never fire.
+              - Be aware that the minimum `mkfs.brfs` size is 108MiB, the
+                minimum size to which we can grow via `resize` is 175MiB,
+                while the minimum size to which we can shrink via `resize`
+                is 256MiB, so the early growth tactics should reflect this.
+
+            The advantage of this strategy of interposing on a pipe, if
+            implemented well, is that we should be able to achieve a smaller
+            waste factor without paying occasionally doubling our wall clock
+            and IOP costs due to retries.  The disadvantage is that if we do
+            a lot of grow cycles prior to our shrink, the resulting
+            filesystem may end up being more out-of-tune than if we had
+            started with a large enough size from the beginning.
+        '''
+        # In my experiments, btrfs needs at least 81 MB of overhead in all
+        # circumstances, and this initial overhead is not multiplicative.
+        # To be specific, I tried single-file subvolumes with files of size
+        # 27, 69, 94, 129, 175, 220MiB.
+        fs_bytes = self._estimate_content_bytes() + 81 * MiB
+        attempts = 0
+        while True:
+            attempts += 1
+            fs_bytes *= waste_factor
+            if self._send_to_loopback_if_fits(output_path, int(fs_bytes)):
+                break
+            log.warning(f'{self._path} did not fit in {fs_bytes} bytes')
+        # Future: It would not be unreasonable to run some sanity checks on
+        # the resulting filesystem here. Ideas:
+        #  - See if we have an unexpectedly large amount of unused metadata
+        #    space, or other "waste" via `btrfs filesystem usage -b` --
+        #    could ask @clm if this is a frequent issue.
+        #  - Can we check for fragmentation / balance issues?
+        #  - We could (very occasionally & maybe in the background, since
+        #    this is expensive) check that the received subvolume is
+        #    identical to the source subvolume.
+        return attempts
+
+    def _estimate_content_bytes(self):
+        '''
+        Returns a (usually) tight lower-bound guess of the filesystem size
+        necessary to contain this subvolume.  The caller is responsible for
+        appropriately padding this size when creating the destination FS.
+
+        ## Future: Query the subvolume qgroup to estimate its size
+
+          - If quotas are enabled, this should be an `O(1)` operation
+            instead of the more costly filesystem tree traversal.  NB:
+            qgroup size estimates tend to run a bit (~1%) lower than `du`,
+            so growth factors may need a tweak.  `_estimate_content_bytes()`
+            should `log.warning` and fall back to `du` if quotas are
+            disabled in an older `buck-image-out`.  It's also an option to
+            enable quotas and to trigger a `rescan -w`, but requires more
+            code/testing.
+
+          - Using qgroups for builds is a good stress test of the qgroup
+            subsystem. It would help us gain confidence in that (a) they
+            don't trigger overt issues (filesystem corruption, dramatic perf
+            degradation, or crashes), and that (b) they report reasonably
+            accurate numbers on I/O-stressed build hosts.
+
+          - Should run an A/B test to see if the build perf wins of querying
+            qgroups exceed the perf hit of having quotas enabled.
+
+          - Eventually, we'd enable quotas by default for `buck-image-out`
+            volumes.
+
+          - Need to delete the qgroup whenever we delete a subvolume.  Two
+            main cases: `Subvol.delete` and `subvolume_garbage_collector.py`.
+            Can check if we are leaking cgroups by building & running &
+            image tests, and looking to see if that leaves behind 0-sized
+            cgroups unaffiliated with subvolumes.
+
+          - The basic logic for qgroups looks like this:
+
+            $ sudo btrfs subvol show buck-image-out/volume/example |
+                grep 'Subvolume ID'
+                    Subvolume ID:           1432
+
+            $ sudo btrfs qgroup show --raw --sync buck-image-out/volume/ |
+                grep ^0/1432
+            0/1432     1381523456        16384
+            # We want the second column, bytes in referenced extents.
+
+            # For the `qgroup show` operation, check for **at least** these
+            # error signals on stderr -- with exit code 1:
+            ERROR: can't list qgroups: quotas not enabled
+            # ... and with exit code 0:
+            WARNING: qgroup data inconsistent, rescan recommended
+            WARNING: rescan is running, qgroup data may be incorrect
+            # Moreover, I would have the build fail on any unknown output.
+        '''
+        # Not adding `-x` since buck-built subvolumes should not have other
+        # filesystems mounted inside them.
+        start_time = time.time()
+        du_out = subprocess.check_output([
+            'sudo', 'du', '--block-size=1', '--summarize', self._path,
+        ]).split(b'\t', 1)
+        assert du_out[1] == self._path + b'\n'
+        size = int(du_out[0])
+        log.info(
+            f'`du` estimated size of {self._path} as {size} in '
+            f'{time.time() - start_time} seconds'
+        )
+        return size
+
+    # Mocking this allows tests to exercise the fallback "out of space" path.
+    _OUT_OF_SPACE_SUFFIX = b': No space left on device\n'
+
+    def _send_to_loopback_if_fits(self, output_path, fs_size_bytes) -> bool:
+        '''
+        Creates a loopback of the specified size, and sends the current
+        subvolume to it.  Returns True if the subvolume fits in that space.
+        '''
+        open(output_path, 'wb').close()
+        with pipe() as (r_send, w_send), \
+                Unshare([Namespace.MOUNT, Namespace.PID]) as ns, \
+                LoopbackVolume(ns, output_path, fs_size_bytes) as loop_vol, \
+                self.mark_readonly_and_write_sendstream_to_file(w_send):
+            w_send.close()  # This end is now fully owned by `btrfs send`.
+            with r_send:
+                recv_ret = run_stdout_to_err(nsenter_as_root(
+                    ns, 'btrfs', 'receive', loop_vol.dir(),
+                ), stdin=r_send, stderr=subprocess.PIPE)
+                if recv_ret.returncode != 0:
+                    if recv_ret.stderr.endswith(self._OUT_OF_SPACE_SUFFIX):
+                        return False
+                    # It's pretty lame to rely on `btrfs receive` continuing
+                    # to be unlocalized, and emitting that particular error
+                    # message, so we fall back to checking available bytes.
+                    size_ret = subprocess.run(nsenter_as_user(
+                        ns, 'findmnt', '--noheadings', '--bytes',
+                        '--output', 'AVAIL', loop_vol.dir(),
+                    ), stdout=subprocess.PIPE)
+                    # If the `findmnt` fails, don't mask the original error.
+                    if size_ret.returncode == 0 and int(size_ret.stdout) == 0:
+                        return False
+                    # Covering this is hard, so the test plan is "inspection".
+                    log.error(  # pragma: no cover
+                        'Unhandled receive stderr:\n\n' +
+                        recv_ret.stderr.decode(errors='surrogateescape'),
+                    )
+                recv_ret.check_returncode()
+            loop_vol.minimize_size()
+            return True

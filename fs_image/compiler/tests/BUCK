@@ -135,6 +135,8 @@ image_layer(
 
 image_package(name = "child_layer.sendstream")
 
+image_package(name = "child_layer.btrfs")
+
 ##
 ## These few rules help test the `image_layer` `from_sendstream` feature.
 ##
@@ -150,16 +152,17 @@ python_binary(
 
 # Future: it'd be neat to add `mutate_ops`, but that requires some wrangling
 # with btrfs to get it to find the parent subvolume.
-for op in ["create_ops"]:
-    buck_genrule(
-        name = op + "-original.sendstream",
-        out = op + "-original.sendstream",
-        bash = "$(exe :save-demo-sendstream) \"$OUT\" " + op,
-    )
+op = "create_ops"
 
-    image_layer(
-        name = op,
-        from_sendstream = ":" + op + "-original.sendstream",
-    )
+buck_genrule(
+    name = op + "-original.sendstream",
+    out = op + "-original.sendstream",
+    bash = "$(exe :save-demo-sendstream) \"$OUT\" " + op,
+)
 
-    image_package(name = op + ".sendstream")
+image_layer(
+    name = op,
+    from_sendstream = ":" + op + "-original.sendstream",
+)
+
+image_package(name = op + ".sendstream")
