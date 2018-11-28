@@ -1448,10 +1448,11 @@ def _convert_cpp(
         sanitizers.get_sanitizer() != None):
         dependencies.extend(_get_sanitizer_non_binary_deps())
 
+    out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
+
     if is_binary:
         if sanitizers.get_sanitizer() != None:
             out_ldflags.extend(_get_sanitizer_binary_ldflags())
-        out_ldflags.extend(coverage.get_coverage_ldflags(base_path))
         if (native.read_config("fbcode", "gdb-index") and
             not core_tools.is_core_tool(base_path, name)):
             out_ldflags.append("-Wl,--gdb-index")
