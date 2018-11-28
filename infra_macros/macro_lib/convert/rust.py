@@ -214,7 +214,8 @@ class RustConverter(base.Converter):
         # test_features and test_rustc_flags override the base rule keys,
         # if present.
         if not self.is_test() and unittests:
-            test, r = self.create_rust_test_rule(
+            test_name = rust_common.create_rust_test_rule(
+                self.get_fbconfig_rule_type(),
                 base_path,
                 dependencies,
                 attributes,
@@ -228,9 +229,7 @@ class RustConverter(base.Converter):
                 allocator,
                 visibility,
             )
-            tests.append(':' + test.attributes['name'])
-            extra_rules.append(test)
-            extra_rules.extend(r)
+            tests.append(':' + test_name)
             attributes['tests'] = tests
 
         if self.is_test():
@@ -254,96 +253,6 @@ class RustConverter(base.Converter):
                 src_and_dep_helpers.format_all_deps(dependencies))
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
-
-    def create_rust_test_rule(
-            self,
-            base_path,
-            dependencies,
-            attributes,
-            test_srcs,
-            test_deps,
-            test_external_deps,
-            test_rustc_flags,
-            test_features,
-            test_link_style,
-            test_linker_flags,
-            allocator,
-            visibility):
-        """
-        Construct a rust_test rule corresponding to a rust_library or
-        rust_binary rule so that internal unit tests can be run.
-        """
-        rules = []
-        test_attributes = collections.OrderedDict()
-
-        name = '%s-unittest' % attributes['name']
-
-        test_attributes['name'] = name
-        if visibility is not None:
-            test_attributes['visibility'] = visibility
-
-        # Regardless of the base rule type, the resulting unit test is always
-        # an executable which needs to have buildinfo.
-        ldflags = cpp_common.get_ldflags(
-            base_path,
-            name,
-            self.get_fbconfig_rule_type(),
-            binary=True,
-            strip_mode=None,
-            build_info=True,
-            platform=platform_utils.get_platform_for_base_path(base_path))
-
-        test_attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-
-        if 'crate' in attributes:
-            test_attributes['crate'] = '%s_unittest' % attributes['crate']
-
-        if 'crate_root' in attributes:
-            test_attributes['crate_root'] = attributes['crate_root']
-
-        if test_rustc_flags:
-            test_attributes['rustc_flags'] = test_rustc_flags
-        elif 'rustc_flags' in attributes:
-            test_attributes['rustc_flags'] = attributes['rustc_flags']
-
-        if test_features:
-            test_attributes['features'] = test_features
-        elif 'features' in attributes:
-            test_attributes['features'] = attributes['features']
-
-        link_style = cpp_common.get_link_style()
-        if test_link_style:
-            link_style = test_link_style
-        elif 'link_style' in attributes:
-            link_style = attributes['link_style']
-        test_attributes['link_style'] = link_style
-
-        test_attributes['linker_flags'] = ldflags + (test_linker_flags or [])
-
-        test_attributes['srcs'] = list(attributes.get('srcs', []))
-        if test_srcs:
-            test_attributes['srcs'] += (
-                src_and_dep_helpers.convert_source_list(base_path, test_srcs))
-
-        deps = []
-        deps.extend(dependencies)
-        for dep in test_deps or []:
-            deps.append(target_utils.parse_target(dep, default_base_path=base_path))
-        for dep in test_external_deps or []:
-            deps.append(src_and_dep_helpers.normalize_external_dep(dep))
-
-        d = rust_common.get_rust_binary_deps(
-            base_path,
-            name,
-            test_attributes['linker_flags'],
-            allocator,
-        )
-        deps.extend(d)
-
-        test_attributes['deps'], test_attributes['platform_deps'] = (
-            src_and_dep_helpers.format_all_deps(deps))
-
-        return Rule('rust_test', test_attributes), rules
 
     def create_rust_build_info_rule(
             self,
