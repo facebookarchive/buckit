@@ -12,20 +12,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-import pipes
-import os.path
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
-load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
-load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
 class RustConverter(base.Converter):
@@ -48,9 +38,6 @@ class RustConverter(base.Converter):
 
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('rust_unittest',)
-
-    def is_deployable(self):
-        return self.is_binary()
 
     def get_allowed_args(self):
         # common
