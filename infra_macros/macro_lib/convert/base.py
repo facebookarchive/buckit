@@ -335,6 +335,7 @@ class Converter(object):
                 platform))
         source_attrs = collections.OrderedDict()
         source_attrs['name'] = source_name
+        source_attrs['labels'] = ["generated"]
         if visibility is not None:
             source_attrs['visibility'] = visibility
         source_attrs['out'] = source_name + '.c'
@@ -347,6 +348,7 @@ class Converter(object):
         lib_name = name + '-cxx-build-info-lib'
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = lib_name
+        lib_attrs['labels'] = ["generated"]
         if visibility is not None:
             lib_attrs['visibility'] = visibility
         lib_attrs['srcs'] = [':' + source_name]

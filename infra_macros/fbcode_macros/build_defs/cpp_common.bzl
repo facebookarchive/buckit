@@ -562,6 +562,7 @@ def _create_sanitizer_configuration(
 
     fb_native.genrule(
         name = source_gen_name,
+        labels = ["generated"],
         visibility = [
             "//{base_path}:{lib_name}".format(base_path = base_path, lib_name = lib_name),
         ],
@@ -592,6 +593,7 @@ def _create_sanitizer_configuration(
     # into a library.
     fb_native.cxx_library(
         name = lib_name,
+        labels = ["generated"],
         visibility = [
             "//{base_path}:{name}".format(base_path = base_path, name = name),
         ],
