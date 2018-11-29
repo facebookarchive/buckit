@@ -116,139 +116,32 @@ class RustConverter(base.Converter):
                 allocator=None,
                 **kwargs):
 
-        extra_rules = []
-        dependencies = []
+        attributes = rust_common.convert_rust(
+            name,
+            self.get_fbconfig_rule_type(),
+            srcs=srcs,
+            deps=deps,
+            rustc_flags=rustc_flags,
+            features=features,
+            crate=crate,
+            link_style=link_style,
+            preferred_linkage=preferred_linkage,
+            visibility=visibility,
+            external_deps=external_deps,
+            crate_root=crate_root,
+            linker_flags=linker_flags,
+            framework=framework,
+            unittests=unittests,
+            proc_macro=proc_macro,
+            tests=tests,
+            test_features=test_features,
+            test_rustc_flags=test_rustc_flags,
+            test_link_style=test_link_style,
+            test_linker_flags=test_linker_flags,
+            test_srcs=test_srcs,
+            test_deps=test_deps,
+            test_external_deps=test_external_deps,
+            allocator=allocator,
+            **kwargs)
 
-        attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-        attributes['srcs'] = src_and_dep_helpers.convert_source_list(base_path, srcs or [])
-        attributes['features'] = features or []
-
-        if not crate_root and not self.is_test():
-            # Compute a crate_root if one wasn't specified. We'll need this
-            # to pass onto the generated test rule.
-            topsrc_options = ((crate or name) + '.rs',)
-            if self.get_fbconfig_rule_type() == 'rust_binary':
-                topsrc_options += ('main.rs',)
-            if self.get_fbconfig_rule_type() == 'rust_library':
-                topsrc_options += ('lib.rs',)
-
-            topsrc = []
-            for s in srcs or []:
-                if s.startswith(':'):
-                    continue
-                if os.path.basename(s) in topsrc_options:
-                    topsrc.append(s)
-
-            # Not sure what to do about too many or not enough crate roots
-            if len(topsrc) == 1:
-                crate_root = topsrc[0]
-
-        if crate_root:
-            attributes['crate_root'] = crate_root
-
-        if rustc_flags:
-            attributes['rustc_flags'] = rustc_flags
-
-        if crate:
-            attributes['crate'] = crate
-
-        attributes['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-
-        if self.is_binary():
-            platform = platform_utils.get_platform_for_base_path(base_path)
-            if not link_style:
-                link_style = cpp_common.get_link_style()
-
-            attributes['link_style'] = link_style
-
-            ldflags = cpp_common.get_ldflags(
-                base_path,
-                name,
-                self.get_fbconfig_rule_type(),
-                binary=True,
-                build_info=True,
-                platform=platform)
-            attributes['linker_flags'] = ldflags + (linker_flags or [])
-
-            # Add the Rust build info lib to deps.
-            rust_build_info = (
-                rust_common.create_rust_build_info_rule(
-                    base_path,
-                    name,
-                    crate,
-                    self.get_fbconfig_rule_type(),
-                    platform,
-                    visibility))
-            dependencies.append(rust_build_info)
-
-        else:
-            if proc_macro:
-                attributes['proc_macro'] = proc_macro
-
-            if preferred_linkage:
-                attributes['preferred_linkage'] = preferred_linkage
-
-        if rustc_flags:
-            attributes['rustc_flags'] = rustc_flags
-
-        if visibility:
-            attributes['visibility'] = visibility
-
-        # Translate dependencies.
-        for dep in deps or []:
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-
-        # Translate external dependencies.
-        for dep in external_deps or []:
-            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
-
-        if not tests:
-            tests = []
-
-        # Add test rule for all library/binary rules
-        # It has the same set of srcs and dependencies as the base rule,
-        # but also allows additional test srcs, deps and external deps.
-        # test_features and test_rustc_flags override the base rule keys,
-        # if present.
-        if not self.is_test() and unittests:
-            test_name = rust_common.create_rust_test_rule(
-                self.get_fbconfig_rule_type(),
-                base_path,
-                dependencies,
-                attributes,
-                test_srcs,
-                test_deps,
-                test_external_deps,
-                test_rustc_flags,
-                test_features,
-                test_link_style,
-                test_linker_flags,
-                allocator,
-                visibility,
-            )
-            tests.append(':' + test_name)
-            attributes['tests'] = tests
-
-        if self.is_test():
-            attributes['framework'] = framework
-
-        # Add in binary-specific link deps.
-        # Do this after creating the test rule, so that it doesn't pick this
-        # up as well (it will add its own binary deps as needed)
-        if self.is_binary():
-            d = rust_common.get_rust_binary_deps(
-                base_path,
-                name,
-                linker_flags,
-                allocator,
-            )
-            dependencies.extend(d)
-
-        # If any deps were specified, add them to the output attrs.
-        if dependencies:
-            attributes['deps'], attributes['platform_deps'] = (
-                src_and_dep_helpers.format_all_deps(dependencies))
-
-        return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
+        return [Rule(self.get_buck_rule_type(), attributes)]
