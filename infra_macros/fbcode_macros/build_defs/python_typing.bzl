@@ -22,6 +22,7 @@ def gen_typing_config_attrs(
         deps = (),
         typing = False,
         typing_options = "",
+        labels = None,
         visibility = None):
     """
     Generate typing configs, and gather those for our deps
@@ -96,6 +97,8 @@ def gen_typing_config_attrs(
 
     attrs = {}
     attrs["name"] = name
+    if labels != None:
+        attrs["labels"] = labels
 
     # Maybe we can fix this in the future, but specific visibility rules
     # break typing rules from depending on each other

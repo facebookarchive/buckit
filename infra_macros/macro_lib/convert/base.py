@@ -441,7 +441,7 @@ class Converter(object):
     def get_fbcode_dir_from_gen_dir(self):
         return os.path.relpath(os.curdir, self.get_gen_path())
 
-    def copy_rule(self, src, name, out=None, propagate_versions=False, visibility=None):
+    def copy_rule(self, src, name, out=None, propagate_versions=False, visibility=None, labels=None):
         """
         Returns a `genrule` which copies the given source.
         """
@@ -451,6 +451,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if labels is not None:
+            attrs['labels'] = labels
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = out
@@ -667,5 +669,6 @@ class Converter(object):
             deps=deps,
             typing=typing,
             typing_options=typing_options,
+            labels=["generated"],
             visibility=visibility,
         ))

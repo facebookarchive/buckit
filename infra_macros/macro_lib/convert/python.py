@@ -502,6 +502,7 @@ class PythonConverter(base.Converter):
         manifest_name = name + '-manifest'
         manifest_attrs = collections.OrderedDict()
         manifest_attrs['name'] = manifest_name
+        manifest_attrs['labels'] = ["generated"]
         if visibility is not None:
             manifest_attrs['visibility'] = visibility
         manifest_attrs['out'] = name + '-__manifest__.py'
@@ -512,6 +513,7 @@ class PythonConverter(base.Converter):
         manifest_lib_name = name + '-manifest-lib'
         manifest_lib_attrs = collections.OrderedDict()
         manifest_lib_attrs['name'] = manifest_lib_name
+        manifest_lib_attrs['labels'] = ["generated"]
         if visibility is not None:
             manifest_lib_attrs['visibility'] = visibility
         manifest_lib_attrs['base_module'] = ''
@@ -1346,7 +1348,7 @@ class PythonConverter(base.Converter):
             gen_srcs=gen_srcs,
             deps=deps,
             tests=tests,
-            tags=tags,
+            tags=list(tags) + ([] if self.is_library() else ["generated"]),
             external_deps=external_deps,
             visibility=visibility,
             resources=resources,
