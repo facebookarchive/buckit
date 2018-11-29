@@ -1820,6 +1820,7 @@ def _convert_cpp(
                 h: ["private", "textual"] if h.endswith(("-inl.h", "-impl.h", "-pre.h", "-post.h")) else []
                 for h in out_headers
             },
+            labels = ["generated"],
         )
 
         # Add in module map.
@@ -1871,6 +1872,7 @@ def _convert_cpp(
             default_platform = buck_platform,
             deps = module_deps,
             platform_deps = module_platform_deps,
+            labels = ["generated"],
         )
 
         # Expose module via C++ preprocessor flags.

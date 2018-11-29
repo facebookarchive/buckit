@@ -117,12 +117,13 @@ def _get_module_map(name, headers):
     lines.append("}")
     return "".join([line + "\n" for line in lines])
 
-def _module_map_rule(name, module_name, headers):
+def _module_map_rule(name, module_name, headers, labels = None):
     contents = _get_module_map(module_name, headers)
     fb_native.genrule(
         name = name,
         out = "module.modulemap",
         cmd = 'echo {} > "$OUT"'.format(shell.quote(contents)),
+        labels = labels,
     )
 
 def _get_implicit_module_deps():
