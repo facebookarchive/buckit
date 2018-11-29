@@ -471,7 +471,8 @@ class Converter(object):
             name,
             paths,
             deps,
-            visibility=None):
+            visibility=None,
+            labels=None):
         """
         Generate a rule which creates an output dir with the given paths merged
         with the merged directories of it's dependencies.
@@ -489,6 +490,8 @@ class Converter(object):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
+        if labels is not None:
+            attrs['labels'] = labels
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir

@@ -736,6 +736,7 @@ class GoThriftConverter(ThriftLangConverter):
 
             attrs = collections.OrderedDict()
             attrs['name'] = rule_name
+            attrs['labels'] = ['generated']
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = sources.values()
@@ -1025,6 +1026,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             src_zip_name = name + '.src.zip'
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
+            attrs['labels'] = ['generated']
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = (
@@ -1205,6 +1207,7 @@ class JsThriftConverter(ThriftLangConverter):
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir
+        attrs['labels'] = ['generated']
         attrs['srcs'] = sources.values()
         attrs['cmd'] = ' && '.join(cmds)
         return [Rule('genrule', attrs)]
@@ -1301,6 +1304,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             src_zip_name = name + '.src.zip'
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
+            attrs['labels'] = ['generated']
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = (
@@ -2129,6 +2133,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             yield Rule('genrule', collections.OrderedDict(
                 name=thriftdoc_rule[1:],  # Get rid of the initial ':',
                 visibility=visibility,
+                labels=['generated'],
                 out=self.AST_FILE,
                 srcs=[json_experimental_rule],
                 cmd=' && '.join([
@@ -2254,6 +2259,7 @@ class RustThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '%s-gen-rs' % name
+        attrs['labels'] = ['generated']
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
@@ -2363,6 +2369,7 @@ class RustThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = crate_map_name
+        attrs['labels'] = ['generated']
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = os.path.join(os.curdir, crate_map_name + ".txt")
@@ -2601,6 +2608,7 @@ class ThriftLibraryConverter(base.Converter):
         attrs = collections.OrderedDict()
         attrs['name'] = (
             '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
+        attrs['labels'] = ['generated']
         if visibility is not None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir
@@ -2633,6 +2641,7 @@ class ThriftLibraryConverter(base.Converter):
         for name, src in srcs.iteritems():
             attrs = collections.OrderedDict()
             attrs['name'] = '{}={}'.format(compile_name, src)
+            attrs['labels'] = ['generated']
             if visibility is not None:
                 attrs['visibility'] = visibility
             attrs['out'] = src
@@ -2682,7 +2691,8 @@ class ThriftLibraryConverter(base.Converter):
                 self.get_exported_include_tree(name),
                 sorted(includes),
                 map(self.get_exported_include_tree, deps),
-                visibility))
+                labels=["generated"],
+                visibility=visibility))
 
         # py3 thrift requires cpp2
         if 'py3' in languages and 'cpp2' not in languages:
