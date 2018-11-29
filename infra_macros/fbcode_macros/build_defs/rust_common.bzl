@@ -151,8 +151,7 @@ def _convert_rust(
     if rustc_flags:
         attributes["rustc_flags"] = rustc_flags
 
-    if visibility:
-        attributes["visibility"] = visibility
+    attributes["visibility"] = visibility
 
     # Translate dependencies.
     for dep in deps or []:
@@ -162,8 +161,7 @@ def _convert_rust(
     for dep in external_deps or []:
         dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
-    if not tests:
-        tests = []
+    tests = tests or []
 
     # Add test rule for all library/binary rules
     # It has the same set of srcs and dependencies as the base rule,
@@ -196,13 +194,13 @@ def _convert_rust(
     # Do this after creating the test rule, so that it doesn't pick this
     # up as well (it will add its own binary deps as needed)
     if is_binary:
-        d = _get_rust_binary_deps(
+        binary_deps = _get_rust_binary_deps(
             base_path,
             name,
             linker_flags,
             allocator,
         )
-        dependencies.extend(d)
+        dependencies.extend(binary_deps)
 
     # If any deps were specified, add them to the output attrs.
     if dependencies:
@@ -235,8 +233,7 @@ def _create_rust_test_rule(
     name = "%s-unittest" % attributes["name"]
 
     test_attributes["name"] = name
-    if visibility != None:
-        test_attributes["visibility"] = visibility
+    test_attributes["visibility"] = visibility
 
     # Regardless of the base rule type, the resulting unit test is always
     # an executable which needs to have buildinfo.
@@ -290,13 +287,13 @@ def _create_rust_test_rule(
     for dep in test_external_deps or []:
         deps.append(src_and_dep_helpers.normalize_external_dep(dep))
 
-    d = _get_rust_binary_deps(
+    binary_deps = _get_rust_binary_deps(
         base_path,
         name,
         test_attributes["linker_flags"],
         allocator,
     )
-    deps.extend(d)
+    deps.extend(binary_deps)
 
     test_attributes["deps"], test_attributes["platform_deps"] = (
         src_and_dep_helpers.format_all_deps(deps)
@@ -304,7 +301,7 @@ def _create_rust_test_rule(
 
     fb_native.rust_test(**test_attributes)
 
-    return test_attributes["name"]
+    return name
 
 def _create_rust_build_info_rule(
         base_path,
@@ -351,28 +348,27 @@ pub const BUILDINFO: BuildInfo = BuildInfo {
 
     # Setup a rule to generate the build info Rust file.
     source_name = name + "-rust-build-info"
-    source_attrs = {}
-    source_attrs["name"] = source_name
-    if visibility != None:
-        source_attrs["visibility"] = visibility
-    source_attrs["out"] = "lib.rs"
-    source_attrs["cmd"] = (
-        "mkdir -p `dirname $OUT` && echo {0} > $OUT"
-            .format(shell.quote(template))
+    fb_native.genrule(
+        name = source_name,
+        visibility = visibility,
+        out = "lib.rs",
+        cmd = (
+            "mkdir -p `dirname $OUT` && echo {0} > $OUT"
+                .format(shell.quote(template))
+        ),
     )
-    fb_native.genrule(**source_attrs)
 
     # Setup a rule to compile the build info C file into a library.
     lib_name = name + "-rust-build-info-lib"
-    lib_attrs = {}
-    lib_attrs["name"] = lib_name
-    if visibility != None:
-        lib_attrs["visibility"] = visibility
-    lib_attrs["crate"] = (crate or name) + "_build_info"
-    lib_attrs["preferred_linkage"] = "static"
-    lib_attrs["srcs"] = [":" + source_name]
-    lib_attrs["default_platform"] = platform_utils.get_buck_platform_for_base_path(base_path)
-    fb_native.rust_library(**lib_attrs)
+
+    fb_native.rust_library(
+        name = lib_name,
+        crate = (crate or name) + "_build_info",
+        default_platform = platform_utils.get_buck_platform_for_base_path(base_path),
+        preferred_linkage = "static",
+        srcs = [":" + source_name],
+        visibility = visibility,
+    )
 
     return target_utils.RootRuleTarget(base_path, lib_name)
 
