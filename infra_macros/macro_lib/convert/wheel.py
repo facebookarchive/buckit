@@ -120,8 +120,8 @@ class PyWheelDefault(base.Converter):
         # platform deps onto "error" rules that will fail at build time.
         platform_versions = collections.OrderedDict(platform_versions)
         for platform in platform_utils.get_platforms_for_host_architecture():
-            py2_plat = self.get_python_platform(platform, major_version=2)
-            py3_plat = self.get_python_platform(platform, major_version=3)
+            py2_plat = platform_utils.get_buck_python_platform(platform, major_version=2)
+            py3_plat = platform_utils.get_buck_python_platform(platform, major_version=3)
             present_for_any_python_version = (
                 py2_plat in platform_versions or py3_plat in platform_versions
             )

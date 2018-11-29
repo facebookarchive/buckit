@@ -1028,7 +1028,7 @@ class PythonConverter(base.Converter):
                              " '{}' and flavor '{}' on '{}'."
                              .format(py_version, py_flavor, platform))
 
-        python_platform = self.get_python_platform(platform,
+        python_platform = platform_utils.get_buck_python_platform(platform,
                                                    major_version=python_version.major,
                                                    flavor=py_flavor)
 

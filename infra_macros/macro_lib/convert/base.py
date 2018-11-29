@@ -633,16 +633,6 @@ class Converter(object):
 
         return rules
 
-    def get_python_platform(self, platform, major_version, flavor=""):
-        """
-        Constructs a Buck Python platform string from the given parameters.
-        """
-        # See `get_python_platforms_config` in `tools/build/buck/gen_modes.py`:
-        return ('{flavor}py{major}-{platform}'
-                .format(flavor=(flavor + '_' if flavor else ''),
-                        major=major_version,
-                        platform=platform))
-
     def get_allowed_args(self):
         return None
 

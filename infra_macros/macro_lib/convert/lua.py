@@ -455,7 +455,7 @@ class LuaConverter(base.Converter):
         attributes['main_module'] = 'dummy'
 
         # We currently always use py2.
-        attributes['python_platform'] = self.get_python_platform(platform, major_version=2)
+        attributes['python_platform'] = platform_utils.get_buck_python_platform(platform, major_version=2)
 
         # Set platform.
         attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)

@@ -306,10 +306,7 @@ class PlatformTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_get_platforms_for_host_architecture(self, root):
         result = root.runUnitTests(
-            self.includes,
-            [
-                "platform_utils.get_platforms_for_host_architecture()",
-            ],
+            self.includes, ["platform_utils.get_platforms_for_host_architecture()"]
         )
         self.assertSuccess(result)
         self.assertEquals(
@@ -327,3 +324,14 @@ class PlatformTest(tests.utils.TestCase):
             ],
         )
         self.assertSuccess(result, ["gcc5-other"])
+
+    @tests.utils.with_project()
+    def test_get_buck_python_platform(self, root):
+        result = root.runUnitTests(
+            self.includes,
+            [
+                'platform_utils.get_buck_python_platform("gcc5", 3)',
+                'platform_utils.get_buck_python_platform("gcc5", 3, "cpython")',
+            ],
+        )
+        self.assertSuccess(result, "py3-gcc5", "cpython_py3-gcc5")

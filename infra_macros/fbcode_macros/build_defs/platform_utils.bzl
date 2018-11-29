@@ -9,17 +9,17 @@
 Helpers to discover information about platforms as defined by fbcode
 """
 
-load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
-load("@fbcode_macros//build_defs:default_platform.bzl", _get_default_platform = "get_default_platform")
-load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
     "read_boolean",
     "read_string",
 )
-load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:default_platform.bzl", _get_default_platform = "get_default_platform")
+load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
+load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 
 def __get_current_architecture():
     arch = native.host_info().arch
@@ -234,6 +234,24 @@ def _get_platforms_for_architecture(arch):
 def _get_all_platforms():
     return _all_platforms
 
+def _get_buck_python_platform(platform, major_version, flavor = ""):
+    """
+    Gets the platform string to pass to buck
+
+    Args:
+        platform: The fbcode platform
+        major_version: The major version of the platform
+        flavor: The type of interpreter
+
+    Returns:
+        A buck-compatible platform string
+    """
+    return "{flavor}py{major}-{platform}".format(
+        flavor = flavor + "_" if flavor else "",
+        major = major_version,
+        platform = platform,
+    )
+
 platform_utils = struct(
     get_all_platforms = _get_all_platforms,
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
@@ -248,4 +266,5 @@ platform_utils = struct(
     get_platforms_for_architecture = _get_platforms_for_architecture,
     get_platforms_for_host_architecture = _get_platforms_for_host_architecture,
     to_buck_platform = _to_buck_platform,
+    get_buck_python_platform = _get_buck_python_platform,
 )
