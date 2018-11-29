@@ -143,6 +143,7 @@ class Converter(base.Converter):
             cmds.append('mv {} $OUT/{}'.format(header, dst))
         attrs = collections.OrderedDict()
         attrs['name'] = name + tree_suffix
+        attrs['labels'] = ["generated"]
         attrs['out'] = os.curdir
         attrs['srcs'] = files
         # Use find to create a __init__ file so cython knows the directories
@@ -172,6 +173,7 @@ class Converter(base.Converter):
         attrs = collections.OrderedDict()
         attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
         attrs['out'] = os.curdir
+        attrs['labels'] = ["generated"]
 
         cmds = []
         package_path = os.path.dirname(dst_src)
@@ -230,6 +232,7 @@ class Converter(base.Converter):
             src,
             name,
             out_src,
+            labels = ["generated"],
         )
         return ':' + name, rule
 
@@ -249,6 +252,7 @@ class Converter(base.Converter):
             srcs=types,
             typing=True,
             typing_options=typing_options,
+            tags=["generated"],
         )
 
     def py_normalize_externals(self, external_deps):
@@ -373,6 +377,7 @@ class Converter(base.Converter):
             header_namespace=header_namespace,
             external_deps=cpp_external_deps,
             visibility=visibility,
+            tags=["generated"],
         )
 
     def convert_rule(

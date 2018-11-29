@@ -87,4 +87,4 @@ def cpp_python_extension(
     fb_native.cxx_python_extension(**attrs)
 
     # Generate an empty typing_config
-    gen_typing_config(typing_rule_name_prefix or name, visibility = visibility)
+    gen_typing_config(typing_rule_name_prefix or name, visibility = visibility, labels = ["generated"])

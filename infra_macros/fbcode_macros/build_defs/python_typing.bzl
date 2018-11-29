@@ -116,6 +116,7 @@ def gen_typing_config(
         deps = (),
         typing = False,
         typing_options = "",
+        labels = None,
         visibility = None):
     """
     Generate typing configs, and gather those for our deps
@@ -146,6 +147,7 @@ def gen_typing_config(
         target_name = target_name,
         typing = typing,
         typing_options = typing_options,
+        labels = labels,
         visibility = visibility,
         deps = deps,
     )
