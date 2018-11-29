@@ -73,6 +73,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:python_typing.bzl",
     "fbcode_macros//build_defs:python_versioning.bzl",
     "fbcode_macros//build_defs:rule_target_types.bzl",
+    "fbcode_macros//build_defs:rust_binary.bzl",
     "fbcode_macros//build_defs:rust_common.bzl",
     "fbcode_macros//build_defs:rust_external_library.bzl",
     "fbcode_macros//build_defs:rust_library.bzl",
@@ -422,6 +423,15 @@ skylark_integration_test(
     name = "python_versioning_test",
     srcs = ["python_versioning_test.py"],
     deps = [":utils"],
+)
+
+skylark_integration_test(
+    name = "rust_binary_test",
+    srcs = ["rust_binary_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
 )
 
 skylark_integration_test(
