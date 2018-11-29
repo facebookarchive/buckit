@@ -201,9 +201,16 @@ def rule_handler(context, globals, rule_type, **kwargs):
 def invalid_buck_rule(rule_type, *args, **kwargs):
     raise ValueError(
         '{rule}(): unsupported access to raw Buck rules! '
-        'Please use supported fbcode rules (https://fburl.com/fbcode-targets) '
-        'instead.'
-        .format(rule=rule_type))
+        'Please use {alternative} instead. '
+        'See https://fburl.com/fbcode-targets for all available rules'
+        .format(
+            rule=rule_type,
+            alternative=constants.BUCK_TO_FBCODE_MAP.get(
+                rule_type,
+                'supported fbcode rules'
+            )
+        )
+    )
 
 
 # Helper rule to ignore a Buck rule if requested by buck config.

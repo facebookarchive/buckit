@@ -188,3 +188,11 @@ FBCODE_RULES = [
     'python_wheel',
     'python_wheel_default',
 ]
+
+# Maps from generic buck rules to fbcode-specific versions.
+BUCK_TO_FBCODE_MAP = {
+    "cxx_binary": "cpp_binary",
+    "cxx_library": "cpp_library",
+    "filegroup": "buck_filegroup",
+    "python_test": "python_unittest",
+}
