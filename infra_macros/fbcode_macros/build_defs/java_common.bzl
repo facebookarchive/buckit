@@ -239,7 +239,13 @@ def _get_maven_publisher_labels_and_create_rules(
         fail("Invalid maven coordinates provided. Expected group_id:artifact_id, got " + maven_coords)
 
     group_id = coords_parts[0]
-    artifact_id = coords_parts[1]
+    if "@" in coords_parts[1]:
+        artifact_and_classifier = coords_parts[1].split("@", 1)
+        artifact_id = artifact_and_classifier[0]
+        classifier = artifact_and_classifier[1]
+    else:
+        artifact_id = coords_parts[1]
+        classifier = None
     buck_target = "//{}:{}".format(native.package_name(), name)
     labels = [
         "groupId=" + group_id,
@@ -247,6 +253,8 @@ def _get_maven_publisher_labels_and_create_rules(
         "buckRule=" + buck_target,
         "maven_coords_specified",
     ]
+    if classifier:
+        labels.append("classifier=" + classifier)
     if not maven_publisher_enabled:
         return struct(labels = labels, pom_properties_rule_name = None)
 
