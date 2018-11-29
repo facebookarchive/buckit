@@ -77,6 +77,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:rust_common.bzl",
     "fbcode_macros//build_defs:rust_external_library.bzl",
     "fbcode_macros//build_defs:rust_library.bzl",
+    "fbcode_macros//build_defs:rust_unittest.bzl",
     "fbcode_macros//build_defs:sanitizers.bzl",
     "fbcode_macros//build_defs:scala_library.bzl",
     "fbcode_macros//build_defs:scala_test.bzl",
@@ -446,6 +447,15 @@ skylark_integration_test(
 skylark_integration_test(
     name = "rust_external_library_test",
     srcs = ["rust_external_library_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "rust_unittest_test",
+    srcs = ["rust_unittest_test.py"],
     deps = [
         "fbcode_macros//tests/facebook:utils",
         ":utils",
