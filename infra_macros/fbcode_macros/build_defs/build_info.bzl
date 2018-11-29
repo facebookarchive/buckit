@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice", "read_int")
 load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice", "read_int")
 
 def _create_build_info(
         build_mode,
@@ -22,12 +22,14 @@ def _create_build_info(
         upstream_revision = "",
         upstream_revision_epochtime = 0,
         user = ""):
+    # when adding a new entry in the struct below, make sure to add its key to
+    # _BUILD_INFO_KEYS
     return struct(
-        package_name = package_name,
         build_mode = build_mode,
         compiler = compiler.get_compiler_for_current_buildfile(),
         epochtime = epochtime,
         host = host,
+        package_name = package_name,
         package_release = package_release,
         package_version = package_version,
         path = path,
@@ -165,8 +167,32 @@ def _get_explicit_build_info(base_path, name, mode, rule_type, platform, compile
         rule_type = rule_type,
     )
 
+# These keys should be kept in sync with struct returned from get_build_info
+# method.
+_BUILD_INFO_KEYS = (
+    "build_mode",
+    "compiler",
+    "epochtime",
+    "host",
+    "package_name",
+    "package_release",
+    "package_version",
+    "path",
+    "platform",
+    "revision_epochtime",
+    "revision",
+    "rule_type",
+    "rule",
+    "time_iso8601",
+    "time",
+    "upstream_revision_epochtime",
+    "upstream_revision",
+    "user",
+)
+
 build_info = struct(
     get_build_info = _get_build_info,
     get_build_info_mode = _get_build_info_mode,
     get_explicit_build_info = _get_explicit_build_info,
+    BUILD_INFO_KEYS = _BUILD_INFO_KEYS,
 )
