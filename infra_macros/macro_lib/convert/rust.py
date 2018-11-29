@@ -173,8 +173,8 @@ class RustConverter(base.Converter):
             attributes['linker_flags'] = ldflags + (linker_flags or [])
 
             # Add the Rust build info lib to deps.
-            rust_build_info, rust_build_info_rules = (
-                self.create_rust_build_info_rule(
+            rust_build_info = (
+                rust_common.create_rust_build_info_rule(
                     base_path,
                     name,
                     crate,
@@ -182,7 +182,6 @@ class RustConverter(base.Converter):
                     platform,
                     visibility))
             dependencies.append(rust_build_info)
-            extra_rules.extend(rust_build_info_rules)
 
         else:
             if proc_macro:
@@ -253,73 +252,3 @@ class RustConverter(base.Converter):
                 src_and_dep_helpers.format_all_deps(dependencies))
 
         return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
-
-    def create_rust_build_info_rule(
-            self,
-            base_path,
-            name,
-            crate,
-            rule_type,
-            platform,
-            visibility):
-        """
-        Create rules to generate a Rust library with build info.
-        """
-        rules = []
-
-        info = (
-            self.get_build_info(
-                base_path,
-                name,
-                rule_type,
-                platform))
-
-        template = """
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct BuildInfo {
-"""
-
-        # Construct a template
-        for k, v in info.items():
-            if isinstance(v, int):
-                type = "u64"
-            else:
-                type = "&'static str"
-            template += "  pub %s: %s,\n" % (k, type)
-        template += "}\n"
-
-        template += """
-pub const BUILDINFO: BuildInfo = BuildInfo {
-"""
-        for k, v in info.items():
-            if isinstance(v, int):
-                template += "  %s: %s,\n" % (k, v)
-            else:
-                template += "  %s: \"%s\",\n" % (k, v)
-        template += "};\n"
-
-        # Setup a rule to generate the build info Rust file.
-        source_name = name + "-rust-build-info"
-        source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_name
-        if visibility is not None:
-            source_attrs['visibility'] = visibility
-        source_attrs['out'] = 'lib.rs'
-        source_attrs['cmd'] = (
-            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
-            .format(pipes.quote(template)))
-        rules.append(Rule('genrule', source_attrs))
-
-        # Setup a rule to compile the build info C file into a library.
-        lib_name = name + '-rust-build-info-lib'
-        lib_attrs = collections.OrderedDict()
-        lib_attrs['name'] = lib_name
-        if visibility is not None:
-            lib_attrs['visibility'] = visibility
-        lib_attrs['crate'] = (crate or name) + "_build_info"
-        lib_attrs['preferred_linkage'] = 'static'
-        lib_attrs['srcs'] = [':' + source_name]
-        lib_attrs['default_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-        rules.append(Rule('rust_library', lib_attrs))
-
-        return target_utils.RootRuleTarget(base_path, lib_name), rules

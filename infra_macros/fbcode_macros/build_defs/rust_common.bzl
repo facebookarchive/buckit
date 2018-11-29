@@ -332,19 +332,21 @@ pub struct BuildInfo {
 """
 
     # Construct a template
-    for k, v in info.items():
-        rust_type = "u64" if is_number(v) else "&'static str"
-        template += "  pub %s: %s,\n" % (k, rust_type)
+    for key in build_info.BUILD_INFO_KEYS:
+        value = getattr(info, key)
+        rust_type = "u64" if is_number(value) else "&'static str"
+        template += "  pub %s: %s,\n" % (key, rust_type)
     template += "}\n"
 
     template += """
 pub const BUILDINFO: BuildInfo = BuildInfo {
 """
-    for k, v in info.items():
-        if is_number(v):
-            template += "  %s: %s,\n" % (k, v)
+    for key in build_info.BUILD_INFO_KEYS:
+        value = getattr(info, key)
+        if is_number(value):
+            template += "  %s: %s,\n" % (key, value)
         else:
-            template += "  %s: \"%s\",\n" % (k, v)
+            template += "  %s: \"%s\",\n" % (key, value)
     template += "};\n"
 
     # Setup a rule to generate the build info Rust file.
@@ -378,4 +380,5 @@ rust_common = struct(
     convert_rust = _convert_rust,
     get_rust_binary_deps = _get_rust_binary_deps,
     create_rust_test_rule = _create_rust_test_rule,
+    create_rust_build_info_rule = _create_rust_build_info_rule,
 )
