@@ -85,6 +85,7 @@ load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
 load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 
@@ -189,7 +190,6 @@ def convert(context, base_path, rule):
         swig_library.SwigLibraryConverter(context),
         ocaml.OCamlConverter(context, 'ocaml_library'),
         ocaml.OCamlConverter(context, 'ocaml_binary'),
-        rust.RustConverter(context, 'rust_library'),
         rust.RustConverter(context, 'rust_binary'),
         rust.RustConverter(context, 'rust_unittest'),
         rust_bindgen_library.RustBindgenLibraryConverter(context),
@@ -247,6 +247,7 @@ def convert(context, base_path, rule):
         'ocaml_external_library': ocaml_external_library,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'rust_external_library': rust_external_library,  # noqa F821
+        'rust_library': rust_library,  # noqa F821
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
         'cpp_library_external': cpp_library_external,

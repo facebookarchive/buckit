@@ -19,7 +19,9 @@ def rust_library(
         test_rustc_flags = None,
         test_link_style = None,
         preferred_linkage = None,
-        proc_macro = False):
+        proc_macro = False,
+        visibility = None,
+        licenses = None):
     attrs = rust_common.convert_rust(
         name,
         "rust_library",
@@ -40,5 +42,7 @@ def rust_library(
         test_link_style = test_link_style,
         preferred_linkage = preferred_linkage,
         proc_macro = proc_macro,
+        visibility = visibility,
+        licenses = licenses,
     )
     fb_native.rust_library(**attrs)
