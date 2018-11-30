@@ -38,6 +38,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:custom_rule.bzl",
     "fbcode_macros//build_defs:d_binary.bzl",
     "fbcode_macros//build_defs:d_common.bzl",
+    "fbcode_macros//build_defs:d_library.bzl",
     "fbcode_macros//build_defs:d_library_external.bzl",
     "fbcode_macros//build_defs:default_platform.bzl",
     "fbcode_macros//build_defs:dewey_artifact.bzl",
@@ -323,6 +324,15 @@ skylark_integration_test(
 skylark_integration_test(
     name = "d_binary_test",
     srcs = ["d_binary_test.py"],
+    deps = [
+        "fbcode_macros//tests/facebook:utils",
+        ":utils",
+    ],
+)
+
+skylark_integration_test(
+    name = "d_library_test",
+    srcs = ["d_library_test.py"],
     deps = [
         "fbcode_macros//tests/facebook:utils",
         ":utils",

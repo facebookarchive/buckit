@@ -89,29 +89,6 @@ class DBinaryConverter(DConverter):
             visibility=visibility,
         )
 
-class DLibraryConverter(DConverter):
-    def convert(
-        self,
-        base_path,
-        name,
-        srcs=(),
-        deps=(),
-        linker_flags=(),
-        external_deps=(),
-        visibility=None,
-    ):
-        return super(DLibraryConverter, self).convert(
-            base_path=base_path,
-            name=name,
-            is_binary=False,
-            d_rule_type='d_library',
-            srcs=srcs,
-            deps=deps,
-            linker_flags=linker_flags,
-            external_deps=external_deps,
-            visibility=visibility,
-        )
-
 class DUnitTestConverter(DConverter):
     def convert(
         self,
