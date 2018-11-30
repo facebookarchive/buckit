@@ -65,6 +65,7 @@ load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
@@ -440,7 +441,7 @@ class Converter(object):
             'bin')
 
     def get_fbcode_dir_from_gen_dir(self):
-        return os.path.relpath(os.curdir, self.get_gen_path())
+        return os.path.relpath(common_paths.CURRENT_DIRECTORY, self.get_gen_path())
 
     def copy_rule(self, src, name, out=None, propagate_versions=False, visibility=None, labels=None):
         """
@@ -497,7 +498,7 @@ class Converter(object):
             name = name,
             labels = labels or [],
             visibility = visibility if visibility != None else None,
-            out = os.curdir,
+            out = common_paths.CURRENT_DIRECTORY,
             srcs = sorted(paths),
             cmd = " && ".join(cmds),
         )
