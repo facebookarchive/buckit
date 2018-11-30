@@ -5,6 +5,7 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 _ERROR_BAD_GEN_FILES = ("custom_rule(): {}:{}: output_gen_files and " +
@@ -81,6 +82,7 @@ def _create_main_rule(
     env["PATH"] = path_sep.join(new_path)
     env["FBCODE_BUILD_MODE"] = config.get_build_mode()
     env["FBCODE_BUILD_TOOL"] = "buck"
+    env["FBCODE_SANITIZER"] = sanitizers.get_sanitizer() or ''
     env["FBCODE_PLATFORM"] = fbcode_platform
     env["BUCK_PLATFORM"] = buck_platform
     env["SRCDIR"] = '"$SRCDIR"'

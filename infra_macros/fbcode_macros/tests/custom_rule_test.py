@@ -154,6 +154,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS="
             "$(location //third-party-buck/default/tools:protobufs/bin):"
             "$(location //third-party-buck/default/tools:cc/bin) "
@@ -282,6 +283,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS="
             "$(location //third-party-buck/default/tools:protobufs/bin):"
             "$(location //third-party-buck/default/tools:cc/bin) "
@@ -380,6 +382,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_DIR=$GEN_DIR/../.. "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS="
             "$(location //third-party-buck/default/tools:protobufs/bin):"
             "$(location //third-party-buck/default/tools:cc/bin) "
@@ -471,6 +474,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
@@ -548,6 +552,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
@@ -625,6 +630,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
@@ -743,6 +749,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
@@ -827,6 +834,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
@@ -996,6 +1004,7 @@ class CustomRuleTest(tests.utils.TestCase):
             "FBCODE_BUILD_MODE=dev "
             "FBCODE_BUILD_TOOL=buck "
             "FBCODE_PLATFORM=default "
+            "FBCODE_SANITIZER= "
             "FBCODE_THIRD_PARTY_TOOLS= "
             'INSTALL_DIR=\\"$OUT\\" '
             'PATH=\\"$PATH\\" '
