@@ -18,10 +18,8 @@ with allow_unsafe_import():
     import os.path
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
-include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
