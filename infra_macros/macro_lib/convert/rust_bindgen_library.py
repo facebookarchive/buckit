@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import pipes
 
 with allow_unsafe_import():
@@ -26,6 +25,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 FLAGFILTER = '''\
@@ -159,10 +159,6 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         src_includes=None,
         **kwargs
     ):
-        rules = []
-
-        attrs = collections.OrderedDict()
-
         src = 'lib.rs'
         gen_name = name + '-bindgen'
 
@@ -170,11 +166,6 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # from top-level rules, not look it up via a PLATFORM file.  We should
         # cleanup all references to this in the code below.
         platform = platform_utils.get_platform_for_base_path(base_path)
-
-        attrs['name'] = gen_name
-        attrs['out'] = os.path.join(os.curdir, src)
-        attrs['srcs'] = [header]
-        attrs['visibility'] = []
 
         if generate:
             generate = '--generate ' + ','.join(generate)
@@ -239,23 +230,25 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             )
 
         # Actual bindgen rule
-        attrs['bash'] = formatter(BINDGEN_TMPL)
-
-        rules.append(Rule('cxx_genrule', attrs))
+        fb_native.cxx_genrule(
+            name = gen_name,
+            out = os.path.join(os.curdir, src),
+            srcs = [header],
+            visibility = [],
+            bash = formatter(BINDGEN_TMPL),
+        )
 
         # Rule to generate pre-processed output, to make debugging
         # bindgen problems easier.
-        ppattrs = collections.OrderedDict()
 
-        ppattrs['name'] = name + '-preproc'
-        ppattrs['out'] = os.path.join(os.curdir, name + '.i')
-        ppattrs['srcs'] = [header]
+        fb_native.cxx_genrule(
+            name = name + '-preproc',
+            out = os.path.join(os.curdir, name + '.i'),
+            srcs = [header],
+            bash = formatter(PREPROC_TMPL),
+        )
 
-        ppattrs['bash'] = formatter(PREPROC_TMPL)
-
-        rules.append(Rule('cxx_genrule', ppattrs))
-
-        return ':{}'.format(gen_name), rules
+        return ':{}'.format(gen_name)
 
     def convert(
             self,
@@ -278,15 +271,13 @@ class RustBindgenLibraryConverter(rust.RustConverter):
                 [],
                 visibility))
 
-        genrule, extra_rules = self.generate_bindgen_rule(
+        genrule = self.generate_bindgen_rule(
             base_path,
             name,
             header,
             [src_and_dep_helpers.convert_build_target(base_path, d) for d in cpp_deps],
             src_includes=src_includes,
             **kwargs)
-
-        rules.extend(extra_rules)
 
         # Use normal converter to make build+test rules
         extra_rules = super(RustBindgenLibraryConverter, self).convert(
