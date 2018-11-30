@@ -106,7 +106,6 @@ cpp_library_external_custom = import_macro_lib(
 cpp_module_external = import_macro_lib('convert/cpp_module_external')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
-d = import_macro_lib('convert/d')
 discard = import_macro_lib('convert/discard')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
