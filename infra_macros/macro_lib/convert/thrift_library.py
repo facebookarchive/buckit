@@ -44,6 +44,7 @@ load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
@@ -2686,7 +2687,7 @@ class ThriftLibraryConverter(base.Converter):
             converter = self._converters[lang]
             includes.update(converter.get_extra_includes(**kwargs))
 
-        self.generate_merge_tree_rule(
+        merge_tree(
             base_path,
             self.get_exported_include_tree(name),
             sorted(includes),

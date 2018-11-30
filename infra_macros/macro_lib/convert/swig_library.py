@@ -39,6 +39,7 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
 
 
 FLAGS = [
@@ -541,7 +542,7 @@ class SwigLibraryConverter(base.Converter):
             module = name
 
         # Setup the exported include tree to dependents.
-        self.generate_merge_tree_rule(
+        merge_tree(
             base_path,
             self.get_exported_include_tree(name),
             [interface],

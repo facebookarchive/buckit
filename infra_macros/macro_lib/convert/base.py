@@ -471,38 +471,6 @@ class Converter(object):
 
         return Rule(genrule_type, attrs)
 
-    def generate_merge_tree_rule(
-            self,
-            base_path,
-            name,
-            paths,
-            deps,
-            visibility=None,
-            labels=None):
-        """
-        Generate a rule which creates an output dir with the given paths merged
-        with the merged directories of it's dependencies.
-        """
-
-        cmds = []
-
-        for dep in sorted(deps):
-            cmds.append('rsync -a $(location {})/ "$OUT"'.format(dep))
-        for src in sorted(paths):
-            src = src_and_dep_helpers.get_source_name(src)
-            dst = os.path.join('"$OUT"', base_path, src)
-            cmds.append("mkdir -p {}".format(os.path.dirname(dst)))
-            cmds.append("cp {} {}".format(src, dst))
-
-        fb_native.genrule(
-            name = name,
-            labels = labels or [],
-            visibility = visibility if visibility != None else None,
-            out = common_paths.CURRENT_DIRECTORY,
-            srcs = sorted(paths),
-            cmd = " && ".join(cmds),
-        )
-
     def get_tp2_build_dat(self, base_path):
         """
         Load the TP2 metadata for the TP2 project at the given base path.

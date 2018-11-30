@@ -25,6 +25,7 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
+load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
 
 
 FLAGFILTER = '''\
@@ -262,7 +263,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         rules = []
 
         # Setup the exported include tree to dependents.
-        self.generate_merge_tree_rule(
+        merge_tree(
             base_path,
             self.get_exported_include_tree(name),
             [header],
