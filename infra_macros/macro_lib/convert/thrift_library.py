@@ -2685,14 +2685,14 @@ class ThriftLibraryConverter(base.Converter):
         for lang in languages:
             converter = self._converters[lang]
             includes.update(converter.get_extra_includes(**kwargs))
-        rules.append(
-            self.generate_merge_tree_rule(
-                base_path,
-                self.get_exported_include_tree(name),
-                sorted(includes),
-                map(self.get_exported_include_tree, deps),
-                labels=["generated"],
-                visibility=visibility))
+
+        self.generate_merge_tree_rule(
+            base_path,
+            self.get_exported_include_tree(name),
+            sorted(includes),
+            map(self.get_exported_include_tree, deps),
+            labels=["generated"],
+            visibility=visibility)
 
         # py3 thrift requires cpp2
         if 'py3' in languages and 'cpp2' not in languages:

@@ -541,13 +541,12 @@ class SwigLibraryConverter(base.Converter):
             module = name
 
         # Setup the exported include tree to dependents.
-        rules.append(
-            self.generate_merge_tree_rule(
-                base_path,
-                self.get_exported_include_tree(name),
-                [interface],
-                map(self.get_exported_include_tree, deps),
-                visibility=visibility))
+        self.generate_merge_tree_rule(
+            base_path,
+            self.get_exported_include_tree(name),
+            [interface],
+            map(self.get_exported_include_tree, deps),
+            visibility=visibility)
 
         # Generate rules for all supported languages.
         for lang in languages:

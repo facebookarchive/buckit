@@ -79,6 +79,7 @@ load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 
@@ -489,19 +490,17 @@ class Converter(object):
         for src in sorted(paths):
             src = src_and_dep_helpers.get_source_name(src)
             dst = os.path.join('"$OUT"', base_path, src)
-            cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
-            cmds.append('cp {} {}'.format(src, dst))
+            cmds.append("mkdir -p {}".format(os.path.dirname(dst)))
+            cmds.append("cp {} {}".format(src, dst))
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if labels is not None:
-            attrs['labels'] = labels
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = os.curdir
-        attrs['srcs'] = sorted(paths)
-        attrs['cmd'] = ' && '.join(cmds)
-        return Rule('genrule', attrs)
+        fb_native.genrule(
+            name = name,
+            labels = labels or [],
+            visibility = visibility if visibility != None else None,
+            out = os.curdir,
+            srcs = sorted(paths),
+            cmd = " && ".join(cmds),
+        )
 
     def get_tp2_build_dat(self, base_path):
         """

@@ -262,13 +262,12 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         rules = []
 
         # Setup the exported include tree to dependents.
-        rules.append(
-            self.generate_merge_tree_rule(
-                base_path,
-                self.get_exported_include_tree(name),
-                [header],
-                [],
-                visibility))
+        self.generate_merge_tree_rule(
+            base_path,
+            self.get_exported_include_tree(name),
+            [header],
+            [],
+            visibility)
 
         genrule = self.generate_bindgen_rule(
             base_path,
