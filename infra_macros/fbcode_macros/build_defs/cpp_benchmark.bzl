@@ -1,5 +1,5 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def cpp_benchmark(
         name,
@@ -23,6 +23,7 @@ def cpp_benchmark(
         preprocessor_flags = (),
         py3_sensitive_deps = (),
         shared_system_deps = None,
+        use_default_benchmark_main = False,
         srcs = (),
         supports_coverage = None,
         system_include_paths = None,
@@ -47,6 +48,7 @@ def cpp_benchmark(
         is_buck_binary = True,
         is_test = False,
         is_deployable = True,
+        use_default_benchmark_main = use_default_benchmark_main,
         arch_compiler_flags = arch_compiler_flags or {},
         arch_preprocessor_flags = arch_preprocessor_flags or {},
         auto_headers = auto_headers,

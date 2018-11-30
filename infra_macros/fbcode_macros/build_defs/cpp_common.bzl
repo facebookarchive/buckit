@@ -1051,6 +1051,9 @@ def _get_ldflags(
 def _cuda_compiler_specific_flags_partial(compiler_specific_flags, has_cuda_srcs, _, compiler):
     return compiler_specific_flags.get("gcc" if has_cuda_srcs else compiler)
 
+# Dependency that contains a standard main that will run folly benchmarks
+_FOLLY_BENCHMARK_DEFAULT_MAIN_TARGET = target_utils.RootRuleTarget("common/benchmark", "benchmark_main")
+
 def _convert_cpp(
         name,
         cpp_rule_type,
@@ -1093,6 +1096,7 @@ def _convert_cpp(
         split_symbols = None,
         env = None,
         use_default_test_main = True,
+        use_default_benchmark_main = False,
         lib_name = None,
         nvcc_flags = (),
         hip_flags = (),
@@ -1672,6 +1676,9 @@ def _convert_cpp(
         attributes["linker_flags"] = out_exported_ldflags + out_ldflags
 
     attributes["labels"] = list(tags)
+
+    if use_default_benchmark_main:
+        dependencies.append(_FOLLY_BENCHMARK_DEFAULT_MAIN_TARGET)
 
     if is_test:
         attributes["labels"].extend(label_utils.convert_labels(platform, "c++"))
