@@ -518,7 +518,7 @@ def _create_sanitizer_configuration(
     """
 
     sanitizer = sanitizers.get_sanitizer()
-    build_mode = _build_mode.get_build_mode_for_base_path(base_path)
+    build_mode = _build_mode.get_build_mode_for_current_buildfile()
 
     configuration_src = []
 
@@ -977,7 +977,7 @@ def _get_ldflags(
     ldflags = []
 
     # 1. Add in build-mode ldflags.
-    build_mode = _build_mode.get_build_mode_for_base_path(base_path)
+    build_mode = _build_mode.get_build_mode_for_current_buildfile()
     if build_mode != None:
         ldflags.extend(build_mode.ld_flags)
 
@@ -1138,7 +1138,7 @@ def _convert_cpp(
     os_deps = os_deps or []
     os_linker_flags = os_linker_flags or []
     out_link_style = _get_link_style()
-    build_mode = _build_mode.get_build_mode_for_base_path(base_path)
+    build_mode = _build_mode.get_build_mode_for_current_buildfile()
     dlopen_info = _normalize_dlopen_enabled(dlopen_enabled)
 
     # `dlopen_enabled=True` binaries are really libraries.

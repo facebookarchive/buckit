@@ -761,7 +761,7 @@ class TestCase(unittest.TestCase):
         )
 
     def addDummyBuildModeOverrides(self, root):
-        build_mode_overrides = dedent(
+        build_mode = dedent(
             """
             load(
                 "@fbcode_macros//build_defs:create_build_mode.bzl",
@@ -791,15 +791,17 @@ class TestCase(unittest.TestCase):
                         clang_flags=["-DCLANG"],
                         gcc_flags=["-DGCC"]),
                 }
-            build_mode_overrides = {"fbcode": {
-                "foo/bar": dev,
-                "foo/bar-other": dbg,
-                "foo": opt,
-            }}
         """
         )
-        root.project.cells["fbcode_macros"].addFile(
-            "build_defs/build_mode_overrides.bzl", build_mode_overrides
+        root.addFile("BUILD_MODE.bzl", build_mode)
+        root.updateBuckconfig(
+            "buildfile",
+            "package_includes",
+            (
+                "foo/bar=>//:BUILD_MODE.bzl::get_modes=dev,"
+                "foo/bar-other=>//:BUILD_MODE.bzl::get_modes=dbg,"
+                "foo=>//:BUILD_MODE.bzl::get_modes=opt"
+            ),
         )
 
     def addPathsConfig(

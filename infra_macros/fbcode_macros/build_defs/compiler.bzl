@@ -29,7 +29,7 @@ def _get_compiler_for_base_path(base_path):
     default_compiler = config.get_default_compiler_family()
 
     # Grab the compiler set in the BUILD_MODE file.
-    mode = build_mode.get_build_mode_for_base_path(base_path)
+    mode = build_mode.get_build_mode_for_current_buildfile()
     mode_compiler = mode.compiler if mode != None else None
 
     # If a global compiler is set, use that.
