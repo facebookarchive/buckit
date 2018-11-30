@@ -4,6 +4,11 @@ load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 
+_COMMON_DEPENDENCIES = [
+    target_utils.ThirdPartyRuleTarget("dlang", "druntime"),
+    target_utils.ThirdPartyRuleTarget("dlang", "phobos"),
+]
+
 def _get_platform():
     return native.read_config("d", "platform", None)
 
@@ -63,9 +68,12 @@ def _convert_d(
             platform = platform if is_binary else None,
         ),
     )
-    attributes["linker_flags"] = out_ldflags
 
-    dependencies = []
+    # All D rules get an implicit dep on the runtime.
+    dependencies = [
+        target_utils.target_to_label(dep, platform = platform)
+        for dep in _COMMON_DEPENDENCIES
+    ]
     for target in deps:
         dependencies.append(
             src_and_dep_helpers.convert_build_target(
@@ -79,32 +87,15 @@ def _convert_d(
             src_and_dep_helpers.convert_external_build_target(target, platform = platform),
         )
 
-    # All D rules get an implicit dep on the runtime.
-    dependencies.append(
-        target_utils.target_to_label(
-            target_utils.ThirdPartyRuleTarget("dlang", "druntime"),
-            platform = platform,
-        ),
-    )
-    dependencies.append(
-        target_utils.target_to_label(
-            target_utils.ThirdPartyRuleTarget("dlang", "phobos"),
-            platform = platform,
-        ),
-    )
-
     # Add in binary-specific link deps.
     if is_binary:
         dependencies.extend(
             src_and_dep_helpers.format_deps(
-                cpp_common.get_binary_link_deps(
-                    base_path,
-                    name,
-                    attributes["linker_flags"],
-                ),
+                cpp_common.get_binary_link_deps(base_path, name, out_ldflags),
                 platform = platform,
             ),
         )
+    attributes["linker_flags"] = out_ldflags
     attributes["deps"] = dependencies
 
     return attributes
