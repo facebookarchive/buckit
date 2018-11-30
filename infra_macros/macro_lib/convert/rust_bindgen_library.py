@@ -26,6 +26,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
 
 
 FLAGFILTER = '''\
@@ -280,15 +281,14 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             **kwargs)
 
         # Use normal converter to make build+test rules
-        extra_rules = super(RustBindgenLibraryConverter, self).convert(
-            base_path,
+        rust_lib_attrs = rust_common.convert_rust(
             name,
+            fbconfig_rule_type=self.get_fbconfig_rule_type(),
             srcs=[genrule] + (src_includes or []),
             deps=list(cpp_deps) + list(deps),
             crate_root=genrule,
             visibility=visibility,
             **kwargs)
-
-        rules.extend(extra_rules)
+        fb_native.rust_library(**rust_lib_attrs)
 
         return rules
