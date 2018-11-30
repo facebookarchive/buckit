@@ -38,18 +38,16 @@ class DConverter(base.Converter):
     def get_buck_rule_type(self):
         return self._buck_rule_type
 
-    def is_binary(self):
-        return self.get_fbconfig_rule_type() in ('d_binary', 'd_unittest')
-
     def _get_platform(self):
         return self._context.buck_ops.read_config('d', 'platform', None)
 
     def convert(self,
                 base_path,
-                name=None,
+                name,
+                is_binary,
                 srcs=[],
                 deps=[],
-                tags=(),
+                tags=None,
                 linker_flags=(),
                 external_deps=(),
                 visibility=None,
@@ -65,7 +63,7 @@ class DConverter(base.Converter):
         attributes['visibility'] = visibility
         attributes['srcs'] = srcs
 
-        if self.is_test(self.get_buck_rule_type()):
+        if tags != None:
             attributes['labels'] = label_utils.convert_labels(platform, 'd', *tags)
 
         # Add in the base ldflags.
@@ -76,9 +74,9 @@ class DConverter(base.Converter):
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),
-                binary=self.is_binary(),
-                build_info=self.is_binary(),
-                platform=platform if self.is_binary() else None))
+                binary=is_binary,
+                build_info=is_binary,
+                platform=platform if is_binary else None))
         attributes['linker_flags'] = out_ldflags
 
         dependencies = []
@@ -101,7 +99,7 @@ class DConverter(base.Converter):
                 target_utils.ThirdPartyRuleTarget('dlang', 'phobos'),
                 platform=platform))
         # Add in binary-specific link deps.
-        if self.is_binary():
+        if is_binary:
             dependencies.extend(
                 src_and_dep_helpers.format_deps(
                     cpp_common.get_binary_link_deps(
@@ -130,6 +128,7 @@ class DBinaryConverter(DConverter):
         return super(DBinaryConverter, self).convert(
             base_path=base_path,
             name=name,
+            is_binary=True,
             srcs=srcs,
             deps=deps,
             linker_flags=linker_flags,
@@ -151,6 +150,7 @@ class DLibraryConverter(DConverter):
         return super(DLibraryConverter, self).convert(
             base_path=base_path,
             name=name,
+            is_binary=False,
             srcs=srcs,
             deps=deps,
             linker_flags=linker_flags,
@@ -173,6 +173,7 @@ class DUnitTestConverter(DConverter):
         return super(DUnitTestConverter, self).convert(
             base_path=base_path,
             name=name,
+            is_binary=True,
             srcs=srcs,
             deps=deps,
             tags=tags,
