@@ -115,3 +115,68 @@ class DConverter(base.Converter):
         attributes['deps'] = dependencies
 
         return [Rule(self.get_buck_rule_type(), attributes)] + rules
+
+class DBinaryConverter(DConverter):
+    def convert(
+        self,
+        base_path,
+        name,
+        srcs=(),
+        deps=(),
+        linker_flags=(),
+        external_deps=(),
+        visibility=None,
+    ):
+        return super(DBinaryConverter, self).convert(
+            base_path=base_path,
+            name=name,
+            srcs=srcs,
+            deps=deps,
+            linker_flags=linker_flags,
+            external_deps=external_deps,
+            visibility=visibility,
+        )
+
+class DLibraryConverter(DConverter):
+    def convert(
+        self,
+        base_path,
+        name,
+        srcs=(),
+        deps=(),
+        linker_flags=(),
+        external_deps=(),
+        visibility=None,
+    ):
+        return super(DLibraryConverter, self).convert(
+            base_path=base_path,
+            name=name,
+            srcs=srcs,
+            deps=deps,
+            linker_flags=linker_flags,
+            external_deps=external_deps,
+            visibility=visibility,
+        )
+
+class DUnitTestConverter(DConverter):
+    def convert(
+        self,
+        base_path,
+        name,
+        srcs=(),
+        deps=(),
+        tags=(),
+        linker_flags=(),
+        external_deps=(),
+        visibility=None,
+    ):
+        return super(DUnitTestConverter, self).convert(
+            base_path=base_path,
+            name=name,
+            srcs=srcs,
+            deps=deps,
+            tags=tags,
+            linker_flags=linker_flags,
+            external_deps=external_deps,
+            visibility=visibility,
+        )
