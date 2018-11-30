@@ -22,6 +22,7 @@ load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 
 
 class DConverter(base.Converter):
@@ -52,16 +53,16 @@ class DConverter(base.Converter):
                 linker_flags=(),
                 external_deps=(),
                 visibility=None,
-                **kwargs):
+                ):
         rules = []
 
         platform = self._get_platform()
+        visibility = get_visibility(visibility, name)
 
         attributes = collections.OrderedDict()
 
         attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
+        attributes['visibility'] = visibility
         attributes['srcs'] = srcs
 
         if self.is_test(self.get_buck_rule_type()):
