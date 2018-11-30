@@ -740,6 +740,7 @@ class TestCase(unittest.TestCase):
                 current_arch=current_arch, other_arch=other_arch
             )
         )
+        root.updateBuckconfig("d", "platform", "gcc5")
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", third_party_config
         )

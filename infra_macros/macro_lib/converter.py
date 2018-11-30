@@ -68,6 +68,7 @@ load("@fbcode_macros//build_defs:cpp_precompiled_header.bzl", "cpp_precompiled_h
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
@@ -171,7 +172,6 @@ def convert(context, base_path, rule):
         cpp_jvm_library.CppJvmLibrary(context),
         cpp_module_external.CppModuleExternalConverter(context),
         cython.Converter(context),
-        d.DBinaryConverter(context, 'd_binary'),
         d.DLibraryConverter(context, 'd_library'),
         d.DUnitTestConverter(context, 'd_unittest', 'd_test'),
         go_bindgen_library.GoBindgenLibraryConverter(context),
@@ -262,6 +262,7 @@ def convert(context, base_path, rule):
         'cpp_unittest': cpp_unittest,
         'cpp_library': cpp_library,
         'cpp_binary': cpp_binary,
+        'd_binary': d_binary,
         'd_library_external': d_library_external,
     }
 
