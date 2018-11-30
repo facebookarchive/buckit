@@ -18,6 +18,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@fbcode_macros//build_defs:d_common.bzl", "d_common")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -38,9 +39,6 @@ class DConverter(base.Converter):
     def get_buck_rule_type(self):
         return self._buck_rule_type
 
-    def _get_platform(self):
-        return self._context.buck_ops.read_config('d', 'platform', None)
-
     def convert(self,
                 base_path,
                 name,
@@ -53,67 +51,20 @@ class DConverter(base.Converter):
                 external_deps=(),
                 visibility=None,
                 ):
-        rules = []
 
-        platform = self._get_platform()
-        visibility = get_visibility(visibility, name)
+        attributes = d_common.convert_d(
+            name=name,
+            is_binary=is_binary,
+            d_rule_type=d_rule_type,
+            srcs=srcs,
+            deps=deps,
+            tags=tags,
+            linker_flags=linker_flags,
+            external_deps=external_deps,
+            visibility=visibility,
+        )
 
-        attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-        attributes['visibility'] = visibility
-        attributes['srcs'] = srcs
-
-        if tags != None:
-            attributes['labels'] = label_utils.convert_labels(platform, 'd', *tags)
-
-        # Add in the base ldflags.
-        out_ldflags = []
-        out_ldflags.extend(linker_flags)
-        out_ldflags.extend(
-            cpp_common.get_ldflags(
-                base_path,
-                name,
-                d_rule_type,
-                binary=is_binary,
-                build_info=is_binary,
-                platform=platform if is_binary else None))
-        attributes['linker_flags'] = out_ldflags
-
-        dependencies = []
-        for target in deps:
-            dependencies.append(
-                src_and_dep_helpers.convert_build_target(
-                    base_path,
-                    target,
-                    platform=platform))
-        for target in external_deps:
-            dependencies.append(
-                src_and_dep_helpers.convert_external_build_target(target, platform=platform))
-        # All D rules get an implicit dep on the runtime.
-        dependencies.append(
-            target_utils.target_to_label(
-                target_utils.ThirdPartyRuleTarget('dlang', 'druntime'),
-                platform=platform))
-        dependencies.append(
-            target_utils.target_to_label(
-                target_utils.ThirdPartyRuleTarget('dlang', 'phobos'),
-                platform=platform))
-        # Add in binary-specific link deps.
-        if is_binary:
-            dependencies.extend(
-                src_and_dep_helpers.format_deps(
-                    cpp_common.get_binary_link_deps(
-                        base_path,
-                        name,
-                        attributes['linker_flags'],
-                    ),
-                    platform=platform,
-                )
-            )
-        attributes['deps'] = dependencies
-
-        return [Rule(self.get_buck_rule_type(), attributes)] + rules
+        return [Rule(self.get_buck_rule_type(), attributes)]
 
 class DBinaryConverter(DConverter):
     def convert(
