@@ -17,7 +17,11 @@ def _get_gen_path():
     """ Get the project-relative buck-out/gen path """
     return paths.join(_get_buck_out_path(), "gen")
 
+# The string that can be used to refer to the current directory
+_CURRENT_DIRECTORY = "."
+
 common_paths = struct(
     get_buck_out_path = _get_buck_out_path,
     get_gen_path = _get_gen_path,
+    CURRENT_DIRECTORY = _CURRENT_DIRECTORY,
 )

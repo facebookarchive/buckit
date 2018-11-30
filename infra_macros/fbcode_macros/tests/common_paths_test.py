@@ -29,3 +29,8 @@ class CommonPathTest(tests.utils.TestCase):
             ["common_paths.get_buck_out_path()", "common_paths.get_gen_path()"],
         )
         self.assertSuccess(result, "buck-out/dev", "buck-out/dev/gen")
+
+    @tests.utils.with_project()
+    def test_returns_correct_current_directory(self, root):
+        result = root.runUnitTests(self.includes, ["common_paths.CURRENT_DIRECTORY"])
+        self.assertSuccess(result, ".")
