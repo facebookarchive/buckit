@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 files = glob(["*.bzl"])
 
@@ -6,7 +7,7 @@ export_files(
     files,
 )
 
-zip_file(
+fb_native.zip_file(
     name = "all_bzl_files",
     srcs = files,
     visibility = ["PUBLIC"],

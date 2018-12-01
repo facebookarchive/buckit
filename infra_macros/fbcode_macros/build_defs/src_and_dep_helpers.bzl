@@ -1,9 +1,9 @@
-load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:partial.bzl", "partial")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 # Container for values which have regular and platform-specific parameters.

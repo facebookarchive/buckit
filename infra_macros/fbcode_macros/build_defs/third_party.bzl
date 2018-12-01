@@ -10,8 +10,8 @@ Various helpers to get labels for use in third-party
 """
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
 load("@fbcode_macros//build_defs:default_platform.bzl", "get_default_platform")
+load("@fbcode_macros//build_defs:paths_config.bzl", "paths_config")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 

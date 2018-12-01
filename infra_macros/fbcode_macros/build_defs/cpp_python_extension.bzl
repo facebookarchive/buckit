@@ -1,8 +1,8 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _PYTHON_EXTENSION_DEPS = [target_utils.ThirdPartyRuleTarget("python", "python")]
 

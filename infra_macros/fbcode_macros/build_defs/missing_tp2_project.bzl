@@ -2,8 +2,8 @@
 Helper macros for rules that do not exist for a given platform
 """
 
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _CMD_TEMPLATE = """echo {} | fold -s -w 70 | sed 's, *$,,' | awk 'NR == 1 {{ print $0 }} NR > 1 {{ printf("       %s\\n", $0) }}' 1>&2; exit 1"""
 

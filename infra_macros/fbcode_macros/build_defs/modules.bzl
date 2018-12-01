@@ -1,15 +1,15 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
     "read_boolean",
     "read_list",
 )
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")
+load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def _enabled():
     enabled = read_boolean("cxx", "modules", False)

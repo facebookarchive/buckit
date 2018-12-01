@@ -1,8 +1,8 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
 load("@fbsource//tools/build_defs:translate_to_fbsource_paths.bzl", "MISSING_CELL")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
 
 # Re-export from rule_target_types so that the common case usage is to use target_utils,
 # but having a separate 'types' file allows us to break a few cyclic dependencies down

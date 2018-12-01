@@ -1,7 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
-load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
 
 def js_npm_module(
         name,

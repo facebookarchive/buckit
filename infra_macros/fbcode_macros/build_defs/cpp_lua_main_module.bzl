@@ -1,6 +1,6 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _EMBED_DEPS_DEPENDENCIES = [
     target_utils.RootRuleTarget("tools/make_lar", "lua_main_decl"),

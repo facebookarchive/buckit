@@ -1,5 +1,5 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs:go_common.bzl", "go_common")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def go_library(
         name,

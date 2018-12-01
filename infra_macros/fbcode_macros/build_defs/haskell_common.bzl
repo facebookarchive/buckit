@@ -5,11 +5,11 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean", "read_list")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _GENERATED_LIB_SUFFIX = "__generated-lib__"
 

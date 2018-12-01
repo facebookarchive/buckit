@@ -185,7 +185,7 @@ UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)
 UTIL_DEFS[".buckversion"] = ":buckversion"
 
 # This should change whenever the buck version meaningfully changes
-genrule(
+fb_native.genrule(
     name = "buckversion",
     srcs = ["fbcode_macros//:buckversion"],
     out = "buckversion",

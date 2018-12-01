@@ -1,12 +1,12 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
+load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
-load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _ERROR_BAD_GEN_FILES = ("custom_rule(): {}:{}: output_gen_files and " +
                         "output_bin_files must be lists of filenames, got {}")
@@ -35,8 +35,9 @@ def get_project_root_from_gen_dir():
           builds depending on how the information is used. It will eventually
           be removed after all legacy features no longer depend on it.
 
-    Returns: Something like '../../../' if the buck-out directory is configured
-             to buck-out/dev. This can be appended to $GEN_DIR in genrules
+    Returns:
+        Something like '../../../' if the buck-out directory is configured
+        to buck-out/dev. This can be appended to $GEN_DIR in genrules
     """
 
     # paths.relativize doesn't work with things that traverse upward...
@@ -54,8 +55,6 @@ def _create_main_rule(
         no_remote = False,
         build_script_visibility = None,
         add_install_dir = True):
-    package = native.package_name()
-
     out = _get_output_dir(name)
     fbcode_platform, buck_platform = platform_utils.get_fbcode_and_buck_platform_for_current_buildfile()
     fbcode_dir = paths.join("$GEN_DIR", get_project_root_from_gen_dir())
@@ -82,7 +81,7 @@ def _create_main_rule(
     env["PATH"] = path_sep.join(new_path)
     env["FBCODE_BUILD_MODE"] = config.get_build_mode()
     env["FBCODE_BUILD_TOOL"] = "buck"
-    env["FBCODE_SANITIZER"] = sanitizers.get_sanitizer() or ''
+    env["FBCODE_SANITIZER"] = sanitizers.get_sanitizer() or ""
     env["FBCODE_PLATFORM"] = fbcode_platform
     env["BUCK_PLATFORM"] = buck_platform
     env["SRCDIR"] = '"$SRCDIR"'

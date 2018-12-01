@@ -4,21 +4,21 @@ Wrappers to native buck rules.
 These generally are only allowed to be used by certain pre-configured targets
 """
 
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(
     "@fbcode_macros//build_defs/config:read_configs.bzl",
     "read_boolean",
     "read_string",
 )
 load(
-    "@fbcode_macros//build_defs:visibility.bzl",
-    "get_visibility",
-)
-load(
     "@fbcode_macros//build_defs:python_typing.bzl",
     "gen_typing_config",
     "get_typing_config_target",
 )
+load(
+    "@fbcode_macros//build_defs:visibility.bzl",
+    "get_visibility",
+)
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _FBCODE_UI_MESSAGE = (
     "Unsupported access to Buck rules! " +
