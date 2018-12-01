@@ -1,11 +1,25 @@
 load(
     "@fbcode_macros//tests:skylark_integration_test.bzl",
     "skylark_integration_test",
+    "skylark_integration_tests",
     "targets_to_resource_paths",
 )
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 BUILD_DEFS = [
+    "bazel_skylib//:lib.bzl",
+    "bazel_skylib//lib:collections.bzl",
+    "bazel_skylib//lib:dicts.bzl",
+    "bazel_skylib//lib:new_sets.bzl",
+    "bazel_skylib//lib:partial.bzl",
+    "bazel_skylib//lib:paths.bzl",
+    "bazel_skylib//lib:selects.bzl",
+    "bazel_skylib//lib:sets.bzl",
+    "bazel_skylib//lib:shell.bzl",
+    "bazel_skylib//lib:structs.bzl",
+    "bazel_skylib//lib:types.bzl",
+    "bazel_skylib//lib:versions.bzl",
+    "fbcode_macros//build_defs/config:read_configs.bzl",
     "fbcode_macros//build_defs:allocator_targets.bzl",
     "fbcode_macros//build_defs:allocators.bzl",
     "fbcode_macros//build_defs:antlr3_srcs.bzl",
@@ -25,8 +39,8 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:cpp_common.bzl",
     "fbcode_macros//build_defs:cpp_flags.bzl",
     "fbcode_macros//build_defs:cpp_java_extension.bzl",
-    "fbcode_macros//build_defs:cpp_library_external.bzl",
     "fbcode_macros//build_defs:cpp_library.bzl",
+    "fbcode_macros//build_defs:cpp_library_external.bzl",
     "fbcode_macros//build_defs:cpp_lua_extension.bzl",
     "fbcode_macros//build_defs:cpp_lua_main_module.bzl",
     "fbcode_macros//build_defs:cpp_node_extension.bzl",
@@ -45,15 +59,14 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:dewey_artifact.bzl",
     "fbcode_macros//build_defs:export_files.bzl",
     "fbcode_macros//build_defs:global_compiler.bzl",
-    "fbcode_macros//build_defs:go_external_library.bzl",
-    "fbcode_macros//build_defs:haskell_common.bzl",
-    "fbcode_macros//build_defs:haskell_external_library.bzl",
-    "fbcode_macros//build_defs:lex.bzl",
     "fbcode_macros//build_defs:go_binary.bzl",
     "fbcode_macros//build_defs:go_common.bzl",
     "fbcode_macros//build_defs:go_external_library.bzl",
+    "fbcode_macros//build_defs:go_external_library.bzl",
     "fbcode_macros//build_defs:go_library.bzl",
     "fbcode_macros//build_defs:go_unittest.bzl",
+    "fbcode_macros//build_defs:haskell_common.bzl",
+    "fbcode_macros//build_defs:haskell_external_library.bzl",
     "fbcode_macros//build_defs:java_binary.bzl",
     "fbcode_macros//build_defs:java_common.bzl",
     "fbcode_macros//build_defs:java_library.bzl",
@@ -64,6 +77,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:js_node_module_external.bzl",
     "fbcode_macros//build_defs:js_npm_module.bzl",
     "fbcode_macros//build_defs:label_utils.bzl",
+    "fbcode_macros//build_defs:lex.bzl",
     "fbcode_macros//build_defs:lex.bzl",
     "fbcode_macros//build_defs:lua_common.bzl",
     "fbcode_macros//build_defs:missing_tp2_project.bzl",
@@ -89,33 +103,81 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs:src_and_dep_helpers.bzl",
     "fbcode_macros//build_defs:string_macros.bzl",
     "fbcode_macros//build_defs:target_utils.bzl",
-    "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:third_party.bzl",
-    "fbcode_macros//build_defs:visibility_exceptions.bzl",
+    "fbcode_macros//build_defs:third_party_config.bzl",
     "fbcode_macros//build_defs:visibility.bzl",
+    "fbcode_macros//build_defs:visibility_exceptions.bzl",
     "fbcode_macros//build_defs:yacc.bzl",
-    "fbcode_macros//build_defs/config:read_configs.bzl",
-    "fbcode_macros//tools:get_platform.py",
     "fbcode_macros//tools:BUCK",
-    "bazel_skylib//:lib.bzl",
-    "bazel_skylib//lib:collections.bzl",
-    "bazel_skylib//lib:dicts.bzl",
-    "bazel_skylib//lib:new_sets.bzl",
-    "bazel_skylib//lib:partial.bzl",
-    "bazel_skylib//lib:paths.bzl",
-    "bazel_skylib//lib:selects.bzl",
-    "bazel_skylib//lib:sets.bzl",
-    "bazel_skylib//lib:shell.bzl",
-    "bazel_skylib//lib:structs.bzl",
-    "bazel_skylib//lib:types.bzl",
-    "bazel_skylib//lib:versions.bzl",
-    "xplat//tools/build_defs:type_defs.bzl",
+    "fbcode_macros//tools:get_platform.py",
     "fbsource//tools/build_defs:buckconfig.bzl",
     "fbsource//tools/build_defs:copy_defs.bzl",
     "fbsource//tools/build_defs:fb_native_wrapper.bzl",
     "fbsource//tools/build_defs:sanitizers.bzl",
     "fbsource//tools/build_defs:translate_to_fbsource_paths.bzl",
     "fbsource//tools/build_defs:type_defs.bzl",
+    "xplat//tools/build_defs:type_defs.bzl",
+]
+
+TESTS = [
+    "allocators_test",
+    "build_info_test",
+    "cgo_library_test",
+    "common_paths_test",
+    "compiler_test",
+    "config_test",
+    "core_tools_test",
+    "coverage_test",
+    "cpp_benchmark_test",
+    "cpp_binary_test",
+    "cpp_common_test",
+    "cpp_flags_test",
+    "cpp_java_extension_test",
+    "cpp_library_external_test",
+    "cpp_library_test",
+    "cpp_lua_extension_test",
+    "cpp_lua_main_module_test",
+    "cpp_node_extension_test",
+    "cpp_precompiled_header_test",
+    "cpp_python_extension_test",
+    "cpp_unittest_test",
+    "cuda_test",
+    "d_binary_test",
+    "d_library_test",
+    "d_unittest_test",
+    "export_files_test",
+    "go_binary_test",
+    "go_external_library_test",
+    "go_library_test",
+    "go_unittest_test",
+    "haskell_common_test",
+    "haskell_external_library_test",
+    "js_executable_test",
+    "js_node_module_external_test",
+    "js_npm_module_test",
+    "label_utils_test",
+    "lex_test",
+    "lua_common_test",
+    "missing_tp2_project_test",
+    "modules_test",
+    "native_rules_test",
+    "ocaml_external_library_test",
+    "platform_utils_test",
+    "python_typing_test",
+    "python_versioning_test",
+    "rust_binary_test",
+    "rust_external_library_test",
+    "rust_library_test",
+    "rust_unittest_test",
+    "sanitizers_test",
+    "shell_test",
+    "src_and_dep_helpers_test",
+    "string_macros_test",
+    "target_utils_test",
+    "third_party_config_test",
+    "third_party_test",
+    "visibility_test",
+    "yacc_test",
 ]
 
 UTIL_DEFS = targets_to_resource_paths(BUILD_DEFS)
@@ -144,149 +206,7 @@ fb_native.python_library(
     ],
 )
 
-skylark_integration_test(
-    name = "allocators_test",
-    srcs = ["allocators_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "build_info_test",
-    srcs = ["build_info_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "common_paths_test",
-    srcs = ["common_paths_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "compiler_test",
-    srcs = ["compiler_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "config_test",
-    srcs = ["config_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "cpp_flags_test",
-    srcs = ["cpp_flags_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_java_extension_test",
-    srcs = ["cpp_java_extension_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_lua_extension_test",
-    srcs = ["cpp_lua_extension_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_lua_main_module_test",
-    srcs = ["cpp_lua_main_module_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_node_extension_test",
-    srcs = ["cpp_node_extension_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_python_extension_test",
-    srcs = ["cpp_python_extension_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_precompiled_header_test",
-    srcs = ["cpp_precompiled_header_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_benchmark_test",
-    srcs = ["cpp_benchmark_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_common_test",
-    srcs = ["cpp_common_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_binary_test",
-    srcs = ["cpp_binary_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_library_test",
-    srcs = ["cpp_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cpp_unittest_test",
-    srcs = ["cpp_unittest_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "coverage_test",
-    srcs = ["coverage_test.py"],
-    deps = [":utils"],
-)
+skylark_integration_tests(TESTS)
 
 skylark_integration_test(
     name = "custom_rule_test",
@@ -295,303 +215,7 @@ skylark_integration_test(
 )
 
 skylark_integration_test(
-    name = "core_tools_test",
-    srcs = ["core_tools_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "cpp_library_external_test",
-    srcs = ["cpp_library_external_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "cuda_test",
-    srcs = ["cuda_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "d_binary_test",
-    srcs = ["d_binary_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "d_library_test",
-    srcs = ["d_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "d_unittest_test",
-    srcs = ["d_unittest_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "go_external_library_test",
-    srcs = ["go_external_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "export_files_test",
-    srcs = ["export_files_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "lex_test",
-    srcs = ["lex_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "haskell_external_library_test",
-    srcs = ["haskell_external_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "js_executable_test",
-    srcs = ["js_executable_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "haskell_common_test",
-    srcs = ["haskell_common_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "js_node_module_external_test",
-    srcs = ["js_node_module_external_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "js_npm_module_test",
-    srcs = ["js_npm_module_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "label_utils_test",
-    srcs = ["label_utils_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "missing_tp2_project_test",
-    srcs = ["missing_tp2_project_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "modules_test",
-    srcs = ["modules_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "native_rules_test",
-    srcs = ["native_rules_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "ocaml_external_library_test",
-    srcs = ["ocaml_external_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "platform_utils_test",
-    srcs = ["platform_utils_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "python_typing_test",
-    srcs = ["python_typing_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "python_versioning_test",
-    srcs = ["python_versioning_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "rust_binary_test",
-    srcs = ["rust_binary_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "rust_library_test",
-    srcs = ["rust_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "rust_external_library_test",
-    srcs = ["rust_external_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "rust_unittest_test",
-    srcs = ["rust_unittest_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "sanitizers_test",
-    srcs = ["sanitizers_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "shell_test",
-    srcs = ["shell_test.py"],
-)
-
-skylark_integration_test(
-    name = "src_and_dep_helpers_test",
-    srcs = ["src_and_dep_helpers_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "string_macros_test",
-    srcs = ["string_macros_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "target_utils_test",
-    srcs = ["target_utils_test.py"],
-)
-
-skylark_integration_test(
-    name = "third_party_test",
-    srcs = ["third_party_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "third_party_config_test",
-    srcs = ["third_party_config_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
     name = "utils_test",
     srcs = ["utils_test.py"],
     resources = ["testdata/utils_test/sample.txt"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "visibility_test",
-    srcs = ["visibility_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "yacc_test",
-    srcs = ["yacc_test.py"],
-    deps = [":utils"],
-)
-
-skylark_integration_test(
-    name = "lua_common_test",
-    srcs = ["lua_common_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "cgo_library_test",
-    srcs = ["cgo_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "go_binary_test",
-    srcs = ["go_binary_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "go_library_test",
-    srcs = ["go_library_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
-)
-
-skylark_integration_test(
-    name = "go_unittest_test",
-    srcs = ["go_unittest_test.py"],
-    deps = [
-        "fbcode_macros//tests/facebook:utils",
-        ":utils",
-    ],
 )

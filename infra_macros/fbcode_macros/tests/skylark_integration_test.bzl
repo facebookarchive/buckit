@@ -86,3 +86,20 @@ def skylark_integration_test(name, deps = None, resources = None, **kwargs):
         resources = resources,
         **kwargs
     )
+
+def skylark_integration_tests(test_names):
+    """
+    Creates a skylark_integration_test for each of the named tests
+
+    Each test that is created is assumed to have a single python source with the name
+    name as the test (plus a .py extension)
+
+    Args:
+        test_names: A list of test names
+    """
+
+    for test_name in test_names:
+        skylark_integration_test(
+            name = test_name,
+            srcs = [test_name + ".py"],
+        )
