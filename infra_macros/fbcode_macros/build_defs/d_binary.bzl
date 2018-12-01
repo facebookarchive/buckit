@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:d_common.bzl", "d_common")
+load("@fbcode_macros//build_defs/lib:d_common.bzl", "d_common")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def d_binary(

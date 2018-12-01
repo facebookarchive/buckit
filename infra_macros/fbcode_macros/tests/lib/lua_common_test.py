@@ -11,7 +11,7 @@ import tests.utils
 
 
 class LuaCommonTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:lua_common.bzl", "lua_common")]
+    includes = [("@fbcode_macros//build_defs/lib:lua_common.bzl", "lua_common")]
 
     @tests.utils.with_project()
     def test_get_lua_base_module(self, root):

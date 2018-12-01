@@ -1,0 +1,12 @@
+load(
+    "@fbcode_macros//tests:skylark_integration_test.bzl",
+    "skylark_integration_tests",
+)
+
+TESTS = [
+    "cpp_common_test",
+    "haskell_common_test",
+    "lua_common_test",
+]
+
+skylark_integration_tests(TESTS)

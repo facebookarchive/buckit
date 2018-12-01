@@ -1,5 +1,5 @@
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")

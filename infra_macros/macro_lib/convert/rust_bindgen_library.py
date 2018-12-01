@@ -24,7 +24,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
+load("@fbcode_macros//build_defs/lib:rust_common.bzl", "rust_common")
 load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
 
 

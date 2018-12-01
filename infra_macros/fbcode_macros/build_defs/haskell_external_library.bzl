@@ -6,8 +6,8 @@
 # of patent rights can be found in the PATENTS file in the same directory.
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")

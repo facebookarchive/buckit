@@ -47,7 +47,7 @@ load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 THRIFT_FLAGS = [

@@ -40,7 +40,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_typing.bzl",
      "get_typing_config_target")
-load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")

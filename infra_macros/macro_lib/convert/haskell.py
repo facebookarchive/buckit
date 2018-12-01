@@ -21,14 +21,14 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode="build_mode")
-load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 
 
 # Flags controlling warnings issued by compiler

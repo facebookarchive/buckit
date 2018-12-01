@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
-load("@fbcode_macros//build_defs:rust_common.bzl", "rust_common")
+load("@fbcode_macros//build_defs/lib:rust_common.bzl", "rust_common")
 
 
 class RustConverter(base.Converter):

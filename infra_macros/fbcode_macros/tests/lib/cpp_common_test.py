@@ -12,7 +12,7 @@ from tests.utils import dedent
 
 
 class CppCommonTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")]
+    includes = [("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")]
 
     @tests.utils.with_project()
     def test_default_headers_library_works(self, root):
@@ -21,7 +21,7 @@ class CppCommonTest(tests.utils.TestCase):
             buckfile,
             dedent(
                 """
-        load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
+        load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
         cpp_common.default_headers_library()
         cpp_common.default_headers_library()
         """

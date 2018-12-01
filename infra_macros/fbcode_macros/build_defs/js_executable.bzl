@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs:js_common.bzl", "js_common")
+load("@fbcode_macros//build_defs/lib:js_common.bzl", "js_common")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")

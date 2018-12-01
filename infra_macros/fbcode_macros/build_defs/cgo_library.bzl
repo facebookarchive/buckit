@@ -1,5 +1,5 @@
-load("@fbcode_macros//build_defs:cpp_common.bzl", "cpp_common")
-load("@fbcode_macros//build_defs:go_common.bzl", "go_common")
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
+load("@fbcode_macros//build_defs/lib:go_common.bzl", "go_common")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def cgo_library(

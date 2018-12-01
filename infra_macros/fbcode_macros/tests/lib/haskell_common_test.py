@@ -13,7 +13,7 @@ from tests.utils import dedent
 
 class HaskellCommonTest(tests.utils.TestCase):
 
-    includes = [("@fbcode_macros//build_defs:haskell_common.bzl", "haskell_common")]
+    includes = [("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")]
 
     @tests.utils.with_project()
     def test_reads_config_properly_using_defaults(self, root):
