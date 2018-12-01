@@ -2,6 +2,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_string")
 
 def _convert_labels(platform, *labels):
     """
@@ -16,7 +17,7 @@ def _convert_labels(platform, *labels):
     """
     new_labels = [
         "buck",
-        config.get_build_mode(),
+        read_string("fbcode", "build_mode_test_label", config.get_build_mode()),
         compiler.get_compiler_for_current_buildfile(),
         platform,
         platform_utils.get_platform_architecture(platform),
