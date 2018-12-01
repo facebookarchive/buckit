@@ -1,6 +1,6 @@
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_string")
-load("@fbcode_macros//build_defs:global_compiler.bzl", "require_global_compiler")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:global_compiler.bzl", "require_global_compiler")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 
 # Maps sanitizer type to a shortname used in rules and tags/labels
 _SANITIZERS = {

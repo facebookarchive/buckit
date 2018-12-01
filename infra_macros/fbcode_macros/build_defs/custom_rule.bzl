@@ -1,11 +1,11 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _ERROR_BAD_GEN_FILES = ("custom_rule(): {}:{}: output_gen_files and " +
@@ -228,7 +228,7 @@ def custom_rule(
                           rule, relative to $INSTALL_DIR. This is deprecated
                           and will be removed in the future.
         tools: A list of third-party tools that are required. This is resolved
-               using common logic in @fbcode_macros//build_defs:third_party.bzl.
+               using common logic in @fbcode_macros//build_defs/lib:third_party.bzl.
                These tools' paths will be added to the FBCODE_THIRD_PARTY_TOOLS
                environment variable.
         srcs: Sources that are required by the build script. This works like

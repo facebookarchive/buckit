@@ -13,7 +13,7 @@ import tests.utils
 
 
 class ShellTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:shell.bzl", "shell")]
+    includes = [("@fbcode_macros//build_defs/lib:shell.bzl", "shell")]
 
     @tests.utils.with_project()
     def test_split_works_like_shlex_split(self, root):

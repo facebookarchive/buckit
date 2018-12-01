@@ -109,7 +109,7 @@ Rule = import_macro_lib('rule').Rule
 image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
 
 load(  # noqa: F821
-    '@fbcode_macros//build_defs:target_utils.bzl', 'target_utils',
+    '@fbcode_macros//build_defs/lib:target_utils.bzl', 'target_utils',
 )
 target_utils = target_utils  # noqa: F821
 load(':image_utils.bzl', 'image_utils')  # noqa: F821

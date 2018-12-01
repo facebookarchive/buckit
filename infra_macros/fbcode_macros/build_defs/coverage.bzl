@@ -1,8 +1,8 @@
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean")
+load("@fbcode_macros//build_defs/lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
-load("@fbcode_macros//build_defs:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 _SANITIZER_COVERAGE_FLAGS = ["-fsanitize-coverage=bb"]
 

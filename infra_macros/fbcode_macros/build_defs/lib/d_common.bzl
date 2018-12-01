@@ -1,8 +1,8 @@
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
-load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
 _COMMON_DEPENDENCIES = [
     target_utils.ThirdPartyRuleTarget("dlang", "druntime"),

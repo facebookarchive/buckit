@@ -150,10 +150,10 @@ base = import_macro_lib("convert/base")
 Rule = import_macro_lib("rule").Rule
 python = import_macro_lib("convert/python")
 fbcode_target = import_macro_lib("fbcode_target")
-load("@fbcode_macros//build_defs:python_typing.bzl", "get_typing_config_target")
+load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
 SPHINX_SECTION = "sphinx"
 
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 
 
 class _SphinxConverter(base.Converter):

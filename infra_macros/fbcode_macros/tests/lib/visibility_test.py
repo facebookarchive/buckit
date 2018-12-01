@@ -13,7 +13,7 @@ import tests.utils
 class VisibilityTest(tests.utils.TestCase):
     includes = [
         (
-            "@fbcode_macros//build_defs:visibility.bzl",
+            "@fbcode_macros//build_defs/lib:visibility.bzl",
             "get_visibility",
             "get_visibility_for_base_path",
         )

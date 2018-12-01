@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 
 def _convert_blob_with_macros(blob, platform = None):
     """

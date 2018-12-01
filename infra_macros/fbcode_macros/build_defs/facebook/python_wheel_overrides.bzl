@@ -8,8 +8,8 @@
 # of patent rights can be found in the PATENTS file in the same directory.
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 # Big tuple of tuples used to generate a dict of all the external_deps /
 # TP2 dependencies mapped to the new PyFI //python/wheel TARGET.

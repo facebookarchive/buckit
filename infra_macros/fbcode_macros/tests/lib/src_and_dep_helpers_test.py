@@ -13,8 +13,11 @@ from tests.utils import dedent
 
 class SrcAndDepHelpersTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers"),
-        ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils"),
+        (
+            "@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl",
+            "src_and_dep_helpers",
+        ),
+        ("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils"),
     ]
 
     @tests.utils.with_project()
@@ -38,7 +41,7 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes
-                + [("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")],
+                + [("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")],
                 [
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target("//foo/bar:baz=path/to/baz1.cpp"))',
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target(":baz=path/to/baz2.cpp"))',

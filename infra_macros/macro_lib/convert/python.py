@@ -34,20 +34,20 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-load("@fbcode_macros//build_defs:allocators.bzl", "allocators")
-load("@fbcode_macros//build_defs:build_info.bzl", "build_info")
+load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
+load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:python_typing.bzl",
+load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
-load("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
+load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:python_versioning.bzl", "python_versioning")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 
 

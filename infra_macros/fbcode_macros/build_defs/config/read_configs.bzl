@@ -9,7 +9,7 @@
 Simple helpers for reading configurations
 """
 
-load("@fbcode_macros//build_defs:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/lib:shell.bzl", "shell")
 
 def read_flags(section, field, default = None):
     """

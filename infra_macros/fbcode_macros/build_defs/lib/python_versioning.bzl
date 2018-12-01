@@ -10,9 +10,9 @@ Common infrastructure for managing Python flavors and versions in third-party2.
 
 """
 
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
 
 _TP2_PYTHON_PROJECT = third_party.get_tp2_project_target("python")
 

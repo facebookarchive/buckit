@@ -1,6 +1,6 @@
+load("@fbcode_macros//build_defs/lib:core_tools.bzl", "core_tools")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_choice", "read_int")
 
 def _create_build_info(

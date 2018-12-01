@@ -1,7 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "copy_genrule_output_file")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _YACC = target_utils.ThirdPartyToolRuleTarget("bison", "bison")

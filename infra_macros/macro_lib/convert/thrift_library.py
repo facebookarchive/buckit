@@ -40,15 +40,15 @@ python = import_macro_lib('convert/python')
 rust = import_macro_lib('convert/rust')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
-load("@fbcode_macros//build_defs:python_typing.bzl",
+load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
-load("@fbcode_macros//build_defs:merge_tree.bzl", "merge_tree")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',

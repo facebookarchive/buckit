@@ -12,7 +12,7 @@ from tests.utils import dedent
 
 
 class AllocatorsTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:allocators.bzl", "allocators")]
+    includes = [("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")]
 
     @tests.utils.with_project()
     def test_get_allocator_methods_work(self, root):

@@ -18,10 +18,10 @@ with allow_unsafe_import():
     import os
 
 
-load("@fbcode_macros//build_defs:modules.bzl", "modules")
+load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")

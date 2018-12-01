@@ -2,9 +2,9 @@
 Helpers to related to C/C++ compiler families used for the build.
 """
 
-load("@fbcode_macros//build_defs:build_mode.bzl", "build_mode")
+load("@fbcode_macros//build_defs/lib:build_mode.bzl", "build_mode")
+load("@fbcode_macros//build_defs/lib:global_compiler.bzl", _require_global_compiler = "require_global_compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:global_compiler.bzl", _require_global_compiler = "require_global_compiler")
 
 def _get_supported_compilers():
     """

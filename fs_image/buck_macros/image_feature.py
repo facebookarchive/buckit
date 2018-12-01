@@ -56,7 +56,7 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 
 load(  # noqa: F821
-    '@fbcode_macros//build_defs:target_utils.bzl', 'target_utils',
+    '@fbcode_macros//build_defs/lib:target_utils.bzl', 'target_utils',
 )
 target_utils = target_utils  # noqa: F821
 

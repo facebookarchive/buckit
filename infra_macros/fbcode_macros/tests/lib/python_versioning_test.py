@@ -15,9 +15,9 @@ from tests.utils import dedent
 
 class PythonVersioningTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils"),
-        ("@fbcode_macros//build_defs:third_party.bzl", "third_party"),
-        ("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning"),
+        ("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils"),
+        ("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party"),
+        ("@fbcode_macros//build_defs/lib:python_versioning.bzl", "python_versioning"),
     ]
 
     setupThirdPartyConfig = False

@@ -13,8 +13,8 @@ from tests.utils import dedent
 
 class CudaTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils"),
-        ("@fbcode_macros//build_defs:cuda.bzl", "cuda"),
+        ("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils"),
+        ("@fbcode_macros//build_defs/lib:cuda.bzl", "cuda"),
     ]
 
     @tests.utils.with_project()

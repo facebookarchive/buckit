@@ -20,9 +20,9 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 
 
 class OCamlConverter(base.Converter):

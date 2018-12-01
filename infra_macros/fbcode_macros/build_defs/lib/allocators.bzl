@@ -1,5 +1,5 @@
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:allocator_targets.bzl", "allocator_targets")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 
 _ALLOCATOR_DEPS = {
     allocator: [target_utils.parse_target(rdep) for rdep in targets]

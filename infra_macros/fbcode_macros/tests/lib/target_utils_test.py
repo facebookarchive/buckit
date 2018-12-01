@@ -14,8 +14,8 @@ import tests.utils
 
 class TargetUtilsTest(tests.utils.TestCase):
     includes = [
-        ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils"),
-        ("@fbcode_macros//build_defs:third_party.bzl", "third_party"),
+        ("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils"),
+        ("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party"),
     ]
 
     @tests.utils.with_project()

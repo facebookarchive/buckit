@@ -13,7 +13,7 @@ import tests.utils
 
 
 class LabelsTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:label_utils.bzl", "label_utils")]
+    includes = [("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")]
 
     @tests.utils.with_project()
     def test_get_sanitizer(self, root):

@@ -1,11 +1,11 @@
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags", "read_int")
-load("@fbcode_macros//build_defs:build_mode.bzl", _build_mode = "build_mode")
+load("@fbcode_macros//build_defs/lib:build_mode.bzl", _build_mode = "build_mode")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 # The languages which general compiler flag apply to.
 _COMPILER_LANGS = (

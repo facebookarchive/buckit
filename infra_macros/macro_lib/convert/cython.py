@@ -46,11 +46,11 @@ python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
-load("@fbcode_macros//build_defs:python_typing.bzl",
+load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 def split_matching_extensions(srcs, exts):
     """

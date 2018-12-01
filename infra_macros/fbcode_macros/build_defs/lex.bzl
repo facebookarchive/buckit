@@ -1,6 +1,6 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "copy_genrule_output_file", "get_project_root_from_gen_dir")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _LEX = target_utils.ThirdPartyToolRuleTarget("flex", "flex")

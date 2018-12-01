@@ -15,9 +15,9 @@ load(
     "read_boolean",
     "read_string",
 )
+load("@fbcode_macros//build_defs/lib:default_platform.bzl", _get_default_platform = "get_default_platform")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:default_platform.bzl", _get_default_platform = "get_default_platform")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 

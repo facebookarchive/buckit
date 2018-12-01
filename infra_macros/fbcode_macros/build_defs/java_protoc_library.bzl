@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def _java_protoc_compile_srcs(

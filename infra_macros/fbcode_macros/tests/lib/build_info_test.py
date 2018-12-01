@@ -13,7 +13,7 @@ from tests.utils import dedent
 
 class BuildInfoTest(tests.utils.TestCase):
 
-    includes = [("@fbcode_macros//build_defs:build_info.bzl", "build_info")]
+    includes = [("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")]
 
     @tests.utils.with_project()
     def test_returns_empty_build_info_for_core_tools(self, root):

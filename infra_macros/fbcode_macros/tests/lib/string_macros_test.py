@@ -12,7 +12,7 @@ from tests.utils import dedent
 
 
 class StringMacrosTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:string_macros.bzl", "string_macros")]
+    includes = [("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")]
 
     @tests.utils.with_project()
     def test_replacements_work(self, root):

@@ -10,12 +10,12 @@ load(
     "read_string",
 )
 load(
-    "@fbcode_macros//build_defs:python_typing.bzl",
+    "@fbcode_macros//build_defs/lib:python_typing.bzl",
     "gen_typing_config",
     "get_typing_config_target",
 )
 load(
-    "@fbcode_macros//build_defs:visibility.bzl",
+    "@fbcode_macros//build_defs/lib:visibility.bzl",
     "get_visibility",
 )
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")

@@ -13,7 +13,7 @@ from tests.utils import dedent
 
 class CoreToolsTest(tests.utils.TestCase):
 
-    includes = [("@fbcode_macros//build_defs:core_tools.bzl", "core_tools")]
+    includes = [("@fbcode_macros//build_defs/lib:core_tools.bzl", "core_tools")]
 
     @tests.utils.with_project()
     def test_returns_whether_in_set(self, root):

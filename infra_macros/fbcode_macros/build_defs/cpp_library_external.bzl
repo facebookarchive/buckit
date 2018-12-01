@@ -1,12 +1,12 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:types.bzl", "types")
+load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
+load("@fbcode_macros//build_defs/lib:python_versioning.bzl", "python_versioning")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs:modules.bzl", "modules")
-load("@fbcode_macros//build_defs:python_versioning.bzl", "python_versioning")
-load("@fbcode_macros//build_defs:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def __maybe_add_module(original_name, module_rule_name, module_name, inc_dirs, dependencies, flags, platform, local_submodule_visibility):

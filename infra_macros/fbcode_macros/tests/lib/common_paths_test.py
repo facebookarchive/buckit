@@ -11,7 +11,7 @@ import tests.utils
 
 
 class CommonPathTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:common_paths.bzl", "common_paths")]
+    includes = [("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")]
 
     @tests.utils.with_project()
     def test_returns_correct_paths_with_default(self, root):

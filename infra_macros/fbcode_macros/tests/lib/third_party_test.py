@@ -14,7 +14,7 @@ from tests.utils import dedent
 
 
 class ThirdPartyTest(tests.utils.TestCase):
-    includes = [("@fbcode_macros//build_defs:third_party.bzl", "third_party")]
+    includes = [("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")]
 
     @tests.utils.with_project()
     def test_third_party_target_works_for_oss(self, root):
@@ -197,7 +197,7 @@ class ThirdPartyTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_is_tp2_src_dep(self, root):
         includes = self.includes + [
-            ("@fbcode_macros//build_defs:target_utils.bzl", "target_utils")
+            ("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
         ]
         commands = [
             'third_party.is_tp2_src_dep("third-party-buck/foo.py")',

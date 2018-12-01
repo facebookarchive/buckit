@@ -14,7 +14,7 @@ from tests.utils import dedent
 class PythonTypingTest(tests.utils.TestCase):
     includes = [
         (
-            "@fbcode_macros//build_defs:python_typing.bzl",
+            "@fbcode_macros//build_defs/lib:python_typing.bzl",
             "get_typing_config_target",
             "gen_typing_config_attrs",
         )
@@ -131,7 +131,7 @@ class PythonTypingTest(tests.utils.TestCase):
             "BUCK",
             dedent(
                 """
-        load("@fbcode_macros//build_defs:python_typing.bzl",
+        load("@fbcode_macros//build_defs/lib:python_typing.bzl",
             "gen_typing_config")
 
         gen_typing_config(

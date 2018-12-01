@@ -12,7 +12,7 @@ import tests.utils
 
 class CppFlagsTest(tests.utils.TestCase):
 
-    includes = [("@fbcode_macros//build_defs:cpp_flags.bzl", "cpp_flags")]
+    includes = [("@fbcode_macros//build_defs/lib:cpp_flags.bzl", "cpp_flags")]
 
     @tests.utils.with_project()
     def test_get_extra_flags_methods(self, root):

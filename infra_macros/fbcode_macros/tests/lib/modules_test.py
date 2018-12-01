@@ -14,7 +14,7 @@ import tests.utils
 
 class ModulesTest(tests.utils.TestCase):
 
-    includes = [("@fbcode_macros//build_defs:modules.bzl", "modules")]
+    includes = [("@fbcode_macros//build_defs/lib:modules.bzl", "modules")]
 
     expected_cmd = (
         r"""set -euo pipefail\n"""
@@ -112,7 +112,7 @@ class ModulesTest(tests.utils.TestCase):
             "third-party-buck/something/BUCK",
             textwrap.dedent(
                 """
-            load("@fbcode_macros//build_defs:modules.bzl", "modules")
+            load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
             modules.gen_tp2_cpp_module(
                 name = "foo",
                 module_name = "bar",
@@ -164,7 +164,7 @@ cxx_library(
             "third-party-buck/something/BUCK",
             textwrap.dedent(
                 """
-            load("@fbcode_macros//build_defs:modules.bzl", "modules")
+            load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
             modules.gen_tp2_cpp_module(
                 name = "foo",
                 module_name = "bar",
