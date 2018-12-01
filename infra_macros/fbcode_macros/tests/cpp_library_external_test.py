@@ -66,7 +66,16 @@ class CppLibraryExternalTest(tests.utils.TestCase):
         r"""           \\\"user\\\": \\\"$USER\\\"}}\";\n"""
         r"""  }\n"""
         r"""fi\n"""
-        r'''mv -nT \"$TMP/module.pcm\" \"$OUT\"'''
+        r"""mv -nT \"$TMP/module.pcm\" \"$OUT\"\n"""
+        r"""OLD=\"$MODULE_HOME\"\n"""
+        r"""VER=\"\\$(echo \"$OLD\" | grep -Po \",v[a-f0-9]{7}(?=__srcs/)\"; true)\"\n"""
+        r"""NEW=\"\\$(printf \'third-party-buck/gcc5/build/ImageMagick/include/ImageMagick\' \"$VER\")\"\n"""
+        r"""if [ ${#NEW} -gt ${#OLD} ]; then\n"""
+        r"""  >&2 echo \"New module home ($NEW) bigger than old one ($OLD)\"\n"""
+        r"""  exit 1\n"""
+        r"""fi\n"""
+        r"""NEW=\"\\$(echo -n \"$NEW\" | sed -e :a -e \"s|^.\\{1,$(expr \"$(echo -n \"$OLD\" | wc -c)\" - 1)\\}$|&/|;ta\")\"\n"""
+        r'''sed -i \"s|$OLD|$NEW|g\" \"$OUT\"'''
     )
 
     @tests.utils.with_project()

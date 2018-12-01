@@ -71,6 +71,18 @@ class ModulesTest(tests.utils.TestCase):
         r'''mv -nT \"$TMP/module.pcm\" \"$OUT\"'''
     )
 
+    override_home_cmd = (
+        r"""OLD=\"$MODULE_HOME\"\n"""
+        r"""VER=\"\\$(echo \"$OLD\" | grep -Po \",v[a-f0-9]{7}(?=__srcs/)\"; true)\"\n"""
+        r"""NEW=\"\\$(printf \'third-party-buck/something\' \"$VER\")\"\n"""
+        r"""if [ ${#NEW} -gt ${#OLD} ]; then\n"""
+        r"""  >&2 echo \"New module home ($NEW) bigger than old one ($OLD)\"\n"""
+        r"""  exit 1\n"""
+        r"""fi\n"""
+        r"""NEW=\"\\$(echo -n \"$NEW\" | sed -e :a -e \"s|^.\\{1,$(expr \"$(echo -n \"$OLD\" | wc -c)\" - 1)\\}$|&/|;ta\")\"\n"""
+        r'''sed -i \"s|$OLD|$NEW|g\" \"$OUT\"'''
+    )
+
     @tests.utils.with_project()
     def test_get_module_name(self, root):
         self.assertSuccess(
@@ -116,7 +128,7 @@ class ModulesTest(tests.utils.TestCase):
             modules.gen_tp2_cpp_module(
                 name = "foo",
                 module_name = "bar",
-                headers = {"module.modulemap": "module.modulemap", "foo.h": "foo.cpp"},
+                header_dir = "",
                 flags = ["-DFOO"],
                 dependencies = [],
                 platform = None,
@@ -135,8 +147,7 @@ cxx_genrule(
   ],
   out = "module.pcm",
   srcs = {{
-    "module_header_dir/module.modulemap": "module.modulemap",
-    "module_header_dir/foo.h": "foo.cpp",
+    "module_header_dir": "",
   }},
 )
 
@@ -154,7 +165,7 @@ cxx_library(
   ],
 )
         """
-        ).format(cmd=self.expected_cmd)
+        ).format(cmd=self.expected_cmd + "\n" + self.override_home_cmd)
         result = root.runAudit(["third-party-buck/something/BUCK"])
         self.validateAudit({"third-party-buck/something/BUCK": expected}, result)
 
@@ -168,7 +179,7 @@ cxx_library(
             modules.gen_tp2_cpp_module(
                 name = "foo",
                 module_name = "bar",
-                headers = {"module.modulemap": "module.modulemap", "foo.h": "foo.cpp"},
+                header_dir = "",
                 flags = ["-DFOO"],
                 dependencies = [],
                 platform = None,
@@ -188,8 +199,7 @@ cxx_genrule(
   ],
   out = "module.pcm",
   srcs = {{
-    "module_header_dir/foo.h": "foo.cpp",
-    "module_header_dir/module.modulemap": "module.modulemap",
+    "module_header_dir": "",
   }},
 )
 
@@ -207,6 +217,6 @@ cxx_library(
   ],
 )
         """
-        ).format(cmd=self.expected_cmd)
+        ).format(cmd=self.expected_cmd + "\n" + self.override_home_cmd)
         result = root.runAudit(["third-party-buck/something/BUCK"])
         self.validateAudit({"third-party-buck/something/BUCK": expected}, result)

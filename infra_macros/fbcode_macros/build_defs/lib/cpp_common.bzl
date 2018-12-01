@@ -35,6 +35,14 @@ _SourceWithFlags = provider(fields = [
     "flags",
 ])
 
+# The sources associated with a `cpp_library` rule.
+_SourcesInfo = provider(fields = [
+    # Source references to in-repo or tp2 sources.
+    "srcs",
+    # The module file (i.e. `module.pcm`) built fomr this rule's headers.
+    "module",
+])
+
 _C_SOURCE_EXTS = (
     ".c",
 )
@@ -308,7 +316,7 @@ def _format_modules_param(lst):
         ),
     )
 
-def _format_source_with_flags_list(srcs_with_flags):
+def _format_source_with_flags_list(sources):
     """
     Convert the provided SourceWithFlags objects into objects useable by buck native rules
 
@@ -326,7 +334,7 @@ def _format_source_with_flags_list(srcs_with_flags):
     # `srcs` parameter.
     out_srcs = []
     tp2_dep_srcs = []
-    for src in srcs_with_flags:
+    for src in sources.srcs:
         if third_party.is_tp2_src_dep(src.src):
             # All third-party sources references are installed via `platform_srcs`
             # so that they're platform aware.
@@ -334,11 +342,18 @@ def _format_source_with_flags_list(srcs_with_flags):
         else:
             out_srcs.append(_format_source_with_flags(src))
 
-    out_platform_srcs = (
+    out_platform_srcs = []
+    out_platform_srcs.extend(
         src_and_dep_helpers.format_platform_param(
             partial.make(_format_source_with_flags_list_partial, tp2_dep_srcs),
-        )
+        ),
     )
+
+    # If a module is included, write this out for platforms which support
+    # modules.
+    if sources.module != None:
+        module_src = _format_source_with_flags(sources.module)
+        out_platform_srcs.extend(_format_modules_param([module_src]))
 
     return src_and_dep_helpers.PlatformParam(value = out_srcs, platform_value = out_platform_srcs)
 
@@ -1133,7 +1148,7 @@ def _convert_cpp(
         )
 
     # autodeps_keep is used by dwyu/autodeps and ignored by infra_macros.
-    out_srcs = []  # type: List[SourceWithFlags]
+    out_srcs = _SourcesInfo(srcs = [], module = None)
     out_headers = []
     out_exported_ldflags = []
     out_ldflags = []
@@ -1545,7 +1560,7 @@ def _convert_cpp(
     for lex_src in lex_srcs:
         header, source = lex(name, lex_args, lex_src, platform, visibility)
         out_headers.append(header)
-        out_srcs.append(_SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ["-w"]))
+        out_srcs.srcs.append(_SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), ["-w"]))
 
     # Generate rules to handle yacc sources.
     yacc_srcs, srcs = _split_matching_extensions_and_other(
@@ -1561,7 +1576,7 @@ def _convert_cpp(
             visibility,
         )
         out_headers.extend(yacc_headers)
-        out_srcs.append(_SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
+        out_srcs.srcs.append(_SourceWithFlags(target_utils.RootRuleTarget(base_path, source[1:]), None))
 
     # Convert and add in any explicitly mentioned headers into our output
     # headers.
@@ -1606,14 +1621,7 @@ def _convert_cpp(
             (known_warnings and
              src_and_dep_helpers.get_parsed_source_name(src) in known_warnings)):
             flags = ["-Wno-error"]
-        out_srcs.append(_SourceWithFlags(src = src, flags = flags))
-
-    formatted_srcs = _format_source_with_flags_list(out_srcs)
-    if cpp_rule_type != "cpp_precompiled_header":
-        attributes["srcs"] = formatted_srcs.value
-        attributes["platform_srcs"] = formatted_srcs.platform_value
-    else:
-        attributes["srcs"] = src_and_dep_helpers.without_platforms(formatted_srcs)
+        out_srcs.srcs.append(_SourceWithFlags(src = src, flags = flags))
 
     for lib in (shared_system_deps or []):
         out_exported_ldflags.append("-l" + lib)
@@ -1845,6 +1853,9 @@ def _convert_cpp(
         # Build each module header in it's own context.
         module_flags.extend(["-Xclang", "-fmodules-local-submodule-visibility"])
 
+        # Generate debug info into modules.
+        module_flags.extend(["-Xclang", "-fmodules-debuginfo"])
+
         # TODO(T36925825): Set `FOLLY_XLOG_STRIP_PREFIXES` for module
         # compilations, so that folly's xlog logging library can properly
         # reconstruct path names from mangled `__FILE__` values.
@@ -1891,6 +1902,24 @@ def _convert_cpp(
                     .format(module_name, mod_name)],
             ),
         )
+
+        # Compile module.
+        out_srcs = (
+            _SourcesInfo(
+                srcs = out_srcs.srcs,
+                module = _SourceWithFlags(
+                    src = target_utils.RootRuleTarget(base_path, mod_name),
+                    flags = None,
+                ),
+            )
+        )
+
+    formatted_srcs = _format_source_with_flags_list(out_srcs)
+    if cpp_rule_type != "cpp_precompiled_header":
+        attributes["srcs"] = formatted_srcs.value
+        attributes["platform_srcs"] = formatted_srcs.platform_value
+    else:
+        attributes["srcs"] = src_and_dep_helpers.without_platforms(formatted_srcs)
 
     # TODO(T36925825): Set `FOLLY_XLOG_STRIP_PREFIXES` for non-module
     # compilations.  We don't put anything useful here, but as xlog.h is built
@@ -1973,7 +2002,7 @@ def _convert_cpp(
     ):
         # Was completely left out in the rule? (vs. None to disable autoPCH)
         if precompiled_header == _ABSENT_PARAM:
-            precompiled_header = _get_fbcode_default_pch(out_srcs, base_path, name)
+            precompiled_header = _get_fbcode_default_pch(out_srcs.srcs, base_path, name)
 
     if precompiled_header != _ABSENT_PARAM and precompiled_header:
         attributes["precompiled_header"] = precompiled_header

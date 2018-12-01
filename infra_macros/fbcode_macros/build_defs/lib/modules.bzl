@@ -285,7 +285,8 @@ def _gen_module(
         # Run the command and filter stderr to fixup header paths by dropping
         # the obscure genrule sandbox directory.
         '  ("${args[@]}" 3>&1 1>&2 2>&3 3>&-) 2>"$TMP"/module.pcm.tmp \\',
-        '    | >&2 sed "s|$MODULE_HOME/|"{}"|g"'.format(shell.quote(header_prefix)),
+        '    | >&2 sed "s|$MODULE_HOME/|"{}"|g"'
+            .format(shell.quote(header_prefix + "/" if header_prefix else "")),
         '  mv -nT "$TMP"/module.pcm.tmp "$TMP"/module.pcm',
         '  inode > "$TMP"/inode.txt',
         "}",
@@ -360,7 +361,6 @@ def _gen_tp2_cpp_module(
         module_name,
         platform,
         header_dir = None,
-        headers = None,
         flags = (),
         dependencies = (),
         local_submodule_visibility = False,
@@ -374,13 +374,8 @@ def _gen_tp2_cpp_module(
       name: The name of rule that builds the module.  This will also serve as
             a name prefix for any additional rules that need to be created.
       module_name: The name of the module at the C++ level
-      headers: A dictionary of headers to be compiled into a module, mapping
-               their full include path to their sources.  Must contain a
-               `module.modulemap` at the top-level.  Cannot be specified if
-               `header_dir` is used.
       header_dir: A directory containing headers to be compiled into a module.
-                  Must contain a `module.modulemap` at the top-level.  Cannot
-                  be specified if `headers` is used.
+                  Must contain a `module.modulemap` at the top-level.
       flags: Additional flags to pass to the compiler when building the module.
       deps: C/C++ deps providing headers used by the headers in this module.
       local_submodule_visibility: Whether or not modules-local-submodule-visibility
@@ -414,13 +409,17 @@ def _gen_tp2_cpp_module(
     )
 
     # Generate the module file.
+    header_prefix = paths.join(base_path, header_dir).rstrip("/")
     _gen_module(
         name = name,
-        headers = headers,
         flags = out_flags,
         header_dir = header_dir,
-        header_prefix = paths.join(base_path, header_dir or "", ""),
+        header_prefix = header_prefix,
         labels = labels,
+        # Fixup the module home to the original include path so that clang can
+        # verify it correctly when we compile it (when the genrule sandbox may
+        # not be there).
+        override_module_home = header_prefix,
         module_name = module_name,
         default_platform = platform,
         platform_deps = out_platform_deps,
