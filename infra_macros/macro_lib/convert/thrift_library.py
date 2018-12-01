@@ -45,6 +45,7 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl",
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
@@ -943,6 +944,8 @@ class HaskellThriftConverter(ThriftLangConverter):
             visibility=None,
             **kwargs):
 
+        platform = platform_utils.get_platform_for_base_path(base_path)
+
         attrs = collections.OrderedDict()
         attrs['name'] = name
         if visibility is not None:
@@ -955,18 +958,16 @@ class HaskellThriftConverter(ThriftLangConverter):
                 dependencies.extend(self.THRIFT_HS_LIBS)
             else:
                 dependencies.extend(self.THRIFT_HS_LIBS_DEPRECATED)
-            for pkg in self.THRIFT_HS_PACKAGES:
-                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
+            dependencies.extend(self._hs_converter.get_deps_for_packages(
+                self.THRIFT_HS_PACKAGES, platform))
         else:
             for services in thrift_srcs.itervalues():
                 if services:
                     dependencies.extend(self.THRIFT_HS2_SERVICE_LIBS)
                     break
             dependencies.extend(self.THRIFT_HS2_LIBS)
-            for pkg in self.THRIFT_HS2_PACKAGES:
-                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
-            for pkg in hs_packages or []:
-                dependencies.append(self._hs_converter.get_dep_for_package(pkg))
+            dependencies.extend(self._hs_converter.get_deps_for_packages(
+                self.THRIFT_HS2_PACKAGES + (hs_packages or []), platform))
             for dep in hs2_deps:
                 dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in deps:

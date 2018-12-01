@@ -8,6 +8,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean", "read_list")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
@@ -290,8 +291,13 @@ def _convert_dlls(
     )
     return deps, ldflags, dep_queries
 
+def _get_ghc_version(platform):
+    tp_config = third_party.get_third_party_config_for_platform(platform)
+    return tp_config["tools"]["projects"]["ghc"]
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
+    get_ghc_version = _get_ghc_version,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,
     read_extra_ghc_linker_flags = _read_extra_ghc_linker_flags,
     read_hs_debug = _read_hs_debug,

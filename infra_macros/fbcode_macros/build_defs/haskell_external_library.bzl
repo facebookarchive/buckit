@@ -119,8 +119,7 @@ def haskell_external_library(
             for l in libs
         ]
 
-    tp_config = third_party.get_third_party_config_for_platform(platform)
-    ghc_version = tp_config["tools"]["projects"]["ghc"]
+    ghc_version = haskell_common.get_ghc_version(platform)
     shlibs = [
         paths.join(lib_dir, "lib{}-ghc{}.so".format(lib, ghc_version))
         for lib in libs

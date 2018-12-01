@@ -66,49 +66,6 @@ LANG_OPT_RE = re.compile(
     '(-f(no-)?irrefutable-tuples)$|'
     '(-fcontext-stack=\d+)$')
 
-# List of packages:
-# - that GHC installs (from third-party2/ghc/<version>/<platform>/TARGETS)
-# - except those that are superseded by newer versions in stackage
-INTERNAL_GHC_PACKAGES = [
-    'array',
-    'base',
-    'binary',
-    'bytestring',
-    'Cabal',
-    'containers',
-    'deepseq',
-    'directory',
-    'filepath',
-    'ghc',
-    'ghci',
-    'ghc-boot',
-    'ghc-boot-th',
-    'ghc-prim',
-    'hpc',
-    'integer-gmp',
-    'pretty',
-    'process',
-    'rts',
-    'template-haskell',
-    'terminfo',
-    'time',
-    'transformers',
-    'unix',
-
-    # TODO: handle this programmatically without hardcoding
-    # 8.0.2 only
-    'compact',
-    'hoopl',
-
-    # 8.4.4 only
-    # 'ghc-compact',
-    # 'mtl',
-    # 'parsec',
-    # 'stm',
-    # 'text',
-    # 'xhtml',
-]
-
 # Extensions enabled by default unless you specify fb_haskell = False
 FB_HASKELL_LANG = [
     'BangPatterns',
@@ -329,7 +286,57 @@ class HaskellConverter(base.Converter):
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
 
-    def get_dep_for_package(self, package):
+    def get_internal_ghc_packages(self, platform):
+        """
+        List of packages:
+        - that GHC installs (from third-party2/ghc/<version>/<platform>/TARGETS)
+        - except those that are superseded by newer versions in stackage
+        """
+        packages = [
+            'array',
+            'base',
+            'binary',
+            'bytestring',
+            'Cabal',
+            'containers',
+            'deepseq',
+            'directory',
+            'filepath',
+            'ghc',
+            'ghci',
+            'ghc-boot',
+            'ghc-boot-th',
+            'ghc-prim',
+            'hpc',
+            'integer-gmp',
+            'pretty',
+            'process',
+            'rts',
+            'template-haskell',
+            'terminfo',
+            'time',
+            'transformers',
+            'unix',
+        ]
+
+        if haskell_common.get_ghc_version(platform) == '8.4.4':
+            packages.extend([
+                'ghc-compact',
+                'mtl',
+                'parsec',
+                'stm',
+                'text',
+                'xhtml',
+            ])
+        else:
+            packages.extend([
+                'compact',
+                'hoopl',
+            ])
+
+        return packages
+
+    def get_dep_for_package(self, package, platform):
         """
         Convert arguments in the `package` parameter to actual deps.
         """
@@ -339,15 +346,19 @@ class HaskellConverter(base.Converter):
         else:
             package, version = package
 
-        if package in INTERNAL_GHC_PACKAGES:
+        # TODO: ghc-8.4.4
+        if (package == 'compact' and
+                haskell_common.get_ghc_version(platform) == '8.4.4'):
+            package = 'ghc-compact'
+        if package in self.get_internal_ghc_packages(platform):
             project = 'ghc'
         else:
             project = 'stackage-lts'
 
         return target_utils.ThirdPartyRuleTarget(project, package)
 
-    def get_deps_for_packages(self, packages):
-        return [self.get_dep_for_package(p) for p in packages]
+    def get_deps_for_packages(self, packages, platform):
+        return [self.get_dep_for_package(p, platform) for p in packages]
 
     def get_implicit_deps(self):
         """
@@ -734,10 +745,10 @@ class HaskellConverter(base.Converter):
             user_deps.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             user_deps.append(src_and_dep_helpers.normalize_external_dep(dep))
-        user_deps.extend(self.get_deps_for_packages(packages))
+        user_deps.extend(self.get_deps_for_packages(packages, platform))
         if fb_haskell:
             user_deps.extend(self.get_deps_for_packages(
-                x for x in FB_HASKELL_PACKAGES if x not in packages))
+                [x for x in FB_HASKELL_PACKAGES if x not in packages], platform))
         user_deps.extend(self.get_implicit_deps())
 
         # Convert the various input source types to haskell sources.
@@ -750,13 +761,13 @@ class HaskellConverter(base.Converter):
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
-                    self.get_deps_for_packages(HAPPY_PACKAGES))
+                    self.get_deps_for_packages(HAPPY_PACKAGES, platform))
             elif ext == '.x':
                 src, extra_rules = self.convert_alex(name, platform, src, visibility)
                 out_srcs.append(src)
                 rules.extend(extra_rules)
                 implicit_src_deps.update(
-                    self.get_deps_for_packages(ALEX_PACKAGES))
+                    self.get_deps_for_packages(ALEX_PACKAGES, platform))
             elif ext == '.hsc':
                 src, extra_rules = (
                     self.convert_hsc2hs(
@@ -828,7 +839,7 @@ class HaskellConverter(base.Converter):
                 attributes['link_style'] = out_link_style
 
         if self.is_test():
-            dependencies.append(self.get_dep_for_package('HUnit'))
+            dependencies.append(self.get_dep_for_package('HUnit', platform))
             dependencies.append(target_utils.RootRuleTarget('tools/test/stubs', 'fbhsunit'))
 
         # Add in binary-specific link deps.
