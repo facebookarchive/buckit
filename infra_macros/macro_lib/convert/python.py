@@ -324,7 +324,7 @@ class PythonConverter(base.Converter):
                     continue
 
                 # If the source comes from a `custom_rule`/`genrule`, and the
-                # user used the `=` notation which encodes the sources "name",
+                # user used the `=` notation which encodes the source's "name",
                 # we can extract and use that.
                 if '=' in src.name:
                     name = src.name.rsplit('=', 1)[1]
@@ -1391,7 +1391,7 @@ class PythonConverter(base.Converter):
                 _check_types = False
                 print(
                     base_path + ':' + py_name,
-                    'will not be typechecked because its the python 2 part',
+                    'will not be typechecked because it is the python 2 part',
                 )
             else:
                 _check_types = check_types
