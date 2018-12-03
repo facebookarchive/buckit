@@ -22,15 +22,24 @@ OVERRIDES = (
     ("PyYAML", "pyyaml"),
     ("Pygments", "pygments"),  # TP2 has duplicates (See pygments)
     ("Shapely", "shapely"),
+    ("aiohttp", "aiohttp"),
+    ("async-timeout", "async-timeout"),
     ("certifi", "certifi"),
+    ("python-chardet", "chardet"),
     ("colorama", "colorama"),
     ("coverage", "coverage"),
     ("decorator", "decorator"),
     ("funcsigs", "funcsigs"),
+    ("idna", "idna"),
+    ("idna-ssl", "idna-ssl"),
+    ("ig-aiohttp", "aiohttp"),
+    ("ig-multidict", "multidict"),
+    ("ig-yarl", "yarl"),
     ("ipython", "ipython"),
     ("ipython_genutils", "ipython-genutils"),
     ("jsonpickle", "jsonpickle"),
     ("mock", "mock"),
+    ("multidict", "multidict"),
     ("mypy", "mypy"),
     ("mypy_extensions", "mypy-extensions"),
     ("pathlib2", "pathlib2"),
@@ -64,6 +73,7 @@ OVERRIDES = (
     ("typed-ast", "typed-ast"),
     ("urllib3", "urllib3"),
     ("wcwidth", "wcwidth"),
+    ("yarl", "yarl"),
 )
 
 _PYFI_SUPPORTED_PLATFORMS = (
