@@ -381,7 +381,7 @@ class PythonConverter(base.Converter):
 
         confs = [third_party.get_third_party_config_for_platform(p)['build']['projects']['python']
                  for p in platform_utils.get_platforms_for_host_architecture()
-                 if platform is None or p == platform]
+                 if platform == None or p == platform]
         versions = set(version_str
                        for pyconf in confs
                        # pyconf is a list of pairs:
@@ -501,7 +501,7 @@ class PythonConverter(base.Converter):
         manifest_attrs = collections.OrderedDict()
         manifest_attrs['name'] = manifest_name
         manifest_attrs['labels'] = ["generated"]
-        if visibility is not None:
+        if visibility != None:
             manifest_attrs['visibility'] = visibility
         manifest_attrs['out'] = name + '-__manifest__.py'
         manifest_attrs['cmd'] = (
@@ -512,7 +512,7 @@ class PythonConverter(base.Converter):
         manifest_lib_attrs = collections.OrderedDict()
         manifest_lib_attrs['name'] = manifest_lib_name
         manifest_lib_attrs['labels'] = ["generated"]
-        if visibility is not None:
+        if visibility != None:
             manifest_lib_attrs['visibility'] = visibility
         manifest_lib_attrs['base_module'] = ''
         manifest_lib_attrs['srcs'] = {'__manifest__.py': ':' + manifest_name}
@@ -543,23 +543,23 @@ class PythonConverter(base.Converter):
         if config.get_use_custom_par_args():
             # Arguments that we wanted directly threaded into `make_par`.
             passthrough_args = []
-            if argcomplete is True:
+            if argcomplete == True:
                 passthrough_args.append('--argcomplete')
-            if strict_tabs is False:
+            if strict_tabs == False:
                 passthrough_args.append('--no-strict-tabs')
-            if compile is False:
+            if compile == False:
                 passthrough_args.append('--no-compile')
                 passthrough_args.append('--store-source')
             elif compile == 'with-source':
                 passthrough_args.append('--store-source')
-            elif compile is not True and compile is not None:
+            elif compile != True and compile != None:
                 fail((
                     'Invalid value {} for `compile`, must be True, False, ' +
                     '"with-source", or None (default)').format(compile)
                 )
-            if par_style is not None:
+            if par_style != None:
                 passthrough_args.append('--par-style=' + par_style)
-            if needed_coverage is not None or coverage.get_coverage():
+            if needed_coverage != None or coverage.get_coverage():
                 passthrough_args.append('--store-source')
             if build_mode.startswith('opt'):
                 passthrough_args.append('--optimize')
@@ -579,13 +579,13 @@ class PythonConverter(base.Converter):
             passthrough_args.append(
                 '--build-info-build-mode=' + info.build_mode)
             passthrough_args.append('--build-info-build-tool=buck')
-            if info.package_name is not None:
+            if info.package_name != None:
                 passthrough_args.append(
                     '--build-info-package-name=' + info.package_name)
-            if info.package_release is not None:
+            if info.package_release != None:
                 passthrough_args.append(
                     '--build-info-package-release=' + info.package_release)
-            if info.package_version is not None:
+            if info.package_version != None:
                 passthrough_args.append(
                     '--build-info-package-version=' + info.package_version)
             passthrough_args.append('--build-info-platform=' + info.platform)
@@ -596,7 +596,7 @@ class PythonConverter(base.Converter):
 
             # Arguments for stripping libomnibus. dbg builds should never strip.
             if not build_mode.startswith('dbg'):
-                if strip_libpar is True:
+                if strip_libpar == True:
                     build_args.append('--omnibus-debug-info=strip')
                 elif strip_libpar == 'extract':
                     build_args.append('--omnibus-debug-info=extract')
@@ -604,7 +604,7 @@ class PythonConverter(base.Converter):
                     build_args.append('--omnibus-debug-info=separate')
 
             # Set an explicit python interpreter.
-            if python is not None:
+            if python != None:
                 build_args.append('--python-override=' + python)
 
         return build_args
@@ -624,7 +624,7 @@ class PythonConverter(base.Converter):
         except KeyError:
             config_setting = None
 
-        if config_setting is None:
+        if config_setting == None:
             # No CLI option is set, respect the TARGETS file option.
             return helper_deps
 
@@ -651,7 +651,7 @@ class PythonConverter(base.Converter):
         for interp, interp_main_module, interp_dep in INTERPS:
             attrs = collections.OrderedDict()
             attrs['name'] = name + '-' + interp
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['main_module'] = interp_main_module
             attrs['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
@@ -677,7 +677,7 @@ class PythonConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '__{}_jemalloc_conf_src__'.format(name)
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = 'jemalloc_conf.c'
         attrs['cmd'] = (
@@ -689,7 +689,7 @@ class PythonConverter(base.Converter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = '__{}_jemalloc_conf_lib__'.format(name)
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
         attrs['deps'], attrs['platform_deps'] = src_and_dep_helpers.format_all_deps(deps)
@@ -713,7 +713,7 @@ class PythonConverter(base.Converter):
 
         # If we're using sanitizers, add the dep on the sanitizer-specific
         # support library.
-        if sanitizer is not None:
+        if sanitizer != None:
             sanitizer = sanitizers.get_short_name(sanitizer)
             deps.append(
                 target_utils.RootRuleTarget(
@@ -724,9 +724,9 @@ class PythonConverter(base.Converter):
 
         # If we're using an allocator, and not a sanitizer, add the allocator-
         # specific deps.
-        if allocator is not None and sanitizer is None:
+        if allocator != None and sanitizer == None:
             allocator_deps = allocators.get_allocator_deps(allocator)
-            if allocator.startswith('jemalloc') and jemalloc_conf is not None:
+            if allocator.startswith('jemalloc') and jemalloc_conf != None:
                 conf_dep, conf_rules = (
                     self.get_jemalloc_malloc_conf_dep(
                         base_path,
@@ -751,7 +751,7 @@ class PythonConverter(base.Converter):
         # stripping.
         strip_mode = cpp_common.get_strip_mode(base_path, name)
         if (not config.get_build_mode().startswith('dbg') and
-                (strip_mode != 'none' or strip_libpar is True)):
+                (strip_mode != 'none' or strip_libpar == True)):
             strip_mode = 'full'
 
         return cpp_common.get_ldflags(
@@ -775,7 +775,7 @@ class PythonConverter(base.Converter):
         """
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-build_also'
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['deps'] = targets
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
@@ -885,7 +885,7 @@ class PythonConverter(base.Converter):
             if py_flavor:
                 parsed_srcs = {}
 
-        if base_module is not None:
+        if base_module != None:
             attributes['base_module'] = base_module
 
         if parsed_srcs:
@@ -948,7 +948,7 @@ class PythonConverter(base.Converter):
 
         attributes['tests'] = tests
 
-        if visibility is not None:
+        if visibility != None:
             attributes['visibility'] = visibility
 
         if external_deps:
@@ -1012,7 +1012,7 @@ class PythonConverter(base.Converter):
         analyze_imports=False,
         additional_coverage_targets=[],
     ):
-        if self.is_test() and par_style is None:
+        if self.is_test() and par_style == None:
             par_style = "xar"
         rules = []
         dependencies = []
@@ -1032,14 +1032,14 @@ class PythonConverter(base.Converter):
                                                    major_version=python_version.major,
                                                    flavor=py_flavor)
 
-        if allocator is None:
+        if allocator == None:
             allocator = allocators.normalize_allocator(allocator)
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
         if self.is_test() and additional_coverage_targets:
             attributes["additional_coverage_targets"] = additional_coverage_targets
-        if visibility is not None:
+        if visibility != None:
             attributes['visibility'] = visibility
 
         if not rule_type:
@@ -1050,7 +1050,7 @@ class PythonConverter(base.Converter):
         if self.is_test():
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
                 val = library.attributes.get(param)
-                if val is not None:
+                if val != None:
                     attributes[param] = val
             dependencies.extend(library.attributes.get('deps', []))
             platform_deps.extend(library.attributes.get('platform_deps', []))
@@ -1065,7 +1065,7 @@ class PythonConverter(base.Converter):
             dependencies.append(':' + library.attributes['name'])
 
         # Sanitize the main module, so that it's a proper module reference.
-        if main_module is not None:
+        if main_module != None:
             main_module = main_module.replace('/', '.')
             if main_module.endswith('.py'):
                 main_module = main_module[:-3]
@@ -1325,7 +1325,7 @@ class PythonConverter(base.Converter):
         if get_typing_config_target():
             gen_typing_config(
                 library_name,
-                base_module if base_module is not None else base_path,
+                base_module if base_module != None else base_path,
                 srcs,
                 [src_and_dep_helpers.convert_build_target(base_path, dep) for dep in deps],
                 typing or (check_types and not self.is_library()),
@@ -1436,7 +1436,7 @@ class PythonConverter(base.Converter):
         if len(py_tests) > 1:
             attrs = collections.OrderedDict()
             attrs['name'] = name
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['out'] = os.curdir
             # We are propogating tests from sub targets to this target
@@ -1487,7 +1487,7 @@ class PythonConverter(base.Converter):
             ('labels', ['buck', 'python']),
             ('version_universe', self.get_version_universe(python_version)),
         ))
-        if visibility is not None:
+        if visibility != None:
             import_attrs['visibility'] = visibility
         generate_par = Rule('python_binary', import_attrs)
         yield generate_par
@@ -1529,7 +1529,7 @@ class PythonConverter(base.Converter):
             ('version_universe', self.get_version_universe(python_version)),
         ))
 
-        if visibility is not None:
+        if visibility != None:
             analyze_attrs['visibility'] = visibility
         yield Rule('python_binary', analyze_attrs)
 
@@ -1574,7 +1574,7 @@ class PythonConverter(base.Converter):
             ('version_universe', self.get_version_universe(python_version)),
             ('contacts', emails),
         ))
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
 
         if library.target_name not in typecheck_deps:
@@ -1582,7 +1582,7 @@ class PythonConverter(base.Converter):
             # This enables python_unittest targets to be type-checked, too.
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
                 val = library.attributes.get(param)
-                if val is not None:
+                if val != None:
                     attrs[param] = val
 
         if main_module not in {'__fb_test_main__', 'libfb.py.testslide.unittest'}:
@@ -1606,7 +1606,7 @@ class PythonConverter(base.Converter):
 
         if typing_config:
             conf = collections.OrderedDict()
-            if visibility is not None:
+            if visibility != None:
                 conf['visibility'] = visibility
             conf['out'] = os.curdir
             cmd = '$(exe {}) gather '.format(typing_config)
@@ -1629,7 +1629,7 @@ class PythonConverter(base.Converter):
                 conf['name'] = name + '-pyre_json'
             else:
                 conf['name'] = name + '-mypy_ini'
-            if visibility is not None:
+            if visibility != None:
                 conf['visibility'] = visibility
             conf['base_module'] = ''
             conf['srcs'] = [gen_rule.target_name]
@@ -1654,7 +1654,7 @@ class PythonConverter(base.Converter):
             # library with a module for it that the main wrapper picks up
             main_module_attrs = collections.OrderedDict()
             main_module_attrs['name'] = name + '-monkeytype_main_module'
-            if visibility is not None:
+            if visibility != None:
                 main_module_attrs['visibility'] = visibility
             main_module_attrs['out'] = name + '-__monkeytype_main_module__.py'
             main_module_attrs['cmd'] = (
@@ -1670,7 +1670,7 @@ class PythonConverter(base.Converter):
             lib_main_module_attrs_name = name + '-monkeytype_main_module-lib'
             lib_main_module_attrs = collections.OrderedDict()
             lib_main_module_attrs['name'] = lib_main_module_attrs_name
-            if visibility is not None:
+            if visibility != None:
                 lib_main_module_attrs['visibility'] = visibility
             lib_main_module_attrs['base_module'] = ''
             lib_main_module_attrs['deps'] = ['//python:fbtestmain', ':' + name]
@@ -1682,7 +1682,7 @@ class PythonConverter(base.Converter):
         # Create a variant of the target that is running with monkeytype
         wrapper_attrs = attributes.copy()
         wrapper_attrs['name'] = name + '-monkeytype'
-        if visibility is not None:
+        if visibility != None:
             wrapper_attrs['visibility'] = visibility
         if 'deps' in wrapper_attrs:
             wrapper_deps = list(wrapper_attrs['deps'])
@@ -1694,7 +1694,7 @@ class PythonConverter(base.Converter):
 
         if '//python/monkeytype:main_wrapper' not in wrapper_deps:
             wrapper_deps.append('//python/monkeytype/tools:main_wrapper')
-        if lib_main_module_attrs_name is not None:
+        if lib_main_module_attrs_name != None:
             wrapper_deps.append(':' + lib_main_module_attrs_name)
         wrapper_attrs['deps'] = wrapper_deps
         wrapper_attrs['base_module'] = ''
@@ -1736,7 +1736,7 @@ class PythonConverter(base.Converter):
         name = library.attributes['name']
         gen_attrs = collections.OrderedDict()
         gen_attrs['name'] = name + '-testmodules'
-        if visibility is not None:
+        if visibility != None:
             gen_attrs['visibility'] = visibility
         gen_attrs['out'] = name + '-__test_modules__.py'
         gen_attrs['cmd'] = ' && '.join(
@@ -1747,7 +1747,7 @@ class PythonConverter(base.Converter):
 
         lib_attrs = collections.OrderedDict()
         lib_attrs['name'] = name + '-testmodules-lib'
-        if visibility is not None:
+        if visibility != None:
             lib_attrs['visibility'] = visibility
         lib_attrs['base_module'] = ''
         lib_attrs['deps'] = ['//python:fbtestmain', ':' + name]
