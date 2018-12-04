@@ -179,14 +179,14 @@ _BUILD_INFO_KEYS = (
     "package_version",
     "path",
     "platform",
-    "revision_epochtime",
     "revision",
-    "rule_type",
+    "revision_epochtime",
     "rule",
-    "time_iso8601",
+    "rule_type",
     "time",
-    "upstream_revision_epochtime",
+    "time_iso8601",
     "upstream_revision",
+    "upstream_revision_epochtime",
     "user",
 )
 

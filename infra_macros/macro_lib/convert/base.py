@@ -301,47 +301,6 @@ class Converter(object):
             return default
         return val.split()
 
-    def get_build_info(self, base_path, name, rule_type, platform):
-        if core_tools.is_core_tool(base_path, name):
-            # Ignore user-provided build-info args for a set of core
-            # targets and just return defaults (as if the user hadn't
-            # provided built-info in the first place).
-            def default_read_config(info, field, default):
-                return default
-            read_config = default_read_config
-        else:
-            read_config = self._context.buck_ops.read_config
-
-        build_info = collections.OrderedDict()
-        build_info['build_tool'] = 'buck'
-        build_info['build_mode'] = self._context.mode
-        build_info['compiler'] = compiler.get_compiler_for_current_buildfile()
-        build_info['epochtime'] = (
-            int(read_config('build_info', 'epochtime', '0')))
-        build_info['host'] = read_config('build_info', 'host', '')
-        build_info['package_name'] = (
-            read_config('build_info', 'package_name', ''))
-        build_info['package_version'] = (
-            read_config('build_info', 'package_version', ''))
-        build_info['package_release'] = (
-            read_config('build_info', 'package_release', ''))
-        build_info['path'] = read_config('build_info', 'path', '')
-        build_info['platform'] = platform
-        build_info['revision'] = read_config('build_info', 'revision', '')
-        build_info['revision_epochtime'] = (
-            int(read_config('build_info', 'revision_epochtime', '0')))
-        build_info['rule'] = 'fbcode:' + base_path + ':' + name
-        build_info['rule_type'] = rule_type
-        build_info['time'] = read_config('build_info', 'time', '')
-        build_info['time_iso8601'] = (
-            read_config('build_info', 'time_iso8601', ''))
-        build_info['upstream_revision'] = (
-            read_config('build_info', 'upstream_revision', ''))
-        build_info['upstream_revision_epochtime'] = (
-            int(read_config('build_info', 'upstream_revision_epochtime', '0')))
-        build_info['user'] = read_config('build_info', 'user', '')
-        return build_info
-
     def get_buck_out_path(self):
         return self._context.buck_ops.read_config(
             'project',

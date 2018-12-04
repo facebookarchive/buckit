@@ -448,6 +448,7 @@ class PythonConverter(base.Converter):
 
         py_build_info['main_module'] = main_module
         py_build_info['par_style'] = 'live'
+        py_build_info['build_tool'] = 'buck'
 
         interp = self.get_interpreter(python_platform)
         py_build_info['python_home'] = os.path.dirname(os.path.dirname(interp))
@@ -461,14 +462,14 @@ class PythonConverter(base.Converter):
             'rule': 'build_rule',
             'rule_type': 'build_rule_type',
         }
-        build_info = (
-            self.get_build_info(
+        info = (
+            build_info.get_build_info(
                 base_path,
                 name,
                 self.get_fbconfig_rule_type(),
                 platform))
-        for key, val in build_info.iteritems():
-            py_build_info[key_mappings.get(key, key)] = val
+        for key in build_info.BUILD_INFO_KEYS:
+            py_build_info[key_mappings.get(key, key)] = getattr(info, key)
 
         return py_build_info
 
