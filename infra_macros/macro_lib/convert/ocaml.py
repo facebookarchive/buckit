@@ -93,15 +93,13 @@ class OCamlConverter(base.Converter):
 
         # Add the C/C++ build info lib to deps.
         if self.get_fbconfig_rule_type() == 'ocaml_binary':
-            cxx_build_info, cxx_build_info_rules = (
-                self.create_cxx_build_info_rule(
-                    base_path,
-                    name,
-                    self.get_fbconfig_rule_type(),
-                    platform,
-                    visibility=visibility))
+            cxx_build_info = cpp_common.cxx_build_info_rule(
+                base_path,
+                name,
+                self.get_fbconfig_rule_type(),
+                platform,
+                visibility=visibility)
             dependencies.append(cxx_build_info)
-            extra_rules.extend(cxx_build_info_rules)
 
         # Translate dependencies.
         for dep in deps:

@@ -129,6 +129,31 @@ with such a value.
 
 _ABSENT_PARAM = struct(_is_absent = True)
 
+_CXX_BUILD_INFO_TEMPLATE = """\
+#include <stdint.h>
+
+const char* const BuildInfo_kBuildMode = "{build_mode}";
+const char* const BuildInfo_kBuildTool = "buck";
+const char* const BuildInfo_kCompiler = "{compiler}";
+const char* const BuildInfo_kHost = "{host}";
+const char* const BuildInfo_kPackageName = "{package_name}";
+const char* const BuildInfo_kPackageVersion = "{package_version}";
+const char* const BuildInfo_kPackageRelease = "{package_release}";
+const char* const BuildInfo_kPath = "{path}";
+const char* const BuildInfo_kPlatform = "{platform}";
+const char* const BuildInfo_kRevision = "{revision}";
+const char* const BuildInfo_kRule = "{rule}";
+const char* const BuildInfo_kRuleType = "{rule_type}";
+const char* const BuildInfo_kTime = "{time}";
+const char* const BuildInfo_kTimeISO8601 = "{time_iso8601}";
+const char* const BuildInfo_kUpstreamRevision = "{upstream_revision}";
+const char* const BuildInfo_kUser = "{user}";
+const uint64_t BuildInfo_kRevisionCommitTimeUnix = {revision_epochtime};
+const uint64_t BuildInfo_kTimeUnix = {epochtime};
+const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
+  {upstream_revision_epochtime};
+"""
+
 def _default_headers_library():
     """
     Rule that globs on all headers recursively. Ensures that it is only created once per package.
@@ -2014,6 +2039,106 @@ def _convert_cpp(
 
     return attributes
 
+def _cxx_build_info_rule(
+        base_path,
+        name,
+        rule_type,
+        platform,
+        linker_flags = (),
+        static = True,
+        visibility = None):
+    """
+    Generates a C++ library containing build information
+
+    Args:
+        base_path: The name of the package where this rule resides
+        name: The name of the base rule to generate build info for
+        rule_type: The type of the rule creating this build info (e.g. cpp_binary)
+        platform: The fbcode platform being used
+        linker_flags: Linker flags to add to this c++ library
+        static: Whether to statically link this c++ library
+        visibility: Visibility of this rule
+    """
+
+    # Setup a rule to generate the build info C file.
+    source_name = name + "-cxx-build-info"
+    info = build_info.get_build_info(base_path, name, rule_type, platform)
+    info_text = _CXX_BUILD_INFO_TEMPLATE.format(
+        build_mode = info.build_mode,
+        compiler = info.compiler,
+        host = info.host,
+        package_name = info.package_name,
+        package_version = info.package_version,
+        package_release = info.package_release,
+        path = info.path,
+        platform = info.platform,
+        revision = info.revision,
+        rule = info.rule,
+        rule_type = info.rule_type,
+        time = info.time,
+        time_iso8601 = info.time_iso8601,
+        upstream_revision = info.upstream_revision,
+        user = info.user,
+        revision_epochtime = info.revision_epochtime,
+        epochtime = info.epochtime,
+        upstream_revision_epochtime = info.upstream_revision_epochtime,
+    )
+
+    fb_native.genrule(
+        name = source_name,
+        labels = ["generated"],
+        visibility = visibility,
+        out = source_name + ".c",
+        cmd = "mkdir -p `dirname $OUT` && echo {} > $OUT".format(shell.quote(info_text)),
+    )
+
+    # Setup a rule to compile the build info C file into a library.
+    lib_name = name + "-cxx-build-info-lib"
+
+    linker_flags = (
+        list(cpp_flags.get_extra_ldflags()) +
+        ["-nodefaultlibs"] +
+        list(linker_flags)
+    )
+
+    # Setup platform default for compilation DB, and direct building.
+    buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+
+    # Clang does not support fat LTO objects, so we build everything
+    # as IR only, and must also link everything with -flto
+    platform_linker_flags = None
+    if cpp_flags.get_lto_is_enabled():
+        platform_linker_flags = src_and_dep_helpers.format_platform_param(
+            partial.make(_lto_linker_flags_partial),
+        )
+
+    link_whole = None
+    force_static = None
+    if static:
+        # Use link_whole to make sure the build info symbols are always
+        # added to the binary, even if the binary does not refer to them.
+        link_whole = True
+
+        # Use force_static so that the build info symbols are always put
+        # directly in the main binary, even if dynamic linking is used.
+        force_static = True
+
+    fb_native.cxx_library(
+        name = lib_name,
+        labels = ["generated"],
+        visibility = visibility,
+        srcs = [":" + source_name],
+        compiler_flags = cpp_flags.get_extra_cflags(),
+        linker_flags = linker_flags,
+        default_platform = buck_platform,
+        defaults = {"platform": buck_platform},
+        platform_linker_flags = platform_linker_flags,
+        link_whole = link_whole,
+        force_static = force_static,
+    )
+
+    return target_utils.RootRuleTarget(base_path, lib_name)
+
 cpp_common = struct(
     ABSENT_PARAM = _ABSENT_PARAM,
     SOURCE_EXTS = _SOURCE_EXTS,
@@ -2023,6 +2148,7 @@ cpp_common = struct(
     convert_contacts = _convert_contacts,
     convert_cpp = _convert_cpp,
     create_sanitizer_configuration = _create_sanitizer_configuration,
+    cxx_build_info_rule = _cxx_build_info_rule,
     default_headers_library = _default_headers_library,
     exclude_from_auto_pch = _exclude_from_auto_pch,
     format_source_with_flags = _format_source_with_flags,

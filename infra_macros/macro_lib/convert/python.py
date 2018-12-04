@@ -1103,16 +1103,14 @@ class PythonConverter(base.Converter):
             out_preload_deps.append(src_and_dep_helpers.convert_build_target(base_path, dep))
 
         # Add the C/C++ build info lib to preload deps.
-        cxx_build_info, cxx_build_info_rules = (
-            self.create_cxx_build_info_rule(
-                base_path,
-                name,
-                self.get_fbconfig_rule_type(),
-                platform,
-                static=False,
-                visibility=visibility))
+        cxx_build_info = cpp_common.cxx_build_info_rule(
+            base_path,
+            name,
+            self.get_fbconfig_rule_type(),
+            platform,
+            static=False,
+            visibility=visibility)
         out_preload_deps.append(target_utils.target_to_label(cxx_build_info))
-        rules.extend(cxx_build_info_rules)
 
         # Provide a standard set of backport deps to all binaries
         platform_deps.extend(
