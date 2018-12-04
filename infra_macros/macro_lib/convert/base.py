@@ -25,8 +25,6 @@ except NameError:
         yield
 
 import collections
-import copy
-import functools
 import json
 import pipes
 import re
@@ -34,8 +32,6 @@ import re
 with allow_unsafe_import():
     from distutils.version import LooseVersion
     import os
-    import platform as platmod
-    import shlex
 
 
 # Hack to make include_defs flake8 safe.
