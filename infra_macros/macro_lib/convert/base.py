@@ -36,7 +36,6 @@ with allow_unsafe_import():
     import os
     import platform as platmod
     import shlex
-    import textwrap
 
 
 # Hack to make include_defs flake8 safe.
@@ -572,34 +571,6 @@ class Converter(object):
         return target_utils.target_to_label(
             third_party.get_tp2_project_target(project),
             platform=platform)
-
-    def create_error_rules(self, name, msg, visibility=None):
-        """
-        Return rules which generate an error with the given message at build
-        time.
-        """
-
-        rules = []
-
-        msg = 'ERROR: {}'.format(msg)
-        msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = '{}-gen'.format(name)
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = 'out.cpp'
-        attrs['cmd'] = 'echo {} 1>&2; false'.format(pipes.quote(msg))
-        rules.append(Rule('cxx_genrule', attrs))
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        attrs['srcs'] = [":{}-gen".format(name)]
-        attrs['exported_headers'] = [":{}-gen".format(name)]
-        attrs['visibility'] = ['PUBLIC']
-        rules.append(Rule('cxx_library', attrs))
-
-        return rules
 
     def get_allowed_args(self):
         return None
