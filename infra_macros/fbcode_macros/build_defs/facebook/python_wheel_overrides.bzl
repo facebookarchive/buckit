@@ -34,7 +34,6 @@ OVERRIDES = (
     ("html5lib", "html5lib"),
     ("idna", "idna"),
     ("idna-ssl", "idna-ssl"),
-    ("ig-aiohttp", "aiohttp"),
     ("ig-multidict", "multidict"),
     ("ig-yarl", "yarl"),
     ("ipython", "ipython"),
