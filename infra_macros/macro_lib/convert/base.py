@@ -77,6 +77,7 @@ load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_w
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 Context = collections.namedtuple(
@@ -318,57 +319,78 @@ class Converter(object):
 
         # Setup a rule to generate the build info C file.
         source_name = name + '-cxx-build-info'
-        info = CXX_BUILD_INFO_TEMPLATE.format(
-            **self.get_build_info(
-                base_path,
-                name,
-                rule_type,
-                platform))
-        source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_name
-        source_attrs['labels'] = ["generated"]
-        if visibility is not None:
-            source_attrs['visibility'] = visibility
-        source_attrs['out'] = source_name + '.c'
-        source_attrs['cmd'] = (
-            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
-            .format(pipes.quote(info)))
-        rules.append(Rule('genrule', source_attrs))
+        info = build_info.get_build_info(base_path, name, rule_type, platform)
+        info_text = CXX_BUILD_INFO_TEMPLATE.format(
+            build_mode = info.build_mode,
+            build_tool = "buck",
+            compiler = info.compiler,
+            host = info.host,
+            package_name = info.package_name,
+            package_version = info.package_version,
+            package_release = info.package_release,
+            path = info.path,
+            platform = info.platform,
+            revision = info.revision,
+            rule = info.rule,
+            rule_type = info.rule_type,
+            time = info.time,
+            time_iso8601 = info.time_iso8601,
+            upstream_revision = info.upstream_revision,
+            user = info.user,
+            revision_epochtime = info.revision_epochtime,
+            epochtime = info.epochtime,
+            upstream_revision_epochtime = info.upstream_revision_epochtime,
+        )
+
+        fb_native.genrule(
+            name = source_name,
+            labels = ["generated"],
+            visibility = visibility,
+            out = source_name + ".c",
+            cmd = "mkdir -p `dirname $OUT` && echo {} > $OUT".format(shell.quote(info_text)),
+        )
 
         # Setup a rule to compile the build info C file into a library.
         lib_name = name + '-cxx-build-info-lib'
-        lib_attrs = collections.OrderedDict()
-        lib_attrs['name'] = lib_name
-        lib_attrs['labels'] = ["generated"]
-        if visibility is not None:
-            lib_attrs['visibility'] = visibility
-        lib_attrs['srcs'] = [':' + source_name]
-        lib_attrs['compiler_flags'] = cpp_flags.get_extra_cflags()
-        lib_attrs['linker_flags'] = (
+
+        linker_flags = (
             list(cpp_flags.get_extra_ldflags()) +
             ['-nodefaultlibs'] +
             list(linker_flags))
 
         # Setup platform default for compilation DB, and direct building.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        lib_attrs['default_platform'] = buck_platform
-        lib_attrs['defaults'] = {'platform': buck_platform}
 
         # Clang does not support fat LTO objects, so we build everything
         # as IR only, and must also link everything with -flto
+        platform_linker_flags = None
         if cpp_flags.get_lto_is_enabled():
-            lib_attrs['platform_linker_flags'] = (
-                src_and_dep_helpers.format_platform_param(
-                    partial.make(_lto_linker_flags_partial)))
+            platform_linker_flags = src_and_dep_helpers.format_platform_param(
+                partial.make(_lto_linker_flags_partial))
 
+        link_whole = None
+        force_static = None
         if static:
             # Use link_whole to make sure the build info symbols are always
             # added to the binary, even if the binary does not refer to them.
-            lib_attrs['link_whole'] = True
+            link_whole = True
             # Use force_static so that the build info symbols are always put
             # directly in the main binary, even if dynamic linking is used.
-            lib_attrs['force_static'] = True
-        rules.append(Rule('cxx_library', lib_attrs))
+            force_static = True
+
+        fb_native.cxx_library(
+            name = lib_name,
+            labels = ["generated"],
+            visibility = visibility,
+            srcs = [":" + source_name],
+            compiler_flags = cpp_flags.get_extra_cflags(),
+            linker_flags = linker_flags,
+            default_platform = buck_platform,
+            defaults = {"platform": buck_platform},
+            platform_linker_flags = platform_linker_flags,
+            link_whole = link_whole,
+            force_static = force_static,
+        )
 
         return target_utils.RootRuleTarget(base_path, lib_name), rules
 
