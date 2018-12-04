@@ -27,7 +27,6 @@ except NameError:
 import collections
 import json
 import pipes
-import re
 
 with allow_unsafe_import():
     from distutils.version import LooseVersion
@@ -78,9 +77,6 @@ load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_w
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
-
-MACRO_PATTERN = (
-    re.compile('\\$\\((?P<name>[^)\\s]+)(?: (?P<args>[^)]*))?\\)'))
 
 
 Context = collections.namedtuple(
@@ -145,8 +141,6 @@ const uint64_t BuildInfo_kTimeUnix = {epochtime};
 const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
   {upstream_revision_epochtime};
 """
-
-GENERATED_LIB_SUFFIX = '__generated-lib__'
 
 
 def is_collection(obj):
