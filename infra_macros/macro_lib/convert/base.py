@@ -606,27 +606,3 @@ class Converter(object):
 
     def convert(self, base_path, **kwargs):
         raise NotImplementedError()
-
-    def gen_typing_config(
-        self,
-        target_name,
-        base_path='',
-        srcs=(),
-        deps=(),
-        typing=False,
-        typing_options='',
-        visibility=None,
-    ):
-        """
-        Generate typing configs, and gather those for our deps
-        """
-        return Rule('genrule', gen_typing_config_attrs(
-            target_name=target_name,
-            base_path=base_path,
-            srcs=srcs,
-            deps=deps,
-            typing=typing,
-            typing_options=typing_options,
-            labels=["generated"],
-            visibility=visibility,
-        ))
