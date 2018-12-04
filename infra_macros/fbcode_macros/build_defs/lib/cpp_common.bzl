@@ -1831,7 +1831,7 @@ def _convert_cpp(
         )
 
     # Modularize libraries.
-    if module_utils.enabled() and is_library and out_modular_headers:
+    if module_utils.enabled() and is_library and out_modular_headers and out_headers:
         exported_lang_plat_pp_flags.setdefault("cxx", [])
 
         # If we're using modules, we need to add in the `module.modulemap`
