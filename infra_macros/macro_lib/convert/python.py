@@ -233,8 +233,7 @@ class PythonVersion(LooseVersion):
     def __init__(self, vstring):
         LooseVersion.__init__(self, vstring)
         if not self.version:
-            raise ValueError('{} is not a valid Python version string!'
-                             .format(vstring))
+            fail('{} is not a valid Python version string!'.format(vstring))
 
         self.flavor = ""
         if isinstance(self.version[0], basestring):
@@ -242,8 +241,7 @@ class PythonVersion(LooseVersion):
             self.version = self.version[1:]
 
         if not self.version or not isinstance(self.version[0], int):
-            raise ValueError("{} is not a valid Python version string!"
-                             .format(vstring))
+            fail("{} is not a valid Python version string!".format(vstring))
 
     @property
     def major(self):
@@ -336,11 +334,11 @@ class PythonConverter(base.Converter):
                 # This actually looks to be pretty rare, so just throw a useful
                 # error prompting the user to use the `=` notation above, or
                 # switch to an explicit `dict`.
-                raise ValueError(
-                    'parameter `{}`: cannot infer a "name" to use for '
-                    '`{}`. If this is an output from a `custom_rule`, '
-                    'consider using the `<rule-name>=<out>` notation instead. '
-                    'Otherwise, please specify this parameter as `dict` '
+                fail(
+                    'parameter `{}`: cannot infer a "name" to use for ' +
+                    '`{}`. If this is an output from a `custom_rule`, ' +
+                    'consider using the `<rule-name>=<out>` notation instead. ' +
+                    'Otherwise, please specify this parameter as `dict` ' +
                     'mapping sources to explicit "names" (see {} for details).'
                     .format(param, target_utils.target_to_label(src), GEN_SRCS_LINK))
 
@@ -357,9 +355,9 @@ class PythonConverter(base.Converter):
         # references.
         for src in out_srcs.itervalues():
             if not target_utils.is_rule_target(src):
-                raise ValueError(
-                    'parameter `gen_srcs`: `{}` must be a reference to rule '
-                    'that generates a source (e.g. `//foo:bar`, `:bar`) '
+                fail(
+                    'parameter `gen_srcs`: `{}` must be a reference to rule ' +
+                    'that generates a source (e.g. `//foo:bar`, `:bar`) ' +
                     ' (see {} for details).'
                     .format(src, GEN_SRCS_LINK))
 
@@ -423,10 +421,9 @@ class PythonConverter(base.Converter):
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
-            raise ValueError(
-                'parameter `needed_coverage`: `{}` must have exactly 2 '
-                'elements, a ratio and a target.'
-                .format(spec))
+            fail((
+                'parameter `needed_coverage`: `{}` must have exactly 2 ' +
+                'elements, a ratio and a target.').format(spec))
 
         ratio, target = spec
         if '=' not in target:
@@ -556,9 +553,9 @@ class PythonConverter(base.Converter):
             elif compile == 'with-source':
                 passthrough_args.append('--store-source')
             elif compile is not True and compile is not None:
-                raise Exception(
-                    'Invalid value {} for `compile`, must be True, False, '
-                    '"with-source", or None (default)'.format(compile)
+                fail((
+                    'Invalid value {} for `compile`, must be True, False, ' +
+                    '"with-source", or None (default)').format(compile)
                 )
             if par_style is not None:
                 passthrough_args.append('--par-style=' + par_style)
@@ -1026,9 +1023,10 @@ class PythonConverter(base.Converter):
                                                   constraint=py_version,
                                                   flavor=py_flavor)
         if python_version is None:
-            raise ValueError("Unable to find Python version matching constraint"
-                             " '{}' and flavor '{}' on '{}'."
-                             .format(py_version, py_flavor, platform))
+            fail((
+                "Unable to find Python version matching constraint" +
+                "'{}' and flavor '{}' on '{}'.").format(py_version, py_flavor, platform)
+            )
 
         python_platform = platform_utils.get_buck_python_platform(platform,
                                                    major_version=python_version.major,
@@ -1212,9 +1210,7 @@ class PythonConverter(base.Converter):
                 ':' + r.attributes['name'] for r in interp_rules)
         if check_types:
             if python_version.major != 3:
-                raise ValueError(
-                    'parameter `check_types` is only supported on Python 3.'
-                )
+                fail('parameter `check_types` is only supported on Python 3.')
             rules.extend(
                 self.create_typecheck(
                     base_path,
@@ -1321,8 +1317,9 @@ class PythonConverter(base.Converter):
             library_name = name + '-library'
 
         if self.is_library() and check_types:
-            raise ValueError(
-                'parameter `check_types` is not supported for libraries, did you mean to specify `typing`?'
+            fail(
+                'parameter `check_types` is not supported for libraries, did you ' +
+                'mean to specify `typing`?'
             )
 
         if get_typing_config_target():
