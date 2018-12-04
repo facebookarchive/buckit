@@ -37,6 +37,7 @@ Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
@@ -540,8 +541,9 @@ class PythonConverter(base.Converter):
         """
 
         build_args = []
+        build_mode = config.get_build_mode()
 
-        if self._context.config.get_use_custom_par_args():
+        if config.get_use_custom_par_args():
             # Arguments that we wanted directly threaded into `make_par`.
             passthrough_args = []
             if argcomplete is True:
@@ -562,7 +564,7 @@ class PythonConverter(base.Converter):
                 passthrough_args.append('--par-style=' + par_style)
             if needed_coverage is not None or coverage.get_coverage():
                 passthrough_args.append('--store-source')
-            if self._context.mode.startswith('opt'):
+            if build_mode.startswith('opt'):
                 passthrough_args.append('--optimize')
 
             # Add arguments to populate build info.
@@ -596,7 +598,7 @@ class PythonConverter(base.Converter):
             build_args.extend(['--passthrough=' + a for a in passthrough_args])
 
             # Arguments for stripping libomnibus. dbg builds should never strip.
-            if not self._context.mode.startswith('dbg'):
+            if not build_mode.startswith('dbg'):
                 if strip_libpar is True:
                     build_args.append('--omnibus-debug-info=strip')
                 elif strip_libpar == 'extract':
@@ -615,7 +617,7 @@ class PythonConverter(base.Converter):
         Return whether we should generate the interp helpers.
         """
         # We can only work in @mode/dev
-        if not self._context.mode.startswith('dev'):
+        if not config.get_build_mode().startswith('dev'):
             return False
 
         # Our current implementation of the interp helpers is costly when using
@@ -751,7 +753,7 @@ class PythonConverter(base.Converter):
         # is set or any level of stripping is enabled via config, we do full
         # stripping.
         strip_mode = cpp_common.get_strip_mode(base_path, name)
-        if (not self._context.mode.startswith('dbg') and
+        if (not config.get_build_mode().startswith('dbg') and
                 (strip_mode != 'none' or strip_libpar is True)):
             strip_mode = 'full'
 
