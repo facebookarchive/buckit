@@ -50,6 +50,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -1601,7 +1602,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         if get_typing_config_target():
             base_module = attrs['base_module']
             if has_types:
-                yield self.gen_typing_config(
+                gen_typing_config(
                     name,
                     base_module if base_module is not None else base_path,
                     attrs['srcs'].keys(),
@@ -1610,7 +1611,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
                     visibility=visibility,
                 )
             else:
-                yield self.gen_typing_config(name)
+                gen_typing_config(name)
         yield Rule('python_library', attrs)
 
 
@@ -2146,7 +2147,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
                 ]),
             ))
         if get_typing_config_target():
-            yield self.gen_typing_config(name)
+            gen_typing_config(name)
         yield Rule('python_library', collections.OrderedDict(
             name=name,
             visibility=visibility,

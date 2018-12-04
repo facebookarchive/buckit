@@ -37,7 +37,7 @@ load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extensio
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
-     "get_typing_config_target")
+     "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
@@ -280,7 +280,7 @@ class PythonSwigConverter(SwigLangConverter):
         # At some point swig targets should also include typing Options
         # For now we just need an empty directory.
         if get_typing_config_target():
-            yield self.gen_typing_config(name)
+            gen_typing_config(name)
         yield Rule('python_library', attrs)
 
 

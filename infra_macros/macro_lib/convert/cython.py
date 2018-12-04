@@ -47,7 +47,7 @@ Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
-     "get_typing_config_target")
+     "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -571,7 +571,7 @@ class Converter(base.Converter):
                 )
             else:
                 tdeps = itertools.chain(python_deps, deps)
-            yield self.gen_typing_config(name, deps=tdeps, visibility=visibility)
+            gen_typing_config(name, deps=tdeps, visibility=visibility)
 
         # Generate the cython-lib target for allowing cython_libraries
         # to depend on other cython_libraries and inherit their cpp_deps

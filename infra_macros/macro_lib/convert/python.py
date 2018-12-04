@@ -39,7 +39,7 @@ load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
-     "get_typing_config_target")
+     "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
@@ -1324,7 +1324,7 @@ class PythonConverter(base.Converter):
             )
 
         if get_typing_config_target():
-            yield self.gen_typing_config(
+            gen_typing_config(
                 library_name,
                 base_module if base_module is not None else base_path,
                 srcs,

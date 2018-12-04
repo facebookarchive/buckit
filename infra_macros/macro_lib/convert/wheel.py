@@ -41,6 +41,7 @@ compiled_wheel = re.compile('-cp[0-9]{2}-')
 
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 
 
 def get_url_basename(url):
@@ -145,7 +146,7 @@ class PyWheelDefault(base.Converter):
         ]
         # TODO: Figure out how to handle typing info from wheels
         if get_typing_config_target():
-            yield self.gen_typing_config(attrs['name'], visibility=visibility)
+            gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 
     def convert(self, base_path, platform_versions, visibility=None):
@@ -241,7 +242,7 @@ class PyWheel(base.Converter):
 
         # TODO: Figure out how to handle typing info from wheels
         if get_typing_config_target():
-            yield self.gen_typing_config(attrs['name'], visibility=visibility)
+            gen_typing_config(attrs['name'], visibility=visibility)
         yield Rule('python_library', attrs)
 
     def get_allowed_args(self):
