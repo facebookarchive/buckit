@@ -331,11 +331,13 @@ def _format_if(if_func, val, empty, platform, compiler):
 def _modules_enabled_for_platform(platform, compiler):
     return module_utils.enabled_for_platform(platform_utils.to_buck_platform(platform, compiler))
 
+_modules_enabled_for_platform_partial = partial.make(_modules_enabled_for_platform)
+
 def _format_modules_param(lst):
     return src_and_dep_helpers.format_platform_param(
         partial.make(
             _format_if,
-            partial.make(_modules_enabled_for_platform),
+            _modules_enabled_for_platform_partial,
             lst,
             [],
         ),
@@ -454,12 +456,14 @@ _THIN_LTO_FLAG = ["-flto=thin"]
 
 _LTO_FLAG = ["-flto"]
 
-def _lto_linker_flags_partial(_, compiler):
+def _lto_linker_flags(_, compiler):
     if compiler != "clang":
         return []
     if config.get_lto_type() == "thin":
         return _THIN_LTO_FLAG
     return _LTO_FLAG
+
+_lto_linker_flags_partial = partial.make(_lto_linker_flags)
 
 _SANITIZER_VARIABLE_FORMAT = 'const char* const {name} = "{options}";'
 
@@ -626,7 +630,7 @@ def _create_sanitizer_configuration(
     platform_linker_flags = None
     if cpp_flags.get_lto_is_enabled():
         platform_linker_flags = src_and_dep_helpers.format_platform_param(
-            partial.make(_lto_linker_flags_partial),
+            _lto_linker_flags_partial,
         )
 
     # Setup a rule to compile the sanitizer configuration C file
@@ -2109,7 +2113,7 @@ def _cxx_build_info_rule(
     platform_linker_flags = None
     if cpp_flags.get_lto_is_enabled():
         platform_linker_flags = src_and_dep_helpers.format_platform_param(
-            partial.make(_lto_linker_flags_partial),
+            _lto_linker_flags_partial,
         )
 
     link_whole = None
