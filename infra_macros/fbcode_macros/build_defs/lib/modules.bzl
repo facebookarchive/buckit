@@ -249,6 +249,11 @@ def _gen_module(
         'args+=("-x" "c++-header")',
         'args+=("-Xclang" "-fno-validate-pch")',
 
+        # TODO(T37600732): Workaround an issue with target graph versioning
+        # causing the module home override passed in below to not match the
+        # actual symlink tree the module is built for in the owning library.
+        'args+=(-Xclang -fmodules-embed-all-files)',
+
         # Export the current module working directory as a macro so that
         # libraries can use this for e.g. `__FILE__` name prefix stripping to
         # get back to their original paths.
