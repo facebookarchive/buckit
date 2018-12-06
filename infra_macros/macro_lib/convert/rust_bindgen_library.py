@@ -14,18 +14,17 @@ from __future__ import unicode_literals
 
 import pipes
 
-with allow_unsafe_import():
-    import os.path
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:rust_common.bzl", "rust_common")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 FLAGFILTER = '''\
@@ -187,7 +186,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         for s in (src_includes or []):
             base_bindgen_flags.append(
                 '--raw-line=include!(concat!(env!("RUSTC_BUILD_CONTAINER"), "{}"));'
-                .format(os.path.join(base_path, s))
+                .format(paths.join(base_path, s))
             )
 
         if cxx_namespaces:
@@ -206,7 +205,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
 
         def formatter(fmt):
             return fmt.format(
-                fbcode=os.path.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
+                fbcode=paths.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
                 bindgen=self.get_tool_target(
                     target_utils.ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
                     platform),
@@ -232,7 +231,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # Actual bindgen rule
         fb_native.cxx_genrule(
             name = gen_name,
-            out = os.path.join(os.curdir, src),
+            out = paths.join(common_paths.CURRENT_DIRECTORY, src),
             srcs = [header],
             visibility = [],
             bash = formatter(BINDGEN_TMPL),
@@ -243,7 +242,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
 
         fb_native.cxx_genrule(
             name = name + '-preproc',
-            out = os.path.join(os.curdir, name + '.i'),
+            out = paths.join(common_paths.CURRENT_DIRECTORY, name + '.i'),
             srcs = [header],
             bash = formatter(PREPROC_TMPL),
         )
