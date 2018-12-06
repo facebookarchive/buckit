@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import pipes
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
@@ -25,6 +23,7 @@ load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 FLAGFILTER = '''\
@@ -209,18 +208,18 @@ class RustBindgenLibraryConverter(rust.RustConverter):
                 bindgen=self.get_tool_target(
                     target_utils.ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
                     platform),
-                bindgen_flags=' '.join(map(pipes.quote, bindgen_flags)),
-                base_clang_flags=' '.join(map(pipes.quote, base_clang_flags)),
-                clang_flags=' '.join(map(pipes.quote, clang_flags)),
-                blacklist=' '.join(['--blacklist-type ' + pipes.quote(ty)
+                bindgen_flags=' '.join(map(shell.quote, bindgen_flags)),
+                base_clang_flags=' '.join(map(shell.quote, base_clang_flags)),
+                clang_flags=' '.join(map(shell.quote, clang_flags)),
+                blacklist=' '.join(['--blacklist-type ' + shell.quote(ty)
                                     for ty in blacklist_types]),
-                opaque=' '.join(['--opaque-type ' + pipes.quote(ty)
+                opaque=' '.join(['--opaque-type ' + shell.quote(ty)
                                     for ty in opaque_types]),
-                wl_types=' '.join(['--whitelist-type ' + pipes.quote(ty)
+                wl_types=' '.join(['--whitelist-type ' + shell.quote(ty)
                                     for ty in whitelist_types]),
-                wl_funcs=' '.join(['--whitelist-function ' + pipes.quote(fn)
+                wl_funcs=' '.join(['--whitelist-function ' + shell.quote(fn)
                                     for fn in whitelist_funcs]),
-                wl_vars=' '.join(['--whitelist-var ' + pipes.quote(v)
+                wl_vars=' '.join(['--whitelist-var ' + shell.quote(v)
                                     for v in whitelist_vars]),
                 generate=generate,
                 deps=''.join(' ' + d for d in cpp_deps),
