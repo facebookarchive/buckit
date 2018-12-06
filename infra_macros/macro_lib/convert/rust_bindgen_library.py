@@ -198,8 +198,8 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         # $(cxxppflags) macro in the cxxgenrule.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         base_clang_flags = '%s %s' % (
-            self._context.buck_ops.read_config('rust#' + buck_platform, 'bindgen_cxxppflags'),
-            self._context.buck_ops.read_config('rust#' + buck_platform, 'bindgen_cxxflags'))
+            native.read_config('rust#' + buck_platform, 'bindgen_cxxppflags'),
+            native.read_config('rust#' + buck_platform, 'bindgen_cxxflags'))
         base_clang_flags = base_clang_flags.split(' ')
 
         def formatter(fmt):
