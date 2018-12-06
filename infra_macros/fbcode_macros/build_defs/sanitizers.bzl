@@ -6,10 +6,10 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 _SANITIZERS = {
     "address": "asan",
     "address-undefined": "asan-ubsan",
+    "address-undefined-dev": "asan-ubsan",
     "efficiency-cache": "esan-cache",
     "thread": "tsan",
     "undefined": "ubsan",
-    "address-undefined-dev": "asan-ubsan",
 }
 
 _ASAN_DEFAULT_OPTIONS = {
@@ -74,14 +74,14 @@ _UBSAN_FLAGS = [
 _SANITIZER_FLAGS = {
     "address": _ASAN_UBSAN_FLAGS,
     "address-undefined": _ASAN_UBSAN_FLAGS + _UBSAN_FLAGS,
+    "address-undefined-dev": _ASAN_UBSAN_FLAGS,
     "efficiency-cache": [
         "-fsanitize=efficiency-cache-frag",
     ],
-    "undefined": _UBSAN_FLAGS,
-    "address-undefined-dev": _ASAN_UBSAN_FLAGS,
     "thread": [
         "-fsanitize=thread",
     ],
+    "undefined": _UBSAN_FLAGS,
 }
 
 _SANITIZER_COMMON_FLAGS = [

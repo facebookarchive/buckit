@@ -5,10 +5,10 @@ Various helper methods for constructing java_* rules
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _DEPS_TO_PROCESSORS = {
+    "//third-party-java/0-DONT-USE/org.projectlombok.1.16.10:lombok": "lombok.launch.AnnotationProcessorHider$AnnotationProcessor",
     "//third-party-java/org.immutables:value": "org.immutables.processor.ProxyProcessor",
     "//third-party-java/org.openjdk.jmh:jmh-generator-annprocess": "org.openjdk.jmh.generators.BenchmarkProcessor",
     "//third-party-java/org.projectlombok:lombok": "lombok.launch.AnnotationProcessorHider$AnnotationProcessor",
-    "//third-party-java/0-DONT-USE/org.projectlombok.1.16.10:lombok": "lombok.launch.AnnotationProcessorHider$AnnotationProcessor",
 }
 
 def _get_extra_annotation_processors_and_deps(*dep_lists):

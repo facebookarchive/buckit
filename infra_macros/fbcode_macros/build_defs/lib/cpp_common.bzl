@@ -839,8 +839,8 @@ def _get_strip_mode(base_path, name):
     )
 
 _STRIP_LDFLAGS = {
-    "full": "-Wl,-S",
     "debug-non-line": "-Wl,--strip-debug-non-line",
+    "full": "-Wl,-S",
     "none": None,
 }
 
@@ -1407,9 +1407,9 @@ def _convert_cpp(
 
     # Form language-specific preprocessor flags.
     out_lang_preprocessor_flags = {
+        "assembler_with_cpp": [],
         "c": [],
         "cxx": [],
-        "assembler_with_cpp": [],
     }
     if build_mode != None:
         if build_mode.aspp_flags:
