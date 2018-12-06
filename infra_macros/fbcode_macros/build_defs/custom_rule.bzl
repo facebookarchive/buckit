@@ -53,7 +53,6 @@ def _create_main_rule(
         strict = True,
         env = None,
         no_remote = False,
-        build_script_visibility = None,
         add_install_dir = True):
     out = _get_output_dir(name)
     fbcode_platform, buck_platform = platform_utils.get_fbcode_and_buck_platform_for_current_buildfile()
@@ -286,7 +285,6 @@ def custom_rule(
         add_install_dir = add_install_dir,
         build_args = build_args,
         build_script_dep = build_script_dep,
-        build_script_visibility = visibility,
         env = env,
         no_remote = no_remote,
         strict = strict,
