@@ -249,11 +249,8 @@ class Converter(object):
             return default
         return val.split()
 
-    def get_gen_path(self):
-        return os.path.join(common_paths.get_buck_out_path(), 'gen')
-
     def get_fbcode_dir_from_gen_dir(self):
-        return os.path.relpath(common_paths.CURRENT_DIRECTORY, self.get_gen_path())
+        return os.path.relpath(common_paths.CURRENT_DIRECTORY, common_paths.get_gen_path())
 
     def get_tp2_build_dat(self, base_path):
         """
