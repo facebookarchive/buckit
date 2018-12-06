@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl",
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:copy_rule.bzl", "copy_rule")
 
 def split_matching_extensions(srcs, exts):
     """
@@ -220,7 +221,7 @@ class Converter(base.Converter):
         return ':' + attrs['name'], Rule('genrule', attrs)
 
     def prefix_target_copy_rule(
-        self, prefix, target, in_src, out_src
+        self, prefix, target, in_src, out_src, visibility,
     ):
         """
         Copy a file from a {target} at location {in_src} to {out_src}
@@ -228,13 +229,14 @@ class Converter(base.Converter):
         """
         name = '{}={}'.format(prefix, out_src)
         src = '$(location {})/{}'.format(target, in_src)
-        rule = self.copy_rule(
+        copy_rule(
             src,
             name,
             out_src,
             labels = ["generated"],
+            visibility = visibility,
         )
-        return ':' + name, rule
+        return ':' + name
 
     def gen_typing_target(
         self,
@@ -305,7 +307,7 @@ class Converter(base.Converter):
         return ':' + name
 
     def gen_api_header(
-        self, name, cython_name, module_path, module_name, api
+        self, name, cython_name, module_path, module_name, api, visibility
     ):
         """
         If a cython module exposes an api then the enduser needs to
@@ -330,9 +332,9 @@ class Converter(base.Converter):
         dst = api_map.get(module_path)
         if dst:
             return self.prefix_target_copy_rule(
-                name, cython_name, module_name + api_suffix, dst + api_suffix
+                name, cython_name, module_name + api_suffix, dst + api_suffix, visibility,
             )
-        return None, None
+        return None
 
     def gen_shared_lib(
         self, name, api_headers, deps, cpp_compiler_flags, cpp_deps,
@@ -418,15 +420,15 @@ class Converter(base.Converter):
 
         def _get_visibility():
             if visibility and 'PUBLIC' not in visibility:
+                # Make it harder to break subrules
                 return ("//" + base_path + ":", ) + tuple(visibility)
             else:
                 return visibility
 
         def set_visibility(rule):
-            if visibility:
-                # Make it harder to break subrules
-                _visibility = ('//' + base_path + ':', ) + tuple(visibility)
-                rule.attributes['visibility'] = _visibility
+            rule_visibility = _get_visibility()
+            if rule_visibility:
+                rule.attributes['visibility'] = rule_visibility
             return rule
 
         def set_tests(rule):
@@ -482,10 +484,9 @@ class Converter(base.Converter):
                 )
                 yield set_visibility(cython_rule)
                 # Generate the copy_rule
-                src_target, src_rule = self.prefix_target_copy_rule(
-                    name, cython_name, out_src, module_path + out_ext
+                src_target = self.prefix_target_copy_rule(
+                    name, cython_name, out_src, module_path + out_ext, _get_visibility(),
                 )
-                yield set_visibility(src_rule)
 
                 # generate an extension for the generated src
                 so_target = self.gen_extension_rule(
@@ -503,11 +504,10 @@ class Converter(base.Converter):
                     extensions.append(so_target)
 
                 # Generate _api.h header rules.
-                api_target, api_rule = self.gen_api_header(
-                    name, cython_name, module_path, module_name, api
+                api_target = self.gen_api_header(
+                    name, cython_name, module_path, module_name, api, _get_visibility(),
                 )
-                if api_rule:
-                    yield set_visibility(api_rule)
+                if api_target:
                     api_headers.append(api_target)
 
             subrule_visibility = _get_visibility()
