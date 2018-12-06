@@ -26,7 +26,6 @@ except NameError:
 
 import collections
 import json
-import pipes
 
 with allow_unsafe_import():
     from distutils.version import LooseVersion
@@ -55,28 +54,10 @@ def import_macro_lib(path):
 
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('target')
-load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
-load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
-load("@fbcode_macros//build_defs/lib:build_mode.bzl", _build_mode="build_mode")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
-load("@fbcode_macros//build_defs/lib:cpp_flags.bzl", "cpp_flags")
-load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
-load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config_attrs")
-load("@fbcode_macros//build_defs/lib:core_tools.bzl", "core_tools")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_flags")
-load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-
-load("@bazel_skylib//lib:partial.bzl", "partial")
 
 
 Context = collections.namedtuple(
