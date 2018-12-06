@@ -17,6 +17,7 @@ include_defs("{}/convert/rust.py".format(macro_root), "rust")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:rust_common.bzl", "rust_common")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
@@ -204,7 +205,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
 
         def formatter(fmt):
             return fmt.format(
-                fbcode=paths.join('$GEN_DIR', self.get_fbcode_dir_from_gen_dir()),
+                fbcode=paths.join("$GEN_DIR", get_project_root_from_gen_dir()),
                 bindgen=self.get_tool_target(
                     target_utils.ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
                     platform),
