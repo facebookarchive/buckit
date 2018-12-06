@@ -268,34 +268,6 @@ class Converter(object):
     def get_fbcode_dir_from_gen_dir(self):
         return os.path.relpath(common_paths.CURRENT_DIRECTORY, self.get_gen_path())
 
-    def copy_rule(self, src, name, out=None, propagate_versions=False, visibility=None, labels=None):
-        """
-        Returns a `genrule` which copies the given source.
-        """
-
-        if out is None:
-            out = name
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if labels is not None:
-            attrs['labels'] = labels
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = out
-        attrs['cmd'] = ' && '.join([
-            'mkdir -p `dirname $OUT`',
-            'cp {src} $OUT'.format(src=src),
-        ])
-
-        # If this rule needs to be part of the versioned sub-tree of it's
-        # consumer, use a `cxx_genrule` which propagates versions (e.g. this
-        # is useful for cases like `hsc2hs` which should use a dep tree which
-        # is part of the same version sub-tree as the top-level binary).
-        genrule_type = 'cxx_genrule' if propagate_versions else 'genrule'
-
-        return Rule(genrule_type, attrs)
-
     def get_tp2_build_dat(self, base_path):
         """
         Load the TP2 metadata for the TP2 project at the given base path.
