@@ -53,7 +53,6 @@ def import_macro_lib(path):
 
 
 Rule = import_macro_lib('rule').Rule
-target = import_macro_lib('target')
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -98,32 +97,6 @@ Tp2ProjectBuild = collections.namedtuple(
 )
 
 
-CXX_BUILD_INFO_TEMPLATE = """\
-#include <stdint.h>
-
-const char* const BuildInfo_kBuildMode = "{build_mode}";
-const char* const BuildInfo_kBuildTool = "{build_tool}";
-const char* const BuildInfo_kCompiler = "{compiler}";
-const char* const BuildInfo_kHost = "{host}";
-const char* const BuildInfo_kPackageName = "{package_name}";
-const char* const BuildInfo_kPackageVersion = "{package_version}";
-const char* const BuildInfo_kPackageRelease = "{package_release}";
-const char* const BuildInfo_kPath = "{path}";
-const char* const BuildInfo_kPlatform = "{platform}";
-const char* const BuildInfo_kRevision = "{revision}";
-const char* const BuildInfo_kRule = "{rule}";
-const char* const BuildInfo_kRuleType = "{rule_type}";
-const char* const BuildInfo_kTime = "{time}";
-const char* const BuildInfo_kTimeISO8601 = "{time_iso8601}";
-const char* const BuildInfo_kUpstreamRevision = "{upstream_revision}";
-const char* const BuildInfo_kUser = "{user}";
-const uint64_t BuildInfo_kRevisionCommitTimeUnix = {revision_epochtime};
-const uint64_t BuildInfo_kTimeUnix = {epochtime};
-const uint64_t BuildInfo_kUpstreamRevisionCommitTimeUnix =
-  {upstream_revision_epochtime};
-"""
-
-
 def is_collection(obj):
     """
     Return whether the object is a array-like collection.
@@ -135,15 +108,9 @@ def is_collection(obj):
 
     return False
 
-_THIN_LTO_FLAG = ["-flto=thin"]
+
 _LTO_FLAG = ["-flto"]
 
-def _lto_linker_flags_partial(_, compiler):
-    if compiler != "clang":
-        return []
-    if config.get_lto_type() == "thin":
-        return _THIN_LTO_FLAG
-    return _LTO_FLAG
 
 class Converter(object):
 
