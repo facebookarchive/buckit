@@ -24,6 +24,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs/lib:build_info.bzl",
     "fbcode_macros//build_defs/lib:build_mode.bzl",
     "fbcode_macros//build_defs/lib:common_paths.bzl",
+    "fbcode_macros//build_defs/lib:copy_rule.bzl",
     "fbcode_macros//build_defs/lib:core_tools.bzl",
     "fbcode_macros//build_defs/lib:cpp_common.bzl",
     "fbcode_macros//build_defs/lib:cpp_flags.bzl",

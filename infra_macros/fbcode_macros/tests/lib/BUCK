@@ -7,6 +7,7 @@ TESTS = [
     "allocators_test",
     "build_info_test",
     "common_paths_test",
+    "copy_rule_test",
     "core_tools_test",
     "cpp_common_test",
     "cpp_flags_test",
