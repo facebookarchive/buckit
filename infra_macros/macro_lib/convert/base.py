@@ -126,19 +126,6 @@ class Converter(object):
         else:
             return self._context.config.get_third_party_buck_directory()
 
-    def get_third_party_build_root(self, platform):
-        if self._context.config.get_third_party_use_build_subdir():
-            return os.path.join(self.get_third_party_root(platform), 'build')
-        else:
-            return self.get_third_party_root(platform)
-
-    def get_third_party_tools_root(self, platform):
-        return os.path.join(self.get_third_party_root(platform), 'tools')
-
-    def get_tool_version(self, platform, project):
-        conf = self._context.third_party_config['platforms'][platform]
-        return LooseVersion(conf['tools']['projects'][project])
-
     def get_tool_target(self, target, platform):
         """
         Return the target for the tool described by the given RuleTarget.
@@ -160,11 +147,6 @@ class Converter(object):
             return os.path.join(self.get_third_party_root(platform), 'build', project)
         else:
             return project
-
-    def merge_platform_deps(self, dst, src):
-        for platform, deps in src.iteritems():
-            dst.setdefault(platform, [])
-            dst[platform].extend(deps)
 
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
