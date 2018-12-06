@@ -39,6 +39,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
+load("@fbcode_macros//build_defs/lib:copy_rule.bzl", "copy_rule")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 
 
@@ -466,20 +467,18 @@ class SwigLibraryConverter(base.Converter):
         rules.append(Rule('cxx_genrule', attrs))
 
         gen_hdr_name = gen_name + '=' + hdr
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/gen/{}'.format(gen_name, hdr),
-                gen_hdr_name,
-                hdr,
-                propagate_versions=True))
+        copy_rule(
+            '$(location :{})/gen/{}'.format(gen_name, hdr),
+            gen_hdr_name,
+            hdr,
+            propagate_versions=True)
 
         gen_src_name = gen_name + '=' + src
-        rules.append(
-            self.copy_rule(
-                '$(location :{})/gen/{}'.format(gen_name, src),
-                gen_src_name,
-                src,
-                propagate_versions=True))
+        copy_rule(
+            '$(location :{})/gen/{}'.format(gen_name, src),
+            gen_src_name,
+            src,
+            propagate_versions=True)
 
         return (
             ':{}'.format(gen_name),
