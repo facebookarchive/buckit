@@ -249,16 +249,8 @@ class Converter(object):
             return default
         return val.split()
 
-    def get_buck_out_path(self):
-        return self._context.buck_ops.read_config(
-            'project',
-            'buck_out',
-            'buck-out')
-
     def get_gen_path(self):
-        return os.path.join(
-            self.get_buck_out_path(),
-            'gen')
+        return os.path.join(common_paths.get_buck_out_path(), 'gen')
 
     def get_fbcode_dir_from_gen_dir(self):
         return os.path.relpath(common_paths.CURRENT_DIRECTORY, self.get_gen_path())
