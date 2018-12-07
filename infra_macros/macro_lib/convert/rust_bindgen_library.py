@@ -21,7 +21,7 @@ load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_di
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:rust_common.bzl", "rust_common")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
@@ -206,9 +206,7 @@ class RustBindgenLibraryConverter(rust.RustConverter):
         def formatter(fmt):
             return fmt.format(
                 fbcode=paths.join("$GEN_DIR", get_project_root_from_gen_dir()),
-                bindgen=self.get_tool_target(
-                    target_utils.ThirdPartyRuleTarget('rust-bindgen', 'bin/bindgen'),
-                    platform),
+                bindgen=third_party.get_tool_target('rust-bindgen', None, 'bin/bindgen', platform),
                 bindgen_flags=' '.join(map(shell.quote, bindgen_flags)),
                 base_clang_flags=' '.join(map(shell.quote, base_clang_flags)),
                 clang_flags=' '.join(map(shell.quote, clang_flags)),
