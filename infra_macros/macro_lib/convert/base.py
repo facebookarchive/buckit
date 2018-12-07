@@ -125,16 +125,6 @@ class Converter(object):
         else:
             return self._context.config.get_third_party_buck_directory()
 
-    def get_tool_target(self, target, platform):
-        """
-        Return the target for the tool described by the given RuleTarget.
-        """
-
-        return target_utils.to_label(
-            None,
-            third_party.get_tool_path(target.base_path, platform),
-            target.name)
-
     def get_tp2_dep_path(self, project, platform):
         """
         Return the path within third-party for the given project. This will be

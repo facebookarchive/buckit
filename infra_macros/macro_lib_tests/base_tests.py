@@ -119,59 +119,6 @@ class BaseConverterTest(utils.ConverterTestCase):
         ])
         self.assertEqual(actual_builds, expected_builds)
 
-    def test_get_tool_target(self):
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'platform007'),
-            '//third-party-buck/platform007/tools/python:python3')
-
-        # Default OSS setup
-        self.setup_with_config({}, {
-            ('fbcode', 'unknown_cells_are_third_party'),
-            ('fbcode', 'third_party_buck_directory'),
-            ('fbcode', 'third_party_use_platform_subdir'),
-            ('fbcode', 'third_party_use_tools_subdir')})
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'invalid'),
-            'python//python:python3')
-
-        # Toggle various third-party directory layout settings
-        self.setup_with_config({}, {
-            ('fbcode', 'third_party_use_platform_subdir')})
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'invalid'),
-            '//third-party-buck/tools/python:python3')
-
-        self.setup_with_config({}, {
-            ('fbcode', 'third_party_use_tools_subdir')})
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'platform007'),
-            '//third-party-buck/platform007/python:python3')
-
-        self.setup_with_config({}, {
-            ('fbcode', 'third_party_use_platform_subdir'),
-            ('fbcode', 'third_party_use_tools_subdir')})
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'invalid'),
-            '//third-party-buck/python:python3')
-
-        # If the cell actually does exist, make sure we use it
-        self.setup_with_config({('repositories', 'python'): '.'}, set())
-        self.assertEquals(
-            self._converter.get_tool_target(
-                self._base.ThirdPartyRuleTarget('python', 'python3'),
-                'platform007'),
-            'python//third-party-buck/platform007/tools/python:python3')
-
     def test_normalize_external_dep(self):
         self.assertEquals(
             self._converter.normalize_external_dep('single'),
