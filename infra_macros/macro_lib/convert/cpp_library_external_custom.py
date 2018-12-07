@@ -29,6 +29,18 @@ def first(*args):
     return None
 
 
+def is_collection(obj):
+    """
+    Return whether the object is a array-like collection.
+    """
+
+    for typ in (list, set, tuple):
+        if isinstance(obj, typ):
+            return True
+
+    return False
+
+
 class CppLibraryExternalCustomConverter(base.Converter):
 
     def get_fbconfig_rule_type(self):
@@ -154,7 +166,7 @@ class CppLibraryExternalCustomConverter(base.Converter):
         attributes['shared_libs'] = out_shared_libs
 
         out_include_dirs = []
-        if base.is_collection(include_dir):
+        if is_collection(include_dir):
             out_include_dirs.extend(include_dir)
         else:
             out_include_dirs.append(include_dir)

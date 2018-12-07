@@ -96,18 +96,6 @@ Tp2ProjectBuild = collections.namedtuple(
 )
 
 
-def is_collection(obj):
-    """
-    Return whether the object is a array-like collection.
-    """
-
-    for typ in (list, set, tuple):
-        if isinstance(obj, typ):
-            return True
-
-    return False
-
-
 _LTO_FLAG = ["-flto"]
 
 
