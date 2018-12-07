@@ -36,6 +36,7 @@ target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
@@ -455,9 +456,7 @@ class SwigLibraryConverter(base.Converter):
         ]
         attrs['cmd'] = (
             ' && '.join(cmds).format(
-                swig=self.get_tool_target(
-                    target_utils.ThirdPartyRuleTarget('swig', 'bin/swig'),
-                    platform),
+                swig=third_party.get_tool_target('swig', None, 'bin/swig', platform),
                 flags=' '.join(map(pipes.quote, flags)),
                 lang=pipes.quote(converter.get_lang_opt()),
                 includes=self.get_exported_include_tree(':' + name),
