@@ -471,7 +471,7 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                happy=self.get_tool_target(HAPPY, platform)),
+                happy=third_party.get_tool_target(HAPPY.base_path, None, HAPPY.name, platform)),
         ])
         rules.append(Rule('genrule', attrs))
 
@@ -493,7 +493,7 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                alex=self.get_tool_target(ALEX, platform)),
+                alex=third_party.get_tool_target(ALEX.base_path, None, ALEX.name, platform)),
         ])
         rules.append(Rule('genrule', attrs))
 
