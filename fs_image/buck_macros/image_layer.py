@@ -107,7 +107,11 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
-
+load(  # noqa: F821
+    "@fbcode_macros//build_defs:custom_rule.bzl",
+    "get_project_root_from_gen_dir",
+)
+get_project_root_from_gen_dir = get_project_root_from_gen_dir  # noqa: F821
 load(  # noqa: F821
     '@fbcode_macros//build_defs/lib:target_utils.bzl', 'target_utils',
 )
@@ -247,7 +251,7 @@ class ImageLayerConverter(base.Converter):
                     rule_name_quoted=quote(name),
                     refcounts_dir_quoted=os.path.join(
                         '$GEN_DIR',
-                        quote(self.get_fbcode_dir_from_gen_dir()),
+                        quote(get_project_root_from_gen_dir()),
                         'buck-out/.volume-refcount-hardlinks/',
                     ),
                     make_subvol_cmd=make_subvol_cmd,
