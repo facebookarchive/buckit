@@ -53,7 +53,6 @@ def import_macro_lib(path):
 
 
 Rule = import_macro_lib('rule').Rule
-load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
@@ -230,9 +229,6 @@ class Converter(object):
         if val is None:
             return default
         return val.split()
-
-    def get_fbcode_dir_from_gen_dir(self):
-        return os.path.relpath(common_paths.CURRENT_DIRECTORY, common_paths.get_gen_path())
 
     def get_tp2_build_dat(self, base_path):
         """
