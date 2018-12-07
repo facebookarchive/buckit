@@ -784,6 +784,18 @@ class PythonConverter(base.Converter):
         attrs['defaults'] = {'platform': buck_platform}
         return Rule('cxx_library', attrs)
 
+    def get_tp2_project_dep(self, base_path):
+        """
+        Return the self-referencing project dep to use for the TP2 project at
+        the given base path, or `None` if this project doesn't have one.
+        """
+
+        project = base_path.split(os.sep)[3]
+        platform = self.get_tp2_platform(base_path)
+        return target_utils.target_to_label(
+            third_party.get_tp2_project_target(project),
+            platform=platform)
+
     def create_library(
         self,
         base_path,
