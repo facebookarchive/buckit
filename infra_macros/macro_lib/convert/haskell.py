@@ -22,6 +22,7 @@ include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:build_mode.bzl", _build_mode="build_mode")
+load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
@@ -545,7 +546,7 @@ class HaskellConverter(base.Converter):
                 fbcode=(
                     os.path.join(
                         '$GEN_DIR',
-                        self.get_fbcode_dir_from_gen_dir())),
+                        get_project_root_from_gen_dir())),
                 stackage=self.get_tp2_dep_path('stackage-lts', platform),
                 deps=' :' + deps_name))
         attrs['srcs'] = [source]
@@ -587,7 +588,7 @@ class HaskellConverter(base.Converter):
                 fbcode=(
                     os.path.join(
                         '$GEN_DIR',
-                        self.get_fbcode_dir_from_gen_dir())),
+                        get_project_root_from_gen_dir())),
                 ghc_tool=third_party.get_tool_path('ghc', platform),
                 ghc=self.get_tp2_dep_path('ghc', platform),
                 link_style=self._context.link_style,
