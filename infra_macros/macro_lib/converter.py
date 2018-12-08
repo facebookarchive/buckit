@@ -88,6 +88,7 @@ load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
+load("@fbcode_macros//build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs:rust_unittest.bzl", "rust_unittest")
@@ -122,7 +123,6 @@ except IOError:
 lua = import_macro_lib('convert/lua')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
-rust_bindgen_library = import_macro_lib('convert/rust_bindgen_library')
 sphinx = import_macro_lib('convert/sphinx')
 swig_library = import_macro_lib('convert/swig_library')
 thrift_library = import_macro_lib('convert/thrift_library')
@@ -190,7 +190,6 @@ def convert(context, base_path, rule):
         swig_library.SwigLibraryConverter(context),
         ocaml.OCamlConverter(context, 'ocaml_library'),
         ocaml.OCamlConverter(context, 'ocaml_binary'),
-        rust_bindgen_library.RustBindgenLibraryConverter(context),
         sphinx.SphinxWikiConverter(context),
         sphinx.SphinxManpageConverter(context),
         wheel.PyWheel(context),
@@ -245,6 +244,7 @@ def convert(context, base_path, rule):
         'ocaml_external_library': ocaml_external_library,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'rust_binary': rust_binary,  # noqa F821
+        'rust_bindgen_library': rust_bindgen_library,  # noqa F821
         'rust_external_library': rust_external_library,  # noqa F821
         'rust_library': rust_library,  # noqa F821
         'rust_unittest': rust_unittest,  # noqa F821
