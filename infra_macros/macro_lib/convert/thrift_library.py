@@ -37,13 +37,13 @@ haskell = import_macro_lib('convert/haskell')
 cython = import_macro_lib('convert/cython')
 ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
-rust = import_macro_lib('convert/rust')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -2191,7 +2191,6 @@ class RustThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(RustThriftConverter, self).__init__(context, *args, **kwargs)
-        self._rust_converter = rust.RustConverter(context, 'rust_library')
 
     def get_lang(self):
         return "rust"
@@ -2297,6 +2296,19 @@ class RustThriftConverter(ThriftLangConverter):
             sources_map,
             deps,
             visibility,
+            features = None,
+            rustc_flags = None,
+            crate_root = None,
+            tests = None,
+            test_deps = None,
+            test_external_deps = None,
+            test_srcs = None,
+            test_features = None,
+            test_rustc_flags = None,
+            test_link_style = None,
+            preferred_linkage = None,
+            proc_macro = False,
+            licenses = None,
             **kwargs):
 
         out_deps = [
@@ -2318,16 +2330,27 @@ class RustThriftConverter(ThriftLangConverter):
         out_deps += deps
         crate_name = self.rust_crate_name(name, thrift_srcs)
 
-        return self._rust_converter.convert(
-            base_path,
-            name,
+        rust_library(
+            name=name,
             srcs=[':%s-gen-rs' % name],
             deps=out_deps,
             external_deps=out_external_deps,
             unittests=False,    # nothing meaningful
             crate=crate_name,
             visibility=visibility,
-            **kwargs
+            features=features,
+            rustc_flags=rustc_flags,
+            crate_root=crate_root,
+            tests=tests,
+            test_deps=test_deps,
+            test_external_deps=test_external_deps,
+            test_srcs=test_srcs,
+            test_features=test_features,
+            test_rustc_flags=test_rustc_flags,
+            test_link_style=test_link_style,
+            preferred_linkage=preferred_linkage,
+            proc_macro=proc_macro,
+            licenses=licenses,
         )
 
     def rust_crate_name(self, name, thrift_srcs):
@@ -2401,9 +2424,8 @@ class RustThriftConverter(ThriftLangConverter):
         rules.extend(
             self.get_ast_to_rust(
                 base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
-        rules.extend(
-            self.get_rust_to_rlib(
-                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
+        self.get_rust_to_rlib(
+            base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
         rules.extend(
             self.get_rust_crate_map(
                 base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
