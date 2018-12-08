@@ -140,6 +140,44 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             'linker_flags',
         ])
 
+    def get_genrule_cmd(
+        self,
+        template,
+        name,
+        platform,
+        bindgen_flags,
+        base_clang_flags,
+        clang_flags,
+        blacklist_types,
+        opaque_types,
+        whitelist_types,
+        whitelist_funcs,
+        whitelist_vars,
+        generate,
+        cpp_deps,
+    ):
+        return template.format(
+            fbcode=paths.join("$GEN_DIR", get_project_root_from_gen_dir()),
+            bindgen=third_party.get_tool_target('rust-bindgen', None, 'bin/bindgen', platform),
+            bindgen_flags=' '.join(map(shell.quote, bindgen_flags)),
+            base_clang_flags=' '.join(map(shell.quote, base_clang_flags)),
+            clang_flags=' '.join(map(shell.quote, clang_flags)),
+            blacklist=' '.join(['--blacklist-type ' + shell.quote(ty)
+                                for ty in blacklist_types]),
+            opaque=' '.join(['--opaque-type ' + shell.quote(ty)
+                                for ty in opaque_types]),
+            wl_types=' '.join(['--whitelist-type ' + shell.quote(ty)
+                                for ty in whitelist_types]),
+            wl_funcs=' '.join(['--whitelist-function ' + shell.quote(fn)
+                                for fn in whitelist_funcs]),
+            wl_vars=' '.join(['--whitelist-var ' + shell.quote(v)
+                                for v in whitelist_vars]),
+            generate=generate,
+            deps=''.join(' ' + d for d in cpp_deps),
+            includes=self.get_exported_include_tree(':' + name),
+            platform=platform,
+        )
+
     def generate_bindgen_rule(
         self,
         base_path,
@@ -203,36 +241,27 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             native.read_config('rust#' + buck_platform, 'bindgen_cxxflags'))
         base_clang_flags = base_clang_flags.split(' ')
 
-        def formatter(fmt):
-            return fmt.format(
-                fbcode=paths.join("$GEN_DIR", get_project_root_from_gen_dir()),
-                bindgen=third_party.get_tool_target('rust-bindgen', None, 'bin/bindgen', platform),
-                bindgen_flags=' '.join(map(shell.quote, bindgen_flags)),
-                base_clang_flags=' '.join(map(shell.quote, base_clang_flags)),
-                clang_flags=' '.join(map(shell.quote, clang_flags)),
-                blacklist=' '.join(['--blacklist-type ' + shell.quote(ty)
-                                    for ty in blacklist_types]),
-                opaque=' '.join(['--opaque-type ' + shell.quote(ty)
-                                    for ty in opaque_types]),
-                wl_types=' '.join(['--whitelist-type ' + shell.quote(ty)
-                                    for ty in whitelist_types]),
-                wl_funcs=' '.join(['--whitelist-function ' + shell.quote(fn)
-                                    for fn in whitelist_funcs]),
-                wl_vars=' '.join(['--whitelist-var ' + shell.quote(v)
-                                    for v in whitelist_vars]),
-                generate=generate,
-                deps=''.join(' ' + d for d in cpp_deps),
-                includes=self.get_exported_include_tree(':' + name),
-                platform=platform,
-            )
-
         # Actual bindgen rule
         fb_native.cxx_genrule(
             name = gen_name,
             out = paths.join(common_paths.CURRENT_DIRECTORY, src),
             srcs = [header],
             visibility = [],
-            bash = formatter(BINDGEN_TMPL),
+            bash = self.get_genrule_cmd(
+                template=BINDGEN_TMPL,
+                name=name,
+                platform=platform,
+                bindgen_flags=bindgen_flags,
+                base_clang_flags=base_clang_flags,
+                clang_flags=clang_flags,
+                blacklist_types=blacklist_types,
+                opaque_types=opaque_types,
+                whitelist_types=whitelist_types,
+                whitelist_funcs=whitelist_funcs,
+                whitelist_vars=whitelist_vars,
+                generate=generate,
+                cpp_deps=cpp_deps,
+            ),
         )
 
         # Rule to generate pre-processed output, to make debugging
@@ -242,7 +271,21 @@ class RustBindgenLibraryConverter(rust.RustConverter):
             name = name + '-preproc',
             out = paths.join(common_paths.CURRENT_DIRECTORY, name + '.i'),
             srcs = [header],
-            bash = formatter(PREPROC_TMPL),
+            bash = self.get_genrule_cmd(
+                template=PREPROC_TMPL,
+                name=name,
+                platform=platform,
+                bindgen_flags=bindgen_flags,
+                base_clang_flags=base_clang_flags,
+                clang_flags=clang_flags,
+                blacklist_types=blacklist_types,
+                opaque_types=opaque_types,
+                whitelist_types=whitelist_types,
+                whitelist_funcs=whitelist_funcs,
+                whitelist_vars=whitelist_vars,
+                generate=generate,
+                cpp_deps=cpp_deps,
+            ),
         )
 
         return ':{}'.format(gen_name)
