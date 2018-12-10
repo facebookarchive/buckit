@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -104,7 +105,7 @@ class ThriftLangConverter(base.Converter):
         will be a target_utils.RootRuleTarget. Outside of fbcode, we have to make sure that
         the specified third-party repo is used
         """
-        if self._context.config.get_current_repo_name() == 'fbcode':
+        if config.get_current_repo_name() == 'fbcode':
             target = target_utils.RootRuleTarget(base_path, target)
         else:
             repo = base_path.split('/')[0]
@@ -116,7 +117,7 @@ class ThriftLangConverter(base.Converter):
         Return which thrift compiler to use.
         """
 
-        return self._context.config.get_thrift_compiler()
+        return config.get_thrift_compiler()
 
     def get_lang(self):
         """
@@ -198,7 +199,7 @@ class ThriftLangConverter(base.Converter):
         if self.read_bool('thrift', 'use_templates', True):
             cmd.append('--templates')
             cmd.append('$(location {})'.format(
-                self._context.config.get_thrift_templates()))
+                config.get_thrift_templates()))
         cmd.append('-o')
         cmd.append('"$OUT"')
         additional_compiler = self.get_additional_compiler()
@@ -304,10 +305,10 @@ class CppThriftConverter(ThriftLangConverter):
         super(CppThriftConverter, self).__init__(context, *args, **kwargs)
 
     def get_additional_compiler(self):
-        return self._context.config.get_thrift2_compiler()
+        return config.get_thrift2_compiler()
 
     def get_compiler(self):
-        return self._context.config.get_thrift_compiler()
+        return config.get_thrift_compiler()
 
     def get_lang(self):
         return 'cpp2'
@@ -847,9 +848,9 @@ class HaskellThriftConverter(ThriftLangConverter):
 
     def get_compiler(self):
         if self._is_hs2:
-            return self._context.config.get_thrift_hs2_compiler()
+            return config.get_thrift_hs2_compiler()
         else:
-            return self._context.config.get_thrift_compiler()
+            return config.get_thrift_compiler()
 
     def get_lang(self):
         return 'hs2' if self._is_hs2 else 'hs'
@@ -1113,7 +1114,7 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
         return 'javadeprecated-apache'
 
     def get_compiler(self):
-        return self._context.config.get_thrift_deprecated_apache_compiler()
+        return config.get_thrift_deprecated_apache_compiler()
 
     def get_compiler_command(
             self,
@@ -1229,7 +1230,7 @@ class JavaSwiftConverter(ThriftLangConverter):
         return 'java-swift'
 
     def get_compiler(self):
-        return self._context.config.get_thrift_swift_compiler()
+        return config.get_thrift_swift_compiler()
 
     def get_compiler_args(
             self,
@@ -1634,7 +1635,7 @@ class OCamlThriftConverter(ThriftLangConverter):
             ocaml.OCamlConverter(context, 'ocaml_library'))
 
     def get_compiler(self):
-        return self._context.config.get_thrift_ocaml_compiler()
+        return config.get_thrift_ocaml_compiler()
 
     def get_lang(self):
         return 'ocaml2'
@@ -1655,7 +1656,7 @@ class OCamlThriftConverter(ThriftLangConverter):
 
         # The OCaml compiler relies on the HS2 compiler to parse .thrift sources to JSON
         args.append('-c')
-        args.append('$(exe {})'.format(self._context.config.get_thrift_hs2_compiler()))
+        args.append('$(exe {})'.format(config.get_thrift_hs2_compiler()))
 
         # Format the options and pass them into the ocaml compiler.
         for option, val in options.iteritems():
@@ -2196,7 +2197,7 @@ class RustThriftConverter(ThriftLangConverter):
         return "rust"
 
     def get_compiler(self):
-        return self._context.config.get_thrift_hs2_compiler()
+        return config.get_thrift_hs2_compiler()
 
     def format_options(self, options):
         args = []
