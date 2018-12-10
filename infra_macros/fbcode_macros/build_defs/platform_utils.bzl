@@ -20,19 +20,9 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:platform_overrides.bzl", "platform_overrides")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
-
-def __get_current_architecture():
-    arch = native.host_info().arch
-    if arch.is_x86_64:
-        return "x86_64"
-    elif arch.is_aarch64:
-        return "aarch64"
-    else:
-        fail("Current host architecture (%s) is unsupported" % arch)
+load("@fbsource//tools/build_defs:host_arch.bzl", "host_arch")
 
 _all_platforms = third_party_config["platforms"].keys()
-
-_current_architecture = __get_current_architecture()
 
 def __get_platforms_for_architecture(arch):
     return sorted([
@@ -41,7 +31,7 @@ def __get_platforms_for_architecture(arch):
         if details["architecture"] == arch
     ])
 
-_all_platforms_for_current_architecture = __get_platforms_for_architecture(_current_architecture)
+_all_platforms_for_current_architecture = __get_platforms_for_architecture(host_arch.HOST_ARCH_STR)
 
 def _transform_platform_overrides(cell_to_path_to_platforms_mapping):
     """
@@ -121,7 +111,7 @@ def _get_platform_for_base_path(base_path):
     return _get_platform_for_cell_path_and_arch(
         config.get_current_repo_name(),
         base_path,
-        _current_architecture,
+        host_arch.HOST_ARCH_STR,
     )
 
 def _get_platform_for_current_buildfile():
@@ -129,7 +119,7 @@ def _get_platform_for_current_buildfile():
     return _get_platform_for_cell_path_and_arch(
         config.get_current_repo_name(),
         native.package_name(),
-        _current_architecture,
+        host_arch.HOST_ARCH_STR,
     )
 
 def _get_platform_for_cell_path_and_arch(cell, path, arch):
@@ -222,7 +212,7 @@ def _get_fbcode_and_buck_platform_for_current_buildfile():
 def _get_platform_architecture(platform):
     """ Gets the architecture for a specific platform """
     if platform == "default":  # We're using the native platform, bail!
-        return _current_architecture
+        return host_arch.HOST_ARCH_STR
     return third_party_config["platforms"][platform]["architecture"]
 
 def _get_platforms_for_host_architecture():

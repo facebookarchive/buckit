@@ -118,6 +118,8 @@ BUILD_DEFS = [
     "fbsource//tools/build_defs:buckconfig.bzl",
     "fbsource//tools/build_defs:copy_defs.bzl",
     "fbsource//tools/build_defs:fb_native_wrapper.bzl",
+    "fbsource//tools/build_defs:host_arch.bzl",
+    "fbsource//tools/build_defs:host_os.bzl",
     "fbsource//tools/build_defs:sanitizers.bzl",
     "fbsource//tools/build_defs:translate_to_fbsource_paths.bzl",
     "fbsource//tools/build_defs:type_defs.bzl",
