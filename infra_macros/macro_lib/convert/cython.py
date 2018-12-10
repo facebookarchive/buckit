@@ -52,6 +52,7 @@ load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:copy_rule.bzl", "copy_rule")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 
 def split_matching_extensions(srcs, exts):
     """
@@ -170,7 +171,7 @@ class Converter(base.Converter):
         the target name and the rule
         """
 
-        cython_compiler = self._context.config.get_cython_compiler()
+        cython_compiler = config.get_cython_compiler()
         attrs = collections.OrderedDict()
         attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
         attrs['out'] = os.curdir
