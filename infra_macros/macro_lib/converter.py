@@ -74,6 +74,7 @@ load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:d_unittest.bzl", "d_unittest")
 load("@fbcode_macros//build_defs:discard.bzl", "discard")
 load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
+load("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:go_library.bzl", "go_library")
 load("@fbcode_macros//build_defs:go_unittest.bzl", "go_unittest")
@@ -108,7 +109,6 @@ cpp_library_external_custom = import_macro_lib(
 cpp_module_external = import_macro_lib('convert/cpp_module_external')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
-go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
 try:
     image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
@@ -171,7 +171,6 @@ def convert(context, base_path, rule):
         cpp_jvm_library.CppJvmLibrary(context),
         cpp_module_external.CppModuleExternalConverter(context),
         cython.Converter(context),
-        go_bindgen_library.GoBindgenLibraryConverter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
@@ -229,6 +228,7 @@ def convert(context, base_path, rule):
         'buck_command_alias': buck_command_alias,  # noqa F821
         'custom_rule': custom_rule,  # noqa F821
         'go_binary': go_binary,  # noqa F821
+        'go_bindgen_library': go_bindgen_library,  # noqa F821
         'go_external_library': go_external_library,  # noqa F821
         'go_library': go_library,  # noqa F821
         'go_unittest': go_unittest,  # noqa F821
