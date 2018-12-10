@@ -72,6 +72,7 @@ load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
 load("@fbcode_macros//build_defs:d_library.bzl", "d_library")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:d_unittest.bzl", "d_unittest")
+load("@fbcode_macros//build_defs:discard.bzl", "discard")
 load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:go_library.bzl", "go_library")
@@ -107,7 +108,6 @@ cpp_library_external_custom = import_macro_lib(
 cpp_module_external = import_macro_lib('convert/cpp_module_external')
 custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
-discard = import_macro_lib('convert/discard')
 go_bindgen_library = import_macro_lib('convert/go_bindgen_library')
 haskell = import_macro_lib('convert/haskell')
 try:
@@ -167,8 +167,6 @@ def convert(context, base_path, rule):
     """
 
     converters = [
-        discard.DiscardingConverter(context, 'cpp_binary_external'),
-        discard.DiscardingConverter(context, 'haskell_genscript'),
         cpp_library_external_custom.CppLibraryExternalCustomConverter(context),
         cpp_jvm_library.CppJvmLibrary(context),
         cpp_module_external.CppModuleExternalConverter(context),
@@ -220,7 +218,9 @@ def convert(context, base_path, rule):
         'buck_sh_test': buck_sh_test,  # noqa F821
         'buck_zip_file': buck_zip_file,  # noqa F821
         'cgo_library': cgo_library,  # noqa F821
-        'dewey_artifact': dewey_artifact,  # noqa F821
+        'dewey_artifact': dewey_artifact,
+        'cpp_binary_external': discard,  # noqa F821
+        'haskell_genscript': discard,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821
         'versioned_alias': versioned_alias,  # noqa F821
