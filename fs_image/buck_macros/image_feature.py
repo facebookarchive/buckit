@@ -37,8 +37,6 @@ Read that target's docblock for more info, but in essence, that will:
 '''
 import json
 
-from pipes import quote
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
@@ -63,6 +61,8 @@ load(  # noqa: F821
     "fb_native",
 )
 fb_native = fb_native  # noqa: F821
+load("@bazel_skylib//lib:shell.bzl", "shell")  # noqa: F821
+shell = shell  # noqa: F821
 
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -353,7 +353,7 @@ class ImageFeatureConverter(base.Converter):
                         for t in sorted(target_tagger.targets)
                     # Add on a self-dependency (see `fake_macro_library` doc)
                 ) + '$(location //fs_image/buck_macros:image_feature)',
-                out=quote(json.dumps(out_dict, sort_keys=True)),
+                out=shell.quote(json.dumps(out_dict, sort_keys=True)),
             ),
             visibility=visibility,
         )
