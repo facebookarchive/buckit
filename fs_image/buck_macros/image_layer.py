@@ -83,7 +83,6 @@ The consequences of this information hiding are:
     writing a manifest with additional metadata into each layer, and using
     that metadata during compilation.
 '''
-import collections
 import os
 
 from pipes import quote
@@ -118,6 +117,11 @@ load(  # noqa: F821
 target_utils = target_utils  # noqa: F821
 load(':image_utils.bzl', 'image_utils')  # noqa: F821
 image_utils = image_utils  # noqa: F821
+load(  # noqa: F821
+    "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
+    "fb_native",
+)
+fb_native = fb_native  # noqa: F821
 
 
 class ImageLayerConverter(base.Converter):
@@ -197,7 +201,7 @@ class ImageLayerConverter(base.Converter):
                   "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
             '''.format(from_sendstream=from_sendstream)
 
-        rules.append(Rule('genrule', collections.OrderedDict(
+        fb_native.genrule(
             name=name,
             out=name + '.json',
             type=self.get_fbconfig_rule_type(),  # For queries
@@ -262,7 +266,7 @@ class ImageLayerConverter(base.Converter):
                 ),
             ),
             visibility=visibility,
-        )))
+        )
 
         return rules
 
