@@ -20,6 +20,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 class GoBindgenLibraryConverter(base.Converter):
@@ -61,13 +62,14 @@ class GoBindgenLibraryConverter(base.Converter):
 
     def gen_file_copy_rule(self, src):
         filename = os.path.basename(src)
+        name = "src-copy={}".format(filename)
 
-        attrs = {
-            'name': "src-copy={}".format(filename),
-            'cmd': "cp -r \$(buck root)/{} $OUT".format(src),
-            'out': filename
-        }
-        return 'genrule', attrs
+        fb_native.genrule(
+            name=name,
+            cmd="cp -r \$(buck root)/{} $OUT".format(src),
+            out=filename,
+        )
+        return name
 
     def gen_bindgen_exe_rule(self, base_path, name, headers, manifest_path):
         cmd = [
@@ -91,10 +93,9 @@ class GoBindgenLibraryConverter(base.Converter):
             if header.startswith("//"):  # we need to copy the file
                 header = header.replace("//", "")
 
-                rule, attrs = self.gen_file_copy_rule(header)
-                rules.append(Rule(rule, attrs))
+                target_name = self.gen_file_copy_rule(header)
 
-                parsed_headers.append(":" + attrs['name'])
+                parsed_headers.append(":" + target_name)
             else:
                 parsed_headers.append(header)
         return parsed_headers, rules
