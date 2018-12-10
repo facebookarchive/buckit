@@ -145,34 +145,30 @@ class GoBindgenLibraryConverter(base.Converter):
         ]
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
         for filename in expected_go_files:
-            rule_name = "{}={}".format(bindgen_exe, filename)
+            genrule_name = "{}={}".format(bindgen_exe, filename)
 
-            attrs = {
-                'name': rule_name,
-                'cmd': "cp $(location :{})/{}/{} $OUT".format(
-                    bindgen_exe,
-                    package_name,
-                    filename,
-                ),
-                'out': filename,
-            }
-
-            attrs['cmd'] += fix_headers
-
-            rule_name = ":{}#{}".format(rule_name, buck_platform)
+            rule_name = ":{}#{}".format(genrule_name, buck_platform)
+            cmd = "cp $(location :{})/{}/{} $OUT".format(
+                bindgen_exe,
+                package_name,
+                filename,
+            ) + fix_headers
             if filename.endswith(".go"):
                 cgo_srcs.append(rule_name)
 
                 # fix relative paths
-                attrs['cmd'] += \
-                  self.fix_relative_paths(
+                cmd += self.fix_relative_paths(
                     ":{}-go-bindgen=cgo_helpers.h".format(name),
                     base_path
                 )
 
             elif filename.endswith(".h"):
                 cgo_headers.append(rule_name)
-            rules.append(Rule('cxx_genrule', attrs))
+            fb_native.cxx_genrule(
+                name=genrule_name,
+                cmd=cmd,
+                out=filename,
+            )
 
         return cgo_srcs, cgo_headers, rules
 
