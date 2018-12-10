@@ -70,12 +70,12 @@ class Converter(object):
         self._tp2_build_dat_cache = {}
 
     def get_third_party_root(self, platform):
-        if self._context.config.get_third_party_use_platform_subdir():
+        if config.get_third_party_use_platform_subdir():
             return paths.join(
-                self._context.config.get_third_party_buck_directory(),
+                config.get_third_party_buck_directory(),
                 platform)
         else:
-            return self._context.config.get_third_party_buck_directory()
+            return config.get_third_party_buck_directory()
 
     def get_tp2_dep_path(self, project, platform):
         """
@@ -84,7 +84,7 @@ class Converter(object):
         and the path may be modified to fit fbcode's layout
         """
 
-        if self._context.config.get_third_party_use_build_subdir():
+        if config.get_third_party_use_build_subdir():
             return paths.join(self.get_third_party_root(platform), 'build', project)
         else:
             return project
