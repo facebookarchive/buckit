@@ -77,13 +77,12 @@ class GoBindgenLibraryConverter(base.Converter):
             "-out $OUT", "-ccincl", manifest_path
         ]
 
-        attrs = {
-            'name': name,
-            'srcs': headers + [manifest_path],
-            'cmd': " ".join(cmd),
-            'out': 'go-bindgen'
-        }
-        return 'cxx_genrule', attrs
+        fb_native.cxx_genrule(
+            name=name,
+            srcs=headers + [manifest_path],
+            cmd=" ".join(cmd),
+            out='go-bindgen',
+        )
 
     def gen_header_rules(self, header_includes):
         rules = []
@@ -122,13 +121,12 @@ class GoBindgenLibraryConverter(base.Converter):
 
         # run c-for-go bindgen generator
         bindgen_exe = "{}-go-bindgen".format(name)
-        rule, attrs = self.gen_bindgen_exe_rule(
+        self.gen_bindgen_exe_rule(
             base_path,
             bindgen_exe,
             parsed_headers,
             manifest
         )
-        rules.append(Rule(rule, attrs))
 
         # bindgen generated files include header files with local paths
         # this is replacing the include paths
