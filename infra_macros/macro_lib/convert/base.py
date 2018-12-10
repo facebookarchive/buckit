@@ -28,31 +28,9 @@ import collections
 import json
 
 with allow_unsafe_import():
-    from distutils.version import LooseVersion
     import os
 
 
-# Hack to make include_defs flake8 safe.
-_include_defs = include_defs  # noqa: F821
-
-
-# Hack to make include_defs sane and less magical forr flake8
-def include_defs(path):
-    global _include_defs__imported
-    _include_defs(path, '_include_defs__imported')  # noqa: F821
-    ret = _include_defs__imported
-    del _include_defs__imported
-    return ret
-
-
-# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
-def import_macro_lib(path):
-    return include_defs('{}/{}.py'.format(
-        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
-    ))
-
-
-Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
