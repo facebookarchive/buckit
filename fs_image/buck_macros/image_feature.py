@@ -35,7 +35,6 @@ Read that target's docblock for more info, but in essence, that will:
  - install the features in dependency order,
  - capture the resulting filesystem, ready to be used as another parent layer.
 '''
-import json
 
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
@@ -304,24 +303,24 @@ class ImageFeatureConverter(base.Converter):
         # (2) Builds a list of targets so that this converter can tell Buck
         #     that the `image_feature` depends on it.
         target_tagger = TargetTagger(normalize_target)
-        out_dict = {
+        out_dict = struct(  # noqa: F821
             # Omit the ugly suffix here since this is meant only for
             # humans to read while debugging.
-            'target': normalize_target(':' + name),
-            'make_dirs': self._normalize_make_dirs(make_dirs),
-            'copy_files':
+            target = normalize_target(':' + name),
+            make_dirs = self._normalize_make_dirs(make_dirs),
+            copy_files =
                 self._normalize_copy_deps(target_tagger, copy_deps),
-            'tarballs': self._normalize_tarballs(target_tagger, tarballs),
+            tarballs = self._normalize_tarballs(target_tagger, tarballs),
             # It'd be a bit expensive to do any kind of validation of RPM
             # names right here, since we'd need the repo snapshot to decide
             # whether the names are valid, and whether they contain a
             # version or release number.  That'll happen later in the build.
-            'rpms': self._normalize_rpms(rpms),
-            'features': [
+            rpms = self._normalize_rpms(rpms),
+            features = [
                 target_tagger.tag_target(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
                     for f in features
             ] if features else [],
-        }
+        )
 
         # Serialize the arguments and defer our computation until
         # build-time.  This allows us to automatically infer what is
@@ -353,7 +352,7 @@ class ImageFeatureConverter(base.Converter):
                         for t in sorted(target_tagger.targets)
                     # Add on a self-dependency (see `fake_macro_library` doc)
                 ) + '$(location //fs_image/buck_macros:image_feature)',
-                out=shell.quote(json.dumps(out_dict, sort_keys=True)),
+                out=shell.quote(out_dict.to_json()),
             ),
             visibility=visibility,
         )
