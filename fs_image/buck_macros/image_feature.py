@@ -35,7 +35,6 @@ Read that target's docblock for more info, but in essence, that will:
  - install the features in dependency order,
  - capture the resulting filesystem, ready to be used as another parent layer.
 '''
-import collections
 import json
 
 from pipes import quote
@@ -59,6 +58,11 @@ load(  # noqa: F821
     '@fbcode_macros//build_defs/lib:target_utils.bzl', 'target_utils',
 )
 target_utils = target_utils  # noqa: F821
+load(  # noqa: F821
+    "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
+    "fb_native",
+)
+fb_native = fb_native  # noqa: F821
 
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -327,7 +331,7 @@ class ImageFeatureConverter(base.Converter):
         # this will fail (128KB on the Linux system I checked).
         #
         # TODO: Print friendlier error messages on user error.
-        return [Rule('genrule', collections.OrderedDict(
+        fb_native.genrule(
             # The constant declaration explains the reason for the name change.
             name=name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX,
             out=name + '.json',
@@ -352,4 +356,5 @@ class ImageFeatureConverter(base.Converter):
                 out=quote(json.dumps(out_dict, sort_keys=True)),
             ),
             visibility=visibility,
-        ))]
+        )
+        return []
