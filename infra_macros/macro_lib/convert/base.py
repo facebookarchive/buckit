@@ -12,28 +12,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# TODO(T20914511): Until the macro lib has been completely ported to
-# `include_defs()`, we need to support being loaded via both `import` and
-# `include_defs()`.  These ugly preamble is thus here to consistently provide
-# `allow_unsafe_import()` regardless of how we're loaded.
-import contextlib
-try:
-    allow_unsafe_import
-except NameError:
-    @contextlib.contextmanager
-    def allow_unsafe_import(*args, **kwargs):
-        yield
-
 import collections
 import json
-
-with allow_unsafe_import():
-    import os
 
 
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 Context = collections.namedtuple(
@@ -85,7 +71,7 @@ class Converter(object):
 
     def get_third_party_root(self, platform):
         if self._context.config.get_third_party_use_platform_subdir():
-            return os.path.join(
+            return paths.join(
                 self._context.config.get_third_party_buck_directory(),
                 platform)
         else:
@@ -99,7 +85,7 @@ class Converter(object):
         """
 
         if self._context.config.get_third_party_use_build_subdir():
-            return os.path.join(self.get_third_party_root(platform), 'build', project)
+            return paths.join(self.get_third_party_root(platform), 'build', project)
         else:
             return project
 
@@ -196,7 +182,7 @@ class Converter(object):
             return build_dat
 
         fbsource_root = read_config('fbsource', 'repo_relative_path', '..');
-        build_dat_name = os.path.join(fbsource_root, "fbcode", base_path, 'build.dat')
+        build_dat_name = paths.join(fbsource_root, "fbcode", base_path, 'build.dat')
         self._context.buck_ops.add_build_file_dep('fbcode//' + build_dat_name)
         with open(build_dat_name) as f:
             build_dat = json.load(f)
