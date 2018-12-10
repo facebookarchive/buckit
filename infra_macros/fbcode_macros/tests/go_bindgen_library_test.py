@@ -1,0 +1,47 @@
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import tests.utils
+from tests.utils import dedent
+
+
+class GoBindgenLibraryTest(tests.utils.TestCase):
+    includes = [
+        ("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
+    ]
+
+    @tests.utils.with_project()
+    def test_go_bindgen_library_parses(self, root):
+        root.addFile(
+            "BUCK",
+            dedent(
+                """
+            load("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
+            go_bindgen_library(
+                name = "client",
+                package_name = "c",
+                srcs = [
+                    "client.go",
+                ],
+                go_external_deps = [
+                    "github.com/pkg/errors",
+                ],
+                header_includes = [
+                    "//c/foo_c.h",
+                ],
+                manifest = "manifest.yml",
+                deps = [
+                    "//c:c_api",
+                ],
+            )
+            """
+            ),
+        )
+
+        self.assertSuccess(root.runAudit(["BUCK"]))
