@@ -122,6 +122,13 @@ load(  # noqa: F821
     "fb_native",
 )
 fb_native = fb_native  # noqa: F821
+load(  # noqa: F821
+    '//fs_image/buck_macros:image_feature.bzl',
+    'image_feature',
+    'DO_NOT_DEPEND_ON_FEATURES_SUFFIX',
+)
+image_feature = image_feature  # noqa: F821
+DO_NOT_DEPEND_ON_FEATURES_SUFFIX = DO_NOT_DEPEND_ON_FEATURES_SUFFIX  # noqa: F821
 
 
 class ImageLayerConverter(base.Converter):
@@ -165,7 +172,7 @@ class ImageLayerConverter(base.Converter):
                 'with `yum_from_repo_snapshot`'
             )
         elif image_feature_kwargs:
-            rules, make_subvol_cmd = self._compile_image_features(
+            make_subvol_cmd = self._compile_image_features(
                 base_path=base_path,
                 rule_name=name,
                 parent_layer=parent_layer,
@@ -180,7 +187,6 @@ class ImageLayerConverter(base.Converter):
                 # for matching the parent to the stream are kind of awkward,
                 # and it's not clear whether they are right for us in Buck.
                 raise NotImplementedError()
-            rules = []
             make_subvol_cmd = '''
                 sendstream_path=$(location {from_sendstream})
                 # CAREFUL: To avoid inadvertently masking errors, we only
@@ -268,7 +274,7 @@ class ImageLayerConverter(base.Converter):
             visibility=visibility,
         )
 
-        return rules
+        return []
 
     def _compile_image_features(
         self,
@@ -282,9 +288,8 @@ class ImageLayerConverter(base.Converter):
         # just make an implicit feature target to implement this.
         feature_name = rule_name + '-feature'
         feature_target = \
-            ':' + feature_name + image_feature.DO_NOT_DEPEND_ON_FEATURES_SUFFIX
-        rules = image_feature.ImageFeatureConverter(self._context).convert(
-            base_path,
+            ':' + feature_name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX
+        image_feature(
             name=feature_name,
             **image_feature_kwargs
         )
@@ -305,7 +310,7 @@ class ImageLayerConverter(base.Converter):
                 if parent_layer else '',
         )
 
-        return rules, '''
+        return '''
             {maybe_yum_from_repo_snapshot_dep}
             # Take note of `targets_and_outputs` below -- this enables the
             # compiler to map the `__BUCK_TARGET`s in the outputs of
