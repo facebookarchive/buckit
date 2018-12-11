@@ -87,6 +87,7 @@ load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_e
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
+load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:ocaml_library.bzl", "ocaml_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
@@ -122,7 +123,6 @@ except IOError:
     image_layer = None
     image_package = None
 lua = import_macro_lib('convert/lua')
-ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
 sphinx = import_macro_lib('convert/sphinx')
 swig_library = import_macro_lib('convert/swig_library')
@@ -186,7 +186,6 @@ def convert(context, base_path, rule):
         custom_unittest.CustomUnittestConverter(context),
         thrift_library.ThriftLibraryConverter(context),
         swig_library.SwigLibraryConverter(context),
-        ocaml.OCamlConverter(context, 'ocaml_binary'),
         sphinx.SphinxWikiConverter(context),
         sphinx.SphinxManpageConverter(context),
         wheel.PyWheel(context),
@@ -241,6 +240,7 @@ def convert(context, base_path, rule):
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
+        'ocaml_binary': ocaml_binary,  # noqa F821
         'ocaml_external_library': ocaml_external_library,  # noqa F821
         'ocaml_library': ocaml_library,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
