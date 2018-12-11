@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
 import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -83,7 +82,7 @@ class CustomUnittestConverter(base.Converter):
             # arg, and use that to replace the first argument.
             else:
                 # A simple shell script that just runs the first arg.
-                script = os.linesep.join([
+                script = '\n'.join([
                     '#!/bin/sh',
                     'exec {0} "$@"'.format(shell.quote(command[0])),
                 ])
