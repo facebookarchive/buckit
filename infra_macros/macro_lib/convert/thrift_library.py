@@ -1890,6 +1890,12 @@ class Python3ThriftConverter(ThriftLangConverter):
                 dst = thrift_package
             return sources[thrift_src][full_src], dst
 
+        # Strip off the gen target prefixes, from .thrift sources
+        thrift_srcs = collections.OrderedDict(
+            {src_and_dep_helpers.get_source_name(thrift_src): services
+             for thrift_src, services in thrift_srcs.items()}
+        )
+
         for gen_func in (self.gen_rule_thrift_types,
                          self.gen_rule_thrift_services,
                          self.gen_rule_thrift_clients):
