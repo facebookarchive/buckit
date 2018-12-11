@@ -31,7 +31,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -495,17 +494,17 @@ class SwigLibraryConverter(base.Converter):
         rules = []
 
         for sname, src in srcs.items():
-            attrs = collections.OrderedDict()
-            attrs['name'] = '{}={}'.format(name, src)
-            if visibility is not None:
-                attrs['visibility'] = visibility
-            attrs['out'] = src
-            attrs['cmd'] = ' && '.join([
-                'mkdir -p `dirname $OUT`',
-                'cp -rd $(location {})/lang/{} $OUT'.format(src_name, src),
-            ])
-            rules.append(Rule('cxx_genrule', attrs))
-            out[sname] = ':' + attrs['name']
+            gen_name = '{}={}'.format(name, src)
+            fb_native.cxx_genrule(
+                name=gen_name,
+                visibility=get_visibility(visibility, gen_name),
+                out=src,
+                cmd=' && '.join([
+                    'mkdir -p `dirname $OUT`',
+                    'cp -rd $(location {})/lang/{} $OUT'.format(src_name, src),
+                ]),
+            )
+            out[sname] = ':' + gen_name
 
         return out, rules
 
