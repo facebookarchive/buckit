@@ -8,7 +8,7 @@
 # of patent rights can be found in the PATENTS file in the same directory.
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 
 # Big tuple of tuples used to generate a dict of all the external_deps /
@@ -88,7 +88,7 @@ def _generate_pyfi_overrides(overrides):
     """Generate str key mapping of TP2 name to PyFI TARGET name"""
     pyfi_overrides = {}
     for tp2_name, pyfi_name in overrides:
-        pyfi_overrides[tp2_name] = target_utils.RootRuleTarget(
+        pyfi_overrides[tp2_name] = rule_target_types.RootRuleTarget(
             paths.join("python/wheel", pyfi_name),
             pyfi_name,
         )
