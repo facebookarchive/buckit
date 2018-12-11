@@ -12,7 +12,7 @@ fake_macro_library(
 
 fake_macro_library(
     name = "image_layer",
-    srcs = ["image_layer.py"],
+    srcs = ["image_layer.bzl"],
     deps = [":image_utils"],
 )
 
