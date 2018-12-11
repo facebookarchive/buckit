@@ -271,14 +271,15 @@ class PythonSwigConverter(SwigLangConverter):
             ],
         )
         # Generate the wrapping python library.
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = gen_srcs
         out_deps = []
         out_deps.extend(deps)
         out_deps.append(':' + name + '-ext')
+
+        attrs = {}
+        attrs['name'] = name
+        attrs['visibility'] = get_visibility(visibility, name)
+        attrs['srcs'] = gen_srcs
+
         attrs['deps'] = out_deps
         if py_base_module is not None:
             attrs['base_module'] = py_base_module
@@ -286,7 +287,9 @@ class PythonSwigConverter(SwigLangConverter):
         # For now we just need an empty directory.
         if get_typing_config_target():
             gen_typing_config(name)
-        yield Rule('python_library', attrs)
+        fb_native.python_library(**attrs)
+
+        return []
 
 
 class GoSwigConverter(SwigLangConverter):
