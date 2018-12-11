@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import os
 import pipes
 import re
@@ -54,7 +53,7 @@ class CustomUnittestConverter(base.Converter):
 
         platform = platform_utils.get_platform_for_base_path(base_path)
 
-        attributes = collections.OrderedDict()
+        attributes = {}
 
         if command:
             bin_refs = 0
@@ -123,7 +122,7 @@ class CustomUnittestConverter(base.Converter):
 
         # Construct the env, including the special build tool and build mode
         # variables.
-        out_env = collections.OrderedDict()
+        out_env = {}
         if env:
             out_env.update(
                 sorted(
