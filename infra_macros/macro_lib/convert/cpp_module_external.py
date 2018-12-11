@@ -14,9 +14,6 @@ from __future__ import unicode_literals
 
 import collections
 
-with allow_unsafe_import():
-    import os
-
 
 load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -56,7 +53,7 @@ class CppModuleExternalConverter(base.Converter):
         # Setup dependencies.
         dependencies = []
         if implicit_project_dep:
-            project = base_path.split(os.sep)[3]
+            project = base_path.split("/")[3]
             dependencies.append(third_party.get_tp2_project_target(project))
         for dep in external_deps:
             dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
