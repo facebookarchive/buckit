@@ -121,7 +121,10 @@ try:
         '//fs_image/buck_macros:image_layer.bzl',
         'image_layer',
     )
-    image_package = absolute_import('//fs_image/buck_macros/image_package.py')
+    load(  # noqa: F821
+        '//fs_image/buck_macros:image_package.bzl',
+        'image_package',
+    )
 except IOError:
     # Some sparse checkouts don't need `image_*` macros, and fbcode/fs_image
     # is not currently part of the sparse base (while `infra_macros` are).
@@ -196,8 +199,6 @@ def convert(context, base_path, rule):
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
     ]
-    if image_package:
-        converters.append(image_package.ImagePackageConverter(context))
 
     converters += get_fbonly_converters(context)
 
@@ -274,6 +275,8 @@ def convert(context, base_path, rule):
         new_converter_map['image_feature'] = image_feature
     if image_layer:
         new_converter_map['image_layer'] = image_layer
+    if image_package:
+        new_converter_map['image_package'] = image_package
 
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter
