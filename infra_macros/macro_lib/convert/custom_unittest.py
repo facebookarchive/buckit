@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-import pipes
 import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -25,6 +24,8 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -84,7 +85,7 @@ class CustomUnittestConverter(base.Converter):
                 # A simple shell script that just runs the first arg.
                 script = os.linesep.join([
                     '#!/bin/sh',
-                    'exec {0} "$@"'.format(pipes.quote(command[0])),
+                    'exec {0} "$@"'.format(shell.quote(command[0])),
                 ])
                 fb_native.genrule(
                     name=name + '-command',
@@ -93,7 +94,7 @@ class CustomUnittestConverter(base.Converter):
                     # The command just creates the above script with exec perms.
                     cmd=(
                         'echo -e {0} > $OUT && chmod +x $OUT'
-                        .format(pipes.quote(script)))
+                        .format(shell.quote(script)))
                 )
 
                 test = ':{0}-command'.format(name)
