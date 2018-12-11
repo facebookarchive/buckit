@@ -19,12 +19,13 @@ import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
 
 class CustomUnittestConverter(base.Converter):
@@ -51,15 +52,9 @@ class CustomUnittestConverter(base.Converter):
             env=None,
             visibility=None):
 
-        extra_rules = []
         platform = platform_utils.get_platform_for_base_path(base_path)
 
         attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
-        attributes['type'] = type
 
         if command:
             bin_refs = 0
@@ -92,17 +87,17 @@ class CustomUnittestConverter(base.Converter):
                     '#!/bin/sh',
                     'exec {0} "$@"'.format(pipes.quote(command[0])),
                 ])
-                command_attributes = collections.OrderedDict()
-                command_attributes['name'] = name + '-command'
-                if visibility is not None:
-                    command_attributes['visibility'] = visibility
-                command_attributes['out'] = name + '-command.sh'
-                # The command just creates the above script with exec perms.
-                command_attributes['cmd'] = (
-                    'echo -e {0} > $OUT && chmod +x $OUT'
-                    .format(pipes.quote(script)))
+                fb_native.genrule(
+                    name=name + '-command',
+                    visibility=get_visibility(visibility, name),
+                    out=name + '-command.sh',
+                    # The command just creates the above script with exec perms.
+                    cmd=(
+                        'echo -e {0} > $OUT && chmod +x $OUT'
+                        .format(pipes.quote(script)))
+                )
+
                 test = ':{0}-command'.format(name)
-                extra_rules.append(Rule('genrule', command_attributes))
 
             # If we see the fbmake output dir references in build args we need
             # to do special processing to plug this up the the actual deps that
@@ -157,4 +152,10 @@ class CustomUnittestConverter(base.Converter):
         if dependencies:
             attributes['deps'] = dependencies
 
-        return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
+        fb_native.sh_test(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            type=type,
+            **attributes)
+
+        return []
