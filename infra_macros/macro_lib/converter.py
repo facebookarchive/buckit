@@ -62,6 +62,7 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_lua_extension.bzl", "cpp_lua_extension")
 load("@fbcode_macros//build_defs:cpp_lua_main_module.bzl", "cpp_lua_main_module")
 load("@fbcode_macros//build_defs:cpp_java_extension.bzl", "cpp_java_extension")
+load("@fbcode_macros//build_defs:cpp_jvm_library.bzl", "cpp_jvm_library")
 load("@fbcode_macros//build_defs:cpp_module_external.bzl", "cpp_module_external")
 load("@fbcode_macros//build_defs:cpp_node_extension.bzl", "cpp_node_extension")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
@@ -105,7 +106,6 @@ with allow_unsafe_import():  # noqa: F821
 
 
 base = import_macro_lib('convert/base')
-cpp_jvm_library = import_macro_lib('convert/cpp_jvm_library')
 cpp_library_external_custom = import_macro_lib(
     'convert/cpp_library_external_custom'
 )
@@ -178,7 +178,6 @@ def convert(context, base_path, rule):
 
     converters = [
         cpp_library_external_custom.CppLibraryExternalCustomConverter(context),
-        cpp_jvm_library.CppJvmLibrary(context),
         cython.Converter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
@@ -208,6 +207,7 @@ def convert(context, base_path, rule):
         'buck_cxx_binary': buck_cxx_binary,  # noqa F821
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
+        'cpp_jvm_library': cpp_jvm_library,  # noqa F821
         'buck_cxx_library': buck_cxx_library,  # noqa F821
         'buck_cxx_test': buck_cxx_test,  # noqa F821
         'buck_export_file': buck_export_file,  # noqa F821
