@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import re
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
@@ -37,6 +35,15 @@ class CustomUnittestConverter(base.Converter):
 
     def is_generated_path(self, path):
         return path.startswith('$(FBMAKE_BIN_ROOT)') or path.startswith('_bin')
+
+    def _infer_test_target_from_command(self, command):
+        # If the first parameter is a location or exe macro, just extract the
+        # build target and use that.
+        cmd = command[0]
+        for macro_prefix in ("$(location ", "$(exe "):
+            if cmd.startswith(macro_prefix) and cmd.endswith(")"):
+                return cmd[len(macro_prefix):-1]
+        return None
 
     def convert(
             self,
@@ -66,9 +73,9 @@ class CustomUnittestConverter(base.Converter):
 
             # If the first parameter is a location macro, just extract the
             # build target and use that.
-            m = re.search('^\$\((location|exe) (?P<test>.*)\)$', command[0])
-            if m is not None:
-                test = m.group('test')
+            inferred_test = self._infer_test_target_from_command(command)
+            if inferred_test is not None:
+                test = inferred_test
 
             # If the first parameter appears to be generated, hook it up using
             # a dep source reference.
