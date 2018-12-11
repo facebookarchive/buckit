@@ -183,7 +183,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
             read_config))
     context['build_mode'] = build_mode.get_build_modes_for_current_buildfile().get(context['mode'])
     context['third_party_config'] = third_party_config
-    context['config'] = config
 
     # Set default visibility
     rule.attributes['visibility'] = get_visibility_for_base_path(

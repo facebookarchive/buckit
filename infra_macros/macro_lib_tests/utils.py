@@ -117,8 +117,6 @@ class ConverterTestCase(unittest.TestCase):
         create_build_mode = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/create_build_mode.bzl')
         base = parser.load_include('tools/build/buck/infra_macros/macro_lib/convert/base.py')
 
-        parsed_config = config.config
-
         build_file_deps = []
         include_defs = []
         buck_ops = (
@@ -142,8 +140,7 @@ class ConverterTestCase(unittest.TestCase):
                         'platform007': {'architecture': platform.machine()},
                         'platform': {'architecture': platform.machine()},
                     },
-                },
-                config=parsed_config))
+                }))
         return ConverterState(
             context=context,
             parser=parser,

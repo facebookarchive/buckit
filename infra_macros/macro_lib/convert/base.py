@@ -34,7 +34,6 @@ Context = collections.namedtuple(
         'mode',
         'lto_type',
         'third_party_config',
-        'config',
     ],
 )
 
