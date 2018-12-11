@@ -301,7 +301,7 @@ def parse_args(argv):
         help='Write the image package file(s) to this path -- must not exist',
     )
     # Future: To add support for incremental send-streams, we'd want to
-    # use this (see `--ancestor-jsons` in `image_package.py`)
+    # use this (see `--ancestor-jsons` in `image_package.bzl`)
     #
     # parser.add_argument(
     #     '--ancestor-jsons',

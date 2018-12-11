@@ -53,7 +53,7 @@ class PackageImageTestCase(unittest.TestCase):
                 renders.append(render_sendstream(infile.read()))
         self.assertEqual(*renders)
 
-    # This tests `image_package.py` by consuming its output.
+    # This tests `image_package.bzl` by consuming its output.
     def test_packaged_sendstream_matches_original(self):
         self._assert_sendstream_files_equal(
             self._sibling_path('create_ops-original.sendstream'),
