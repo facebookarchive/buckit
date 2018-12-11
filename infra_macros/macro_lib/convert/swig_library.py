@@ -330,35 +330,31 @@ class GoSwigConverter(SwigLangConverter):
             go_package_name=None,
             visibility=None,
             **kwargs):
-
-        # generate the cgo_library
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        attrs['package_name'] = go_package_name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-
-        # platform is required for cxx_genrule (copied from java)
-        attrs['srcs'] = (
-            ['{}#{}'.format(s, platform_utils.get_buck_platform_for_base_path(base_path))
-             for s in gen_srcs.values()])
-
         # create wrapper cxx_library rule that includes generated .cc files
         for dep in cpp_deps:
-            cxx_rule_args = {}
-            cxx_rule_args['name'] = "{}-ext".format(dep.name)
-            cxx_rule_args['deps'] = src_and_dep_helpers.format_deps([dep])
-            cxx_rule_args['srcs'] = [src]
-
             deps.extend(src_and_dep_helpers.format_deps([target_utils.RuleTarget(
                 name="{}-ext".format(dep.name),
                 base_path=dep.base_path,
                 repo=dep.repo)]))
-            yield Rule('cxx_library', cxx_rule_args)
+            fb_native.cxx_library(
+                name="{}-ext".format(dep.name),
+                deps=src_and_dep_helpers.format_deps([dep]),
+                srcs=[src],
+            )
 
-        attrs['deps'] = deps
+        # generate the cgo_library
+        fb_native.cgo_library(
+            name=name,
+            package_name=go_package_name,
+            visibility=get_visibility(visibility, name),
+            # platform is required for cxx_genrule (copied from java)
+            srcs=(
+                ['{}#{}'.format(s, platform_utils.get_buck_platform_for_base_path(base_path))
+                 for s in gen_srcs.values()]),
+            deps=deps,
+        )
 
-        yield Rule('cgo_library', attrs)
+        return []
 
 
 class SwigLibraryConverter(base.Converter):
