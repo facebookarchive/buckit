@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
@@ -130,7 +128,7 @@ class JavaSwigConverter(SwigLangConverter):
         return flags
 
     def get_generated_sources(self, module):
-        return collections.OrderedDict([('', '.')])
+        return {'': '.'}
 
     def get_language_rule(
             self,
@@ -226,7 +224,7 @@ class PythonSwigConverter(SwigLangConverter):
 
     def get_generated_sources(self, module):
         src = module + '.py'
-        return collections.OrderedDict([(src, src)])
+        return {src: src}
 
     def get_language_rule(
             self,
@@ -313,7 +311,7 @@ class GoSwigConverter(SwigLangConverter):
 
     def get_generated_sources(self, module):
         src = module + '.go'
-        return collections.OrderedDict([(src, src)])
+        return {src: src}
 
     def get_language_rule(
             self,
@@ -489,7 +487,7 @@ class SwigLibraryConverter(base.Converter):
         sources the compiler generated.
         """
 
-        out = collections.OrderedDict()
+        out = {}
         rules = []
 
         for sname, src in srcs.items():
