@@ -12,17 +12,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
-include_defs("{}/fbcode_target.py".format(macro_root), "target")
 include_defs("{}/rule.py".format(macro_root))
-load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
-load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
+load("@fbcode_macros//build_defs/lib:ocaml_common.bzl", "ocaml_common")
 
 
 class OCamlConverter(base.Converter):
@@ -37,13 +30,10 @@ class OCamlConverter(base.Converter):
     def get_buck_rule_type(self):
         return self._rule_type
 
-    def is_binary(self):
-        return self.get_fbconfig_rule_type() in ('ocaml_binary',)
-
     def convert(
             self,
             base_path,
-            name=None,
+            name,
             srcs=(),
             deps=(),
             compiler_flags=None,
@@ -54,95 +44,22 @@ class OCamlConverter(base.Converter):
             external_deps=(),
             visibility=None,
             ppx_flag=None,
-            nodefaultlibs=False,
-        ):
+            nodefaultlibs=False):
 
-        extra_rules = []
-        dependencies = []
-        platform = platform_utils.get_platform_for_base_path(base_path)
+        attributes = ocaml_common.convert_ocaml(
+            name=name,
+            rule_type=self._rule_type,
+            srcs=srcs,
+            deps=deps,
+            compiler_flags=compiler_flags,
+            ocamldep_flags=ocamldep_flags,
+            native=native,
+            warnings_flags=warnings_flags,
+            supports_coverage=supports_coverage,
+            external_deps=external_deps,
+            visibility=visibility,
+            ppx_flag=ppx_flag,
+            nodefaultlibs=nodefaultlibs,
+        )
 
-        attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-
-        attributes['srcs'] = src_and_dep_helpers.convert_source_list(base_path, srcs)
-
-        if warnings_flags:
-            attributes['warnings_flags'] = warnings_flags
-
-        attributes['compiler_flags'] = ['-warn-error', '+a', '-safe-string']
-        if compiler_flags:
-            attributes['compiler_flags'].extend(
-                string_macros.convert_args_with_macros(
-                    compiler_flags,
-                    platform=platform))
-
-        attributes['ocamldep_flags'] = []
-        if ocamldep_flags:
-            attributes['ocamldep_flags'].extend(ocamldep_flags)
-
-        if ppx_flag is not None:
-            attributes['compiler_flags'].extend(['-ppx', ppx_flag])
-            attributes['ocamldep_flags'].extend(['-ppx', ppx_flag])
-
-        if not native:
-            attributes['bytecode_only'] = True
-
-        if self.get_fbconfig_rule_type() == 'ocaml_binary':
-            attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-
-        # Add the C/C++ build info lib to deps.
-        if self.get_fbconfig_rule_type() == 'ocaml_binary':
-            cxx_build_info = cpp_common.cxx_build_info_rule(
-                base_path,
-                name,
-                self.get_fbconfig_rule_type(),
-                platform,
-                visibility=visibility)
-            dependencies.append(cxx_build_info)
-
-        # Translate dependencies.
-        for dep in deps:
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-
-        # Translate external dependencies.
-        for dep in external_deps:
-            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
-
-        # Add in binary-specific link deps.
-        if self.is_binary():
-            dependencies.extend(
-                cpp_common.get_binary_link_deps(
-                    base_path,
-                    name,
-                    default_deps=not nodefaultlibs,
-                )
-            )
-
-        # If any deps were specified, add them to the output attrs.
-        if dependencies:
-            attributes['deps'], attributes['platform_deps'] = (
-                src_and_dep_helpers.format_all_deps(dependencies))
-
-        # Translate visibility
-        if visibility is not None:
-            attributes['visibility'] = visibility
-
-        platform = platform_utils.get_platform_for_base_path(base_path)
-
-        ldflags = cpp_common.get_ldflags(
-            base_path,
-            name,
-            self.get_fbconfig_rule_type(),
-            binary=self.is_binary(),
-            platform=platform if self.is_binary() else None)
-
-        if nodefaultlibs:
-            ldflags.append('-nodefaultlibs')
-
-        if "-flto" in ldflags:
-            attributes['compiler_flags'].extend(["-ccopt", "-flto", "-cclib", "-flto"])
-        if "-flto=thin" in ldflags:
-            attributes['compiler_flags'].extend(["-ccopt", "-flto=thin", "-cclib", "-flto=thin"])
-
-        return [Rule(self.get_buck_rule_type(), attributes)] + extra_rules
+        return [Rule(self.get_buck_rule_type(), attributes)]
