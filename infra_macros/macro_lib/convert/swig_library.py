@@ -14,9 +14,6 @@ from __future__ import unicode_literals
 
 import collections
 
-with allow_unsafe_import():  # noqa: magic
-    import os
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
@@ -44,8 +41,10 @@ load(
     "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
     "fb_native",
 )
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 FLAGS = [
@@ -424,7 +423,7 @@ class SwigLibraryConverter(base.Converter):
 
         platform = platform_utils.get_platform_for_base_path(base_path)
         converter = self._converters[lang]
-        base, _ = os.path.splitext(src_and_dep_helpers.get_source_name(interface))
+        base, _ = paths.split_extension(src_and_dep_helpers.get_source_name(interface))
         hdr = base + '.h'
         src = base + '.cc'
 
@@ -452,7 +451,7 @@ class SwigLibraryConverter(base.Converter):
         fb_native.cxx_genrule(
             name=gen_name,
             visibility=get_visibility(visibility, gen_name),
-            out=os.curdir,
+            out=common_paths.CURRENT_DIRECTORY,
             srcs=[interface],
             cmd=(
                 ' && '.join(cmds).format(
