@@ -12,13 +12,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
 
 load("@fbcode_macros//build_defs/lib:modules.bzl", "modules")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
@@ -76,25 +76,26 @@ class CppModuleExternalConverter(base.Converter):
         # Wrap with a `cxx_library`, propagating the module map file via the
         # `-fmodule-file=...` flag in it's exported preprocessor flags so that
         # dependents can easily access the module.
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
         out_exported_preprocessor_flags = []
         out_exported_preprocessor_flags.extend(propagated_pp_flags)
         out_exported_preprocessor_flags.append(
             '-fmodule-file={}=$(location :{})'
             .format(module_name, module_rule_name))
-        attrs['exported_lang_preprocessor_flags'] = (
-            {'cxx': out_exported_preprocessor_flags})
-        attrs['exported_deps'] = (
-            src_and_dep_helpers.format_deps(
-                dependencies,
-                platform=platform))
-        if visibility is not None:
-            attrs["visibility"] = visibility
-        # Setup platform default for compilation DB, and direct building.
-        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        attrs['default_platform'] = buck_platform
-        attrs['defaults'] = {'platform': buck_platform}
-        wrapper_rule = Rule('cxx_library', attrs)
 
-        return [wrapper_rule]
+        # Setup platform default for compilation DB, and direct building.
+        buck_platform=platform_utils.get_buck_platform_for_base_path(base_path)
+
+        fb_native.cxx_library(
+            name=name,
+            exported_lang_preprocessor_flags=(
+                {'cxx': out_exported_preprocessor_flags}),
+            exported_deps=(
+                src_and_dep_helpers.format_deps(
+                    dependencies,
+                    platform=platform)),
+            visibility=get_visibility(visibility, name),
+            default_platform=buck_platform,
+            defaults={'platform': buck_platform},
+        )
+
+        return []
