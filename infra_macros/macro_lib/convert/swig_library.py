@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import pipes
 
 with allow_unsafe_import():  # noqa: magic
     import os
@@ -46,6 +45,7 @@ load(
     "fb_native",
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 FLAGS = [
@@ -457,12 +457,12 @@ class SwigLibraryConverter(base.Converter):
             cmd=(
                 ' && '.join(cmds).format(
                     swig=third_party.get_tool_target('swig', None, 'bin/swig', platform),
-                    flags=' '.join(map(pipes.quote, flags)),
-                    lang=pipes.quote(converter.get_lang_opt()),
+                    flags=' '.join(map(shell.quote, flags)),
+                    lang=shell.quote(converter.get_lang_opt()),
                     includes=self.get_exported_include_tree(':' + name),
                     deps=''.join([' ' + d for d in src_and_dep_helpers.format_deps(cpp_deps)]),
-                    hdr=pipes.quote(hdr),
-                    src=pipes.quote(src))),
+                    hdr=shell.quote(hdr),
+                    src=shell.quote(src))),
         )
 
         gen_hdr_name = gen_name + '=' + hdr
