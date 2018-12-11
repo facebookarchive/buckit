@@ -435,12 +435,6 @@ class SwigLibraryConverter(base.Converter):
         flags.extend(converter.get_lang_flags(**kwargs))
 
         gen_name = '{}-{}-gen'.format(name, lang)
-        attrs = collections.OrderedDict()
-        attrs['name'] = gen_name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = os.curdir
-        attrs['srcs'] = [interface]
         cmds = [
             'mkdir -p'
             ' "$OUT"/lang'
@@ -456,16 +450,21 @@ class SwigLibraryConverter(base.Converter):
             ' -outdir "$OUT"/lang -o "$OUT"/gen/{src} -oh "$OUT"/gen/{hdr}'
             ' "$SRCS"',
         ]
-        attrs['cmd'] = (
-            ' && '.join(cmds).format(
-                swig=third_party.get_tool_target('swig', None, 'bin/swig', platform),
-                flags=' '.join(map(pipes.quote, flags)),
-                lang=pipes.quote(converter.get_lang_opt()),
-                includes=self.get_exported_include_tree(':' + name),
-                deps=''.join([' ' + d for d in src_and_dep_helpers.format_deps(cpp_deps)]),
-                hdr=pipes.quote(hdr),
-                src=pipes.quote(src)))
-        rules.append(Rule('cxx_genrule', attrs))
+        fb_native.cxx_genrule(
+            name=gen_name,
+            visibility=get_visibility(visibility, gen_name),
+            out=os.curdir,
+            srcs=[interface],
+            cmd=(
+                ' && '.join(cmds).format(
+                    swig=third_party.get_tool_target('swig', None, 'bin/swig', platform),
+                    flags=' '.join(map(pipes.quote, flags)),
+                    lang=pipes.quote(converter.get_lang_opt()),
+                    includes=self.get_exported_include_tree(':' + name),
+                    deps=''.join([' ' + d for d in src_and_dep_helpers.format_deps(cpp_deps)]),
+                    hdr=pipes.quote(hdr),
+                    src=pipes.quote(src))),
+        )
 
         gen_hdr_name = gen_name + '=' + hdr
         copy_rule(
