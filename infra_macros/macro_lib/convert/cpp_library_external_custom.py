@@ -55,15 +55,19 @@ class CppLibraryExternalCustomConverter(base.Converter):
         else:
             return str(libs.index(lib))
 
+    def _extract_lib(self, arg):
+        """Extracts library name from name-only library reference."""
+        prefix = "{LIB_"
+        if not arg.startswith(prefix) or not arg.endswith("}"):
+            return None
+        return arg[len(prefix):-1]
+
     def translate_link(self, args, libs, shared=False):
         """
         Translate the given link args into their buck equivalents.
         """
 
         out = []
-
-        # Match name-only library references.
-        lib_re = re.compile('^\\{LIB_(.*)\\}$')
 
         # Match full path library references.
         rel_lib_re = re.compile('^-l\\{lib_(.*)\\}$')
@@ -73,11 +77,11 @@ class CppLibraryExternalCustomConverter(base.Converter):
         while i < len(args):
 
             # Translate `{LIB_<name>}` references to buck-style macros.
-            m = lib_re.search(args[i])
-            if m is not None:
+            lib = self._extract_lib(args[i])
+            if lib is not None:
                 out.append(
                     '$(lib {})'.format(
-                        self.translate_ref(m.group(1), libs, shared)))
+                        self.translate_ref(lib, libs, shared)))
                 i += 1
                 continue
 
