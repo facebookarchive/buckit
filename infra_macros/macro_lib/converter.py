@@ -69,6 +69,7 @@ load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extensio
 load("@fbcode_macros//build_defs:cpp_precompiled_header.bzl", "cpp_precompiled_header")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_library_external_custom.bzl", "cpp_library_external_custom")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
@@ -107,9 +108,6 @@ with allow_unsafe_import():  # noqa: F821
 
 
 base = import_macro_lib('convert/base')
-cpp_library_external_custom = import_macro_lib(
-    'convert/cpp_library_external_custom'
-)
 cython = import_macro_lib('convert/cython')
 haskell = import_macro_lib('convert/haskell')
 try:
@@ -177,7 +175,6 @@ def convert(context, base_path, rule):
     """
 
     converters = [
-        cpp_library_external_custom.CppLibraryExternalCustomConverter(context),
         cython.Converter(context),
         haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
@@ -207,6 +204,7 @@ def convert(context, base_path, rule):
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_jvm_library': cpp_jvm_library,  # noqa F821
+        'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
         'custom_unittest': custom_unittest,  # noqa F821
         'buck_cxx_library': buck_cxx_library,  # noqa F821
         'buck_cxx_test': buck_cxx_test,  # noqa F821
