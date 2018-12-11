@@ -85,8 +85,6 @@ The consequences of this information hiding are:
 '''
 import os
 
-from pipes import quote
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def absolute_import(path):
@@ -128,6 +126,8 @@ load(  # noqa: F821
 )
 image_feature = image_feature  # noqa: F821
 DO_NOT_DEPEND_ON_FEATURES_SUFFIX = DO_NOT_DEPEND_ON_FEATURES_SUFFIX  # noqa: F821
+load("@bazel_skylib//lib:shell.bzl", "shell")  # noqa: F821
+shell = shell  # noqa: F821
 
 
 class ImageLayerConverter(base.Converter):
@@ -257,10 +257,10 @@ class ImageLayerConverter(base.Converter):
 
                 {make_subvol_cmd}
                 '''.format(
-                    rule_name_quoted=quote(name),
+                    rule_name_quoted=shell.quote(name),
                     refcounts_dir_quoted=os.path.join(
                         '$GEN_DIR',
-                        quote(get_project_root_from_gen_dir()),
+                        shell.quote(get_project_root_from_gen_dir()),
                         'buck-out/.volume-refcount-hardlinks/',
                     ),
                     make_subvol_cmd=make_subvol_cmd,
@@ -328,10 +328,10 @@ class ImageLayerConverter(base.Converter):
                 $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
                   > "$OUT"
         '''.format(
-            rule_name_quoted=quote(rule_name),
+            rule_name_quoted=shell.quote(rule_name),
             parent_layer_json_quoted='$(location {})'.format(parent_layer)
                 if parent_layer else "''",
-            current_target_quoted=quote(target_utils.to_label(
+            current_target_quoted=shell.quote(target_utils.to_label(
                 self._context.config.get_current_repo_name(),
                 base_path,
                 rule_name,
