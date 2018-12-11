@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
 import collections
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -20,6 +19,7 @@ include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 def first(*args):
     for arg in args:
@@ -143,7 +143,7 @@ class CppLibraryExternalCustomConverter(base.Converter):
             else self.translate_link(static_link, static_libs))
         out_static_libs = (
             None if static_libs is None
-            else [os.path.join(lib_dir, 'lib{}.a'.format(s))
+            else [paths.join(lib_dir, 'lib{}.a'.format(s))
                   for s in static_libs])
 
         out_static_pic_link = (
@@ -151,7 +151,7 @@ class CppLibraryExternalCustomConverter(base.Converter):
             else self.translate_link(static_pic_link, static_pic_libs))
         out_static_pic_libs = (
             None if static_pic_libs is None
-            else [os.path.join(lib_dir, 'lib{}.a'.format(s))
+            else [paths.join(lib_dir, 'lib{}.a'.format(s))
                   for s in static_pic_libs])
 
         out_shared_link = (
@@ -160,7 +160,7 @@ class CppLibraryExternalCustomConverter(base.Converter):
         out_shared_libs = (
             None if shared_libs is None
             else {'lib{}.so'.format(s):
-                   os.path.join(lib_dir, 'lib{}.so'.format(s))
+                   paths.join(lib_dir, 'lib{}.so'.format(s))
                        for s in shared_libs})
 
         attributes['static_link'] = first(out_static_link, out_static_pic_link)
