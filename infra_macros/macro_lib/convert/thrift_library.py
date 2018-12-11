@@ -35,7 +35,6 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 haskell = import_macro_lib('convert/haskell')
 cython = import_macro_lib('convert/cython')
-ocaml = import_macro_lib('convert/ocaml')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
@@ -52,6 +51,8 @@ load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -1631,8 +1632,6 @@ class OCamlThriftConverter(ThriftLangConverter):
 
     def __init__(self, context, *args, **kwargs):
         super(OCamlThriftConverter, self).__init__(context, *args, **kwargs)
-        self._ocaml_converter = (
-            ocaml.OCamlConverter(context, 'ocaml_library'))
 
     def get_compiler(self):
         return config.get_thrift_ocaml_compiler()
@@ -1704,20 +1703,20 @@ class OCamlThriftConverter(ThriftLangConverter):
             visibility,
             **kwargs):
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = self.merge_sources_map(sources_map).values()
-
         dependencies = []
         dependencies.extend(self.THRIFT_OCAML_DEPS)
         dependencies.extend(self.THRIFT_OCAML_LIBS)
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        attrs['deps'] = (src_and_dep_helpers.format_all_deps(dependencies))[0]
 
-        return [Rule('ocaml_library', attrs)]
+        fb_native.ocaml_library(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            srcs=self.merge_sources_map(sources_map).values(),
+            deps=(src_and_dep_helpers.format_all_deps(dependencies))[0],
+        )
+
+        return []
 
 
 class Python3ThriftConverter(ThriftLangConverter):
