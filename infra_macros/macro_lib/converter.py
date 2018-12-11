@@ -113,7 +113,10 @@ custom_unittest = import_macro_lib('convert/custom_unittest')
 cython = import_macro_lib('convert/cython')
 haskell = import_macro_lib('convert/haskell')
 try:
-    image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
+    load(  # noqa: F821
+        '//fs_image/buck_macros:image_feature.bzl',
+        'image_feature',
+    )
     image_layer = absolute_import('//fs_image/buck_macros/image_layer.py')
     image_package = absolute_import('//fs_image/buck_macros/image_package.py')
 except IOError:
@@ -191,8 +194,6 @@ def convert(context, base_path, rule):
         wheel.PyWheel(context),
         wheel.PyWheelDefault(context),
     ]
-    if image_feature:
-        converters.append(image_feature.ImageFeatureConverter(context))
     if image_layer:
         converters.append(image_layer.ImageLayerConverter(context))
     if image_package:
@@ -267,6 +268,9 @@ def convert(context, base_path, rule):
         'd_library_external': d_library_external,
         'd_unittest': d_unittest,
     }
+
+    if image_feature:
+        new_converter_map['image_feature'] = image_feature
 
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter
