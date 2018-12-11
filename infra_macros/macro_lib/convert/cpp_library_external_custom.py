@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import re
 import os
 import collections
 
@@ -62,15 +61,19 @@ class CppLibraryExternalCustomConverter(base.Converter):
             return None
         return arg[len(prefix):-1]
 
+    def _extract_rel_lib(self, arg):
+        """Extracts library name from full path library reference."""
+        prefix = "-l{lib_"
+        if not arg.startswith(prefix) or not arg.endswith("}"):
+            return None
+        return arg[len(prefix):-1]
+
     def translate_link(self, args, libs, shared=False):
         """
         Translate the given link args into their buck equivalents.
         """
 
         out = []
-
-        # Match full path library references.
-        rel_lib_re = re.compile('^-l\\{lib_(.*)\\}$')
 
         # Iterate over args, translating them to their buck equivalents.
         i = 0
@@ -88,11 +91,11 @@ class CppLibraryExternalCustomConverter(base.Converter):
             # Translate `-L{dir} -l{lib_<name>}` references to buck-style
             # macros.
             if shared and args[i] == '-L{dir}' and i < len(args) - 1:
-                m = rel_lib_re.match(args[i + 1])
-                if m is not None:
+                lib = self._extract_rel_lib(args[i + 1])
+                if lib is not None:
                     out.append(
                         '$(rel-lib {})'.format(
-                            self.translate_ref(m.group(1), libs, shared)))
+                            self.translate_ref(lib, libs, shared)))
                     i += 2
                     continue
 
