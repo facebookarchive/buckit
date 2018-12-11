@@ -12,13 +12,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@bazel_skylib//lib:paths.bzl", "paths")
@@ -43,39 +43,37 @@ class CppJvmLibrary(base.Converter):
         ])
 
     def convert(self, base_path, name, major_version, visibility=None):
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-
-
         platform_jvm_path = '/usr/local/fb-jdk-{}-{{platform}}'.format(major_version)
         jvm_path = '/usr/local/fb-jdk-{}'.format(major_version)
 
-        # We use include/library paths to wrap the custom FB JDK installed at
-        # system locations.  As such, we don't properly hash various components
-        # (e.g. headers, libraries) pulled into the build.  Longer-term, we
-        # should move the FB JDK into tp2 to do this properly.
-        attrs['exported_platform_preprocessor_flags'] = (
-            src_and_dep_helpers.format_platform_param(
-                partial.make(
-                    _formatter_partial,
-                    ['-isystem',
-                     paths.join(platform_jvm_path, 'include'),
-                     '-isystem',
-                     paths.join(platform_jvm_path, 'include', 'linux'),
-                     '-isystem',
-                     paths.join(jvm_path, 'include'),
-                     '-isystem',
-                     paths.join(jvm_path, 'include', 'linux')])))
-        attrs['exported_platform_linker_flags'] = (
-            src_and_dep_helpers.format_platform_param(
-                partial.make(
-                    _formatter_partial,
-                    ['-L{}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
-                     '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
-                     '-L{}/jre/lib/{{arch}}/server'.format(jvm_path),
-                     '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(jvm_path),
-                     '-ljvm'])))
+        fb_native.cxx_library(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            # We use include/library paths to wrap the custom FB JDK installed at
+            # system locations.  As such, we don't properly hash various components
+            # (e.g. headers, libraries) pulled into the build.  Longer-term, we
+            # should move the FB JDK into tp2 to do this properly.
+            exported_platform_preprocessor_flags=(
+                src_and_dep_helpers.format_platform_param(
+                    partial.make(
+                        _formatter_partial,
+                        ['-isystem',
+                         paths.join(platform_jvm_path, 'include'),
+                         '-isystem',
+                         paths.join(platform_jvm_path, 'include', 'linux'),
+                         '-isystem',
+                         paths.join(jvm_path, 'include'),
+                         '-isystem',
+                         paths.join(jvm_path, 'include', 'linux')]))),
+            exported_platform_linker_flags=(
+                src_and_dep_helpers.format_platform_param(
+                    partial.make(
+                        _formatter_partial,
+                        ['-L{}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
+                         '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(platform_jvm_path),
+                         '-L{}/jre/lib/{{arch}}/server'.format(jvm_path),
+                         '-Wl,-rpath={}/jre/lib/{{arch}}/server'.format(jvm_path),
+                         '-ljvm']))),
+        )
 
-        return [Rule('cxx_library', attrs)]
+        return []
