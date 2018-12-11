@@ -14,10 +14,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import functools
-import itertools
-import pipes
 
 with allow_unsafe_import():
     import warnings
@@ -25,9 +22,7 @@ with allow_unsafe_import():
     warnings.simplefilter("ignore", DeprecationWarning)
     warnings.simplefilter("ignore", PendingDeprecationWarning)
     import os
-    import pkgutil
     import sys
-    import textwrap
 
 
 def find_cell_root(start_path):
@@ -63,12 +58,10 @@ load('@fbcode_macros//build_defs/lib:build_mode.bzl', 'build_mode')
 load('@fbcode_macros//build_defs:config.bzl', 'config')
 load('@fbcode_macros//build_defs/lib:cpp_common.bzl', 'cpp_common')
 load('@fbcode_macros//build_defs:coverage.bzl', 'coverage')
-load('@fbcode_macros//build_defs:platform_utils.bzl', 'platform_utils')
 load('@fbcode_macros//build_defs/lib:visibility.bzl', 'get_visibility_for_base_path')
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
-include_defs('//{}/cxx_sources.py'.format(MACRO_LIB_DIR), 'cxx_sources')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 include_defs('//{}/convert/base.py'.format(MACRO_LIB_DIR), 'base')
 
