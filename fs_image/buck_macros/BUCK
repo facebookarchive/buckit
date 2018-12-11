@@ -18,7 +18,7 @@ fake_macro_library(
 
 fake_macro_library(
     name = "image_feature",
-    srcs = ["image_feature.py"],
+    srcs = ["image_feature.bzl"],
 )
 
 fake_macro_library(

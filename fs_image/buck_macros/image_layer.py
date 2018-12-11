@@ -105,7 +105,6 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
-image_feature = absolute_import('//fs_image/buck_macros/image_feature.py')
 load(  # noqa: F821
     "@fbcode_macros//build_defs:custom_rule.bzl",
     "get_project_root_from_gen_dir",
