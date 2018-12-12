@@ -320,18 +320,6 @@ class LuaConverter(base.Converter):
         """
         Buckify a library rule.
         """
-
-        attributes = collections.OrderedDict()
-
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
-
-        attributes['srcs'] = self.convert_sources(base_path, srcs)
-
-        attributes['base_module'] = self.get_base_module(
-            base_path, base_module=base_module)
-
         dependencies = []
         if third_party.is_tp2(base_path):
             dependencies.append(
@@ -341,6 +329,7 @@ class LuaConverter(base.Converter):
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in external_deps:
             dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
+        attributes = {}
         if dependencies:
             platform = (
                 third_party.get_tp2_platform(base_path)
@@ -348,7 +337,14 @@ class LuaConverter(base.Converter):
             attributes['deps'], attributes['platform_deps'] = (
                 src_and_dep_helpers.format_all_deps(dependencies, platform=platform))
 
-        return [Rule('lua_library', attributes)]
+        fb_native.lua_library(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            srcs=self.convert_sources(base_path, srcs),
+            base_module=self.get_base_module(
+                base_path, base_module=base_module),
+            **attributes
+        )
 
     def convert_binary(
             self,
@@ -383,15 +379,14 @@ class LuaConverter(base.Converter):
         # as a dep.
         if srcs:
             lib_name = name + '-library'
-            rules.extend(
-                self.convert_library(
-                    base_path,
-                    lib_name,
-                    base_module=base_module,
-                    srcs=srcs,
-                    deps=deps,
-                    external_deps=external_deps,
-                    visibility=visibility))
+            self.convert_library(
+                base_path,
+                lib_name,
+                base_module=base_module,
+                srcs=srcs,
+                deps=deps,
+                external_deps=external_deps,
+                visibility=visibility)
             dependencies.append(target_utils.RootRuleTarget(base_path, lib_name))
             deps = []
             external_deps = []
@@ -504,7 +499,8 @@ class LuaConverter(base.Converter):
     def convert(self, *args, **kwargs):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'lua_library':
-            return self.convert_library(*args, **kwargs)
+            self.convert_library(*args, **kwargs)
+            return []
         elif rtype == 'lua_binary':
             return self.convert_binary(*args, **kwargs)
         elif rtype == 'lua_unittest':
