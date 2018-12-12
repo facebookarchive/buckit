@@ -882,18 +882,18 @@ class HaskellConverter(base.Converter):
                 **kwargs))
         rules.extend(binary_rules)
 
+        platform = platform_utils.get_platform_for_base_path(base_path)
+
         # Create a `sh_test` rule to wrap the test binary and set it's tags so
         # that testpilot knows it's a haskell test.
-        attributes = collections.OrderedDict()
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
-        attributes['test'] = ':' + binary_name
-        attributes['env'] = env
-        platform = platform_utils.get_platform_for_base_path(base_path)
-        attributes['labels'] = (
-            label_utils.convert_labels(platform, 'haskell', 'custom-type-hs', *tags))
-        rules.append(Rule('sh_test', attributes))
+        fb_native.sh_test(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            test=':' + binary_name,
+            env=env,
+            labels=(
+                label_utils.convert_labels(platform, 'haskell', 'custom-type-hs', *tags)),
+        )
 
         return rules
 
