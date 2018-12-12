@@ -567,9 +567,6 @@ class HaskellConverter(base.Converter):
         Construct the rules to generate a haskell source from the given
         `hsc2hs` source.
         """
-
-        rules = []
-
         # Macros in the `cxx_genrule` below don't support the `platform_deps`
         # parameter that we rely on to support multi-platform builds.  So use
         # a helper rule for this, and just depend on the helper.
@@ -578,27 +575,26 @@ class HaskellConverter(base.Converter):
         self._create_dep_rule(base_path, deps_name, deps + d, visibility)
 
         out_obj = paths.split_extension(paths.basename(source))[0] + "_hsc_make"
+        source_name = name + '-' + source
+        fb_native.cxx_genrule(
+            name=source_name,
+            visibility=get_visibility(visibility, source_name),
+            cmd=(
+                HSC2HS_TEMPL.format(
+                    fbcode=(
+                        paths.join(
+                            '$GEN_DIR',
+                            get_project_root_from_gen_dir())),
+                    ghc_tool=third_party.get_tool_path('ghc', platform),
+                    ghc=paths.join(third_party.get_build_path(platform), 'ghc'),
+                    link_style=config.get_default_link_style(),
+                    deps=' :' + deps_name,
+                    out_obj=out_obj)),
+            srcs=[source],
+            out=paths.split_extension(source)[0] + '.hs',
+        )
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-' + source
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['cmd'] = (
-            HSC2HS_TEMPL.format(
-                fbcode=(
-                    paths.join(
-                        '$GEN_DIR',
-                        get_project_root_from_gen_dir())),
-                ghc_tool=third_party.get_tool_path('ghc', platform),
-                ghc=paths.join(third_party.get_build_path(platform), 'ghc'),
-                link_style=config.get_default_link_style(),
-                deps=' :' + deps_name,
-                out_obj=out_obj))
-        attrs['srcs'] = [source]
-        attrs['out'] = paths.split_extension(source)[0] + '.hs'
-        rules.append(Rule('cxx_genrule', attrs))
-
-        return (':' + attrs['name'], rules)
+        return ':' + source_name
 
     def convert_rule(
             self,
@@ -768,7 +764,7 @@ class HaskellConverter(base.Converter):
                 implicit_src_deps.update(
                     self.get_deps_for_packages(ALEX_PACKAGES, platform))
             elif ext == '.hsc':
-                src, extra_rules = (
+                src = (
                     self.convert_hsc2hs(
                         base_path,
                         name,
@@ -777,7 +773,6 @@ class HaskellConverter(base.Converter):
                         user_deps,
                         visibility))
                 out_srcs.append(src)
-                rules.extend(extra_rules)
             elif ext == '.chs':
                 src = (
                     self.convert_c2hs(
