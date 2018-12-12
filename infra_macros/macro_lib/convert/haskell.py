@@ -48,7 +48,14 @@ VALID_WARNINGS_FLAGS = frozenset([
     '-Werror',
     '-Wwarn',
 ])
-VALID_WARNINGS_FLAGS_RE = re.compile('^(-f(no-)?warn-)|(-W(no-)?)')
+
+# '^(-f(no-)?warn-)|(-W(no-)?)'
+VALID_WARNINGS_FLAG_PREFIXES = (
+    "-fwarn-",
+    "-fno-warn-",
+    "-W",
+    "-Wno-",
+)
 
 VALID_COMPILER_FLAGS_RE = re.compile(
     '^-O[0-9]*$|'
@@ -375,6 +382,14 @@ class HaskellConverter(base.Converter):
 
         return IMPLICIT_TP_DEPS
 
+    def _is_valid_warning_flag(self, flag):
+        if flag in VALID_WARNINGS_FLAGS:
+            return True
+        for prefix in VALID_WARNINGS_FLAG_PREFIXES:
+            if flag.startswith(prefix):
+                return True
+        return False
+
     def get_warnings_flags(self, warnings_flags=None):
         """
         Return the flags responsible for controlling the warnings used in
@@ -391,9 +406,7 @@ class HaskellConverter(base.Converter):
         # Verify that all the warning flags are valid
         bad_warnings_flags = set()
         for flag in wflags:
-            if flag in VALID_WARNINGS_FLAGS:
-                continue
-            if VALID_WARNINGS_FLAGS_RE.search(flag):
+            if self._is_valid_warning_flag(flag):
                 continue
             bad_warnings_flags.add(flag)
         if bad_warnings_flags:
