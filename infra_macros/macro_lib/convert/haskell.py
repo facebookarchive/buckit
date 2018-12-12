@@ -482,23 +482,21 @@ class HaskellConverter(base.Converter):
         """
         Create rules to generate a Haskell source from the given alex file.
         """
+        alex_name = name + '-' + alex_src
 
-        rules = []
+        fb_native.genrule(
+            name=alex_name,
+            visibility=get_visibility(visibility, alex_name),
+            out=paths.split_extension(alex_src)[0] + '.hs',
+            srcs=[alex_src],
+            cmd=' && '.join([
+                'mkdir -p `dirname "$OUT"`',
+                '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
+                    alex=third_party.get_tool_target(ALEX.base_path, None, ALEX.name, platform)),
+            ]),
+        )
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-' + alex_src
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = paths.split_extension(alex_src)[0] + '.hs'
-        attrs['srcs'] = [alex_src]
-        attrs['cmd'] = ' && '.join([
-            'mkdir -p `dirname "$OUT"`',
-            '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                alex=third_party.get_tool_target(ALEX.base_path, None, ALEX.name, platform)),
-        ])
-        rules.append(Rule('genrule', attrs))
-
-        return (':' + attrs['name'], rules)
+        return ':' + alex_name
 
     def _get_dep_rule(self, base_path, name, deps, visibility):
         """
@@ -764,9 +762,8 @@ class HaskellConverter(base.Converter):
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES, platform))
             elif ext == '.x':
-                src, extra_rules = self.convert_alex(name, platform, src, visibility)
+                src = self.convert_alex(name, platform, src, visibility)
                 out_srcs.append(src)
-                rules.extend(extra_rules)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(ALEX_PACKAGES, platform))
             elif ext == '.hsc':
