@@ -31,6 +31,8 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
 
 # Flags controlling warnings issued by compiler
@@ -460,23 +462,21 @@ class HaskellConverter(base.Converter):
         """
         Create rules to generate a Haskell source from the given happy file.
         """
+        happy_name = name + '-' + happy_src
 
-        rules = []
+        fb_native.genrule(
+            name=happy_name,
+            visibility=get_visibility(visibility, happy_name),
+            out=paths.split_extension(happy_src)[0] + '.hs',
+            srcs=[happy_src],
+            cmd=' && '.join([
+                'mkdir -p `dirname "$OUT"`',
+                '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
+                    happy=third_party.get_tool_target(HAPPY.base_path, None, HAPPY.name, platform)),
+            ]),
+        )
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-' + happy_src
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = paths.split_extension(happy_src)[0] + '.hs'
-        attrs['srcs'] = [happy_src]
-        attrs['cmd'] = ' && '.join([
-            'mkdir -p `dirname "$OUT"`',
-            '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                happy=third_party.get_tool_target(HAPPY.base_path, None, HAPPY.name, platform)),
-        ])
-        rules.append(Rule('genrule', attrs))
-
-        return (':' + attrs['name'], rules)
+        return ':' + happy_name
 
     def convert_alex(self, name, platform, alex_src, visibility):
         """
@@ -759,9 +759,8 @@ class HaskellConverter(base.Converter):
         for src in srcs:
             _, ext = paths.split_extension(src)
             if ext == '.y':
-                src, extra_rules = self.convert_happy(name, platform, src, visibility)
+                src = self.convert_happy(name, platform, src, visibility)
                 out_srcs.append(src)
-                rules.extend(extra_rules)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES, platform))
             elif ext == '.x':
