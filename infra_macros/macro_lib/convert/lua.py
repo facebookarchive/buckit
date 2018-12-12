@@ -19,6 +19,7 @@ include_defs("{}/fbcode_target.py".format(macro_root), "target")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
@@ -167,14 +168,6 @@ class LuaConverter(base.Converter):
             return base_module.replace('/', '.') + '.' + name
         return name
 
-    def convert_sources(self, base_path, srcs):
-        if isinstance(srcs, dict):
-            return src_and_dep_helpers.convert_source_map(
-                base_path,
-                {v: k for k, v in srcs.iteritems()})
-        else:
-            return src_and_dep_helpers.convert_source_list(base_path, srcs)
-
     def create_run_library(
             self,
             base_path,
@@ -306,44 +299,6 @@ class LuaConverter(base.Converter):
 
         return ':' + cpp_main_name
 
-    def convert_library(
-            self,
-            base_path,
-            name=None,
-            base_module=None,
-            srcs=(),
-            deps=(),
-            external_deps=(),
-            visibility=None):
-        """
-        Buckify a library rule.
-        """
-        dependencies = []
-        if third_party.is_tp2(base_path):
-            dependencies.append(
-                third_party.get_tp2_project_target(
-                    third_party.get_tp2_project_name(base_path)))
-        for dep in deps:
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        for dep in external_deps:
-            dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
-        attributes = {}
-        if dependencies:
-            platform = (
-                third_party.get_tp2_platform(base_path)
-                if third_party.is_tp2(base_path) else None)
-            attributes['deps'], attributes['platform_deps'] = (
-                src_and_dep_helpers.format_all_deps(dependencies, platform=platform))
-
-        fb_native.lua_library(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            srcs=self.convert_sources(base_path, srcs),
-            base_module=self.get_base_module(
-                base_path, base_module=base_module),
-            **attributes
-        )
-
     def convert_binary(
             self,
             base_path,
@@ -376,8 +331,7 @@ class LuaConverter(base.Converter):
         # as a dep.
         if srcs:
             lib_name = name + '-library'
-            self.convert_library(
-                base_path,
+            lua_library(
                 lib_name,
                 base_module=base_module,
                 srcs=srcs,
@@ -487,14 +441,14 @@ class LuaConverter(base.Converter):
                 label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags)),
         )
 
-    def convert(self, *args, **kwargs):
+    def convert(self, base_path, *args, **kwargs):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'lua_library':
-            self.convert_library(*args, **kwargs)
+            lua_library(*args, **kwargs)
         elif rtype == 'lua_binary':
-            self.convert_binary(*args, **kwargs)
+            self.convert_binary(base_path, *args, **kwargs)
         elif rtype == 'lua_unittest':
-            self.convert_unittest(*args, **kwargs)
+            self.convert_unittest(base_path, *args, **kwargs)
         else:
             raise Exception('unexpected type: ' + rtype)
         return []
