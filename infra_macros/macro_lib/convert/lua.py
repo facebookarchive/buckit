@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
@@ -360,19 +358,18 @@ class LuaConverter(base.Converter):
             deps=(),
             external_deps=(),
             allocator='malloc',
-            visibility=None):
+            visibility=None,
+            binary_name=None,
+            package_style=None):
         """
         Buckify a binary rule.
         """
+        binary_name = binary_name or name
 
         platform = platform_utils.get_platform_for_base_path(base_path)
 
-        attributes = collections.OrderedDict()
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
+        attributes = {}
 
-        rules = []
         dependencies = []
 
         # If we see any `srcs`, spin them off into a library rule and add that
@@ -428,17 +425,6 @@ class LuaConverter(base.Converter):
                 run_file=run_file,
                 allocator=allocator,
                 visibility=visibility))
-        attributes['native_starter_library'] = cpp_main_lib
-
-        # We always use a dummy main module, since we pass in the actual main
-        # module via the run file.
-        attributes['main_module'] = 'dummy'
-
-        # We currently always use py2.
-        attributes['python_platform'] = platform_utils.get_buck_python_platform(platform, major_version=2)
-
-        # Set platform.
-        attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
         # Tests depend on FB lua test lib.
         if self.is_test():
@@ -454,7 +440,20 @@ class LuaConverter(base.Converter):
             attributes['deps'], attributes['platform_deps'] = (
                 src_and_dep_helpers.format_all_deps(dependencies))
 
-        return [Rule('lua_binary', attributes)] + rules
+        fb_native.lua_binary(
+            name=binary_name,
+            visibility=get_visibility(visibility, binary_name),
+            package_style=package_style,
+            native_starter_library=cpp_main_lib,
+            # We always use a dummy main module, since we pass in the actual main
+            # module via the run file.
+            main_module='dummy',
+            # We currently always use py2.
+            python_platform=platform_utils.get_buck_python_platform(platform, major_version=2),
+            # Set platform.
+            platform=platform_utils.get_buck_platform_for_base_path(base_path),
+            **attributes
+        )
 
     def convert_unittest(
             self,
@@ -467,20 +466,15 @@ class LuaConverter(base.Converter):
         """
         Buckify a unittest rule.
         """
-
-        rules = []
-
         # Generate the test binary rule and fixup the name.
         binary_name = name + '-binary'
-        binary_rules = (
-            self.convert_binary(
-                base_path,
-                name=name,
-                visibility=visibility,
-                **kwargs))
-        binary_rules[0].attributes['name'] = binary_name
-        binary_rules[0].attributes['package_style'] = 'inplace'
-        rules.extend(binary_rules)
+        self.convert_binary(
+            base_path,
+            name=name,
+            binary_name=binary_name,
+            package_style='inplace',
+            visibility=visibility,
+            **kwargs)
 
         # Create a `sh_test` rule to wrap the test binary and set it's tags so
         # that testpilot knows it's a lua test.
@@ -493,16 +487,14 @@ class LuaConverter(base.Converter):
                 label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags)),
         )
 
-        return rules
-
     def convert(self, *args, **kwargs):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'lua_library':
             self.convert_library(*args, **kwargs)
-            return []
         elif rtype == 'lua_binary':
-            return self.convert_binary(*args, **kwargs)
+            self.convert_binary(*args, **kwargs)
         elif rtype == 'lua_unittest':
-            return self.convert_unittest(*args, **kwargs)
+            self.convert_unittest(*args, **kwargs)
         else:
             raise Exception('unexpected type: ' + rtype)
+        return []
