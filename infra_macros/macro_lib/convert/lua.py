@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import pipes
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
@@ -27,6 +26,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 DEFAULT_CPP_MAIN = target_utils.RootRuleTarget('tools/make_lar', 'lua_main')
@@ -205,7 +205,7 @@ class LuaConverter(base.Converter):
             source_attrs['visibility'] = visibility
         source_attrs['out'] = '_run.lua'
         source_attrs['cmd'] = (
-            'echo -n {} > $OUT'.format(pipes.quote(source)))
+            'echo -n {} > $OUT'.format(shell.quote(source)))
         rules.append(Rule('genrule', source_attrs))
 
         attrs = collections.OrderedDict()
@@ -254,7 +254,7 @@ class LuaConverter(base.Converter):
             cpp_main_source_attrs['visibility'] = visibility
         cpp_main_source_attrs['out'] = name + '.cpp'
         cpp_main_source_attrs['cmd'] = (
-            'echo -n {} > $OUT'.format(pipes.quote(cpp_main_source)))
+            'echo -n {} > $OUT'.format(shell.quote(cpp_main_source)))
         rules.append(Rule('genrule', cpp_main_source_attrs))
 
         cpp_main_name = name + '-cpp-main'
