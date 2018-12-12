@@ -21,6 +21,7 @@ load("@fbcode_macros//build_defs/lib:cpp_flags.bzl", "cpp_flags")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:lua_binary.bzl", "lua_binary")
 load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
+load("@fbcode_macros//build_defs:lua_unittest.bzl", "lua_unittest")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
@@ -57,38 +58,6 @@ class LuaConverter(base.Converter):
             return name
         return explicit_name
 
-    def convert_unittest(
-            self,
-            base_path,
-            name=None,
-            tags=(),
-            type='lua',
-            visibility=None,
-            **kwargs):
-        """
-        Buckify a unittest rule.
-        """
-        # Generate the test binary rule and fixup the name.
-        binary_name = name + '-binary'
-        lua_binary(
-            name=name,
-            binary_name=binary_name,
-            package_style='inplace',
-            visibility=visibility,
-            is_test=True,
-            **kwargs)
-
-        # Create a `sh_test` rule to wrap the test binary and set it's tags so
-        # that testpilot knows it's a lua test.
-        platform = platform_utils.get_platform_for_base_path(base_path)
-        fb_native.sh_test(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            test=':' + binary_name,
-            labels=(
-                label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags)),
-        )
-
     def convert(self, base_path, *args, **kwargs):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'lua_library':
@@ -96,7 +65,7 @@ class LuaConverter(base.Converter):
         elif rtype == 'lua_binary':
             lua_binary(*args, **kwargs)
         elif rtype == 'lua_unittest':
-            self.convert_unittest(base_path, *args, **kwargs)
+            lua_unittest(*args, **kwargs)
         else:
             raise Exception('unexpected type: ' + rtype)
         return []
