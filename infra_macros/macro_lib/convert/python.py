@@ -838,16 +838,24 @@ class PythonConverter(base.Converter):
         # parameter. `py_flavor` is ignored since flavored Pythons are only
         # intended for use by internal projects.
         if third_party.is_tp2(base_path):
+            if version_subdirs == None:
+                fail("`version_subdirs` must be specified on third-party projects")
 
             # TP2 projects have multiple "pre-built" source dirs, so we install
             # them via the `versioned_srcs` parameter along with the versions
             # of deps that was used to build them, so that Buck can select the
             # correct one based on version resolution.
-            project_builds = self.get_tp2_project_builds(base_path)
-            for build in project_builds.values():
+            for constraints, subdir in version_subdirs:
                 build_srcs = [parsed_srcs]
                 if parsed_versioned_srcs:
-                    py_vers = PythonVersion(build.versions['python'])
+                    py_vers = None
+                    for target, constraint_version in constraints.items():
+                        if target.endswith("/python:__project__"):
+                            py_vers = PythonVersion(constraint_version)
+                    # 'is None' can become == None when the custom version classes
+                    # go away
+                    if py_vers is None:
+                        fail("Could not get python version for versioned_srcs")
                     build_srcs.extend(
                         dict(vs) for vc, vs in parsed_versioned_srcs
                         if vc.matches(py_vers,
@@ -860,9 +868,9 @@ class PythonConverter(base.Converter):
                         if target_utils.is_rule_target(src):
                             vsrc[name] = src
                         else:
-                            vsrc[name] = os.path.join(build.subdir, src)
+                            vsrc[name] = os.path.join(subdir, src)
 
-                all_versioned_srcs.append((build.project_deps, vsrc))
+                all_versioned_srcs.append((constraints, vsrc))
 
             # Reset `srcs`, since we're using `versioned_srcs`.
             parsed_srcs = {}
