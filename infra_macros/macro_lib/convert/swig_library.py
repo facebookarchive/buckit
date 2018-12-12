@@ -43,6 +43,7 @@ load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs/lib/swig:go_converter.bzl", "go_converter")
 load("@fbcode_macros//build_defs/lib/swig:java_converter.bzl", "java_converter")
+load("@fbcode_macros//build_defs/lib/swig:python_converter.bzl", "python_converter")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
@@ -108,93 +109,6 @@ class SwigLangConverter(base.Converter):
         raise NotImplementedError()
 
 
-class PythonSwigConverter(SwigLangConverter):
-    """
-    Specializer to support generating Python libraries from swig sources.
-    """
-
-    def __init__(self, context, *args, **kwargs):
-        super(PythonSwigConverter, self).__init__(context, *args, **kwargs)
-
-    def get_lang(self):
-        return 'py'
-
-    def get_lang_opt(self):
-        return '-python'
-
-    def get_lang_flags(self, java_package=None, **kwargs):
-        return [
-            '-threads',
-            '-safecstrings',
-            '-classic',
-        ]
-
-    def get_generated_sources(self, module):
-        src = module + '.py'
-        return {src: src}
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            module,
-            hdr,
-            src,
-            gen_srcs,
-            cpp_deps,
-            deps,
-            py_base_module=None,
-            visibility=None,
-            **kwargs):
-
-        # Build the C/C++ python extension from the generated C/C++ sources.
-        cpp_python_extension(
-            name=name + '-ext',
-            srcs=[src],
-            base_module=py_base_module,
-            module_name='_' + module,
-            # Generated code uses a lot of shadowing, so disable GCC warnings
-            # related to this.
-            compiler_specific_flags={
-                'gcc': [
-                    '-Wno-shadow',
-                    '-Wno-shadow-local',
-                    '-Wno-shadow-compatible-local',
-                ],
-            },
-            # This is pretty gross.  We format the deps just to get
-            # re-parsed by the C/C++ converter.  Long-term, it'd be
-            # be nice to support a better API in the converters to
-            # handle higher-leverl objects, but for now we're stuck
-            # doing this to re-use other converters.
-            deps=src_and_dep_helpers.format_deps([d for d in cpp_deps if d.repo is None]),
-            external_deps=[
-                (d.repo, d.base_path, None, d.name)
-                for d in cpp_deps if d.repo is not None
-            ],
-        )
-        # Generate the wrapping python library.
-        out_deps = []
-        out_deps.extend(deps)
-        out_deps.append(':' + name + '-ext')
-
-        attrs = {}
-        attrs['name'] = name
-        attrs['visibility'] = get_visibility(visibility, name)
-        attrs['srcs'] = gen_srcs
-
-        attrs['deps'] = out_deps
-        if py_base_module is not None:
-            attrs['base_module'] = py_base_module
-        # At some point swig targets should also include typing Options
-        # For now we just need an empty directory.
-        if get_typing_config_target():
-            gen_typing_config(name)
-        fb_native.python_library(**attrs)
-
-        return []
-
-
 class SwigLibraryConverter(base.Converter):
 
     def __init__(self, *args, **kwargs):
@@ -204,7 +118,7 @@ class SwigLibraryConverter(base.Converter):
         converters = [
             java_converter,
             go_converter,
-            PythonSwigConverter(*args, **kwargs),
+            python_converter,
         ]
         self._converters = {c.get_lang(): c for c in converters}
 
