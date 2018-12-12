@@ -49,44 +49,11 @@ BuckOperations = collections.namedtuple(
 )
 
 
-Tp2ProjectBuild = collections.namedtuple(
-    'Tp2ProjectBuild',
-    [
-        'project_deps',
-        'subdir',
-        'versions',
-    ],
-)
-
-
-_LTO_FLAG = ["-flto"]
-
-
 class Converter(object):
 
     def __init__(self, context):
         self._context = context
         self._tp2_build_dat_cache = {}
-
-    def get_third_party_root(self, platform):
-        if config.get_third_party_use_platform_subdir():
-            return paths.join(
-                config.get_third_party_buck_directory(),
-                platform)
-        else:
-            return config.get_third_party_buck_directory()
-
-    def get_tp2_dep_path(self, project, platform):
-        """
-        Return the path within third-party for the given project. This will be
-        the directory, not a specific target or binary. Based on configuration,
-        and the path may be modified to fit fbcode's layout
-        """
-
-        if config.get_third_party_use_build_subdir():
-            return paths.join(self.get_third_party_root(platform), 'build', project)
-        else:
-            return project
 
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
