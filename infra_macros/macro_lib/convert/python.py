@@ -812,6 +812,7 @@ class PythonConverter(base.Converter):
         resources=(),
         cpp_deps=(),
         py_flavor="",
+        version_subdirs=None, # Not used for now, will be used in a subsequent diff
     ):
         attributes = collections.OrderedDict()
         attributes['name'] = name
@@ -1320,6 +1321,7 @@ class PythonConverter(base.Converter):
         helper_deps=False,
         analyze_imports=False,
         additional_coverage_targets=[],
+        version_subdirs=None, # Not used for now, will be used in a subsequent diff
     ):
         # for binary we need a separate library
         if self.is_library():
@@ -1364,6 +1366,7 @@ class PythonConverter(base.Converter):
             resources=resources,
             cpp_deps=cpp_deps,
             py_flavor=py_flavor,
+            version_subdirs=version_subdirs,
         )
 
         # People use -library of unittests
