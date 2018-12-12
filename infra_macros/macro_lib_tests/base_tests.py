@@ -40,21 +40,6 @@ class BaseConverterTest(utils.ConverterTestCase):
         self.assertFalse(self._converter.is_tp2('hello/world'))
         self.assertTrue(self._converter.is_tp2('third-party-buck/foo'))
 
-    def test_get_tp2_build_dat(self):
-        base_path = 'base/path'
-        build_dat = {
-            'builds': {
-                'build0': {
-                    'foo': '1.0',
-                }
-            },
-            'dependencies': {},
-            'platform': 'platform007',
-        }
-        self.write_build_dat(base_path, build_dat)
-        actual_build_dat = self._converter.get_tp2_build_dat(base_path)
-        self.assertEqual(actual_build_dat, build_dat)
-
     def test_get_tp2_project_builds_with_single_build(self):
         base_path = 'base/path'
         build_dat = {
