@@ -102,6 +102,7 @@ load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs:rust_unittest.bzl", "rust_unittest")
 load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
 load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
+load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 with allow_unsafe_import():  # noqa: F821
     import sys
@@ -132,7 +133,6 @@ except IOError:
 lua = import_macro_lib('convert/lua')
 python = import_macro_lib('convert/python')
 sphinx = import_macro_lib('convert/sphinx')
-swig_library = import_macro_lib('convert/swig_library')
 thrift_library = import_macro_lib('convert/thrift_library')
 wheel = import_macro_lib('convert/wheel')
 try:
@@ -188,7 +188,6 @@ def convert(context, base_path, rule):
         python.PythonConverter(context, 'python_binary'),
         python.PythonConverter(context, 'python_unittest'),
         thrift_library.ThriftLibraryConverter(context),
-        swig_library.SwigLibraryConverter(context),
         sphinx.SphinxWikiConverter(context),
         sphinx.SphinxManpageConverter(context),
         wheel.PyWheel(context),
@@ -252,6 +251,7 @@ def convert(context, base_path, rule):
         'rust_unittest': rust_unittest,  # noqa F821
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
+        'swig_library': swig_library,  # noqa F821
         'cpp_library_external': cpp_library_external,
         'cpp_benchmark': cpp_benchmark,  # noqa F821
         'cpp_lua_extension': cpp_lua_extension,  # noqa F821
