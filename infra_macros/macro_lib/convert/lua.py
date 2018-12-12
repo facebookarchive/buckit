@@ -25,8 +25,10 @@ load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 DEFAULT_CPP_MAIN = target_utils.RootRuleTarget('tools/make_lar', 'lua_main')
@@ -186,9 +188,6 @@ class LuaConverter(base.Converter):
         """
         Create the run file used by fbcode's custom Lua bootstrapper.
         """
-
-        rules = []
-
         source_name = name + '-run-source'
         if interactive:
             source = ''
@@ -199,27 +198,27 @@ class LuaConverter(base.Converter):
                         base_path,
                         main_module,
                         base_module=base_module)))
-        source_attrs = collections.OrderedDict()
-        source_attrs['name'] = source_name
-        if visibility is not None:
-            source_attrs['visibility'] = visibility
-        source_attrs['out'] = '_run.lua'
-        source_attrs['cmd'] = (
-            'echo -n {} > $OUT'.format(shell.quote(source)))
-        rules.append(Rule('genrule', source_attrs))
+        source_out = '_run.lua'
+        fb_native.genrule(
+            name=source_name,
+            visibility=get_visibility(visibility, source_name),
+            out=source_out,
+            cmd=(
+            'echo -n {} > $OUT'.format(shell.quote(source))),
+        )
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-run'
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = [':' + source_name]
-        attrs['base_module'] = ''
-        attrs['deps'] = [
-            src_and_dep_helpers.convert_build_target(base_path, '//fblualib/trepl:base'),
-        ]
-        rules.append(Rule('lua_library', attrs))
+        lib_name = name + '-run'
+        fb_native.lua_library(
+            name=lib_name,
+            visibility=get_visibility(visibility, lib_name),
+            srcs=[':' + source_name],
+            base_module='',
+            deps=[
+                src_and_dep_helpers.convert_build_target(base_path, '//fblualib/trepl:base'),
+            ],
+        )
 
-        return attrs['name'], source_attrs['out'], rules
+        return lib_name, source_out
 
     def create_cpp_main_library(
             self,
@@ -412,7 +411,7 @@ class LuaConverter(base.Converter):
         # If a main module is specified, create a run file for it.
         run_file = None
         if main_module is not None or interactive:
-            lib, run_file, extra_rules = (
+            lib, run_file = (
                 self.create_run_library(
                     base_path,
                     name,
@@ -420,7 +419,6 @@ class LuaConverter(base.Converter):
                     main_module=main_module,
                     base_module=base_module,
                     visibility=visibility))
-            rules.extend(extra_rules)
             dependencies.append(target_utils.RootRuleTarget(base_path, lib))
 
         # Generate the native starter library.
