@@ -916,13 +916,13 @@ class HaskellConverter(base.Converter):
         # For backwards compatiblity with fbbuild, generate a noop rule under
         # the original name.  This is so unported fbbuild use cases of DLLs
         # don't break the build.
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = 'empty'
-        attrs['cmd'] = 'touch "$OUT"'
-        rules.append(Rule('genrule', attrs))
+
+        fb_native.genrule(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            out='empty',
+            cmd='touch "$OUT"',
+        )
 
         return rules
 
