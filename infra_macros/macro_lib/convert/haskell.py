@@ -943,24 +943,22 @@ class HaskellConverter(base.Converter):
             deps=(),
             haddock_flags=(),
             visibility=None):
-        rules = []
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
+        attrs = {}
         if haddock_flags:
             attrs['haddock_flags'] = haddock_flags
-        attrs['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
 
-        out_deps = []
-        for target in deps:
-            out_deps.append(src_and_dep_helpers.convert_build_target(base_path, target))
-        attrs['deps'] = out_deps
+        out_deps = [
+            src_and_dep_helpers.convert_build_target(base_path, target)
+            for target in deps
+        ]
 
-        rules.append(Rule('haskell_haddock', attrs))
-
-        return rules
+        fb_native.haskell_haddock(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            platform=platform_utils.get_buck_platform_for_base_path(base_path),
+            deps=out_deps,
+            **attrs
+        )
 
     def convert(self, *args, **kwargs):
         """
@@ -977,6 +975,7 @@ class HaskellConverter(base.Converter):
         elif rtype == 'haskell_ghci':
             return self.convert_rule(*args, **kwargs)
         elif rtype == 'haskell_haddock':
-            return self.convert_haddock(*args, **kwargs)
+            self.convert_haddock(*args, **kwargs)
+            return []
         else:
             raise Exception('unexpected type: ' + rtype)
