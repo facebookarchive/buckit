@@ -91,6 +91,7 @@ load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_e
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
 load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
+load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
 load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:ocaml_library.bzl", "ocaml_library")
@@ -181,7 +182,6 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_ghci'),
         haskell.HaskellConverter(context, 'haskell_haddock'),
-        lua.LuaConverter(context, 'lua_library'),
         lua.LuaConverter(context, 'lua_binary'),
         lua.LuaConverter(context, 'lua_unittest'),
         python.PythonConverter(context, 'python_library'),
@@ -240,6 +240,7 @@ def convert(context, base_path, rule):
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
+        'lua_library': lua_library,  # noqa F821
         'ocaml_binary': ocaml_binary,  # noqa F821
         'ocaml_external_library': ocaml_external_library,  # noqa F821
         'ocaml_library': ocaml_library,  # noqa F821
