@@ -333,18 +333,6 @@ class LuaConverter(base.Converter):
         attributes['base_module'] = self.get_base_module(
             base_path, base_module=base_module)
 
-        # If this is a tp2 project, verify that we just have a single inlined
-        # build.  When this stops being true, we'll need to add versioned src
-        # support to lua rules (e.g. D4312362).
-        if third_party.is_tp2(base_path):
-            project_builds = self.get_tp2_project_builds(base_path)
-            if (len(project_builds) != 1 or
-                    project_builds.values()[0].subdir != ''):
-                raise TypeError(
-                    'lua_library(): expected to find a single inlined build '
-                    'for tp2 project "{}"'
-                    .format(third_party.get_tp2_project_name(base_path)))
-
         dependencies = []
         if third_party.is_tp2(base_path):
             dependencies.append(
@@ -356,7 +344,7 @@ class LuaConverter(base.Converter):
             dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
         if dependencies:
             platform = (
-                self.get_tp2_platform(base_path)
+                third_party.get_tp2_platform(base_path)
                 if third_party.is_tp2(base_path) else None)
             attributes['deps'], attributes['platform_deps'] = (
                 src_and_dep_helpers.format_all_deps(dependencies, platform=platform))
