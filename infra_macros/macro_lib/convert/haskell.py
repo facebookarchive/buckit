@@ -31,6 +31,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
@@ -936,46 +937,22 @@ class HaskellConverter(base.Converter):
         else:
             return self.convert_dll(base_path, name, dll, **kwargs)
 
-    def convert_haddock(
-            self,
-            base_path,
-            name,
-            deps=(),
-            haddock_flags=(),
-            visibility=None):
-        attrs = {}
-        if haddock_flags:
-            attrs['haddock_flags'] = haddock_flags
-
-        out_deps = [
-            src_and_dep_helpers.convert_build_target(base_path, target)
-            for target in deps
-        ]
-
-        fb_native.haskell_haddock(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            platform=platform_utils.get_buck_platform_for_base_path(base_path),
-            deps=out_deps,
-            **attrs
-        )
-
-    def convert(self, *args, **kwargs):
+    def convert(self, base_path, *args, **kwargs):
         """
         Generate rules for a haskell rule.
         """
 
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'haskell_binary':
-            return self.convert_rule(*args, **kwargs)
+            return self.convert_rule(base_path, *args, **kwargs)
         if rtype == 'haskell_library':
-            return self.convert_library(*args, **kwargs)
+            return self.convert_library(base_path, *args, **kwargs)
         elif rtype == 'haskell_unittest':
-            return self.convert_unittest(*args, **kwargs)
+            return self.convert_unittest(base_path, *args, **kwargs)
         elif rtype == 'haskell_ghci':
-            return self.convert_rule(*args, **kwargs)
+            return self.convert_rule(base_path, *args, **kwargs)
         elif rtype == 'haskell_haddock':
-            self.convert_haddock(*args, **kwargs)
+            haskell_haddock(*args, **kwargs)
             return []
         else:
             raise Exception('unexpected type: ' + rtype)
