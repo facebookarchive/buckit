@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import os
 import pipes
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -27,6 +26,7 @@ load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 DEFAULT_CPP_MAIN = target_utils.RootRuleTarget('tools/make_lar', 'lua_main')
@@ -153,7 +153,7 @@ class LuaConverter(base.Converter):
 
     def get_base_module(self, base_path, base_module=None):
         if base_module is None:
-            return os.path.join('fbcode', base_path)
+            return paths.join('fbcode', base_path)
         return base_module
 
     def get_module_name(self, name, explicit_name=None):
@@ -164,7 +164,7 @@ class LuaConverter(base.Converter):
     def get_module(self, base_path, name, base_module=None):
         base_module = self.get_base_module(base_path, base_module=base_module)
         if base_module:
-            return base_module.replace(os.sep, '.') + '.' + name
+            return base_module.replace('/', '.') + '.' + name
         return name
 
     def convert_sources(self, base_path, srcs):
