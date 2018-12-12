@@ -234,9 +234,6 @@ class LuaConverter(base.Converter):
         """
         Create the C/C++ main entry point.
         """
-
-        rules = []
-
         args = []
         args.extend(cpp_main_args)
         if interactive:
@@ -247,38 +244,19 @@ class LuaConverter(base.Converter):
                 args=cpp_repr(args),
                 run_file=cpp_repr(run_file)))
         cpp_main_source_name = name + '-cpp-main-source'
-        cpp_main_source_attrs = collections.OrderedDict()
-        cpp_main_source_attrs['name'] = cpp_main_source_name
-        if visibility is not None:
-            cpp_main_source_attrs['visibility'] = visibility
-        cpp_main_source_attrs['out'] = name + '.cpp'
-        cpp_main_source_attrs['cmd'] = (
-            'echo -n {} > $OUT'.format(shell.quote(cpp_main_source)))
-        rules.append(Rule('genrule', cpp_main_source_attrs))
+        fb_native.genrule(
+            name=cpp_main_source_name,
+            visibility=get_visibility(visibility, cpp_main_source_name),
+            out=name + '.cpp',
+            cmd=(
+                'echo -n {} > $OUT'.format(shell.quote(cpp_main_source))),
+        )
 
         cpp_main_name = name + '-cpp-main'
-        cpp_main_attrs = collections.OrderedDict()
-        cpp_main_attrs['name'] = name + '-cpp-main'
-        if visibility is not None:
-            cpp_main_attrs['visibility'] = visibility
-        cpp_main_attrs['compiler_flags'] = cpp_flags.get_extra_cxxflags()
-        cpp_main_attrs['linker_flags'] = cpp_flags.get_extra_ldflags()
-        cpp_main_attrs['exported_linker_flags'] = [
-            # Since we statically link in sanitizer/allocators libs, make sure
-            # we export all their symbols on the dynamic symbols table.
-            # Normally, the linker would take care of this for us, but we link
-            # the cpp main binary with only it's minimal deps (rather than all
-            # C/C++ deps for the Lua binary), so it may incorrectly decide to
-            # not export some needed symbols.
-            '-Wl,--export-dynamic',
-        ]
-        cpp_main_attrs['force_static'] = True
-        cpp_main_attrs['srcs'] = [':' + cpp_main_source_name]
+        cpp_main_linker_flags = cpp_flags.get_extra_ldflags()
 
         # Setup platform default for compilation DB, and direct building.
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        cpp_main_attrs['default_platform'] = buck_platform
-        cpp_main_attrs['defaults'] = {'platform': buck_platform}
 
         # Set the dependencies that linked into the C/C++ starter binary.
         out_deps = []
@@ -295,18 +273,40 @@ class LuaConverter(base.Converter):
             cpp_common.get_binary_link_deps(
                 base_path,
                 name,
-                cpp_main_attrs['linker_flags'],
+                cpp_main_linker_flags,
                 allocator=allocator,
             )
         )
 
         # Set the deps attr.
-        cpp_main_attrs['deps'], cpp_main_attrs['platform_deps'] = (
+        cpp_main_deps, cpp_main_platform_deps = (
             src_and_dep_helpers.format_all_deps(out_deps))
 
-        rules.append(Rule('cxx_library', cpp_main_attrs))
+        cpp_main_name = name + '-cpp-main'
 
-        return (':' + cpp_main_name, rules)
+        fb_native.cxx_library(
+            name=cpp_main_name,
+            visibility=get_visibility(visibility, cpp_main_name),
+            compiler_flags=cpp_flags.get_extra_cxxflags(),
+            linker_flags=cpp_main_linker_flags,
+            exported_linker_flags=[
+                # Since we statically link in sanitizer/allocators libs, make sure
+                # we export all their symbols on the dynamic symbols table.
+                # Normally, the linker would take care of this for us, but we link
+                # the cpp main binary with only it's minimal deps (rather than all
+                # C/C++ deps for the Lua binary), so it may incorrectly decide to
+                # not export some needed symbols.
+                '-Wl,--export-dynamic',
+            ],
+            force_static=True,
+            srcs=[':' + cpp_main_source_name],
+            default_platform=buck_platform,
+            defaults={'platform': buck_platform},
+            deps=cpp_main_deps,
+            platform_deps=cpp_main_platform_deps,
+        )
+
+        return ':' + cpp_main_name
 
     def convert_library(
             self,
@@ -422,7 +422,7 @@ class LuaConverter(base.Converter):
             dependencies.append(target_utils.RootRuleTarget(base_path, lib))
 
         # Generate the native starter library.
-        cpp_main_lib, extra_rules = (
+        cpp_main_lib = (
             self.create_cpp_main_library(
                 base_path,
                 name,
@@ -433,7 +433,6 @@ class LuaConverter(base.Converter):
                 run_file=run_file,
                 allocator=allocator,
                 visibility=visibility))
-        rules.extend(extra_rules)
         attributes['native_starter_library'] = cpp_main_lib
 
         # We always use a dummy main module, since we pass in the actual main
