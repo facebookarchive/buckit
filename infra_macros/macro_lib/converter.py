@@ -93,6 +93,7 @@ load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library"
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:lua_binary.bzl", "lua_binary")
 load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
+load("@fbcode_macros//build_defs:lua_unittest.bzl", "lua_unittest")
 load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:ocaml_library.bzl", "ocaml_library")
@@ -132,7 +133,6 @@ except IOError:
     image_feature = None
     image_layer = None
     image_package = None
-lua = import_macro_lib('convert/lua')
 python = import_macro_lib('convert/python')
 sphinx = import_macro_lib('convert/sphinx')
 thrift_library = import_macro_lib('convert/thrift_library')
@@ -183,7 +183,6 @@ def convert(context, base_path, rule):
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_ghci'),
         haskell.HaskellConverter(context, 'haskell_haddock'),
-        lua.LuaConverter(context, 'lua_unittest'),
         python.PythonConverter(context, 'python_library'),
         python.PythonConverter(context, 'python_binary'),
         python.PythonConverter(context, 'python_unittest'),
@@ -242,6 +241,7 @@ def convert(context, base_path, rule):
         'js_npm_module': js_npm_module,  # noqa F821
         'lua_binary': lua_binary,  # noqa F821
         'lua_library': lua_library,  # noqa F821
+        'lua_unittest': lua_unittest,  # noqa F821
         'ocaml_binary': ocaml_binary,  # noqa F821
         'ocaml_external_library': ocaml_external_library,  # noqa F821
         'ocaml_library': ocaml_library,  # noqa F821
