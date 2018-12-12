@@ -30,6 +30,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs:config.bzl", "config")
 
 
 # Flags controlling warnings issued by compiler
@@ -591,7 +592,7 @@ class HaskellConverter(base.Converter):
                         get_project_root_from_gen_dir())),
                 ghc_tool=third_party.get_tool_path('ghc', platform),
                 ghc=self.get_tp2_dep_path('ghc', platform),
-                link_style=self._context.link_style,
+                link_style=config.get_default_link_style(),
                 deps=' :' + deps_name,
                 out_obj=out_obj))
         attrs['srcs'] = [source]
@@ -737,7 +738,7 @@ class HaskellConverter(base.Converter):
 
         # If this is binary and we're using the shared link style, set this in
         # the output attributes.
-        if self.is_deployable() and self._context.link_style == 'shared':
+        if self.is_deployable() and config.get_default_link_style() == 'shared':
             out_link_style = 'shared'
 
         # Collect all deps specified by the user.
