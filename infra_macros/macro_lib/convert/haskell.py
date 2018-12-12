@@ -19,6 +19,7 @@ macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
 include_defs("{}/rule.py".format(macro_root))
 include_defs("{}/fbcode_target.py".format(macro_root), "target")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:build_mode.bzl", _build_mode="build_mode")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
@@ -144,11 +145,13 @@ IMPLICIT_TP_DEPS = [
     target_utils.ThirdPartyRuleTarget('glibc', 'pthread'),
 ]
 
-ALEX = target_utils.ThirdPartyRuleTarget('hs-alex', 'alex')
+ALEX = target_utils.ThirdPartyToolRuleTarget('hs-alex', 'alex')
 ALEX_PACKAGES = ['array', 'bytestring']
 
-HAPPY = target_utils.ThirdPartyRuleTarget('hs-happy', 'happy')
+HAPPY = target_utils.ThirdPartyToolRuleTarget('hs-happy', 'happy')
 HAPPY_PACKAGES = ['array']
+
+C2HS = target_utils.ThirdPartyRuleTarget('stackage-lts', 'bin/c2hs')
 
 HSC2HS_TEMPL = '''\
 set -e
@@ -243,7 +246,7 @@ mkdir -p `dirname "$OUT"`
 cd {fbcode}
 
 # The `c2hs` tool.
-args=({stackage}/bin/c2hs)
+args=($(location {c2hs}))
 
 # Add in the C/C++ preprocessor.
 args+=("--cpp="$(cc))
@@ -472,7 +475,7 @@ class HaskellConverter(base.Converter):
             cmd=' && '.join([
                 'mkdir -p `dirname "$OUT"`',
                 '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                    happy=third_party.get_tool_target(HAPPY.base_path, None, HAPPY.name, platform)),
+                    happy=target_utils.target_to_label(HAPPY, platform=platform)),
             ]),
         )
 
@@ -492,7 +495,7 @@ class HaskellConverter(base.Converter):
             cmd=' && '.join([
                 'mkdir -p `dirname "$OUT"`',
                 '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                    alex=third_party.get_tool_target(ALEX.base_path, None, ALEX.name, platform)),
+                    alex=target_utils.target_to_label(ALEX, platform=platform))
             ]),
         )
 
@@ -546,7 +549,7 @@ class HaskellConverter(base.Converter):
                     paths.join(
                         '$GEN_DIR',
                         get_project_root_from_gen_dir())),
-                stackage=self.get_tp2_dep_path('stackage-lts', platform),
+                c2hs=target_utils.target_to_label(C2HS, platform=platform),
                 deps=' :' + deps_name))
         attrs['srcs'] = [source]
         attrs['out'] = paths.split_extension(source)[0] + '.hs'
@@ -589,7 +592,7 @@ class HaskellConverter(base.Converter):
                         '$GEN_DIR',
                         get_project_root_from_gen_dir())),
                 ghc_tool=third_party.get_tool_path('ghc', platform),
-                ghc=self.get_tp2_dep_path('ghc', platform),
+                ghc=paths.join(third_party.get_build_path(platform), 'ghc'),
                 link_style=config.get_default_link_style(),
                 deps=' :' + deps_name,
                 out_obj=out_obj))
