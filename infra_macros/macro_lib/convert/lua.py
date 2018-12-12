@@ -484,15 +484,14 @@ class LuaConverter(base.Converter):
 
         # Create a `sh_test` rule to wrap the test binary and set it's tags so
         # that testpilot knows it's a lua test.
-        attributes = collections.OrderedDict()
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
-        attributes['test'] = ':' + binary_name
         platform = platform_utils.get_platform_for_base_path(base_path)
-        attributes['labels'] = (
-            label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags))
-        rules.append(Rule('sh_test', attributes))
+        fb_native.sh_test(
+            name=name,
+            visibility=get_visibility(visibility, name),
+            test=':' + binary_name,
+            labels=(
+                label_utils.convert_labels(platform, 'lua', 'custom-type-' + type, *tags)),
+        )
 
         return rules
 
