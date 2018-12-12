@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import os
 import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
@@ -31,6 +30,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 # Flags controlling warnings issued by compiler
@@ -467,7 +467,7 @@ class HaskellConverter(base.Converter):
         attrs['name'] = name + '-' + happy_src
         if visibility is not None:
             attrs['visibility'] = visibility
-        attrs['out'] = os.path.splitext(happy_src)[0] + '.hs'
+        attrs['out'] = paths.split_extension(happy_src)[0] + '.hs'
         attrs['srcs'] = [happy_src]
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
@@ -489,7 +489,7 @@ class HaskellConverter(base.Converter):
         attrs['name'] = name + '-' + alex_src
         if visibility is not None:
             attrs['visibility'] = visibility
-        attrs['out'] = os.path.splitext(alex_src)[0] + '.hs'
+        attrs['out'] = paths.split_extension(alex_src)[0] + '.hs'
         attrs['srcs'] = [alex_src]
         attrs['cmd'] = ' && '.join([
             'mkdir -p `dirname "$OUT"`',
@@ -545,13 +545,13 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = (
             C2HS_TEMPL.format(
                 fbcode=(
-                    os.path.join(
+                    paths.join(
                         '$GEN_DIR',
                         get_project_root_from_gen_dir())),
                 stackage=self.get_tp2_dep_path('stackage-lts', platform),
                 deps=' :' + deps_name))
         attrs['srcs'] = [source]
-        attrs['out'] = os.path.splitext(source)[0] + '.hs'
+        attrs['out'] = paths.split_extension(source)[0] + '.hs'
         rules.append(Rule('cxx_genrule', attrs))
 
         return (':' + attrs['name'], rules)
@@ -578,7 +578,7 @@ class HaskellConverter(base.Converter):
         d = cpp_common.get_binary_link_deps(base_path, deps_name)
         rules.append(self._get_dep_rule(base_path, deps_name, deps + d, visibility))
 
-        out_obj = os.path.splitext(os.path.basename(source))[0] + "_hsc_make"
+        out_obj = paths.split_extension(paths.basename(source))[0] + "_hsc_make"
 
         attrs = collections.OrderedDict()
         attrs['name'] = name + '-' + source
@@ -587,7 +587,7 @@ class HaskellConverter(base.Converter):
         attrs['cmd'] = (
             HSC2HS_TEMPL.format(
                 fbcode=(
-                    os.path.join(
+                    paths.join(
                         '$GEN_DIR',
                         get_project_root_from_gen_dir())),
                 ghc_tool=third_party.get_tool_path('ghc', platform),
@@ -596,7 +596,7 @@ class HaskellConverter(base.Converter):
                 deps=' :' + deps_name,
                 out_obj=out_obj))
         attrs['srcs'] = [source]
-        attrs['out'] = os.path.splitext(source)[0] + '.hs'
+        attrs['out'] = paths.split_extension(source)[0] + '.hs'
         rules.append(Rule('cxx_genrule', attrs))
 
         return (':' + attrs['name'], rules)
@@ -667,7 +667,7 @@ class HaskellConverter(base.Converter):
             # by default
             template_base_names.append(name)
             for templatePath in attributes['extra_script_templates']:
-                template_base_names.append(os.path.basename(templatePath))
+                template_base_names.append(paths.basename(templatePath))
             if len(template_base_names) > len(set(template_base_names)):
                 raise ValueError(
                     '{0}:{1}: parameter `extra_script_templates`: '.format(
@@ -757,7 +757,7 @@ class HaskellConverter(base.Converter):
         out_srcs = []
         implicit_src_deps = set()
         for src in srcs:
-            _, ext = os.path.splitext(src)
+            _, ext = paths.split_extension(src)
             if ext == '.y':
                 src, extra_rules = self.convert_happy(name, platform, src, visibility)
                 out_srcs.append(src)
