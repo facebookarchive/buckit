@@ -34,7 +34,7 @@ class BaseConverterTest(utils.ConverterTestCase):
         self._base = (
             self._state.parser.load_include(
                 'tools/build/buck/infra_macros/macro_lib/convert/base.py'))
-        self._converter = self._base.Converter(self._state.context)
+        self._converter = self._base.Converter()
 
     def test_get_tp2_project_builds_with_single_build(self):
         base_path = 'base/path'

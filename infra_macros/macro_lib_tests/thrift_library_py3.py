@@ -35,9 +35,7 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
             self._state.parser.load_include(
                 'tools/build/buck/infra_macros/macro_lib/convert/thrift_library.py'))
         self._converter = (
-            self._thrift.ThriftLibraryConverter(
-                self._state.context,
-            )
+            self._thrift.ThriftLibraryConverter()
         )
 
     def test_cpp2_auto_included(self):

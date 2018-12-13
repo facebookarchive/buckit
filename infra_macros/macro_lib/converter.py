@@ -145,7 +145,7 @@ try:
     facebook = import_macro_lib('convert/facebook/__init__')
     get_fbonly_converters = facebook.get_fbonly_converters
 except ImportError:
-    def get_fbonly_converters(context):
+    def get_fbonly_converters():
         return []
 
 
@@ -174,25 +174,25 @@ def handle_errors(errors, skip_errors=False):
         raise Exception(os.linesep.join(msg))
 
 
-def convert(context, base_path, rule):
+def convert(base_path, rule):
     """
     Convert the python representation of a targets file into a python
     representation of a buck file.
     """
 
     converters = [
-        cython.Converter(context),
-        python.PythonConverter(context, 'python_library'),
-        python.PythonConverter(context, 'python_binary'),
-        python.PythonConverter(context, 'python_unittest'),
-        thrift_library.ThriftLibraryConverter(context),
-        sphinx.SphinxWikiConverter(context),
-        sphinx.SphinxManpageConverter(context),
-        wheel.PyWheel(context),
-        wheel.PyWheelDefault(context),
+        cython.Converter(),
+        python.PythonConverter('python_library'),
+        python.PythonConverter('python_binary'),
+        python.PythonConverter('python_unittest'),
+        thrift_library.ThriftLibraryConverter(),
+        sphinx.SphinxWikiConverter(),
+        sphinx.SphinxManpageConverter(),
+        wheel.PyWheel(),
+        wheel.PyWheelDefault(),
     ]
 
-    converters += get_fbonly_converters(context)
+    converters += get_fbonly_converters()
 
     converter_map = {}
     new_converter_map = {

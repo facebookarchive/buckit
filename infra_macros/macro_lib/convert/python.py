@@ -122,8 +122,8 @@ class PythonConverter(base.Converter):
         'python_unittest': 'python_test',
     }
 
-    def __init__(self, context, rule_type):
-        super(PythonConverter, self).__init__(context)
+    def __init__(self, rule_type):
+        super(PythonConverter, self).__init__()
         self._rule_type = rule_type
 
     def get_fbconfig_rule_type(self):

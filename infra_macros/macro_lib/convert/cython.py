@@ -96,10 +96,10 @@ class Converter(base.Converter):
         '.pxi',
     )
 
-    def __init__(self, context):
-        super(Converter, self).__init__(context)
+    def __init__(self):
+        super(Converter, self).__init__()
         self.python_library = python.PythonConverter(
-            context, 'python_library',
+            'python_library',
         )
 
     def get_fbconfig_rule_type(self):

@@ -302,8 +302,8 @@ class CppThriftConverter(ThriftLangConverter):
         ('.cpp', SERVICES_SOURCE),
     ])
 
-    def __init__(self, context, *args, **kwargs):
-        super(CppThriftConverter, self).__init__(context, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(CppThriftConverter, self).__init__(*args, **kwargs)
 
     def get_additional_compiler(self):
         return config.get_thrift2_compiler()
@@ -840,9 +840,9 @@ class HaskellThriftConverter(ThriftLangConverter):
         'vector',
     ]
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         is_hs2 = kwargs.pop('is_hs2', False)
-        super(HaskellThriftConverter, self).__init__(context, *args, **kwargs)
+        super(HaskellThriftConverter, self).__init__(*args, **kwargs)
         self._is_hs2 = is_hs2
 
     def get_compiler(self):
@@ -987,9 +987,9 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
     using plain fbthrift or Apache Thrift.
     """
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(JavaDeprecatedThriftBaseConverter, self).__init__(
-            context, *args, **kwargs)
+            *args, **kwargs)
 
     def get_compiler_lang(self):
         return 'java'
@@ -1064,9 +1064,9 @@ class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
     using fbthrift.
     """
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(JavaDeprecatedThriftConverter, self).__init__(
-            context, *args, **kwargs)
+            *args, **kwargs)
 
     def get_compiler(self):
         return self.read_string(
@@ -1105,9 +1105,9 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
     using the Apache Thrift compiler.
     """
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(JavaDeprecatedApacheThriftConverter, self).__init__(
-            context, *args, **kwargs)
+            *args, **kwargs)
 
     def get_lang(self):
         return 'javadeprecated-apache'
@@ -1150,8 +1150,8 @@ class JsThriftConverter(ThriftLangConverter):
     Specializer to support generating D libraries from thrift sources.
     """
 
-    def __init__(self, context, *args, **kwargs):
-        super(JsThriftConverter, self).__init__(context, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(JsThriftConverter, self).__init__(*args, **kwargs)
 
     def get_lang(self):
         return 'js'
@@ -1222,8 +1222,8 @@ class JavaSwiftConverter(ThriftLangConverter):
     """
     tweaks = set(['EXTEND_RUNTIME_EXCEPTION'])
 
-    def __init__(self, context, *args, **kwargs):
-        super(JavaSwiftConverter, self).__init__(context, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(JavaSwiftConverter, self).__init__(*args, **kwargs)
 
     def get_lang(self):
         return 'java-swift'
@@ -1365,10 +1365,9 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
     THRIFT_PY_TWISTED_LIB_RULE_NAME = target_utils.RootRuleTarget('thrift/lib/py', 'twisted')
     THRIFT_PY_ASYNCIO_LIB_RULE_NAME = target_utils.RootRuleTarget('thrift/lib/py', 'asyncio')
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         flavor = kwargs.pop('flavor', self.NORMAL)
         super(LegacyPythonThriftConverter, self).__init__(
-            context,
             *args,
             **kwargs
         )
@@ -1628,8 +1627,8 @@ class OCamlThriftConverter(ThriftLangConverter):
         target_utils.RootRuleTarget('hphp/hack/src/third-party/core', 'core'),
     ]
 
-    def __init__(self, context, *args, **kwargs):
-        super(OCamlThriftConverter, self).__init__(context, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(OCamlThriftConverter, self).__init__(*args, **kwargs)
 
     def get_compiler(self):
         return config.get_thrift_ocaml_compiler()
@@ -1746,9 +1745,9 @@ class Python3ThriftConverter(ThriftLangConverter):
     services_suffix = '-services'
     clients_suffix = '-clients'
 
-    def __init__(self, context, *args, **kwargs):
-        super(Python3ThriftConverter, self).__init__(context, *args, **kwargs)
-        self.cython_library = cython.Converter(context)
+    def __init__(self, *args, **kwargs):
+        super(Python3ThriftConverter, self).__init__(*args, **kwargs)
+        self.cython_library = cython.Converter()
 
     def get_lang(self):
         return 'py3'
@@ -2056,9 +2055,9 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
 
     AST_FILE = 'thriftdoc_ast.py'
 
-    def __init__(self, context, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(ThriftdocPythonThriftConverter, self).__init__(
-            context, *args, **kwargs
+            *args, **kwargs
         )
 
     def get_lang(self):
@@ -2193,8 +2192,8 @@ class RustThriftConverter(ThriftLangConverter):
     crates are useful for downstream dependencies which don't need everything)
     """
 
-    def __init__(self, context, *args, **kwargs):
-        super(RustThriftConverter, self).__init__(context, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(RustThriftConverter, self).__init__(*args, **kwargs)
 
     def get_lang(self):
         return "rust"
@@ -2439,39 +2438,34 @@ class RustThriftConverter(ThriftLangConverter):
 
 class ThriftLibraryConverter(base.Converter):
 
-    def __init__(self, context):
-        super(ThriftLibraryConverter, self).__init__(context)
+    def __init__(self):
+        super(ThriftLibraryConverter, self).__init__()
 
         # Setup the macro converters.
         converters = [
-            CppThriftConverter(context),
-            DThriftConverter(context),
-            GoThriftConverter(context),
-            HaskellThriftConverter(context, is_hs2=False),
-            HaskellThriftConverter(context, is_hs2=True),
-            JsThriftConverter(context),
-            OCamlThriftConverter(context),
-            RustThriftConverter(context),
-            ThriftdocPythonThriftConverter(context),
-            Python3ThriftConverter(context),
+            CppThriftConverter(),
+            DThriftConverter(),
+            GoThriftConverter(),
+            HaskellThriftConverter(is_hs2=False),
+            HaskellThriftConverter(is_hs2=True),
+            JsThriftConverter(),
+            OCamlThriftConverter(),
+            RustThriftConverter(),
+            ThriftdocPythonThriftConverter(),
+            Python3ThriftConverter(),
             LegacyPythonThriftConverter(
-                context,
                 flavor=LegacyPythonThriftConverter.NORMAL),
             LegacyPythonThriftConverter(
-                context,
                 flavor=LegacyPythonThriftConverter.ASYNCIO),
             LegacyPythonThriftConverter(
-                context,
                 flavor=LegacyPythonThriftConverter.TWISTED),
             LegacyPythonThriftConverter(
-                context,
                 flavor=LegacyPythonThriftConverter.PYI),
             LegacyPythonThriftConverter(
-                context,
                 flavor=LegacyPythonThriftConverter.PYI_ASYNCIO),
-            JavaDeprecatedApacheThriftConverter(context),
-            JavaDeprecatedThriftConverter(context),
-            JavaSwiftConverter(context),
+            JavaDeprecatedApacheThriftConverter(),
+            JavaDeprecatedThriftConverter(),
+            JavaSwiftConverter(),
         ]
         self._converters = {}
         self._name_to_lang = {}
@@ -2480,7 +2474,7 @@ class ThriftLibraryConverter(base.Converter):
             for name in converter.get_names():
                 self._name_to_lang[name] = converter.get_lang()
 
-        self._py_converter = python.PythonConverter(context, 'python_binary')
+        self._py_converter = python.PythonConverter('python_binary')
 
     def get_fbconfig_rule_type(self):
         return 'thrift_library'

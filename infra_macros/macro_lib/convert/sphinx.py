@@ -162,11 +162,11 @@ class _SphinxConverter(base.Converter):
     correct platform default as defined in data
     """
 
-    def __init__(self, context):
-        super(_SphinxConverter, self).__init__(context)
+    def __init__(self):
+        super(_SphinxConverter, self).__init__()
 
         self._converters = {
-            "python_binary": python.PythonConverter(context, "python_binary")
+            "python_binary": python.PythonConverter("python_binary")
         }
 
     def get_allowed_args(self):

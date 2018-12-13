@@ -32,8 +32,7 @@ Context = collections.namedtuple(
 
 class Converter(object):
 
-    def __init__(self, context):
-        self._context = context
+    def __init__(self):
         self._tp2_build_dat_cache = {}
 
     def is_test(self, buck_rule_type):
