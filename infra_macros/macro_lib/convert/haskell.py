@@ -36,50 +36,6 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
-# Packages enabled by default unless you specify fb_haskell = False
-FB_HASKELL_PACKAGES = [
-    'aeson',
-    'async',
-    'attoparsec',
-    'binary',
-    'bytestring',
-    'containers',
-    'data-default',
-    'deepseq',
-    'directory',
-    'either',
-    'filepath',
-    'hashable',
-    'mtl',
-    'optparse-applicative',
-    'pretty',
-    'process',
-    'scientific',
-    'statistics',
-    'text',
-    'text-show',
-    'time',
-    'transformers',
-    'unordered-containers',
-    'QuickCheck',
-    'unix',
-    'vector',
-]
-
-IMPLICIT_TP_DEPS = [
-    target_utils.ThirdPartyRuleTarget('ghc', 'base'),
-
-    # TODO(agallagher): These probably need to be moved into the TARGETS
-    # rule definition for a core lib.
-    target_utils.ThirdPartyRuleTarget('glibc', 'dl'),
-    target_utils.ThirdPartyRuleTarget('glibc', 'm'),
-    target_utils.ThirdPartyRuleTarget('glibc', 'pthread'),
-]
-
-ALEX_PACKAGES = ['array', 'bytestring']
-
-HAPPY_PACKAGES = ['array']
-
 
 class HaskellConverter(base.Converter):
 
@@ -108,16 +64,6 @@ class HaskellConverter(base.Converter):
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
 
-    def get_deps_for_packages(self, packages, platform):
-        return [haskell_common.get_dep_for_package(p, platform) for p in packages]
-
-    def get_implicit_deps(self):
-        """
-        The deps that all haskell rules implicitly depend on.
-        """
-
-        return IMPLICIT_TP_DEPS
-
     def convert_rule(
             self,
             base_path,
@@ -144,236 +90,34 @@ class HaskellConverter(base.Converter):
             dlls={},
             visibility=None):
 
-        rules = []
-        out_compiler_flags = []
-        out_linker_flags = []
-        out_link_style = cpp_common.get_link_style()
-        platform = platform_utils.get_platform_for_base_path(base_path)
-
-        attributes = collections.OrderedDict()
-        attributes['name'] = name
-        if visibility is not None:
-            attributes['visibility'] = visibility
-
-        if self.is_binary():
-            if main is not None:
-                attributes['main'] = main
-            elif not ("Main.hs" in srcs):
-                raise ValueError(
-                    'Must define `main` attribute on {0}:{1}'.format(
-                        base_path, name))
-
-        if link_whole is not None:
-            attributes['link_whole'] = link_whole
-
-        if force_static is not None:
-            attributes['preferred_linkage'] = 'static'
-
-        if self.get_fbconfig_rule_type() == 'haskell_ghci':
-            out_compiler_flags.append('-fexternal-interpreter')
-            # Mark binary_link_deps to be preloaded
-            d = cpp_common.get_binary_link_deps(base_path, name, allocator=allocator)
-            attributes['preload_deps'], attributes['platform_preload_deps'] = \
-                src_and_dep_helpers.format_all_deps(d)
-
-            attributes['extra_script_templates'] = map(
-                lambda template : src_and_dep_helpers.convert_source(base_path, template),
-                extra_script_templates)
-            template_base_names = []
-            # BUCK generates a standard script with the same name as TARGET
-            # by default
-            template_base_names.append(name)
-            for templatePath in attributes['extra_script_templates']:
-                template_base_names.append(paths.basename(templatePath))
-            if len(template_base_names) > len(set(template_base_names)):
-                raise ValueError(
-                    '{0}:{1}: parameter `extra_script_templates`: '.format(
-                        base_path, name) +
-                    'Template file names must be unique and not same as ' +
-                    'the TARGET name')
-
-        if ghci_bin_dep is not None:
-            bin_dep_target = src_and_dep_helpers.convert_build_target(base_path, ghci_bin_dep)
-            attributes['ghci_bin_dep'] = bin_dep_target
-
-        if ghci_init is not None:
-            attributes['ghci_init'] = src_and_dep_helpers.convert_source(base_path, ghci_init)
-
-        if haskell_common.read_hs_profile():
-            attributes['enable_profiling'] = True
-        elif enable_profiling is not None:
-            attributes['enable_profiling'] = enable_profiling
-
-        if haskell_common.read_hs_eventlog():
-            out_linker_flags.append('-eventlog')
-        if haskell_common.read_hs_debug():
-            out_linker_flags.append('-debug')
-
-        if self.get_fbconfig_rule_type() == 'haskell_library':
-            out_haddock_flags = [
-                 '--source-entity',
-                 'https://phabricator.intern.facebook.com/diffusion/FBS/browse/' +
-                 'master/fbcode/%{FILE}$%{LINE}',
-            ]
-            # keep TARGETS specific flags last, so that they can override the
-            # flags before
-            if haddock_flags:
-                out_haddock_flags.extend(haddock_flags)
-            attributes['haddock_flags'] = out_haddock_flags
-
-        validated_compiler_flags = []
-        validated_compiler_flags.extend(
-            haskell_common.get_compiler_flags(compiler_flags, fb_haskell))
-        ldflags = (
-            cpp_common.get_ldflags(
-                base_path,
-                name,
-                self.get_fbconfig_rule_type(),
-                binary=self.is_binary(),
-                deployable=self.is_deployable(),
-                # Never apply stripping flags to library rules, as they only
-                # get linked when using dynamic linking (which we avoid
-                # applying stripping to anyway), and added unused linker flags
-                # affect rule keys up the tree.
-                strip_mode=None if self.is_deployable() else 'none',
-                build_info=self.is_deployable(),
-                platform=platform if self.is_deployable() else None))
-        for ldflag in ldflags:
-            out_linker_flags.extend(['-optl', ldflag])
-        out_linker_flags.extend(validated_compiler_flags)
-
-        out_compiler_flags.extend(haskell_common.get_warnings_flags(warnings_flags))
-        out_compiler_flags.extend(validated_compiler_flags)
-        out_compiler_flags.extend(
-            haskell_common.get_language_options(lang_opts,fb_haskell))
-        build_mode = _build_mode.get_build_mode_for_current_buildfile()
-        if build_mode is not None:
-            out_compiler_flags.extend(build_mode.ghc_flags)
-        out_compiler_flags.extend(haskell_common.read_extra_ghc_compiler_flags())
-        if out_compiler_flags:
-            attributes['compiler_flags'] = out_compiler_flags
-
-        # If this is binary and we're using the shared link style, set this in
-        # the output attributes.
-        if self.is_deployable() and config.get_default_link_style() == 'shared':
-            out_link_style = 'shared'
-
-        # Collect all deps specified by the user.
-        user_deps = []
-        for dep in deps:
-            user_deps.append(target_utils.parse_target(dep, default_base_path=base_path))
-        for dep in external_deps:
-            user_deps.append(src_and_dep_helpers.normalize_external_dep(dep))
-        user_deps.extend(self.get_deps_for_packages(packages, platform))
-        if fb_haskell:
-            user_deps.extend(self.get_deps_for_packages(
-                [x for x in FB_HASKELL_PACKAGES if x not in packages], platform))
-        user_deps.extend(self.get_implicit_deps())
-
-        # Convert the various input source types to haskell sources.
-        out_srcs = []
-        implicit_src_deps = set()
-        for src in srcs:
-            _, ext = paths.split_extension(src)
-            if ext == '.y':
-                src = haskell_rules.happy_rule(name, platform, src, visibility)
-                out_srcs.append(src)
-                implicit_src_deps.update(
-                    self.get_deps_for_packages(HAPPY_PACKAGES, platform))
-            elif ext == '.x':
-                src = haskell_rules.alex_rule(name, platform, src, visibility)
-                out_srcs.append(src)
-                implicit_src_deps.update(
-                    self.get_deps_for_packages(ALEX_PACKAGES, platform))
-            elif ext == '.hsc':
-                src = (
-                    haskell_rules.hsc2hs(
-                        base_path,
-                        name,
-                        platform,
-                        src,
-                        user_deps,
-                        visibility))
-                out_srcs.append(src)
-            elif ext == '.chs':
-                src = (
-                    haskell_rules.c2hs(
-                        base_path,
-                        name,
-                        platform,
-                        src,
-                        user_deps,
-                        visibility))
-                out_srcs.append(src)
-            else:
-                out_srcs.append(src)
-        attributes['srcs'] = out_srcs
-
-        # The final list of dependencies.
-        dependencies = []
-        dependencies.extend(user_deps)
-        dependencies.extend(x for x in sorted(implicit_src_deps)
-                            if x not in user_deps)
-
-        # Handle DLL deps.
-        out_dep_queries = []
-        if dlls:
-            buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-            dll_deps, dll_ldflags, dll_dep_queries = (
-                haskell_common.convert_dlls(
-                    name, platform, buck_platform, dlls, visibility=visibility))
-            dependencies.extend(dll_deps)
-            optlflags = []
-            for f in dll_ldflags:
-                optlflags.append("-optl")
-                optlflags.append(f)
-            out_linker_flags.extend(optlflags)
-            out_dep_queries.extend(dll_dep_queries)
-
-            # We don't currently support dynamic linking with DLL support, as
-            # we don't have a great way to prevent dependency DSOs needed by
-            # the DLL, but *not* needed by the top-level binary, from being
-            # dropped from the `DT_NEEDED` tags when linking with
-            # `--as-needed`.
-            if out_link_style == 'shared':
-                out_link_style = 'static_pic'
-
-        if out_dep_queries:
-            attributes['deps_query'] = ' union '.join(out_dep_queries)
-            attributes['link_deps_query_whole'] = True
-
-        out_linker_flags.extend(haskell_common.read_extra_ghc_linker_flags())
-        if out_linker_flags:
-            attributes['linker_flags'] = out_linker_flags
-
-        if self.is_deployable():
-            attributes['platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-
-            # TODO: support `link_style` for `haskell_ghci` rule.
-            if self.get_fbconfig_rule_type() != 'haskell_ghci':
-                attributes['link_style'] = out_link_style
-
-        if self.is_test():
-            dependencies.append(haskell_common.get_dep_for_package('HUnit', platform))
-            dependencies.append(target_utils.RootRuleTarget('tools/test/stubs', 'fbhsunit'))
-
-        # Add in binary-specific link deps.
-        add_preload_deps = self.get_fbconfig_rule_type() in ('haskell_library', 'haskell_binary')
-        if self.is_binary() or add_preload_deps:
-            d = cpp_common.get_binary_link_deps(base_path, name, allocator=allocator)
-            if self.is_binary():
-                dependencies.extend(d)
-            # Mark binary_link_deps to be preloaded
-            if add_preload_deps:
-                attributes['ghci_preload_deps'], attributes['ghci_platform_preload_deps'] = \
-                    src_and_dep_helpers.format_all_deps(d)
-
-        attributes['deps'], attributes['platform_deps'] = (
-            src_and_dep_helpers.format_all_deps(dependencies))
-
-        rules.append(Rule(self.get_buck_rule_type(), attributes))
-
-        return rules
+        return [
+            Rule(self.get_buck_rule_type(), haskell_rules.convert_rule(
+                rule_type=self.get_fbconfig_rule_type(),
+                base_path=base_path,
+                name=name,
+                main=main,
+                srcs=srcs,
+                deps=deps,
+                external_deps=external_deps,
+                packages=packages,
+                compiler_flags=compiler_flags,
+                warnings_flags=warnings_flags,
+                lang_opts=lang_opts,
+                enable_haddock=enable_haddock,
+                haddock_flags=haddock_flags,
+                enable_profiling=enable_profiling,
+                ghci_bin_dep=ghci_bin_dep,
+                ghci_init=ghci_init,
+                extra_script_templates=extra_script_templates,
+                eventlog=eventlog,
+                link_whole=link_whole,
+                force_static=force_static,
+                fb_haskell=fb_haskell,
+                allocator=allocator,
+                dlls=dlls,
+                visibility=visibility
+            ))
+        ]
 
     def convert_unittest(
             self,

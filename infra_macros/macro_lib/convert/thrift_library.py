@@ -33,7 +33,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-haskell = import_macro_lib('convert/haskell')
 cython = import_macro_lib('convert/cython')
 python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
@@ -48,6 +47,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs/lib:haskell_rules.bzl", "haskell_rules")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs:config.bzl", "config")
@@ -844,8 +844,6 @@ class HaskellThriftConverter(ThriftLangConverter):
         is_hs2 = kwargs.pop('is_hs2', False)
         super(HaskellThriftConverter, self).__init__(context, *args, **kwargs)
         self._is_hs2 = is_hs2
-        self._hs_converter = (
-            haskell.HaskellConverter(context, 'haskell_library'))
 
     def get_compiler(self):
         if self._is_hs2:
@@ -961,7 +959,7 @@ class HaskellThriftConverter(ThriftLangConverter):
                 dependencies.extend(self.THRIFT_HS_LIBS)
             else:
                 dependencies.extend(self.THRIFT_HS_LIBS_DEPRECATED)
-            dependencies.extend(self._hs_converter.get_deps_for_packages(
+            dependencies.extend(haskell_rules.get_deps_for_packages(
                 self.THRIFT_HS_PACKAGES, platform))
         else:
             for services in thrift_srcs.itervalues():
@@ -969,7 +967,7 @@ class HaskellThriftConverter(ThriftLangConverter):
                     dependencies.extend(self.THRIFT_HS2_SERVICE_LIBS)
                     break
             dependencies.extend(self.THRIFT_HS2_LIBS)
-            dependencies.extend(self._hs_converter.get_deps_for_packages(
+            dependencies.extend(haskell_rules.get_deps_for_packages(
                 self.THRIFT_HS2_PACKAGES + (hs_packages or []), platform))
             for dep in hs2_deps:
                 dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
