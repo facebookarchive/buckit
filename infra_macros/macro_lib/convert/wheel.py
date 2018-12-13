@@ -66,13 +66,13 @@ def remote_wheel(url, out, sha1, visibility):
     return ":" + remote_file_name
 
 
-def gen_prebuilt_target(wheel, remote_target, visibility):
-    attrs = collections.OrderedDict()
-    attrs['name'] = wheel
-    if visibility is not None:
-        attrs['visibility'] = visibility
-    attrs['binary_src'] = remote_target
-    return Rule('prebuilt_python_library', attrs)
+def prebuilt_target(wheel, remote_target, visibility):
+    fb_native.prebuilt_python_library(
+        name=wheel,
+        visibility=get_visibility(visibility, wheel),
+        binary_src=remote_target,
+    )
+    return ":" + wheel
 
 
 def _wheel_override_version_check(name, platform_versions):
@@ -224,9 +224,8 @@ class PyWheel(base.Converter):
             # Opensource usage of this may have #md5 tags from pypi
             wheel = get_url_basename(orig_url)
             target_name = remote_wheel(url, wheel, sha1, visibility)
-            rule = gen_prebuilt_target(wheel, target_name, visibility)
-            yield rule
-            wheel_targets[url] = rule.target_name
+            target_name = prebuilt_target(wheel, target_name, visibility)
+            wheel_targets[url] = target_name
 
         attrs = collections.OrderedDict()
         attrs['name'] = version
