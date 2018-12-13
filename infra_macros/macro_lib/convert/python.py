@@ -895,25 +895,27 @@ class PythonConverter(base.Converter):
         if check_types:
             if python_version.major != 3:
                 fail('parameter `check_types` is only supported on Python 3.')
-            rules.extend(
-                self.create_typecheck(
-                    base_path,
-                    name,
-                    main_module,
-                    platform,
-                    python_platform,
-                    python_version,
-                    library,
-                    dependencies,
-                    platform_deps,
-                    out_preload_deps,
-                    typing_options,
-                    visibility,
-                    emails,
-                ),
+            typecheck_rule_name = self.create_typecheck(
+                base_path,
+                name,
+                main_module,
+                platform,
+                python_platform,
+                python_version,
+                dependencies,
+                platform_deps,
+                out_preload_deps,
+                typing_options,
+                visibility,
+                emails,
+                library.target_name,
+                library.attributes.get('versioned_srcs'),
+                library.attributes.get('srcs'),
+                library.attributes.get('resources'),
+                library.attributes.get('base_module'),
             )
             attributes['tests'] = (
-                list(attributes['tests']) + [':{}-typecheck'.format(name)]
+                list(attributes['tests']) + [':' + typecheck_rule_name]
             )
         if analyze_imports:
             create_analyze_imports(
@@ -1222,15 +1224,18 @@ class PythonConverter(base.Converter):
         platform,
         python_platform,
         python_version,
-        library,
         deps,
         platform_deps,
         preload_deps,
         typing_options,
         visibility,
         emails,
+        library_target,
+        library_versioned_srcs,
+        library_srcs,
+        library_resources,
+        library_base_module,
     ):
-
         typing_config = get_typing_config_target()
 
         typecheck_deps = deps[:]
@@ -1241,36 +1246,22 @@ class PythonConverter(base.Converter):
         if not typing_config:
             typecheck_deps.append('//python/typeshed_internal:global_mypy_ini')
 
-        attrs = collections.OrderedDict((
-            ('name', name + '-typecheck'),
-            ('main_module', 'python_typecheck'),
-            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
-            ('platform', python_platform),
-            ('deps', typecheck_deps),
-            ('platform_deps', platform_deps),
-            ('preload_deps', preload_deps),
-            ('package_style', 'inplace'),
-            # TODO(ambv): labels here shouldn't be hard-coded.
-            ('labels', ['buck', 'python']),
-            ('version_universe', python_common.get_version_universe(python_version)),
-            ('contacts', emails),
-        ))
-        if visibility != None:
-            attrs['visibility'] = visibility
+        env = {}
 
-        if library.target_name not in typecheck_deps:
-            # If the passed library is not a dependency, add its sources here.
-            # This enables python_unittest targets to be type-checked, too.
-            for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
-                val = library.attributes.get(param)
-                if val != None:
-                    attrs[param] = val
+        # If the passed library is not a dependency, add its sources here.
+        # This enables python_unittest targets to be type-checked, too.
+        add_library_attrs = library_target not in typecheck_deps
+        if not add_library_attrs:
+            library_versioned_srcs = None
+            library_srcs = None
+            library_resources = None
+            library_base_module = None
 
         if main_module not in {'__fb_test_main__', 'libfb.py.testslide.unittest'}:
             # Tests are properly enumerated from passed sources (see above).
             # For binary targets, we need this subtle hack to let
             # python_typecheck know where to start type checking the program.
-            attrs['env'] = {"PYTHON_TYPECHECK_ENTRY_POINT": main_module}
+            env["PYTHON_TYPECHECK_ENTRY_POINT"] = main_module
 
         typing_options_list = [
             option.strip() for option in typing_options.split(',')
@@ -1280,45 +1271,63 @@ class PythonConverter(base.Converter):
         if use_pyre:
             typing_options_list.remove('pyre')
             typing_options = ','.join(typing_options_list)
-            if 'env' in attrs.keys():
-                attrs['env']["PYRE_ENABLED"] = "1"
-            else:
-                attrs['env'] = {"PYRE_ENABLED": "1"}
+            env["PYRE_ENABLED"] = "1"
 
         if typing_config:
-            conf = collections.OrderedDict()
-            if visibility != None:
-                conf['visibility'] = visibility
-            conf['out'] = '.' # TODO: This should be a real directory
             cmd = '$(exe {}) gather '.format(typing_config)
             if use_pyre:
-                conf['name'] = name + "-typing=pyre.json"
-                conf['out'] = 'pyre.json'
+                genrule_name = name + "-typing=pyre.json"
+                genrule_out = 'pyre.json'
                 cmd += '--pyre=True '
             else:
-                conf['name'] = name + '-typing=mypy.ini'
-                conf['out'] = 'mypy.ini'
+                genrule_name = name + '-typing=mypy.ini'
+                genrule_out = 'mypy.ini'
             if typing_options:
                 cmd += '--options="{}" '.format(typing_options)
-            cmd += '$(location {}-typing) $OUT'.format(library.target_name)
-            conf['cmd'] = cmd
-            gen_rule = Rule('genrule', conf)
-            yield gen_rule
+            cmd += '$(location {}-typing) $OUT'.format(library_target)
 
-            conf = collections.OrderedDict()
+            fb_native.genrule(
+                name = genrule_name,
+                out = genrule_out,
+                cmd = cmd,
+                visibility = visibility,
+            )
+
             if use_pyre:
-                conf['name'] = name + '-pyre_json'
+                typing_library_name = name + '-pyre_json'
             else:
-                conf['name'] = name + '-mypy_ini'
-            if visibility != None:
-                conf['visibility'] = visibility
-            conf['base_module'] = ''
-            conf['srcs'] = [gen_rule.target_name]
-            configuration = Rule('python_library', conf)
-            yield configuration
-            typecheck_deps.append(configuration.target_name)
+                typing_library_name = name + '-mypy_ini'
 
-        yield Rule('python_test', attrs)
+            fb_native.python_library(
+                name = typing_library_name,
+                visibility = visibility,
+                base_module = '',
+                srcs = [":" + genrule_name],
+            )
+            typecheck_deps.append(":" + typing_library_name)
+
+        typecheck_rule_name = name + '-typecheck'
+        fb_native.python_test(
+            name = typecheck_rule_name,
+            main_module = 'python_typecheck',
+            cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
+            platform = python_platform,
+            deps = typecheck_deps,
+            platform_deps = platform_deps,
+            preload_deps = preload_deps,
+            package_style = 'inplace',
+            # TODO(ambv): labels here shouldn't be hard-coded.
+            labels = ['buck', 'python'],
+            version_universe = python_common.get_version_universe(python_version),
+            contacts = emails,
+            visibility = visibility,
+            env = env,
+            versioned_srcs = library_versioned_srcs,
+            srcs = library_srcs,
+            resources = library_resources,
+            base_module = library_base_module,
+        )
+        return typecheck_rule_name
 
     def create_monkeytype_rules(
         self,
