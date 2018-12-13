@@ -13,13 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import json
-
-
-load("@fbcode_macros//build_defs:config.bzl", "config")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
-load("@bazel_skylib//lib:paths.bzl", "paths")
 
 
 Context = collections.namedtuple(
