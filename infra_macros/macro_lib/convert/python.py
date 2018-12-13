@@ -54,7 +54,7 @@ load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
-
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
 
 
 GEN_SRCS_LINK = 'https://fburl.com/203312823'
@@ -89,11 +89,24 @@ class PythonConverter(base.Converter):
 
     def parse_srcs(self, base_path, param, srcs):  # type: (str, str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
         """
-        Parse the given Python input sources.
+        Converts `srcs` to a `srcs` dictionary for use in python_* rule
+
+        Fails if a RuleTarget object is passed in, but a source file name cannot be
+        determined
+
+        Args:
+            base_path: The package for the rule
+            param: The name of the parameter being parsed. Used in error messages
+            srcs: Either a dictionary of file/target -> destination in the library, or
+                  a list of source files or RuleTarget objects that the source named
+                  can be divined from.
+
+        Returns:
+            A mapping of destination filename -> file str / RuleTarget
         """
 
         # Parse sources in dict form.
-        if isinstance(srcs, dict):
+        if is_dict(srcs):
             out_srcs = (
                 src_and_dep_helpers.parse_source_map(
                     base_path,
@@ -101,7 +114,6 @@ class PythonConverter(base.Converter):
 
         # Parse sources in list form.
         else:
-
             out_srcs = {}
 
             # Format sources into a dict of logical name of value.
@@ -143,7 +155,7 @@ class PythonConverter(base.Converter):
 
         # Do a final pass to verify that all sources in `gen_srcs` are rule
         # references.
-        for src in out_srcs.itervalues():
+        for src in out_srcs.values():
             if not target_utils.is_rule_target(src):
                 fail(
                     'parameter `gen_srcs`: `{}` must be a reference to rule ' +
