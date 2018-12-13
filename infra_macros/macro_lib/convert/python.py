@@ -354,7 +354,7 @@ class PythonConverter(base.Converter):
 
         deps, platform_deps = src_and_dep_helpers.format_all_deps(deps)
 
-        lib_rule_name = '__{}_jemalloc_conf_lib__'.format(name),
+        lib_rule_name = '__{}_jemalloc_conf_lib__'.format(name)
         fb_native.cxx_library(
             name = lib_rule_name,
             visibility = visibility,
