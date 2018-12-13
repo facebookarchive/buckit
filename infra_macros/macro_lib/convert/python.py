@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 
 import collections
 import operator
-import pipes
 
 with allow_unsafe_import():  # noqa: magic
     from distutils.version import LooseVersion
@@ -455,7 +454,7 @@ class PythonConverter(base.Converter):
 
         interp = self.get_interpreter(python_platform)
         py_build_info['python_home'] = os.path.dirname(os.path.dirname(interp))
-        py_build_info['python_command'] = pipes.quote(interp)
+        py_build_info['python_command'] = interp
 
         # Include the standard build info, converting the keys to the names we
         # use for python.
@@ -1672,7 +1671,7 @@ class PythonConverter(base.Converter):
                 main_module_attrs['visibility'] = visibility
             main_module_attrs['out'] = name + '-__monkeytype_main_module__.py'
             main_module_attrs['cmd'] = (
-                'echo {} > $OUT'.format(pipes.quote(
+                'echo {} > $OUT'.format(shell.quote(
                     "#!/usr/bin/env python3\n\n"
                     "def monkeytype_main_module() -> str:\n"
                     "    return '{}'\n".format(
@@ -1761,7 +1760,7 @@ class PythonConverter(base.Converter):
             visibility = visibility,
             out = library_name + '-__test_modules__.py',
             cmd = ' && '.join([
-                'echo {} >> $OUT'.format(pipes.quote(line))
+                'echo {} >> $OUT'.format(shell.quote(line))
                 for line in lines
             ])
         )
