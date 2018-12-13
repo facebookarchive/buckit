@@ -55,11 +55,6 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 
-INTERPS = [
-    ('interp', 'libfb.py.python_interp', '//libfb/py:python_interp'),
-    ('ipython', 'libfb.py.ipython_interp', '//libfb/py:ipython_interp'),
-    ('vs_debugger', 'libfb.py.vs_debugger', '//libfb/py:vs_debugger'),
-]
 
 
 GEN_SRCS_LINK = 'https://fburl.com/203312823'
@@ -469,39 +464,6 @@ class PythonConverter(base.Converter):
         return config_setting
 
 
-    def convert_interp_rules(
-            self,
-            base_path,
-            name,
-            platform,
-            python_version,
-            python_platform,
-            deps,
-            platform_deps,
-            preload_deps,
-            visibility):
-        """
-        Generate rules to build intepreter helpers.
-        """
-
-        rule_names = []
-
-        for interp, interp_main_module, interp_dep in INTERPS:
-            rule_name = name + '-' + interp
-            fb_native.python_binary(
-                name = rule_name,
-                visibility = visibility,
-                main_module = interp_main_module,
-                cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
-                platform = python_platform,
-                version_universe = python_common.get_version_universe(python_version),
-                deps = [interp_dep] + deps,
-                platform_deps = platform_deps,
-                preload_deps = preload_deps,
-                package_style = 'inplace',
-            )
-            rule_names.append(rule_name)
-        return rule_names
 
     # TODO(T23173403): move this to `base.py` and make available for other
     # languages.
@@ -997,7 +959,8 @@ class PythonConverter(base.Converter):
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 
-        attributes['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
+        buck_cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+        attributes['cxx_platform'] = buck_cxx_platform
         attributes['platform'] = python_platform
         attributes['version_universe'] = python_common.get_version_universe(python_version)
         attributes['linker_flags'] = (
@@ -1052,10 +1015,9 @@ class PythonConverter(base.Converter):
                     generate_test_modules = generate_test_modules,
                 )
                 interp_deps.append(':' + testmodules_library_name)
-            interp_rules = self.convert_interp_rules(
-                base_path,
+            interp_rules = python_common.interpreter_binaries(
                 name,
-                platform,
+                buck_cxx_platform,
                 python_version,
                 python_platform,
                 interp_deps,
