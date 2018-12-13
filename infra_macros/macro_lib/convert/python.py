@@ -917,18 +917,14 @@ class PythonConverter(base.Converter):
                 list(attributes['tests']) + [':' + typecheck_rule_name]
             )
         if analyze_imports:
-            create_analyze_imports(
-                base_path,
+            self.create_analyze_imports(
                 name,
-                main_module,
-                platform,
+                buck_cxx_platform,
                 python_platform,
                 python_version,
-                library,
                 dependencies,
                 platform_deps,
                 out_preload_deps,
-                typing_options,
                 visibility
             )
         if self.is_test():
@@ -1140,17 +1136,13 @@ class PythonConverter(base.Converter):
 
     def create_analyze_imports(
         self,
-        base_path,
         name,
-        main_module,
-        platform,
+        buck_cxx_platform,
         python_platform,
         python_version,
-        library,
         deps,
         platform_deps,
         preload_deps,
-        typing_options,
         visibility,
     ):
         """ Generate a binary to analyze the imports of a given python library """
@@ -1161,40 +1153,41 @@ class PythonConverter(base.Converter):
         if ':parutil' not in generate_imports_deps:
             generate_imports_deps.append('//libfb/py:parutil')
 
-        cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+        version_universe = python_common.get_version_universe(python_version)
 
+        generate_par_name = name + '-generate-imports'
         fb_native.python_binary(
-            name = name + '-generate-imports',
+            name = generate_par_name,
             main_module = 'libfb.py.generate_par_imports',
-            cxx_platform = cxx_platform,
+            cxx_platform = buck_cxx_platform,
             platform = python_platform,
             deps = generate_imports_deps,
             platform_deps = platform_deps,
             preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
             labels = ['buck', 'python'],
-            version_universe = python_common.get_version_universe(python_version),
-            visibility = visibility
+            version_universe = version_universe,
+            visibility = visibility,
         )
 
         genrule_name = name + '-gen-rule'
-        fb_native.genrule_name(
+        fb_native.genrule(
             name = genrule_name,
-            srcs = ["//" + base_path + ":" + name + "-generate-imports"],
+            srcs = [":" + generate_par_name],
             out = '{}-imports_file.py'.format(name),
-            cmd = '$(exe {}) >"$OUT"'.format(generate_par.target_name),
+            cmd = '$(exe :{}) >"$OUT"'.format(generate_par_name),
         )
 
         lib_name = name + '-analyze-lib'
-        lib_attrs = collections.OrderedDict(
+        fb_native.python_library(
             name = lib_name,
-            srcs = {'imports_file.py': '//' + base_path + ':' + genrule_name},
+            srcs = {'imports_file.py': ':' + genrule_name},
             base_module = '',
-            deps = [gen_rule.target_name],
+            deps = [":" + genrule_name],
         )
 
         analyze_deps = list(deps)
-        analyze_deps.append('//' + base_path + ':' + lib_name)
+        analyze_deps.append(':' + lib_name)
 
         if ':analyze_par_imports' not in analyze_deps:
             analyze_deps.append('//libfb/py:analyze_par_imports')
@@ -1202,14 +1195,13 @@ class PythonConverter(base.Converter):
         fb_native.python_binary(
             name = name + '-analyze-imports',
             main_module = 'libfb.py.analyze_par_imports',
-            cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
+            cxx_platform = buck_cxx_platform,
             platform = python_platform,
             deps = analyze_deps,
             platform_deps = platform_deps,
             preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
             labels = ['buck', 'python'],
-            version_universe = python_common.get_version_universe(python_version),
+            version_universe = version_universe,
             visibility = visibility,
         )
-
