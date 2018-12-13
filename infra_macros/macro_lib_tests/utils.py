@@ -30,7 +30,7 @@ from ..macro_lib import BuildMode
 ConverterState = (
     collections.namedtuple(
         'ConverterState',
-        ['context', 'parser', 'build_file_deps', 'include_defs']))
+        ['parser', 'build_file_deps', 'include_defs']))
 
 
 class ConverterTestCase(unittest.TestCase):
@@ -119,23 +119,7 @@ class ConverterTestCase(unittest.TestCase):
 
         build_file_deps = []
         include_defs = []
-        context = (
-            base.Context(
-                build_mode=create_build_mode.create_build_mode(),
-                default_compiler='gcc',
-                global_compiler=None,
-                coverage=False,
-                link_style='shared',
-                mode='opt',
-                lto_type=None,
-                third_party_config={
-                    'platforms': {
-                        'platform007': {'architecture': platform.machine()},
-                        'platform': {'architecture': platform.machine()},
-                    },
-                }))
         return ConverterState(
-            context=context,
             parser=parser,
             build_file_deps=build_file_deps,
             include_defs=include_defs)
