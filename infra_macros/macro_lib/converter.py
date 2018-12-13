@@ -82,6 +82,7 @@ load("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
 load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:go_library.bzl", "go_library")
 load("@fbcode_macros//build_defs:go_unittest.bzl", "go_unittest")
+load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
@@ -180,7 +181,6 @@ def convert(context, base_path, rule):
 
     converters = [
         cython.Converter(context),
-        haskell.HaskellConverter(context, 'haskell_binary'),
         haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         python.PythonConverter(context, 'python_library'),
@@ -231,6 +231,7 @@ def convert(context, base_path, rule):
         'go_library': go_library,  # noqa F821
         'go_unittest': go_unittest,  # noqa F821
         'haskell_external_library': haskell_external_library,  # noqa F821
+        'haskell_binary': haskell_binary,  # noqa F821
         'haskell_haddock': haskell_haddock,  # noqa F821
         'haskell_ghci': haskell_ghci,  # noqa F821
         'java_binary': java_binary,  # noqa F821
