@@ -946,9 +946,7 @@ class PythonConverter(base.Converter):
             read_bool('fbcode', 'monkeytype', False) and
             python_version.major == 3
         ):
-            rules.extend(
-                self.create_monkeytype_rules(rule_type, attributes, library)
-            )
+            self.create_monkeytype_rules(rule_type, attributes, library.attributes['name'])
 
         return [Rule(rule_type, attributes)] + rules
 
@@ -1219,8 +1217,19 @@ class PythonConverter(base.Converter):
         self,
         rule_type,
         attributes,
-        library,
+        library_name,
     ):
+        """
+        Create a python binary/test that enables monkeytype but otherwise looks like another binary/test
+
+        Args:
+            rule_type: The type of rule to create (python_binary or python_test)
+            attributes: The attributes of the original binary/test that we are enabling
+                        monkeytype for. These should be final values passed to buck,
+                        not intermediaries, as they are copied directly into a
+            library_name: The name of the implicit library created for the binary/test
+        """
+
         rules = []
         name = attributes['name']
         visibility = attributes.get('visibility', None)
@@ -1228,44 +1237,49 @@ class PythonConverter(base.Converter):
         if 'main_module' in attributes:
             # we need to preserve the original main_module, so we inject a
             # library with a module for it that the main wrapper picks up
-            main_module_attrs = collections.OrderedDict()
-            main_module_attrs['name'] = name + '-monkeytype_main_module'
-            if visibility != None:
-                main_module_attrs['visibility'] = visibility
-            main_module_attrs['out'] = name + '-__monkeytype_main_module__.py'
-            main_module_attrs['cmd'] = (
-                'echo {} > $OUT'.format(shell.quote(
-                    "#!/usr/bin/env python3\n\n"
-                    "def monkeytype_main_module() -> str:\n"
-                    "    return '{}'\n".format(
-                        attributes['main_module']
-                    )
-                ))
+            main_module_name = name + '-monkeytype_main_module'
+            script = (
+                "#!/usr/bin/env python3\n\n" +
+                "def monkeytype_main_module() -> str:\n" +
+                "    return '{}'\n".format(attributes['main_module'])
             )
-            rules.append(Rule('genrule', main_module_attrs))
+
+            fb_native.genrule(
+                name = main_module_name,
+                visibility = visibility,
+                out = name + '-__monkeytype_main_module__.py',
+                cmd = 'echo {} > $OUT'.format(shell.quote(script)),
+            )
+
             lib_main_module_attrs_name = name + '-monkeytype_main_module-lib'
-            lib_main_module_attrs = collections.OrderedDict()
-            lib_main_module_attrs['name'] = lib_main_module_attrs_name
-            if visibility != None:
-                lib_main_module_attrs['visibility'] = visibility
-            lib_main_module_attrs['base_module'] = ''
-            lib_main_module_attrs['deps'] = ['//python:fbtestmain', ':' + name]
-            lib_main_module_attrs['srcs'] = {
-                '__monkeytype_main_module__.py': ':' + main_module_attrs['name']
-            }
-            rules.append(Rule('python_library', lib_main_module_attrs))
+            fb_native.python_library(
+                name = lib_main_module_attrs_name,
+                visibility = visibility,
+                base_module = '',
+                deps = ['//python:fbtestmain', ':' + name],
+                srcs = {
+                    '__monkeytype_main_module__.py': ':' + main_module_name,
+                },
+            )
 
         # Create a variant of the target that is running with monkeytype
-        wrapper_attrs = attributes.copy()
+        if rule_type == 'python_binary':
+            wrapper_rule_constructor = fb_native.python_binary
+        elif rule_type == 'python_test':
+            wrapper_rule_constructor = fb_native.python_test
+        else:
+            fail("Invalid rule type specified: " + rule_type)
+
+        wrapper_attrs = dict(attributes)
         wrapper_attrs['name'] = name + '-monkeytype'
-        if visibility != None:
-            wrapper_attrs['visibility'] = visibility
+        wrapper_attrs['visibility'] = visibility
         if 'deps' in wrapper_attrs:
             wrapper_deps = list(wrapper_attrs['deps'])
         else:
             wrapper_deps = []
-        if ':' + library.attributes['name'] not in wrapper_deps:
-            wrapper_deps.append(':' + library.attributes['name'])
+        library_target = ':' + library_name
+        if library_target not in wrapper_deps:
+            wrapper_deps.append(library_target)
         stub_gen_deps = list(wrapper_deps)
 
         if '//python/monkeytype:main_wrapper' not in wrapper_deps:
@@ -1275,26 +1289,21 @@ class PythonConverter(base.Converter):
         wrapper_attrs['deps'] = wrapper_deps
         wrapper_attrs['base_module'] = ''
         wrapper_attrs['main_module'] = 'python.monkeytype.tools.main_wrapper'
-        rules.append(Rule(rule_type, wrapper_attrs))
+        wrapper_rule_constructor(**wrapper_attrs)
 
         if '//python/monkeytype/tools:stubs_lib' not in wrapper_deps:
             stub_gen_deps.append('//python/monkeytype/tools:stubs_lib')
 
         # And create a target that can be used for stub creation
-        stub_gen_attrs = collections.OrderedDict((
-            ('name', attributes['name'] + '-monkeytype-gen-stubs'),
-            ('visibility', visibility),
-            ('main_module', 'python.monkeytype.tools.get_stub'),
-            ('cxx_platform', attributes['cxx_platform']),
-            ('platform', attributes['platform']),
-            ('deps', stub_gen_deps),
-            ('platform_deps', attributes['platform_deps']),
-            ('preload_deps', attributes['preload_deps']),
-            ('package_style', 'inplace'),
-            ('version_universe', attributes['version_universe']),
-        ))
-        rules.append(Rule('python_binary', stub_gen_attrs))
-        return rules
-
-
-
+        fb_native.python_binary(
+            name = name + '-monkeytype-gen-stubs',
+            visibility = visibility,
+            main_module = 'python.monkeytype.tools.get_stub',
+            cxx_platform = attributes['cxx_platform'],
+            platform = attributes['platform'],
+            deps = stub_gen_deps,
+            platform_deps = attributes['platform_deps'],
+            preload_deps = attributes['preload_deps'],
+            package_style = 'inplace',
+            version_universe = attributes['version_universe'],
+        )
