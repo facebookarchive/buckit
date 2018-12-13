@@ -34,6 +34,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
@@ -463,12 +464,11 @@ class PythonConverter(base.Converter):
             'rule': 'build_rule',
             'rule_type': 'build_rule_type',
         }
-        info = (
-            build_info.get_build_info(
-                base_path,
-                name,
-                self.get_fbconfig_rule_type(),
-                platform))
+        info = build_info.get_build_info(
+            base_path,
+            name,
+            self.get_fbconfig_rule_type(),
+            platform)
         for key in build_info.BUILD_INFO_KEYS:
             py_build_info[key_mappings.get(key, key)] = getattr(info, key)
 
@@ -486,41 +486,35 @@ class PythonConverter(base.Converter):
         Build the rules that create the `__manifest__` module.
         """
 
-        rules = []
-
-        build_info = (
-            self.get_python_build_info(
-                base_path,
-                name,
-                main_module,
-                platform,
-                python_platform))
+        build_info = self.get_python_build_info(
+            base_path,
+            name,
+            main_module,
+            platform,
+            python_platform)
         manifest = MANIFEST_TEMPLATE.format(
             fbmake='\n        '.join(
-                '{!r}: {!r},'.format(k, v) for k, v in build_info.iteritems()))
+                '{!r}: {!r},'.format(k, v) for k, v in build_info.items()))
 
         manifest_name = name + '-manifest'
-        manifest_attrs = collections.OrderedDict()
-        manifest_attrs['name'] = manifest_name
-        manifest_attrs['labels'] = ["generated"]
-        if visibility != None:
-            manifest_attrs['visibility'] = visibility
-        manifest_attrs['out'] = name + '-__manifest__.py'
-        manifest_attrs['cmd'] = (
-            'echo -n {} > $OUT'.format(pipes.quote(manifest)))
-        rules.append(Rule('genrule', manifest_attrs))
+        fb_native.genrule(
+            name = manifest_name,
+                labels = ["generated"],
+                visibility = visibility,
+                out = name + '-__manifest__.py',
+                cmd = 'echo -n {} > $OUT'.format(shell.quote(manifest)),
+        )
 
         manifest_lib_name = name + '-manifest-lib'
-        manifest_lib_attrs = collections.OrderedDict()
-        manifest_lib_attrs['name'] = manifest_lib_name
-        manifest_lib_attrs['labels'] = ["generated"]
-        if visibility != None:
-            manifest_lib_attrs['visibility'] = visibility
-        manifest_lib_attrs['base_module'] = ''
-        manifest_lib_attrs['srcs'] = {'__manifest__.py': ':' + manifest_name}
-        rules.append(Rule('python_library', manifest_lib_attrs))
+        fb_native.python_library(
+            name = manifest_lib_name,
+            labels = ["generated"],
+            visibility = visibility,
+            base_module = '',
+            srcs = {'__manifest__.py': ':' + manifest_name},
+        )
 
-        return manifest_lib_name, rules
+        return manifest_lib_name
 
     def get_par_build_args(
             self,
@@ -1153,7 +1147,7 @@ class PythonConverter(base.Converter):
         # list into `opt` builds, which then fails with a missing build target
         # error.  So, for now, just always generate the manifest library, but
         # only use it when building inplace binaries.
-        manifest_name, manifest_rules = (
+        manifest_name = (
             self.generate_manifest(
                 base_path,
                 name,
@@ -1161,7 +1155,6 @@ class PythonConverter(base.Converter):
                 platform,
                 python_platform,
                 visibility))
-        rules.extend(manifest_rules)
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 
