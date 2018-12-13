@@ -39,26 +39,6 @@ class Converter(object):
     def is_test(self, buck_rule_type):
         return buck_rule_type.endswith('_test')
 
-    def read_choice(self, section, field, choices, default=None):
-        """
-        Read a string from `.buckconfig` which can be one of the values given
-        in `choices`.
-        """
-
-        val = read_config(section, field)
-        if val is not None:
-            if val in choices:
-                return val
-            else:
-                raise TypeError(
-                    '`{}:{}`: must be one of ({}), but was {!r}'
-                    .format(section, field, ', '.join(choices), val))
-        elif default is not None:
-            return default
-        else:
-            raise KeyError(
-                '`{}:{}`: no value set'.format(section, field))
-
     def read_bool(self, section, field, default=None, required=True):
         """
         Read a `boolean` from `.buckconfig`.

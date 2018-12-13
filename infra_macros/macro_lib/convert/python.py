@@ -51,6 +51,7 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 
 INTERPS = [
     ('interp', 'libfb.py.python_interp', '//libfb/py:python_interp'),
@@ -599,7 +600,7 @@ class PythonConverter(base.Converter):
             strip_mode=strip_mode)
 
     def get_package_style(self):
-        return self.read_choice(
+        return read_choice(
             'python',
             'package_style',
             ['inplace', 'standalone'],
