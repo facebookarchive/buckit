@@ -60,57 +60,6 @@ load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 GEN_SRCS_LINK = 'https://fburl.com/203312823'
 
 
-MANIFEST_TEMPLATE = """\
-import sys
-
-
-class Manifest(object):
-
-    def __init__(self):
-        self._modules = None
-        self.__file__ = __file__
-        self.__name__ = __name__
-
-    @property
-    def modules(self):
-        if self._modules is None:
-            import os, sys
-            modules = set()
-            for root, dirs, files in os.walk(sys.path[0]):
-                rel_root = os.path.relpath(root, sys.path[0])
-                if rel_root == '.':
-                    package_prefix = ''
-                else:
-                    package_prefix = rel_root.replace(os.sep, '.') + '.'
-
-                for name in files:
-                    base, ext = os.path.splitext(name)
-                    # Note that this loop includes all *.so files, regardless
-                    # of whether they are actually python modules or just
-                    # regular dynamic libraries
-                    if ext in ('.py', '.pyc', '.pyo', '.so'):
-                        if rel_root == "." and base == "__manifest__":
-                            # The manifest generation logic for normal pars
-                            # does not include the __manifest__ module itself
-                            continue
-                        modules.add(package_prefix + base)
-                # Skip __pycache__ directories
-                try:
-                    dirs.remove("__pycache__")
-                except ValueError:
-                    pass
-            self._modules = sorted(modules)
-        return self._modules
-
-    fbmake = {{
-        {fbmake}
-    }}
-
-
-sys.modules[__name__] = Manifest()
-"""
-
-
 class PythonConverter(base.Converter):
 
     RULE_TYPE_MAP = {
@@ -271,49 +220,6 @@ class PythonConverter(base.Converter):
                 src_and_dep_helpers.convert_build_target(base_path, target))
         target, path = target.rsplit('=', 1)
         return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
-
-    def generate_manifest(
-            self,
-            base_path,
-            name,
-            main_module,
-            platform,
-            python_platform,
-            visibility):
-        """
-        Build the rules that create the `__manifest__` module.
-        """
-
-        build_info = python_common.get_build_info(
-            base_path,
-            name,
-            self.get_fbconfig_rule_type(),
-            main_module,
-            platform,
-            python_platform)
-        manifest = MANIFEST_TEMPLATE.format(
-            fbmake='\n        '.join(
-                '{!r}: {!r},'.format(k, v) for k, v in build_info.items()))
-
-        manifest_name = name + '-manifest'
-        fb_native.genrule(
-            name = manifest_name,
-                labels = ["generated"],
-                visibility = visibility,
-                out = name + '-__manifest__.py',
-                cmd = 'echo -n {} > $OUT'.format(shell.quote(manifest)),
-        )
-
-        manifest_lib_name = name + '-manifest-lib'
-        fb_native.python_library(
-            name = manifest_lib_name,
-            labels = ["generated"],
-            visibility = visibility,
-            base_module = '',
-            srcs = {'__manifest__.py': ':' + manifest_name},
-        )
-
-        return manifest_lib_name
 
     def get_par_build_args(
             self,
@@ -907,14 +813,15 @@ class PythonConverter(base.Converter):
         # list into `opt` builds, which then fails with a missing build target
         # error.  So, for now, just always generate the manifest library, but
         # only use it when building inplace binaries.
-        manifest_name = (
-            self.generate_manifest(
-                base_path,
-                name,
-                main_module,
-                platform,
-                python_platform,
-                visibility))
+        manifest_name = python_common.manifest_library(
+            base_path,
+            name,
+            self.get_fbconfig_rule_type(),
+            main_module,
+            platform,
+            python_platform,
+            visibility,
+        )
         if self.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 

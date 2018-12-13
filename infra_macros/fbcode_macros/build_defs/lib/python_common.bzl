@@ -1,4 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
@@ -9,6 +10,56 @@ _INTERPRETERS = [
     ("ipython", "libfb.py.ipython_interp", "//libfb/py:ipython_interp"),
     ("vs_debugger", "libfb.py.vs_debugger", "//libfb/py:vs_debugger"),
 ]
+
+_MANIFEST_TEMPLATE = """\
+import sys
+
+
+class Manifest(object):
+
+    def __init__(self):
+        self._modules = None
+        self.__file__ = __file__
+        self.__name__ = __name__
+
+    @property
+    def modules(self):
+        if self._modules is None:
+            import os, sys
+            modules = set()
+            for root, dirs, files in os.walk(sys.path[0]):
+                rel_root = os.path.relpath(root, sys.path[0])
+                if rel_root == '.':
+                    package_prefix = ''
+                else:
+                    package_prefix = rel_root.replace(os.sep, '.') + '.'
+
+                for name in files:
+                    base, ext = os.path.splitext(name)
+                    # Note that this loop includes all *.so files, regardless
+                    # of whether they are actually python modules or just
+                    # regular dynamic libraries
+                    if ext in ('.py', '.pyc', '.pyo', '.so'):
+                        if rel_root == "." and base == "__manifest__":
+                            # The manifest generation logic for normal pars
+                            # does not include the __manifest__ module itself
+                            continue
+                        modules.add(package_prefix + base)
+                # Skip __pycache__ directories
+                try:
+                    dirs.remove("__pycache__")
+                except ValueError:
+                    pass
+            self._modules = sorted(modules)
+        return self._modules
+
+    fbmake = {{
+        {fbmake}
+    }}
+
+
+sys.modules[__name__] = Manifest()
+"""
 
 def _get_version_universe(python_version):
     """
@@ -123,8 +174,70 @@ def _get_build_info(
 
     return py_build_info
 
+def _manifest_library(
+        base_path,
+        name,
+        fbconfig_rule_type,
+        main_module,
+        fbcode_platform,
+        python_platform,
+        visibility):
+    """
+    Build the rules that create the `__manifest__` module.
+
+    Args:
+        base_path: The package of this rule
+        name: The name of the primary rule that was generated
+        fbconfig_rule_type: The name of the main rule being built; used for build_info
+        main_module: The main module of the python binary/test
+        fbcode_platform: The fbcode platform to use in build info
+        python_platform: The buck-compatible python platform to use
+        visibility: The visiblity for the main python_library
+
+    Returns:
+        The name of a library that contains a __mainfest__.py with
+        build information in it.
+    """
+
+    build_info = _get_build_info(
+        base_path,
+        name,
+        fbconfig_rule_type,
+        main_module,
+        fbcode_platform,
+        python_platform,
+    )
+
+    fbmake = "\n        ".join([
+        "{!r}: {!r},".format(k, v)
+        for k, v in build_info.items()
+    ])
+    manifest = _MANIFEST_TEMPLATE.format(fbmake = fbmake)
+
+    manifest_name = name + "-manifest"
+    manifest_lib_name = name + "-manifest-lib"
+
+    fb_native.genrule(
+        name = manifest_name,
+        labels = ["generated"],
+        visibility = None,
+        out = name + "-__manifest__.py",
+        cmd = "echo -n {} > $OUT".format(shell.quote(manifest)),
+    )
+
+    fb_native.python_library(
+        name = manifest_lib_name,
+        labels = ["generated"],
+        visibility = visibility,
+        base_module = "",
+        srcs = {"__manifest__.py": ":" + manifest_name},
+    )
+
+    return manifest_lib_name
+
 python_common = struct(
     get_build_info = _get_build_info,
+    manifest_library = _manifest_library,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
