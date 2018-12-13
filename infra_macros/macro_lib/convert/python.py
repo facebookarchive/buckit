@@ -50,6 +50,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 INTERPS = [
@@ -768,21 +769,24 @@ class PythonConverter(base.Converter):
             ['inplace', 'standalone'],
             'standalone')
 
-    def gen_associated_targets(self, base_path, name, targets, visibility):
+    def gen_associated_targets(self, base_path, name, deps, visibility):
         """
         Associated Targets are buck rules that need to be built, when This
         target is built, but are not a code dependency. Which is why we
         wrap them in a cxx_library so they could never be a code dependency
+
+        TODO: Python just needs the concept of runtime deps if it doesn't have it
         """
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + '-build_also'
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['deps'] = targets
+        rule_name = name + '-build_also'
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        attrs['default_platform'] = buck_platform
-        attrs['defaults'] = {'platform': buck_platform}
-        return Rule('cxx_library', attrs)
+        fb_native.cxx_library(
+            name = rule_name,
+            visibility = visibility,
+            deps = deps,
+            default_platform = buck_platform,
+            defaults = {'platform': buck_platform},
+        )
+        return rule_name
 
     def create_library(
         self,
@@ -1349,9 +1353,8 @@ class PythonConverter(base.Converter):
             )
 
         if runtime_deps:
-            rule = self.gen_associated_targets(base_path, library_name, runtime_deps, visibility)
-            deps = list(deps) + [rule.target_name]
-            yield rule
+            associated_targets_name = self.gen_associated_targets(base_path, library_name, runtime_deps, visibility)
+            deps = list(deps) + [":" + associated_targets_name]
 
         library = self.create_library(
             base_path,
