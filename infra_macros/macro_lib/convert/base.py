@@ -18,7 +18,6 @@ import collections
 Context = collections.namedtuple(
     'Context',
     [
-        'buck_ops',
         'build_mode',
         'default_compiler',
         'global_compiler',
@@ -27,17 +26,6 @@ Context = collections.namedtuple(
         'mode',
         'lto_type',
         'third_party_config',
-    ],
-)
-
-
-BuckOperations = collections.namedtuple(
-    'BuckOperations',
-    [
-        'add_build_file_dep',
-        'glob',
-        'include_defs',
-        'read_config',
     ],
 )
 

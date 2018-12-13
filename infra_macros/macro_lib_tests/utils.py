@@ -119,15 +119,8 @@ class ConverterTestCase(unittest.TestCase):
 
         build_file_deps = []
         include_defs = []
-        buck_ops = (
-            base.BuckOperations(
-                add_build_file_dep=lambda dep: build_file_deps.append(dep),
-                glob=lambda *a, **kw: [],
-                include_defs=lambda dep: include_defs.append(dep),
-                read_config=read_config_func))
         context = (
             base.Context(
-                buck_ops=buck_ops,
                 build_mode=create_build_mode.create_build_mode(),
                 default_compiler='gcc',
                 global_compiler=None,

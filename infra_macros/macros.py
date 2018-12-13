@@ -168,12 +168,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
 
     # Convert the fbconfig/fbmake rule into one or more Buck rules.
     base_path = get_base_path()
-    context['buck_ops'] = (
-        base.BuckOperations(
-            add_build_file_dep,
-            glob,
-            include_defs,
-            read_config))
     context['build_mode'] = build_mode.get_build_modes_for_current_buildfile().get(context['mode'])
     context['third_party_config'] = third_party_config
 
