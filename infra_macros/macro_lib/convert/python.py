@@ -488,24 +488,24 @@ class PythonConverter(base.Converter):
         Generate rules to build intepreter helpers.
         """
 
-        rules = []
+        rule_names = []
 
         for interp, interp_main_module, interp_dep in INTERPS:
-            attrs = collections.OrderedDict()
-            attrs['name'] = name + '-' + interp
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['main_module'] = interp_main_module
-            attrs['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
-            attrs['platform'] = python_platform
-            attrs['version_universe'] = self.get_version_universe(python_version)
-            attrs['deps'] = [interp_dep] + deps
-            attrs['platform_deps'] = platform_deps
-            attrs['preload_deps'] = preload_deps
-            attrs['package_style'] = 'inplace'
-            rules.append(Rule('python_binary', attrs))
-
-        return rules
+            rule_name = name + '-' + interp
+            fb_native.python_binary(
+                name = rule_name,
+                visibility = visibility,
+                main_module = interp_main_module,
+                cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
+                platform = python_platform,
+                version_universe = self.get_version_universe(python_version),
+                deps = [interp_dep] + deps,
+                platform_deps = platform_deps,
+                preload_deps = preload_deps,
+                package_style = 'inplace',
+            )
+            rule_names.append(rule_name)
+        return rule_names
 
     # TODO(T23173403): move this to `base.py` and make available for other
     # languages.
@@ -1056,20 +1056,18 @@ class PythonConverter(base.Converter):
                     generate_test_modules = generate_test_modules,
                 )
                 interp_deps.append(':' + testmodules_library_name)
-            interp_rules = (
-                self.convert_interp_rules(
-                    base_path,
-                    name,
-                    platform,
-                    python_version,
-                    python_platform,
-                    interp_deps,
-                    platform_deps,
-                    out_preload_deps,
-                    visibility))
-            rules.extend(interp_rules)
-            dependencies.extend(
-                ':' + r.attributes['name'] for r in interp_rules)
+            interp_rules = self.convert_interp_rules(
+                base_path,
+                name,
+                platform,
+                python_version,
+                python_platform,
+                interp_deps,
+                platform_deps,
+                out_preload_deps,
+                visibility,
+            )
+            dependencies.extend([':' + interp_rule for interp_rule in interp_rules])
         if check_types:
             if python_version.major != 3:
                 fail('parameter `check_types` is only supported on Python 3.')
