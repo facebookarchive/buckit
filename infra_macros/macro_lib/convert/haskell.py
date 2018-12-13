@@ -31,6 +31,7 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs/lib:haskell_rules.bzl", "haskell_rules")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
 load("@bazel_skylib//lib:paths.bzl", "paths")
@@ -177,7 +178,8 @@ class HaskellConverter(base.Converter):
 
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'haskell_binary':
-            return self.convert_rule(base_path, *args, **kwargs)
+            haskell_binary(*args, **kwargs)
+            return []
         if rtype == 'haskell_library':
             return self.convert_library(base_path, *args, **kwargs)
         elif rtype == 'haskell_unittest':
