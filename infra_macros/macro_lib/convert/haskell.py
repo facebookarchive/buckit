@@ -35,27 +35,6 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
-
-# Flags controlling warnings issued by compiler
-DEFAULT_WARNING_FLAGS = ('-Wall', '-Werror')
-
-# The valid warnings flags
-VALID_WARNINGS_FLAGS = frozenset([
-    '-W',
-    '-w',
-    '-Wall',
-    '-Werror',
-    '-Wwarn',
-])
-
-# '^(-f(no-)?warn-)|(-W(no-)?)'
-VALID_WARNINGS_FLAG_PREFIXES = (
-    "-fwarn-",
-    "-fno-warn-",
-    "-W",
-    "-Wno-",
-)
-
 # '^-O[0-9]*$|'
 # '^-v[0-9]*$|'
 # '^(-D\w+)$|'
@@ -400,40 +379,6 @@ class HaskellConverter(base.Converter):
 
         return IMPLICIT_TP_DEPS
 
-    def _is_valid_warning_flag(self, flag):
-        if flag in VALID_WARNINGS_FLAGS:
-            return True
-        for prefix in VALID_WARNINGS_FLAG_PREFIXES:
-            if flag.startswith(prefix):
-                return True
-        return False
-
-    def get_warnings_flags(self, warnings_flags=None):
-        """
-        Return the flags responsible for controlling the warnings used in
-        compilation.
-        """
-
-        # Set the warnings flags for this rule by appending the user supplied
-        # warnings flags to the default ones.
-        wflags = []
-        wflags.extend(DEFAULT_WARNING_FLAGS)
-        if warnings_flags is not None:
-            wflags.extend(warnings_flags)
-
-        # Verify that all the warning flags are valid
-        bad_warnings_flags = set()
-        for flag in wflags:
-            if self._is_valid_warning_flag(flag):
-                continue
-            bad_warnings_flags.add(flag)
-        if bad_warnings_flags:
-            raise ValueError(
-                'invalid warnings flags: {!r}'
-                .format(sorted(bad_warnings_flags)))
-
-        return tuple(wflags)
-
     def _is_valid_compiler_flag(self, flag):
         for prefix in VALID_COMPILER_FLAG_PREFIXES:
             if flag.startswith(prefix):
@@ -764,7 +709,7 @@ class HaskellConverter(base.Converter):
             out_linker_flags.extend(['-optl', ldflag])
         out_linker_flags.extend(validated_compiler_flags)
 
-        out_compiler_flags.extend(self.get_warnings_flags(warnings_flags))
+        out_compiler_flags.extend(haskell_common.get_warnings_flags(warnings_flags))
         out_compiler_flags.extend(validated_compiler_flags)
         out_compiler_flags.extend(
             self.get_language_options(lang_opts,fb_haskell))

@@ -295,9 +295,65 @@ def _get_ghc_version(platform):
     tp_config = third_party.get_third_party_config_for_platform(platform)
     return tp_config["tools"]["projects"]["ghc"]
 
+# The valid warnings flags
+_VALID_WARNINGS_FLAGS = (
+    "-W",
+    "-w",
+    "-Wall",
+    "-Werror",
+    "-Wwarn",
+)
+
+# '^(-f(no-)?warn-)|(-W(no-)?)'
+_VALID_WARNINGS_FLAG_PREFIXES = (
+    "-fwarn-",
+    "-fno-warn-",
+    "-W",
+    "-Wno-",
+)
+
+def _is_valid_warning_flag(flag):
+    if flag in _VALID_WARNINGS_FLAGS:
+        return True
+    for prefix in _VALID_WARNINGS_FLAG_PREFIXES:
+        if flag.startswith(prefix):
+            return True
+    return False
+
+# Flags controlling warnings issued by compiler
+_DEFAULT_WARNING_FLAGS = ("-Wall", "-Werror")
+
+def _get_warnings_flags(warnings_flags = None):
+    """
+    Return the flags responsible for controlling the warnings used in
+    compilation.
+    """
+
+    # Set the warnings flags for this rule by appending the user supplied
+    # warnings flags to the default ones.
+    wflags = []
+    wflags.extend(_DEFAULT_WARNING_FLAGS)
+    if warnings_flags != None:
+        wflags.extend(warnings_flags)
+
+    # Verify that all the warning flags are valid
+    bad_warnings_flags = []
+    for flag in wflags:
+        if _is_valid_warning_flag(flag):
+            continue
+        bad_warnings_flags.append(flag)
+    if bad_warnings_flags:
+        fail(
+            "invalid warnings flags: {!r}"
+                .format(sorted(bad_warnings_flags)),
+        )
+
+    return tuple(wflags)
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
     get_ghc_version = _get_ghc_version,
+    get_warnings_flags = _get_warnings_flags,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,
     read_extra_ghc_linker_flags = _read_extra_ghc_linker_flags,
     read_hs_debug = _read_hs_debug,
