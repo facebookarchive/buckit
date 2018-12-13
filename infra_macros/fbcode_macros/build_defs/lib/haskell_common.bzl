@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree. An additional grant
 # of patent rights can be found in the PATENTS file in the same directory.
 
+load("@bazel_skylib//lib:collections.bzl", "collections")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean", "read_list")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -435,9 +436,74 @@ def _get_compiler_flags(user_compiler_flags, fb_haskell):
 
     return tuple(compiler_flags)
 
+# Prefixes of valid language option flags
+# '(-X\w+)$|'
+# '(-f(no-)?irrefutable-tuples)$|'
+# '(-fcontext-stack=\d+)$'
+_VALID_LANG_OPT_PREFIXES = (
+    "-X",
+    "-firrefutable-tuples",
+    "-fno-irrefutable-tuples",
+    "-fcontext-stack=",
+)
+
+def _is_valid_language_option(option):
+    for prefix in _VALID_LANG_OPT_PREFIXES:
+        if option.startswith(prefix):
+            return True
+    return False
+
+# Extensions enabled by default unless you specify fb_haskell = False
+_FB_HASKELL_LANG = (
+    "BangPatterns",
+    "BinaryLiterals",
+    "DataKinds",
+    "DeriveDataTypeable",
+    "DeriveGeneric",
+    "EmptyCase",
+    "ExistentialQuantification",
+    "FlexibleContexts",
+    "FlexibleInstances",
+    "GADTs",
+    "GeneralizedNewtypeDeriving",
+    "LambdaCase",
+    "MultiParamTypeClasses",
+    "MultiWayIf",
+    "NoMonomorphismRestriction",
+    "OverloadedStrings",
+    "PatternSynonyms",
+    "RankNTypes",
+    "RecordWildCards",
+    "ScopedTypeVariables",
+    "StandaloneDeriving",
+    "TupleSections",
+    "TypeFamilies",
+    "TypeSynonymInstances",
+)
+
+_FB_HASKELL_LANG_OPTS = ["-X" + x for x in _FB_HASKELL_LANG]
+
+def _get_language_options(options, fb_haskell):
+    """
+    Get the language options from user provided options.
+    """
+
+    bad_opts = []
+    for opt in options:
+        if not _is_valid_language_option(opt):
+            bad_opts.append(opt)
+    if bad_opts:
+        fail("invalid language options: {!r}".format(bad_opts))
+
+    if fb_haskell:
+        return sorted(collections.uniq(list(options) + _FB_HASKELL_LANG_OPTS))
+    else:
+        return options
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
     get_compiler_flags = _get_compiler_flags,
+    get_language_options = _get_language_options,
     get_ghc_version = _get_ghc_version,
     get_warnings_flags = _get_warnings_flags,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,

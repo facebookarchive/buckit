@@ -35,47 +35,6 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
-# Prefixes of valid language option flags
-# '(-X\w+)$|'
-# '(-f(no-)?irrefutable-tuples)$|'
-# '(-fcontext-stack=\d+)$'
-VALID_LANG_OPT_PREFIXES = (
-    "-X",
-    "-firrefutable-tuples",
-    "-fno-irrefutable-tuples",
-    "-fcontext-stack=",
-)
-
-# Extensions enabled by default unless you specify fb_haskell = False
-FB_HASKELL_LANG = [
-    'BangPatterns',
-    'BinaryLiterals',
-    'DataKinds',
-    'DeriveDataTypeable',
-    'DeriveGeneric',
-    'EmptyCase',
-    'ExistentialQuantification',
-    'FlexibleContexts',
-    'FlexibleInstances',
-    'GADTs',
-    'GeneralizedNewtypeDeriving',
-    'LambdaCase',
-    'MultiParamTypeClasses',
-    'MultiWayIf',
-    'NoMonomorphismRestriction',
-    'OverloadedStrings',
-    'PatternSynonyms',
-    'RankNTypes',
-    'RecordWildCards',
-    'ScopedTypeVariables',
-    'StandaloneDeriving',
-    'TupleSections',
-    'TypeFamilies',
-    'TypeSynonymInstances',
-]
-
-FB_HASKELL_LANG_OPTS = map(lambda x: '-X' + x, FB_HASKELL_LANG)
-
 # Packages enabled by default unless you specify fb_haskell = False
 FB_HASKELL_PACKAGES = [
     'aeson',
@@ -345,29 +304,6 @@ class HaskellConverter(base.Converter):
 
         return IMPLICIT_TP_DEPS
 
-    def _is_valid_language_option(self, option):
-        for prefix in VALID_LANG_OPT_PREFIXES:
-            if option.startswith(prefix):
-                return True
-        return False
-
-    def get_language_options(self, options, fb_haskell):
-        """
-        Get the language options from user provided options.
-        """
-
-        bad_opts = []
-        for opt in options:
-            if not self._is_valid_language_option(opt):
-                bad_opts.append(opt)
-        if bad_opts:
-            raise ValueError('invalid language options: {!r}'.format(bad_opts))
-
-        if fb_haskell:
-            return sorted(set(options) | set(FB_HASKELL_LANG_OPTS))
-        else:
-            return options
-
     def convert_happy(self, name, platform, happy_src, visibility):
         """
         Create rules to generate a Haskell source from the given happy file.
@@ -630,7 +566,7 @@ class HaskellConverter(base.Converter):
         out_compiler_flags.extend(haskell_common.get_warnings_flags(warnings_flags))
         out_compiler_flags.extend(validated_compiler_flags)
         out_compiler_flags.extend(
-            self.get_language_options(lang_opts,fb_haskell))
+            haskell_common.get_language_options(lang_opts,fb_haskell))
         build_mode = _build_mode.get_build_mode_for_current_buildfile()
         if build_mode is not None:
             out_compiler_flags.extend(build_mode.ghc_flags)
