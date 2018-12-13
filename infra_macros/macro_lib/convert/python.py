@@ -34,6 +34,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
@@ -1779,6 +1780,6 @@ class PythonConverter(base.Converter):
 
         Original in com.facebook.buck.python.PythonUtil.toModuleName.
         """
-        src = os.path.join(base_module, src)
-        src, ext = os.path.splitext(src)
+        src = paths.join(base_module, src)
+        src, ext = paths.split_extension(src)
         return src.replace('/', '.')  # sic, not os.sep
