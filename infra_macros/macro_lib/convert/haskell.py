@@ -80,8 +80,6 @@ ALEX_PACKAGES = ['array', 'bytestring']
 
 HAPPY_PACKAGES = ['array']
 
-C2HS = target_utils.ThirdPartyRuleTarget('stackage-lts', 'bin/c2hs')
-
 HSC2HS_TEMPL = '''\
 set -e
 mkdir -p `dirname "$OUT"`
@@ -167,33 +165,6 @@ args+=("$SRCS")
 exec "${{args[@]}}"
 '''
 
-C2HS_TEMPL = '''\
-set -e
-mkdir -p `dirname "$OUT"`
-
-# The C/C++ toolchain currently expects we're running from the root of fbcode.
-cd {fbcode}
-
-# The `c2hs` tool.
-args=($(location {c2hs}))
-
-# Add in the C/C++ preprocessor.
-args+=("--cpp="$(cc))
-
-# Add in C/C++ preprocessor flags.
-cppflags=(-E)
-cppflags+=($(cppflags{deps}))
-for cppflag in "${{cppflags[@]}}"; do
-  args+=("--cppopts=$cppflag")
-done
-
-# The output file and input source.
-args+=("-o" "$OUT")
-args+=("$SRCS")
-
-exec "${{args[@]}}"
-'''
-
 
 class HaskellConverter(base.Converter):
 
@@ -231,35 +202,6 @@ class HaskellConverter(base.Converter):
         """
 
         return IMPLICIT_TP_DEPS
-
-    def convert_c2hs(self, base_path, name, platform, source, deps, visibility):
-        """
-        Construct the rules to generate a haskell source from the given `c2hs`
-        source.
-        """
-        # Macros in the `cxx_genrule` below don't support the `platform_deps`
-        # parameter that we rely on to support multi-platform builds.  So use
-        # a helper rule for this, and just depend on the helper.
-        deps_name = name + '-' + source + '-deps'
-        d = cpp_common.get_binary_link_deps(base_path, deps_name)
-        haskell_rules.dep_rule(base_path, deps_name, deps + d, visibility)
-        source_name = name + '-' + source
-        fb_native.cxx_genrule(
-            name=source_name,
-            visibility=get_visibility(visibility, source_name),
-            cmd=(
-                C2HS_TEMPL.format(
-                    fbcode=(
-                        paths.join(
-                            '$GEN_DIR',
-                            get_project_root_from_gen_dir())),
-                    c2hs=target_utils.target_to_label(C2HS, platform=platform),
-                    deps=' :' + deps_name)),
-            srcs=[source],
-            out=paths.split_extension(source)[0] + '.hs',
-        )
-
-        return ':' + source_name
 
     def convert_hsc2hs(
             self,
@@ -481,7 +423,7 @@ class HaskellConverter(base.Converter):
                 out_srcs.append(src)
             elif ext == '.chs':
                 src = (
-                    self.convert_c2hs(
+                    haskell_rules.c2hs(
                         base_path,
                         name,
                         platform,

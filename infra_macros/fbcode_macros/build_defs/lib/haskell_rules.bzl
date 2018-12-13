@@ -1,7 +1,9 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
@@ -76,8 +78,72 @@ def _dep_rule(base_path, name, deps, visibility):
         defaults = {"platform": buck_platform},
     )
 
+C2HS = target_utils.ThirdPartyRuleTarget("stackage-lts", "bin/c2hs")
+
+C2HS_TEMPL = '''\
+set -e
+mkdir -p `dirname "$OUT"`
+
+# The C/C++ toolchain currently expects we're running from the root of fbcode.
+cd {fbcode}
+
+# The `c2hs` tool.
+args=($(location {c2hs}))
+
+# Add in the C/C++ preprocessor.
+args+=("--cpp="$(cc))
+
+# Add in C/C++ preprocessor flags.
+cppflags=(-E)
+cppflags+=($(cppflags{deps}))
+for cppflag in "${{cppflags[@]}}"; do
+  args+=("--cppopts=$cppflag")
+done
+
+# The output file and input source.
+args+=("-o" "$OUT")
+args+=("$SRCS")
+
+exec "${{args[@]}}"
+'''
+
+def _c2hs(base_path, name, platform, source, deps, visibility):
+    """
+    Construct the rules to generate a haskell source from the given `c2hs`
+    source.
+    """
+
+    # Macros in the `cxx_genrule` below don't support the `platform_deps`
+    # parameter that we rely on to support multi-platform builds.  So use
+    # a helper rule for this, and just depend on the helper.
+    deps_name = name + "-" + source + "-deps"
+    d = cpp_common.get_binary_link_deps(base_path, deps_name)
+    _dep_rule(base_path, deps_name, deps + d, visibility)
+    source_name = name + "-" + source
+    fb_native.cxx_genrule(
+        name = source_name,
+        visibility = get_visibility(visibility, source_name),
+        cmd = (
+            C2HS_TEMPL.format(
+                fbcode = (
+                    paths.join(
+                        "$GEN_DIR",
+                        get_project_root_from_gen_dir(),
+                    )
+                ),
+                c2hs = target_utils.target_to_label(C2HS, platform = platform),
+                deps = " :" + deps_name,
+            )
+        ),
+        srcs = [source],
+        out = paths.split_extension(source)[0] + ".hs",
+    )
+
+    return ":" + source_name
+
 haskell_rules = struct(
     alex_rule = _alex_rule,
+    c2hs = _c2hs,
     dep_rule = _dep_rule,
     happy_rule = _happy_rule,
 )
