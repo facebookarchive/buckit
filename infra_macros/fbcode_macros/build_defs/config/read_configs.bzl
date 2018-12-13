@@ -57,5 +57,27 @@ def read_int(section, field, default):
     else:
         return default
 
+def read_choice(section, field, choices, default = None):
+    """
+    Read a string from `.buckconfig` which can be one of the values given
+    in `choices`.
+    """
+
+    val = native.read_config(section, field)
+    if val != None:
+        if val in choices:
+            return val
+        else:
+            fail(
+                "`{}:{}`: must be one of ({}), but was {!r}"
+                    .format(section, field, ", ".join(choices), val),
+            )
+    elif default != None:
+        return default
+    else:
+        fail(
+            "`{}:{}`: no value set".format(section, field),
+        )
+
 def read_facebook_internal_string(section, field, default):
     return read_string(section, field, default)
