@@ -32,6 +32,7 @@ load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
 load("@fbcode_macros//build_defs/lib:haskell_rules.bzl", "haskell_rules")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
+load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
@@ -182,7 +183,8 @@ class HaskellConverter(base.Converter):
         elif rtype == 'haskell_unittest':
             return self.convert_unittest(base_path, *args, **kwargs)
         elif rtype == 'haskell_ghci':
-            return self.convert_rule(base_path, *args, **kwargs)
+            haskell_ghci(*args, **kwargs)
+            return []
         elif rtype == 'haskell_haddock':
             haskell_haddock(*args, **kwargs)
             return []
