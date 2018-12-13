@@ -17,7 +17,6 @@ import operator
 
 with allow_unsafe_import():  # noqa: magic
     from distutils.version import LooseVersion
-    import os
 
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
@@ -453,7 +452,7 @@ class PythonConverter(base.Converter):
         py_build_info['build_tool'] = 'buck'
 
         interp = self.get_interpreter(python_platform)
-        py_build_info['python_home'] = os.path.dirname(os.path.dirname(interp))
+        py_build_info['python_home'] = paths.dirname(paths.dirname(interp))
         py_build_info['python_command'] = interp
 
         # Include the standard build info, converting the keys to the names we
@@ -851,7 +850,7 @@ class PythonConverter(base.Converter):
                         if target_utils.is_rule_target(src):
                             vsrc[name] = src
                         else:
-                            vsrc[name] = os.path.join(subdir, src)
+                            vsrc[name] = paths.join(subdir, src)
 
                 all_versioned_srcs.append((constraints, vsrc))
 
@@ -1456,7 +1455,7 @@ class PythonConverter(base.Converter):
             attrs['name'] = name
             if visibility != None:
                 attrs['visibility'] = visibility
-            attrs['out'] = os.curdir
+            attrs['out'] = '.' # TODO: This should be a real directory
             # We are propogating tests from sub targets to this target
             gen_tests = set()
             for r in py_tests:
@@ -1621,7 +1620,7 @@ class PythonConverter(base.Converter):
             conf = collections.OrderedDict()
             if visibility != None:
                 conf['visibility'] = visibility
-            conf['out'] = os.curdir
+            conf['out'] = '.' # TODO: This should be a real directory
             cmd = '$(exe {}) gather '.format(typing_config)
             if use_pyre:
                 conf['name'] = name + "-typing=pyre.json"
