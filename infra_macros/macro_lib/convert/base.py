@@ -12,23 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
-
-
-Context = collections.namedtuple(
-    'Context',
-    [
-        'build_mode',
-        'default_compiler',
-        'global_compiler',
-        'coverage',
-        'link_style',
-        'mode',
-        'lto_type',
-        'third_party_config',
-    ],
-)
-
 
 class Converter(object):
 
