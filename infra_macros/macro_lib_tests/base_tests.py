@@ -36,10 +36,6 @@ class BaseConverterTest(utils.ConverterTestCase):
                 'tools/build/buck/infra_macros/macro_lib/convert/base.py'))
         self._converter = self._base.Converter(self._state.context)
 
-    def test_is_tp2(self):
-        self.assertFalse(self._converter.is_tp2('hello/world'))
-        self.assertTrue(self._converter.is_tp2('third-party-buck/foo'))
-
     def test_get_tp2_project_builds_with_single_build(self):
         base_path = 'base/path'
         build_dat = {
