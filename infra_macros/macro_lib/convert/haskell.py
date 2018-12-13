@@ -33,6 +33,7 @@ load("@fbcode_macros//build_defs/lib:haskell_rules.bzl", "haskell_rules")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
+load("@fbcode_macros//build_defs:haskell_library.bzl", "haskell_library")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
@@ -160,17 +161,6 @@ class HaskellConverter(base.Converter):
 
         return rules
 
-    def convert_library(self, base_path, name, dll=None, **kwargs):
-        """
-        Generate rules for a haskell library.
-        """
-
-        if dll is None:
-            return self.convert_rule(base_path, name, **kwargs)
-        else:
-            haskell_rules.dll(base_path, name, dll, **kwargs)
-            return []
-
     def convert(self, base_path, *args, **kwargs):
         """
         Generate rules for a haskell rule.
@@ -181,7 +171,8 @@ class HaskellConverter(base.Converter):
             haskell_binary(*args, **kwargs)
             return []
         if rtype == 'haskell_library':
-            return self.convert_library(base_path, *args, **kwargs)
+            haskell_library(*args, **kwargs)
+            return []
         elif rtype == 'haskell_unittest':
             return self.convert_unittest(base_path, *args, **kwargs)
         elif rtype == 'haskell_ghci':
