@@ -500,9 +500,60 @@ def _get_language_options(options, fb_haskell):
     else:
         return options
 
+def _get_internal_ghc_packages(platform):
+    """
+    List of packages:
+    - that GHC installs (from third-party2/ghc/<version>/<platform>/TARGETS)
+    - except those that are superseded by newer versions in stackage
+    """
+    packages = [
+        "array",
+        "base",
+        "binary",
+        "bytestring",
+        "Cabal",
+        "containers",
+        "deepseq",
+        "directory",
+        "filepath",
+        "ghc",
+        "ghci",
+        "ghc-boot",
+        "ghc-boot-th",
+        "ghc-prim",
+        "hpc",
+        "integer-gmp",
+        "pretty",
+        "process",
+        "rts",
+        "template-haskell",
+        "terminfo",
+        "time",
+        "transformers",
+        "unix",
+    ]
+
+    if _get_ghc_version(platform) == "8.4.4":
+        packages.extend([
+            "ghc-compact",
+            "mtl",
+            "parsec",
+            "stm",
+            "text",
+            "xhtml",
+        ])
+    else:
+        packages.extend([
+            "compact",
+            "hoopl",
+        ])
+
+    return packages
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
     get_compiler_flags = _get_compiler_flags,
+    get_internal_ghc_packages = _get_internal_ghc_packages,
     get_language_options = _get_language_options,
     get_ghc_version = _get_ghc_version,
     get_warnings_flags = _get_warnings_flags,

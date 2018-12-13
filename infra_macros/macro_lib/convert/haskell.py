@@ -223,56 +223,6 @@ class HaskellConverter(base.Converter):
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
 
-    def get_internal_ghc_packages(self, platform):
-        """
-        List of packages:
-        - that GHC installs (from third-party2/ghc/<version>/<platform>/TARGETS)
-        - except those that are superseded by newer versions in stackage
-        """
-        packages = [
-            'array',
-            'base',
-            'binary',
-            'bytestring',
-            'Cabal',
-            'containers',
-            'deepseq',
-            'directory',
-            'filepath',
-            'ghc',
-            'ghci',
-            'ghc-boot',
-            'ghc-boot-th',
-            'ghc-prim',
-            'hpc',
-            'integer-gmp',
-            'pretty',
-            'process',
-            'rts',
-            'template-haskell',
-            'terminfo',
-            'time',
-            'transformers',
-            'unix',
-        ]
-
-        if haskell_common.get_ghc_version(platform) == '8.4.4':
-            packages.extend([
-                'ghc-compact',
-                'mtl',
-                'parsec',
-                'stm',
-                'text',
-                'xhtml',
-            ])
-        else:
-            packages.extend([
-                'compact',
-                'hoopl',
-            ])
-
-        return packages
-
     def get_dep_for_package(self, package, platform):
         """
         Convert arguments in the `package` parameter to actual deps.
@@ -287,7 +237,7 @@ class HaskellConverter(base.Converter):
         if (package == 'compact' and
                 haskell_common.get_ghc_version(platform) == '8.4.4'):
             package = 'ghc-compact'
-        if package in self.get_internal_ghc_packages(platform):
+        if package in haskell_common.get_internal_ghc_packages(platform):
             project = 'ghc'
         else:
             project = 'stackage-lts'
