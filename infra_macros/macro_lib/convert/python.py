@@ -669,33 +669,34 @@ class PythonConverter(base.Converter):
         configuration via the `jemalloc_conf` variable.
         """
 
-        rules = []
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = '__{}_jemalloc_conf_src__'.format(name)
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = 'jemalloc_conf.c'
-        attrs['cmd'] = (
-            'echo \'const char* malloc_conf = "{}";\' > "$OUT"'
-            .format(','.join(['{}:{}'.format(k, v)
-                              for k, v in sorted(malloc_conf.items())])))
-        src_rule = Rule('genrule', attrs)
-        rules.append(src_rule)
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = '__{}_jemalloc_conf_lib__'.format(name)
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = [':{}'.format(src_rule.attributes['name'])]
-        attrs['deps'], attrs['platform_deps'] = src_and_dep_helpers.format_all_deps(deps)
         buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        attrs['default_platform'] = buck_platform
-        attrs['defaults'] = {'platform': buck_platform}
-        lib_rule = Rule('cxx_library', attrs)
-        rules.append(lib_rule)
+        jemalloc_config_line = ','.join([
+            '{}:{}'.format(k, v)
+            for k, v in sorted(malloc_conf.items())
+        ])
 
-        return target_utils.RootRuleTarget(base_path, lib_rule.attributes['name']), rules
+        src_rule_name = '__{}_jemalloc_conf_src__'.format(name)
+        fb_native.genrule(
+            name = src_rule_name,
+            visibility = visibility,
+            out = 'jemalloc_conf.c',
+            cmd = 'echo \'const char* malloc_conf = "{}";\' > "$OUT"'.format(jemalloc_config_line),
+        )
+
+        deps, platform_deps = src_and_dep_helpers.format_all_deps(deps)
+
+        lib_rule_name = '__{}_jemalloc_conf_lib__'.format(name),
+        fb_native.cxx_library(
+            name = lib_rule_name,
+            visibility = visibility,
+            srcs = [':' + src_rule_name],
+            default_platform = buck_platform,
+            defaults = {'platform': buck_platform},
+            deps = deps,
+            platform_deps = platform_deps,
+        )
+
+        return target_utils.RootRuleTarget(base_path, lib_rule_name)
 
     def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None, visibility=None):
         """
@@ -703,8 +704,6 @@ class PythonConverter(base.Converter):
         """
 
         deps = []
-        rules = []
-
         sanitizer = sanitizers.get_sanitizer()
 
         # If we're using sanitizers, add the dep on the sanitizer-specific
@@ -723,18 +722,16 @@ class PythonConverter(base.Converter):
         if allocator != None and sanitizer == None:
             allocator_deps = allocators.get_allocator_deps(allocator)
             if allocator.startswith('jemalloc') and jemalloc_conf != None:
-                conf_dep, conf_rules = (
-                    self.get_jemalloc_malloc_conf_dep(
-                        base_path,
-                        name,
-                        jemalloc_conf,
-                        allocator_deps,
-                        visibility))
+                conf_dep = self.get_jemalloc_malloc_conf_dep(
+                    base_path,
+                    name,
+                    jemalloc_conf,
+                    allocator_deps,
+                    visibility)
                 allocator_deps = [conf_dep]
-                rules.extend(conf_rules)
             deps.extend(allocator_deps)
 
-        return deps, rules
+        return deps
 
     def get_ldflags(self, base_path, name, strip_libpar=True):
         """
@@ -1107,10 +1104,9 @@ class PythonConverter(base.Converter):
                 attributes['build_args'] = build_args
 
         # Add any special preload deps.
-        default_preload_deps, default_preload_rules = (
+        default_preload_deps = (
             self.get_preload_deps(base_path, name, allocator, jemalloc_conf, visibility))
         out_preload_deps.extend(src_and_dep_helpers.format_deps(default_preload_deps))
-        rules.extend(default_preload_rules)
 
         # Add user-provided preloaded deps.
         for dep in preload_deps:
