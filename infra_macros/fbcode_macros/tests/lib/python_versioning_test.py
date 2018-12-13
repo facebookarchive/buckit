@@ -20,8 +20,8 @@ class PythonVersioningTest(tests.utils.TestCase):
         ("@fbcode_macros//build_defs/lib:python_versioning.bzl", "python_versioning"),
     ]
 
-    setupThirdPartyConfig = False
-    setupPlatformOverrides = False
+    setupThirdPartyConfig = True
+    setupPlatformOverrides = True
 
     current_arch = platform.machine()
     other_arch = "x86_64" if current_arch == "aarch64" else "aarch64"
@@ -132,3 +132,103 @@ class PythonVersioningTest(tests.utils.TestCase):
         ]
         result = root.runUnitTests(self.includes, statements)
         self.assertSuccess(result, *expected)
+
+    @tests.utils.with_project()
+    def test_python_version_parses(self, root):
+        commands = [
+            'python_versioning.python_version("2")',
+            'python_versioning.python_version("3")',
+            'python_versioning.python_version("4")',
+            'python_versioning.python_version("2.7")',
+            'python_versioning.python_version("3.7")',
+            'python_versioning.python_version("4.7")',
+            'python_versioning.python_version("2.7.1")',
+            'python_versioning.python_version("3.7.1")',
+            'python_versioning.python_version("4.7.1")',
+            'python_versioning.python_version("pypy.2")',
+            'python_versioning.python_version("pypy.2.7")',
+            'python_versioning.python_version("pypy.2.7.1")',
+            'python_versioning.python_version("")',
+            "python_versioning.python_version(None)",
+        ]
+
+        expected = [
+            self.struct(version_string="2", flavor="", major=2, minor=0, patchlevel=0),
+            self.struct(version_string="3", flavor="", major=3, minor=0, patchlevel=0),
+            self.struct(version_string="4", flavor="", major=4, minor=0, patchlevel=0),
+            self.struct(
+                version_string="2.7", flavor="", major=2, minor=7, patchlevel=0
+            ),
+            self.struct(
+                version_string="3.7", flavor="", major=3, minor=7, patchlevel=0
+            ),
+            self.struct(
+                version_string="4.7", flavor="", major=4, minor=7, patchlevel=0
+            ),
+            self.struct(
+                version_string="2.7.1", flavor="", major=2, minor=7, patchlevel=1
+            ),
+            self.struct(
+                version_string="3.7.1", flavor="", major=3, minor=7, patchlevel=1
+            ),
+            self.struct(
+                version_string="4.7.1", flavor="", major=4, minor=7, patchlevel=1
+            ),
+            self.struct(
+                version_string="pypy.2", flavor="pypy", major=2, minor=0, patchlevel=0
+            ),
+            self.struct(
+                version_string="pypy.2.7", flavor="pypy", major=2, minor=7, patchlevel=0
+            ),
+            self.struct(
+                version_string="pypy.2.7.1",
+                flavor="pypy",
+                major=2,
+                minor=7,
+                patchlevel=1,
+            ),
+            self.struct(version_string="3", flavor="", major=3, minor=0, patchlevel=0),
+            self.struct(version_string="3", flavor="", major=3, minor=0, patchlevel=0),
+        ]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project(run_buckd=True)
+    def test_python_version_fails_with_invalid_version_strings(self, root):
+        self.assertFailureWithMessage(
+            root.runUnitTests(
+                self.includes, ['python_versioning.python_version("foo")']
+            ),
+            "Invalid version string foo provided",
+        )
+        self.assertFailureWithMessage(
+            root.runUnitTests(
+                self.includes, ['python_versioning.python_version("foo.bar")']
+            ),
+            "invalid literal for int() with base 10: ",
+        )
+        self.assertFailureWithMessage(
+            root.runUnitTests(
+                self.includes, ['python_versioning.python_version("foo.1.bar")']
+            ),
+            "invalid literal for int() with base 10: ",
+        )
+        self.assertFailureWithMessage(
+            root.runUnitTests(
+                self.includes, ['python_versioning.python_version("foo.1.2.bar")']
+            ),
+            "invalid literal for int() with base 10: ",
+        )
+
+    @tests.utils.with_project()
+    def test_version_supports_flavor(self, root):
+        commands = [
+            'python_versioning.version_supports_flavor(python_versioning.python_version("3"), "pypy")',
+            'python_versioning.version_supports_flavor(python_versioning.python_version("other.3"), "pypy")',
+            'python_versioning.version_supports_flavor(python_versioning.python_version("pypy.3"), "pypy")',
+            'python_versioning.version_supports_flavor(python_versioning.python_version("broken-pypy.3"), "pypy")',
+        ]
+
+        expected = [False, False, True, True]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
