@@ -52,6 +52,7 @@ load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 
 INTERPS = [
     ('interp', 'libfb.py.python_interp', '//libfb/py:python_interp'),
@@ -262,7 +263,7 @@ class PythonConverter(base.Converter):
         return False
 
     def get_interpreter(self, platform):
-        return self.read_string('python#' + platform, 'interpreter')
+        return native.read_config('python#' + platform, 'interpreter')
 
     def get_version_universe(self, python_version):
         return third_party.get_version_universe([('python', python_version.version_string)])
@@ -461,10 +462,7 @@ class PythonConverter(base.Converter):
 
         # Our current implementation of the interp helpers is costly when using
         # omnibus linking, only generate these if explicitly set via config or TARGETS
-        try:
-            config_setting = self.read_bool('python', 'helpers', None)
-        except KeyError:
-            config_setting = None
+        config_setting = read_bool('python', 'helpers', required=False)
 
         if config_setting == None:
             # No CLI option is set, respect the TARGETS file option.
@@ -603,7 +601,7 @@ class PythonConverter(base.Converter):
         return read_choice(
             'python',
             'package_style',
-            ['inplace', 'standalone'],
+            ('inplace', 'standalone'),
             'standalone')
 
     def gen_associated_targets(self, base_path, name, deps, visibility):
@@ -1118,7 +1116,7 @@ class PythonConverter(base.Converter):
             attributes['platform_deps'] = platform_deps
 
         if (
-            self.read_bool('fbcode', 'monkeytype', False) and
+            read_bool('fbcode', 'monkeytype', False) and
             python_version.major == 3
         ):
             rules.extend(
