@@ -872,7 +872,7 @@ class PythonConverter(base.Converter):
         if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test():
-                testmodules_library_name = self.gen_test_modules(
+                testmodules_library_name = python_common.test_modules_library(
                     base_path,
                     library.attributes['name'],
                     library.attributes.get('srcs') or (),
@@ -1401,45 +1401,5 @@ class PythonConverter(base.Converter):
         rules.append(Rule('python_binary', stub_gen_attrs))
         return rules
 
-    def gen_test_modules(self, base_path, library_name, library_srcs, library_base_module, visibility, generate_test_modules):
-        """"
-        Create the rule that generates a __test_modules__.py file for a library
-        """
-
-        testmodules_library_name = library_name + '-testmodules-lib'
-
-        # If we don't actually want to generate the library (generate_test_modules),
-        # at least return the name
-        if not generate_test_modules:
-            return testmodules_library_name
-
-        lines = ['TEST_MODULES = [']
-        for src in sorted(library_srcs):
-            lines.append(
-                '    "{}",'.format(
-                    python_common.file_to_python_module(src, library_base_module or base_path)
-                )
-            )
-        lines.append(']')
-
-        genrule_name = library_name + '-testmodules'
-        fb_native.genrule(
-            name = genrule_name,
-            visibility = visibility,
-            out = library_name + '-__test_modules__.py',
-            cmd = ' && '.join([
-                'echo {} >> $OUT'.format(shell.quote(line))
-                for line in lines
-            ])
-        )
-
-        fb_native.python_library(
-            name = testmodules_library_name,
-            visibility = visibility,
-            base_module = '',
-            deps = ['//python:fbtestmain', ':' + library_name],
-            srcs = {'__test_modules__.py': ':' + genrule_name},
-        )
-        return testmodules_library_name
 
 

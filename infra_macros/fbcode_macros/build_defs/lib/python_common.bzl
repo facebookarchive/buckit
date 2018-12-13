@@ -244,11 +244,72 @@ def _file_to_python_module(src, base_module):
     src, ext = paths.split_extension(src)
     return src.replace("/", ".")  # sic, not os.sep
 
+def _test_modules_library(
+        base_path,
+        library_name,
+        library_srcs,
+        library_base_module,
+        visibility,
+        generate_test_modules):
+    """"
+    Create the rule that generates a __test_modules__.py file for a library
+
+    Args:
+        base_path: The package for the current build file
+        library_name: The name of the original library that was built
+        library_srcs: The list of srcs (files or labels) that were given to the
+                      original library that this test_modules_library is for
+        library_base_module: The base_module of the original library
+        visibility: The visibility for this rule
+        generate_test_modules: Whether to actually materialize the rule. If False,
+                               just return the name of the rule
+
+    Returns:
+        The name of the generated python library that contains __test_modules__.py
+    """
+
+    testmodules_library_name = library_name + "-testmodules-lib"
+
+    # If we don't actually want to generate the library (generate_test_modules),
+    # at least return the name
+    if not generate_test_modules:
+        return testmodules_library_name
+
+    lines = ["TEST_MODULES = ["]
+    for src in sorted(library_srcs):
+        lines.append(
+            '    "{}",'.format(
+                python_common.file_to_python_module(src, library_base_module or base_path),
+            ),
+        )
+    lines.append("]")
+
+    genrule_name = library_name + "-testmodules"
+    fb_native.genrule(
+        name = genrule_name,
+        visibility = None,
+        out = library_name + "-__test_modules__.py",
+        cmd = " && ".join([
+            "echo {} >> $OUT".format(shell.quote(line))
+            for line in lines
+        ]),
+    )
+
+    fb_native.python_library(
+        name = testmodules_library_name,
+        visibility = visibility,
+        base_module = "",
+        deps = ["//python:fbtestmain", ":" + library_name],
+        srcs = {"__test_modules__.py": ":" + genrule_name},
+    )
+    return testmodules_library_name
+
 python_common = struct(
+    file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
-    manifest_library = _manifest_library,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
-    file_to_python_module = _file_to_python_module,
+    manifest_library = _manifest_library,
+    test_modules_library = _test_modules_library,
 )
