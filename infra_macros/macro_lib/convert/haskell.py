@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import re
 
 macro_root = read_config('fbcode', 'macro_lib', '//macro_lib')
 include_defs("{}/convert/base.py".format(macro_root), "base")
@@ -57,21 +56,35 @@ VALID_WARNINGS_FLAG_PREFIXES = (
     "-Wno-",
 )
 
-VALID_COMPILER_FLAGS_RE = re.compile(
-    '^-O[0-9]*$|'
-    '^-v[0-9]*$|'
-    '^(-D\w+)$|'
-    '^(-D\w+=\w+)$|'
-    '^(-U\w+)$|'
-    '^-rtsopts$|'
-    '^-f.*|'
-    '^-ddump.*|'
-    '^-opt.*|'
-    '^-j\d*$|'
-    '^-with-rtsopts=.*$|'
-    '^-g[0-2]?$|'
-    '^-threaded$|'
-    '^-no-hs-main$')
+# '^-O[0-9]*$|'
+# '^-v[0-9]*$|'
+# '^(-D\w+)$|'
+# '^(-D\w+=\w+)$|'
+# '^(-U\w+)$|'
+# '^-rtsopts$|'
+# '^-f.*|'
+# '^-ddump.*|'
+# '^-opt.*|'
+# '^-j\d*$|'
+# '^-with-rtsopts=.*$|'
+# '^-g[0-2]?$|'
+# '^-threaded$|'
+# '^-no-hs-main$'
+VALID_COMPILER_FLAG_PREFIXES = (
+    "-O",
+    "-v",
+    "-D",
+    "-U",
+    "-rtsopts",
+    "-f",
+    "-ddump",
+    "-opt",
+    "-j",
+    "-with-rtsopts=",
+    "-g",
+    "-threaded",
+    "-no-hs-main",
+)
 
 # Prefixes of valid language option flags
 # '(-X\w+)$|'
@@ -421,6 +434,12 @@ class HaskellConverter(base.Converter):
 
         return tuple(wflags)
 
+    def _is_valid_compiler_flag(self, flag):
+        for prefix in VALID_COMPILER_FLAG_PREFIXES:
+            if flag.startswith(prefix):
+                return True
+        return False
+
     def get_compiler_flags(self, user_compiler_flags, fb_haskell):
         """
         Get flags to use that affect compilation.
@@ -437,7 +456,7 @@ class HaskellConverter(base.Converter):
                     rts_flags = False
             elif flag == '+RTS':
                 rts_flags = True
-            elif VALID_COMPILER_FLAGS_RE.match(flag) is None:
+            elif not self._is_valid_compiler_flag(flag):
                 bad_compiler_flags.add(flag)
         if bad_compiler_flags:
             raise ValueError(
