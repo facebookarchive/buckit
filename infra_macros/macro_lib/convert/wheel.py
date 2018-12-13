@@ -45,6 +45,8 @@ compiled_wheel = re.compile('-cp[0-9]{2}-')
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 def get_url_basename(url):
@@ -52,15 +54,16 @@ def get_url_basename(url):
     return os.path.basename(url).rsplit('#md5=')[0]
 
 
-def gen_remote_wheel(url, out, sha1, visibility):
-    attrs = collections.OrderedDict()
-    attrs['name'] = out + '-remote'
-    if visibility is not None:
-        attrs['visibility'] = visibility
-    attrs['out'] = out
-    attrs['url'] = url
-    attrs['sha1'] = sha1
-    return Rule('remote_file', attrs)
+def remote_wheel(url, out, sha1, visibility):
+    remote_file_name = out + '-remote'
+    fb_native.remote_file(
+        name=remote_file_name,
+        visibility=get_visibility(visibility, remote_file_name),
+        out=out,
+        url=url,
+        sha1=sha1,
+    )
+    return ":" + remote_file_name
 
 
 def gen_prebuilt_target(wheel, remote_target, visibility):
@@ -220,9 +223,8 @@ class PyWheel(base.Converter):
             assert sha1, "There is no #sha1= tag on the end of URL: " + url
             # Opensource usage of this may have #md5 tags from pypi
             wheel = get_url_basename(orig_url)
-            rule = gen_remote_wheel(url, wheel, sha1, visibility)
-            yield rule
-            rule = gen_prebuilt_target(wheel, rule.target_name, visibility)
+            target_name = remote_wheel(url, wheel, sha1, visibility)
+            rule = gen_prebuilt_target(wheel, target_name, visibility)
             yield rule
             wheel_targets[url] = rule.target_name
 
