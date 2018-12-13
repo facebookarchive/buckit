@@ -7,6 +7,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import operator
 import platform
 
 import tests.utils
@@ -230,5 +231,128 @@ class PythonVersioningTest(tests.utils.TestCase):
         ]
 
         expected = [False, False, True, True]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_constraints_properly_constraint(self, root):
+        constraints = [("2", (2, 0, 0)), ("2.5", (2, 5, 0)), ("2.5.0", (2, 5, 0))]
+        versions = [
+            ("1", (1, 0, 0)),
+            ("2", (2, 0, 0)),
+            ("4", (4, 0, 0)),
+            ("1.0", (1, 0, 0)),
+            ("1.5", (1, 5, 0)),
+            ("2.0", (2, 0, 0)),
+            ("2.5", (2, 5, 0)),
+            ("4.0", (4, 0, 0)),
+            ("4.5", (4, 5, 0)),
+            ("1.0.0", (1, 0, 0)),
+            ("1.5.0", (1, 5, 0)),
+            ("1.5.5", (1, 5, 5)),
+            ("2.0.0", (2, 0, 0)),
+            ("2.5.0", (2, 5, 0)),
+            ("2.5.5", (2, 5, 5)),
+            ("4.0.0", (4, 0, 0)),
+            ("4.5.0", (4, 5, 0)),
+            ("4.5.5", (4, 5, 5)),
+        ]
+        ops = {
+            "<": operator.lt,
+            "<=": operator.le,
+            ">": operator.gt,
+            ">=": operator.ge,
+            "=": operator.eq,
+        }
+        # Note that this doesn't quite match LooseVersion behavior
+        # See docs for details
+        all_constraints = [
+            (op_txt + constraint_str, version_str, op(version, constraint))
+            for op_txt, op in sorted(ops.items())
+            for constraint_str, constraint in constraints
+            for version_str, version in versions
+        ]
+        all_constraints.extend(
+            [
+                ("", "1", False),
+                ("", "1.5", False),
+                ("", "1.5.5", False),
+                (None, "1", False),
+                (None, "1.5", False),
+                (None, "1.5.5", False),
+                ("", "3", True),
+                ("", "3.5", True),
+                ("", "3.5.5", True),
+                (None, "3", True),
+                (None, "3.5", True),
+                (None, "3.5.5", True),
+                (">=foo.1.0.0", "1.0.0", False),
+                (">=foo.1.0.0", "foo.1.1.0", True),
+            ]
+        )
+        commands = [
+            (
+                "python_versioning.constraint_matches("
+                "python_versioning.python_version_constraint({}),"
+                'python_versioning.python_version("{}")'
+                ")"
+            ).format("None" if constraint is None else '"' + constraint + '"', version)
+            for constraint, version, expected in all_constraints
+        ]
+
+        expected = [expected for constraint, version, expected in all_constraints]
+
+        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_constraints_properly_do_minor_checks(self, root):
+        all_constraints = [
+            ("2", "2.0", False, True),
+            ("2", "2", False, True),
+            ("2", "2.5", False, True),
+            ("2", "3", False, False),
+            ("2", "3.5", False, False),
+            ("3", "3.0", False, True),
+            ("3", "3", False, True),
+            ("3", "3.5", False, True),
+            ("3", "4", False, False),
+            ("3", "4.5", False, False),
+            ("2", "2.0", True, True),
+            ("2", "2", True, True),
+            ("2", "2.5", True, False),
+            ("2", "3", True, False),
+            ("2", "3.5", True, False),
+            ("3", "3.0", True, True),
+            ("3", "3", True, True),
+            ("3", "3.5", True, False),
+            ("3", "4", True, False),
+            ("3", "4.5", True, False),
+            ("4.5", "4.2", False, False),
+            ("4.5", "4.5", False, True),
+            ("4.5", "4.5.1", False, False),
+            ("4.5", "4.2", True, False),
+            ("4.5", "4.5", True, True),
+            ("4.5", "4.5.1", True, True),
+            ("4.5.1", "4.2", False, False),
+            ("4.5.1", "4.5", False, False),
+            ("4.5.1", "4.5.1", False, True),
+            ("4.5.1", "4.2", True, False),
+            ("4.5.1", "4.5", True, True),
+            ("4.5.1", "4.5.1", True, True),
+        ]
+        commands = [
+            (
+                "python_versioning.constraint_matches("
+                'python_versioning.python_version_constraint("{}"),'
+                'python_versioning.python_version("{}"),'
+                "check_minor={}"
+                ")"
+            ).format(constraint, version, check_minor)
+            for constraint, version, check_minor, expected in all_constraints
+        ]
+
+        expected = [
+            expected for constraint, version, check_minor, expected in all_constraints
+        ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)

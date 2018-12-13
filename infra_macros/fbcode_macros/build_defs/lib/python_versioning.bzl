@@ -170,8 +170,132 @@ def _version_supports_flavor(python_version, flavor):
     """
     return python_version.flavor.endswith(flavor)
 
+_PythonVersionConstraint = provider(fields = ["op", "version"])
+
+def _constraint_lt(left, right, _check_minor):
+    return (left.major, left.minor, left.patchlevel) < (right.major, right.minor, right.patchlevel)
+
+def _constraint_lte(left, right, _check_minor):
+    return (left.major, left.minor, left.patchlevel) <= (right.major, right.minor, right.patchlevel)
+
+def _constraint_gt(left, right, _check_minor):
+    return (left.major, left.minor, left.patchlevel) > (right.major, right.minor, right.patchlevel)
+
+def _constraint_gte(left, right, _check_minor):
+    return (left.major, left.minor, left.patchlevel) >= (right.major, right.minor, right.patchlevel)
+
+def _constraint_eq(left, right, check_minor):
+    return (
+        (left.major, left.minor, 0 if check_minor else left.patchlevel) ==
+        (right.major, right.minor, 0 if check_minor else right.patchlevel)
+    )
+
+def _constraint_partial_match(left, right, check_minor):
+    return (left.major == right.major and (not check_minor or left.minor == right.minor))
+
+def _parse_python_version_constraint(constraint_string):
+    if constraint_string.startswith("<="):
+        version_string = constraint_string[2:].lstrip()
+        op = _constraint_lte
+    elif constraint_string.startswith(">="):
+        version_string = constraint_string[2:].lstrip()
+        op = _constraint_gte
+    elif constraint_string.startswith("<"):
+        version_string = constraint_string[1:].lstrip()
+        op = _constraint_lt
+    elif constraint_string.startswith("="):
+        version_string = constraint_string[1:].lstrip()
+        op = _constraint_eq
+    elif constraint_string.startswith(">"):
+        version_string = constraint_string[1:].lstrip()
+        op = _constraint_gt
+    else:
+        version_string = constraint_string
+        op = _constraint_eq
+    version = _python_version(version_string)
+    return _PythonVersionConstraint(version = version, op = op)
+
+def _intern_constraints():
+    """ Create a map of our most common constraints so that we can pull from the cache more often """
+    result = {
+        operator + version: _parse_python_version_constraint(operator + version)
+        for version in ["2", "2.7", "3", "3.6"]
+        for operator in ["", "<", "<=", "=", ">=", ">"]
+    }
+    result.update({
+        2: _PythonVersionConstraint(
+            version = _python_version("2"),
+            op = _constraint_partial_match,
+        ),
+        3: _PythonVersionConstraint(
+            version = _python_version("3"),
+            op = _constraint_partial_match,
+        ),
+        "2": _PythonVersionConstraint(
+            version = _python_version("2"),
+            op = _constraint_partial_match,
+        ),
+        "3": _PythonVersionConstraint(
+            version = _python_version("3"),
+            op = _constraint_partial_match,
+        ),
+    })
+    return result
+
+_INTERNED_VERSION_CONSTRAINTS = _intern_constraints()
+
+def _python_version_constraint(constraint_string):
+    """
+    Parses and creates a struct that represents a 'version constraint'
+
+    This implements the semantics of the `py_version` and `versioned_srcs`
+    parameters of the 'python_xxx' rule types.
+
+    Note that this method may make use of internal caches of immutable objects
+
+    Args:
+        constraint_string: A string like '<3', '=2.7', or '3'
+
+    Returns:
+        A `PythonVersionConstraint` with a comparison `op` and a `version` set
+    """
+
+    if not constraint_string:
+        constraint_string = _DEFAULT_PYTHON_MAJOR_VERSION
+    else:
+        # There are some versions that use integers, make sure we pick those up
+        constraint_string = str(constraint_string)
+
+    if constraint_string in _INTERNED_VERSION_CONSTRAINTS:
+        return _INTERNED_VERSION_CONSTRAINTS[constraint_string]
+    return _parse_python_version_constraint(constraint_string)
+
+def _constraint_matches(constraint, version, check_minor = False):
+    """
+    Whether or not a constraint matches a version
+
+    Args:
+        constraint: The result of a `python_version_constraint()` call
+        version: The result of a `python_version()` call
+        check_minor: If true, partial checks look at the minor in addition to the major
+                     version. For raw constraints (e.g. '2.7'), only the first major
+                     and minor versions will be checked. That is, '2.7.1' will match
+                     the '2.7' constraint if check_minor is True
+
+    Returns:
+        Whether the version matches the constraint. Note that the matching effectively
+        checks against triples in most cases, and does not behave identically to
+        python distutils' LooseVersion
+    """
+    if not _version_supports_flavor(version, constraint.version.flavor):
+        return False
+
+    return constraint.op(version, constraint.version, check_minor)
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
     python_version = _python_version,
     version_supports_flavor = _version_supports_flavor,
+    python_version_constraint = _python_version_constraint,
+    constraint_matches = _constraint_matches,
 )
