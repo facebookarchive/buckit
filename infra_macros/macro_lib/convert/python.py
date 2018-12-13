@@ -258,9 +258,6 @@ class PythonConverter(base.Converter):
                 return True
         return False
 
-    def get_interpreter(self, platform):
-        return native.read_config('python#' + platform, 'interpreter')
-
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
             fail((
@@ -292,7 +289,7 @@ class PythonConverter(base.Converter):
         py_build_info['par_style'] = 'live'
         py_build_info['build_tool'] = 'buck'
 
-        interp = self.get_interpreter(python_platform)
+        interp = python_common.get_interpreter_for_platform(python_platform)
         py_build_info['python_home'] = paths.dirname(paths.dirname(interp))
         py_build_info['python_command'] = interp
 

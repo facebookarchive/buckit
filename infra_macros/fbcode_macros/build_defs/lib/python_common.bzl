@@ -65,7 +65,12 @@ def _interpreter_binaries(
         rule_names.append(rule_name)
     return rule_names
 
+def _get_interpreter_for_platform(python_platform):
+    """ Get the interpreter to use for a buck-native python platform """
+    return native.read_config("python#" + python_platform, "interpreter")
+
 python_common = struct(
+    get_interpreter_for_platform = _get_interpreter_for_platform,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
 )
