@@ -1250,21 +1250,19 @@ class PythonConverter(base.Converter):
                 list(attributes['tests']) + [':{}-typecheck'.format(name)]
             )
         if analyze_imports:
-            rules.extend(
-                self.create_analyze_imports(
-                    base_path,
-                    name,
-                    main_module,
-                    platform,
-                    python_platform,
-                    python_version,
-                    library,
-                    dependencies,
-                    platform_deps,
-                    out_preload_deps,
-                    typing_options,
-                    visibility
-                )
+            create_analyze_imports(
+                base_path,
+                name,
+                main_module,
+                platform,
+                python_platform,
+                python_version,
+                library,
+                dependencies,
+                platform_deps,
+                out_preload_deps,
+                typing_options,
+                visibility
             )
         if self.is_test():
             if not dependencies:
@@ -1487,70 +1485,65 @@ class PythonConverter(base.Converter):
         typing_options,
         visibility,
     ):
-        generate_imports_deps = deps[:]
+        """ Generate a binary to analyze the imports of a given python library """
+        generate_imports_deps = list(deps)
         if ':generate_par_imports' not in generate_imports_deps:
             generate_imports_deps.append('//libfb/py:generate_par_imports')
 
         if ':parutil' not in generate_imports_deps:
             generate_imports_deps.append('//libfb/py:parutil')
 
-        import_attrs = collections.OrderedDict((
-            ('name', name + '-generate-imports'),
-            ('main_module', 'libfb.py.generate_par_imports'),
-            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
-            ('platform', python_platform),
-            ('deps', generate_imports_deps),
-            ('platform_deps', platform_deps),
-            ('preload_deps', preload_deps),
+        cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+
+        fb_native.python_binary(
+            name = name + '-generate-imports',
+            main_module = 'libfb.py.generate_par_imports',
+            cxx_platform = cxx_platform,
+            platform = python_platform,
+            deps = generate_imports_deps,
+            platform_deps = platform_deps,
+            preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
-            ('labels', ['buck', 'python']),
-            ('version_universe', self.get_version_universe(python_version)),
-        ))
-        if visibility != None:
-            import_attrs['visibility'] = visibility
-        generate_par = Rule('python_binary', import_attrs)
-        yield generate_par
+            labels = ['buck', 'python'],
+            version_universe = self.get_version_universe(python_version),
+            visibility = visibility
+        )
 
-        rule_attrs = collections.OrderedDict((
-            ('name', "{}-gen-rule".format(name)),
-            ('srcs', ["//" + base_path + ":" + name + "-generate-imports"]),
-            ('out', '{}-imports_file.py'.format(name)),
-            ('cmd', '$(exe {}) >"$OUT"'.format(generate_par.target_name)),
-        ))
-        gen_rule = Rule('genrule', rule_attrs)
-        yield gen_rule
+        genrule_name = name + '-gen-rule'
+        fb_native.genrule_name(
+            name = genrule_name,
+            srcs = ["//" + base_path + ":" + name + "-generate-imports"],
+            out = '{}-imports_file.py'.format(name),
+            cmd = '$(exe {}) >"$OUT"'.format(generate_par.target_name),
+        )
 
-        lib_attrs = collections.OrderedDict((
-            ('name', name + '-analyze-lib'),
-            ('srcs', {'imports_file.py': '//' + base_path + ':' + rule_attrs['name']}),
-            ('base_module', ''),
-            ('deps', [gen_rule.target_name])
-        ))
-        lib_rule = Rule('python_library', lib_attrs)
-        yield lib_rule
+        lib_name = name + '-analyze-lib'
+        lib_attrs = collections.OrderedDict(
+            name = lib_name,
+            srcs = {'imports_file.py': '//' + base_path + ':' + genrule_name},
+            base_module = '',
+            deps = [gen_rule.target_name],
+        )
 
-        analyze_deps = deps[:]
-        analyze_deps.append('//' + base_path + ':' + lib_attrs['name'])
+        analyze_deps = list(deps)
+        analyze_deps.append('//' + base_path + ':' + lib_name)
 
         if ':analyze_par_imports' not in analyze_deps:
             analyze_deps.append('//libfb/py:analyze_par_imports')
 
-        analyze_attrs = collections.OrderedDict((
-            ('name', name + '-analyze-imports'),
-            ('main_module', 'libfb.py.analyze_par_imports'),
-            ('cxx_platform', platform_utils.get_buck_platform_for_base_path(base_path)),
-            ('platform', python_platform),
-            ('deps', analyze_deps),
-            ('platform_deps', platform_deps),
-            ('preload_deps', preload_deps),
+        fb_native.python_binary(
+            name = name + '-analyze-imports',
+            main_module = 'libfb.py.analyze_par_imports',
+            cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
+            platform = python_platform,
+            deps = analyze_deps,
+            platform_deps = platform_deps,
+            preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
-            ('labels', ['buck', 'python']),
-            ('version_universe', self.get_version_universe(python_version)),
-        ))
-
-        if visibility != None:
-            analyze_attrs['visibility'] = visibility
-        yield Rule('python_binary', analyze_attrs)
+            labels = ['buck', 'python'],
+            version_universe = self.get_version_universe(python_version),
+            visibility = visibility,
+        )
 
     def create_typecheck(
         self,
