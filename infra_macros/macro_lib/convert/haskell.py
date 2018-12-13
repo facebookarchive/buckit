@@ -232,31 +232,6 @@ class HaskellConverter(base.Converter):
 
         return IMPLICIT_TP_DEPS
 
-    def _create_dep_rule(self, base_path, name, deps, visibility):
-        """
-        Sets up a dummy rule with the given dep objects formatted and installed
-        using `deps` and `platform_deps` to support multi-platform builds.
-
-        This is useful to package a given dep list, which requires multi-
-        platform dep parameter support, into a single target that can be used
-        in interfaces that don't have this support (e.g. macros in `genrule`s
-        and `cxx_genrule`).
-        """
-
-        # Setup platform default for compilation DB, and direct building.
-        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        lib_deps, lib_platform_deps = src_and_dep_helpers.format_all_deps(deps)
-
-        fb_native.cxx_library(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            preferred_linkage='static',
-            deps=lib_deps,
-            platform_deps=lib_platform_deps,
-            default_platform=buck_platform,
-            defaults={'platform': buck_platform},
-        )
-
     def convert_c2hs(self, base_path, name, platform, source, deps, visibility):
         """
         Construct the rules to generate a haskell source from the given `c2hs`
@@ -267,7 +242,7 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         d = cpp_common.get_binary_link_deps(base_path, deps_name)
-        self._create_dep_rule(base_path, deps_name, deps + d, visibility)
+        haskell_rules.dep_rule(base_path, deps_name, deps + d, visibility)
         source_name = name + '-' + source
         fb_native.cxx_genrule(
             name=source_name,
@@ -303,7 +278,7 @@ class HaskellConverter(base.Converter):
         # a helper rule for this, and just depend on the helper.
         deps_name = name + '-' + source + '-deps'
         d = cpp_common.get_binary_link_deps(base_path, deps_name)
-        self._create_dep_rule(base_path, deps_name, deps + d, visibility)
+        haskell_rules.dep_rule(base_path, deps_name, deps + d, visibility)
 
         out_obj = paths.split_extension(paths.basename(source))[0] + "_hsc_make"
         source_name = name + '-' + source
