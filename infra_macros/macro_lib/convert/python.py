@@ -1022,6 +1022,7 @@ class PythonConverter(base.Converter):
         visibility=None,
         analyze_imports=False,
         additional_coverage_targets=[],
+        generate_test_modules=False,
     ):
         if self.is_test() and par_style == None:
             par_style = "xar"
@@ -1194,10 +1195,14 @@ class PythonConverter(base.Converter):
         # Generate the interpreter helpers, and add them to our deps. Note that
         # we must do this last, so that the interp rules get the same deps as
         # the main binary which we've built up to this point.
+        # We also do this based on an attribute so that we don't have to dedupe
+        # rule creation. We'll revisit this in the near future.
+        # TODO: Better way to not generate duplicates
         if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test():
-                rules.extend(self.gen_test_modules(base_path, library, visibility))
+                if generate_test_modules:
+                    rules.extend(self.gen_test_modules(base_path, library, visibility))
                 interp_deps.append(
                     ':{}-testmodules-lib'.format(library.attributes['name'])
                 )
@@ -1384,7 +1389,10 @@ class PythonConverter(base.Converter):
                 new_name = name + '-' + python_version.vstring
                 versions[py_ver] = new_name
         py_tests = []
-        rule_names = set()
+        # There are some sub-libraries that get generated based on the
+        # name of the original library, not the binary. Make sure they're only
+        # generated once.
+        is_first_binary = True
         for py_ver, py_name in sorted(versions.items()):
             # Turn off check types for py2 targets when py3 is in versions
             # so we can have the py3 parts type check without a separate target
@@ -1430,13 +1438,13 @@ class PythonConverter(base.Converter):
                 visibility=visibility,
                 analyze_imports=analyze_imports,
                 additional_coverage_targets=additional_coverage_targets,
+                generate_test_modules=is_first_binary,
             )
+            is_first_binary = False
             if self.is_test():
                 py_tests.append(rules[0])
             for rule in rules:
-                if rule.target_name not in rule_names:
-                    yield rule
-                    rule_names.add(rule.target_name)
+                yield rule
 
         # Create a genrule to wrap all the tests for easy running
         if len(py_tests) > 1:
