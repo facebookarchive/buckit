@@ -86,6 +86,7 @@ load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
+load("@fbcode_macros//build_defs:haskell_library.bzl", "haskell_library")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
@@ -181,7 +182,6 @@ def convert(context, base_path, rule):
 
     converters = [
         cython.Converter(context),
-        haskell.HaskellConverter(context, 'haskell_library'),
         haskell.HaskellConverter(context, 'haskell_unittest', 'haskell_binary'),
         python.PythonConverter(context, 'python_library'),
         python.PythonConverter(context, 'python_binary'),
@@ -234,6 +234,7 @@ def convert(context, base_path, rule):
         'haskell_binary': haskell_binary,  # noqa F821
         'haskell_haddock': haskell_haddock,  # noqa F821
         'haskell_ghci': haskell_ghci,  # noqa F821
+        'haskell_library': haskell_library,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
         'java_protoc_library': java_protoc_library,  # noqa F821
