@@ -57,7 +57,7 @@ class Converter(object):
         in `choices`.
         """
 
-        val = self._context.buck_ops.read_config(section, field)
+        val = read_config(section, field)
         if val is not None:
             if val in choices:
                 return val
@@ -76,7 +76,7 @@ class Converter(object):
         Read a `boolean` from `.buckconfig`.
         """
 
-        val = self._context.buck_ops.read_config(section, field)
+        val = read_config(section, field)
         if val is not None:
             if val.lower() == 'true':
                 return True
@@ -97,7 +97,7 @@ class Converter(object):
         Read an `int` from `.buckconfig`.
         """
 
-        val = self._context.buck_ops.read_config(section, field)
+        val = read_config(section, field)
         if val is not None:
             try:
                 return int(val)
@@ -116,7 +116,7 @@ class Converter(object):
         Read a `string` from `.buckconfig`.
         """
 
-        val = self._context.buck_ops.read_config(section, field)
+        val = read_config(section, field)
         if val is None:
             val = default
         return val
@@ -126,7 +126,7 @@ class Converter(object):
         Read a `list` from `.buckconfig`.
         """
 
-        val = self._context.buck_ops.read_config(section, field)
+        val = read_config(section, field)
         if val is None:
             return default
         return val.split()
