@@ -76,7 +76,6 @@ IMPLICIT_TP_DEPS = [
     target_utils.ThirdPartyRuleTarget('glibc', 'pthread'),
 ]
 
-ALEX = target_utils.ThirdPartyToolRuleTarget('hs-alex', 'alex')
 ALEX_PACKAGES = ['array', 'bytestring']
 
 HAPPY_PACKAGES = ['array']
@@ -232,26 +231,6 @@ class HaskellConverter(base.Converter):
         """
 
         return IMPLICIT_TP_DEPS
-
-    def convert_alex(self, name, platform, alex_src, visibility):
-        """
-        Create rules to generate a Haskell source from the given alex file.
-        """
-        alex_name = name + '-' + alex_src
-
-        fb_native.genrule(
-            name=alex_name,
-            visibility=get_visibility(visibility, alex_name),
-            out=paths.split_extension(alex_src)[0] + '.hs',
-            srcs=[alex_src],
-            cmd=' && '.join([
-                'mkdir -p `dirname "$OUT"`',
-                '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                    alex=target_utils.target_to_label(ALEX, platform=platform))
-            ]),
-        )
-
-        return ':' + alex_name
 
     def _create_dep_rule(self, base_path, name, deps, visibility):
         """
@@ -511,7 +490,7 @@ class HaskellConverter(base.Converter):
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES, platform))
             elif ext == '.x':
-                src = self.convert_alex(name, platform, src, visibility)
+                src = haskell_rules.alex_rule(name, platform, src, visibility)
                 out_srcs.append(src)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(ALEX_PACKAGES, platform))
