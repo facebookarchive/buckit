@@ -12,8 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-
 
 ALWAYS_ALLOWED_ARGS = {'visibility'}
 
@@ -112,9 +110,6 @@ load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
 load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
-with allow_unsafe_import():  # noqa: F821
-    import sys
-
 
 base = import_macro_lib('convert/base')
 cython = import_macro_lib('convert/cython')
@@ -147,31 +142,6 @@ try:
 except ImportError:
     def get_fbonly_converters():
         return []
-
-
-FBCODE_UI_MESSAGE = (
-    'Unsupported access to Buck rules! '
-    'Please use supported fbcode rules (https://fburl.com/fbcode-targets) '
-    'instead.')
-
-
-class ConversionError(Exception):
-    pass
-
-
-def handle_errors(errors, skip_errors=False):
-    """
-    Helper function to either print or throw errors resulting from conversion.
-    """
-
-    if skip_errors:
-        for name, error in errors.items():
-            print(name + ': ' + error, file=sys.stderr)
-    else:
-        msg = ['Conversion failures:']
-        for name, error in errors.items():
-            msg.append('  ' + name + ': ' + error)
-        raise Exception(os.linesep.join(msg))
 
 
 def convert(base_path, rule):
