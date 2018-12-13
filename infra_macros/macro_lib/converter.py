@@ -255,7 +255,7 @@ def convert(base_path, rule):
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter
 
-    converter = converter_map.get(rule.type, new_converter_map.get(rule.type))
+    converter = new_converter_map.get(rule.type, converter_map.get(rule.type))
 
     if converter is None:
         name = '{0}:{1}'.format(base_path, rule.attributes['name'])
