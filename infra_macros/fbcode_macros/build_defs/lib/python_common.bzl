@@ -2,8 +2,11 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
+load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
 
 _INTERPRETERS = [
     # name suffix, main module, dependencies
@@ -612,6 +615,89 @@ def _analyze_import_binary(
         visibility = visibility,
     )
 
+_GEN_SRCS_LINK = "https://fburl.com/203312823"
+
+def _parse_srcs(base_path, param, srcs):  # type: (str, str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
+    """
+    Converts `srcs` to a `srcs` dictionary for use in python_* rule
+
+    Fails if a RuleTarget object is passed in, but a source file name cannot be
+    determined
+
+    Args:
+        base_path: The package for the rule
+        param: The name of the parameter being parsed. Used in error messages
+        srcs: Either a dictionary of file/target -> destination in the library, or
+              a list of source files or RuleTarget objects that the source named
+              can be divined from.
+
+    Returns:
+        A mapping of destination filename -> file str / RuleTarget
+    """
+
+    # Parse sources in dict form.
+    if is_dict(srcs):
+        out_srcs = (
+            src_and_dep_helpers.parse_source_map(
+                base_path,
+                {v: k for k, v in srcs.items()},
+            )
+        )
+
+        # Parse sources in list form.
+    else:
+        out_srcs = {}
+
+        # Format sources into a dict of logical name of value.
+        for src in src_and_dep_helpers.parse_source_list(base_path, srcs):
+            # Path names are the same as path values.
+            if not target_utils.is_rule_target(src):
+                out_srcs[src] = src
+                continue
+
+            # If the source comes from a `custom_rule`/`genrule`, and the
+            # user used the `=` notation which encodes the source's "name",
+            # we can extract and use that.
+            if "=" in src.name:
+                name = src.name.rsplit("=", 1)[1]
+                out_srcs[name] = src
+                continue
+
+            # Otherwise, we don't have a good way of deducing the name.
+            # This actually looks to be pretty rare, so just throw a useful
+            # error prompting the user to use the `=` notation above, or
+            # switch to an explicit `dict`.
+            fail(
+                'parameter `{}`: cannot infer a "name" to use for ' +
+                "`{}`. If this is an output from a `custom_rule`, " +
+                "consider using the `<rule-name>=<out>` notation instead. " +
+                "Otherwise, please specify this parameter as `dict` " +
+                'mapping sources to explicit "names" (see {} for details).'
+                    .format(param, target_utils.target_to_label(src), _GEN_SRCS_LINK),
+            )
+
+    return out_srcs
+
+def _parse_gen_srcs(base_path, srcs):  # type: (str, Union[List[str], Dict[str, str]]) -> Dict[str, Union[str, RuleTarget]]
+    """
+    Parse the given sources as input to the `gen_srcs` parameter.
+    """
+
+    out_srcs = _parse_srcs(base_path, "gen_srcs", srcs)
+
+    # Do a final pass to verify that all sources in `gen_srcs` are rule
+    # references.
+    for src in out_srcs.values():
+        if not target_utils.is_rule_target(src):
+            fail(
+                "parameter `gen_srcs`: `{}` must be a reference to rule " +
+                "that generates a source (e.g. `//foo:bar`, `:bar`) " +
+                " (see {} for details)."
+                    .format(src, GEN_SRCS_LINK),
+            )
+
+    return out_srcs
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     file_to_python_module = _file_to_python_module,
@@ -621,6 +707,8 @@ python_common = struct(
     interpreter_binaries = _interpreter_binaries,
     manifest_library = _manifest_library,
     monkeytype_binary = _monkeytype_binary,
+    parse_gen_srcs = _parse_gen_srcs,
+    parse_srcs = _parse_srcs,
     test_modules_library = _test_modules_library,
     typecheck_test = _typecheck_test,
 )
