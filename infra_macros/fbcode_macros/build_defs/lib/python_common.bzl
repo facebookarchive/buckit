@@ -451,6 +451,98 @@ def _typecheck_test(
     )
     return typecheck_rule_name
 
+def _monkeytype_binary(
+        rule_type,
+        attributes,
+        library_name):
+    """
+    Create a python binary/test that enables monkeytype but otherwise looks like another binary/test
+
+    Args:
+        rule_type: The type of rule to create (python_binary or python_test)
+        attributes: The attributes of the original binary/test that we are enabling
+                    monkeytype for. These should be final values passed to buck,
+                    not intermediaries, as they are copied directly into a
+        library_name: The name of the implicit library created for the binary/test
+    """
+
+    name = attributes["name"]
+    visibility = attributes.get("visibility")
+    lib_main_module_attrs_name = None
+    if "main_module" in attributes:
+        # we need to preserve the original main_module, so we inject a
+        # library with a module for it that the main wrapper picks up
+        main_module_name = name + "-monkeytype_main_module"
+        script = (
+            "#!/usr/bin/env python3\n\n" +
+            "def monkeytype_main_module() -> str:\n" +
+            "    return '{}'\n".format(attributes["main_module"])
+        )
+
+        fb_native.genrule(
+            name = main_module_name,
+            visibility = visibility,
+            out = name + "-__monkeytype_main_module__.py",
+            cmd = "echo {} > $OUT".format(shell.quote(script)),
+        )
+
+        lib_main_module_attrs_name = name + "-monkeytype_main_module-lib"
+        fb_native.python_library(
+            name = lib_main_module_attrs_name,
+            visibility = visibility,
+            base_module = "",
+            deps = ["//python:fbtestmain", ":" + name],
+            srcs = {
+                "__monkeytype_main_module__.py": ":" + main_module_name,
+            },
+        )
+
+    # Create a variant of the target that is running with monkeytype
+    if rule_type == "python_binary":
+        wrapper_rule_constructor = fb_native.python_binary
+    elif rule_type == "python_test":
+        wrapper_rule_constructor = fb_native.python_test
+    else:
+        fail("Invalid rule type specified: " + rule_type)
+
+    wrapper_attrs = dict(attributes)
+    wrapper_attrs["name"] = name + "-monkeytype"
+    wrapper_attrs["visibility"] = visibility
+    if "deps" in wrapper_attrs:
+        wrapper_deps = list(wrapper_attrs["deps"])
+    else:
+        wrapper_deps = []
+    library_target = ":" + library_name
+    if library_target not in wrapper_deps:
+        wrapper_deps.append(library_target)
+    stub_gen_deps = list(wrapper_deps)
+
+    if "//python/monkeytype:main_wrapper" not in wrapper_deps:
+        wrapper_deps.append("//python/monkeytype/tools:main_wrapper")
+    if lib_main_module_attrs_name != None:
+        wrapper_deps.append(":" + lib_main_module_attrs_name)
+    wrapper_attrs["deps"] = wrapper_deps
+    wrapper_attrs["base_module"] = ""
+    wrapper_attrs["main_module"] = "python.monkeytype.tools.main_wrapper"
+    wrapper_rule_constructor(**wrapper_attrs)
+
+    if "//python/monkeytype/tools:stubs_lib" not in wrapper_deps:
+        stub_gen_deps.append("//python/monkeytype/tools:stubs_lib")
+
+    # And create a target that can be used for stub creation
+    fb_native.python_binary(
+        name = name + "-monkeytype-gen-stubs",
+        visibility = visibility,
+        main_module = "python.monkeytype.tools.get_stub",
+        cxx_platform = attributes["cxx_platform"],
+        platform = attributes["platform"],
+        deps = stub_gen_deps,
+        platform_deps = attributes["platform_deps"],
+        preload_deps = attributes["preload_deps"],
+        package_style = "inplace",
+        version_universe = attributes["version_universe"],
+    )
+
 python_common = struct(
     file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
@@ -458,6 +550,7 @@ python_common = struct(
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
     manifest_library = _manifest_library,
+    monkeytype_binary = _monkeytype_binary,
     test_modules_library = _test_modules_library,
     typecheck_test = _typecheck_test,
 )
