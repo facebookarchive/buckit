@@ -73,11 +73,16 @@ VALID_COMPILER_FLAGS_RE = re.compile(
     '^-threaded$|'
     '^-no-hs-main$')
 
-# Regexp matching valid language option flags
-LANG_OPT_RE = re.compile(
-    '(-X\w+)$|'
-    '(-f(no-)?irrefutable-tuples)$|'
-    '(-fcontext-stack=\d+)$')
+# Prefixes of valid language option flags
+# '(-X\w+)$|'
+# '(-f(no-)?irrefutable-tuples)$|'
+# '(-fcontext-stack=\d+)$'
+VALID_LANG_OPT_PREFIXES = (
+    "-X",
+    "-firrefutable-tuples",
+    "-fno-irrefutable-tuples",
+    "-fcontext-stack=",
+)
 
 # Extensions enabled by default unless you specify fb_haskell = False
 FB_HASKELL_LANG = [
@@ -458,6 +463,12 @@ class HaskellConverter(base.Converter):
 
         return tuple(compiler_flags)
 
+    def _is_valid_language_option(self, option):
+        for prefix in VALID_LANG_OPT_PREFIXES:
+            if option.startswith(prefix):
+                return True
+        return False
+
     def get_language_options(self, options, fb_haskell):
         """
         Get the language options from user provided options.
@@ -465,7 +476,7 @@ class HaskellConverter(base.Converter):
 
         bad_opts = []
         for opt in options:
-            if not LANG_OPT_RE.match(opt):
+            if not self._is_valid_language_option(opt):
                 bad_opts.append(opt)
         if bad_opts:
             raise ValueError('invalid language options: {!r}'.format(bad_opts))
