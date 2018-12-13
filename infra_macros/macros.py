@@ -146,7 +146,7 @@ CXX_RULES = set([
     'cpp_unittest',
 ])
 
-def rule_handler(context, globals, rule_type, **kwargs):
+def rule_handler(globals, rule_type, **kwargs):
     """
     Callback that fires when a TARGETS rule is evaluated, converting it into
     one or more Buck rules.
@@ -168,8 +168,6 @@ def rule_handler(context, globals, rule_type, **kwargs):
 
     # Convert the fbconfig/fbmake rule into one or more Buck rules.
     base_path = get_base_path()
-    context['build_mode'] = build_mode.get_build_modes_for_current_buildfile().get(context['mode'])
-    context['third_party_config'] = third_party_config
 
     # Set default visibility
     rule.attributes['visibility'] = get_visibility_for_base_path(
@@ -204,7 +202,8 @@ def ignored_buck_rule(rule_type, *args, **kwargs):
     pass
 
 
-def _install_converted_rules(globals, **context_kwargs):
+__all__.append('install_converted_rules')
+def install_converted_rules(globals):
     old_globals = globals.copy()
 
     # Prevent direct access to raw BUCK UI, as it doesn't go through our
@@ -216,7 +215,7 @@ def _install_converted_rules(globals, **context_kwargs):
         ['buck_' + r for r in constants.BUCK_RULES]
     for rule_type in all_rule_types:
         globals[rule_type] = functools.partial(
-            rule_handler, context_kwargs, old_globals, rule_type)
+            rule_handler, old_globals, rule_type)
 
     # If fbcode.enabled_rule_types is specified, then all rule types that aren't
     # whitelisted should be redirected to a handler that's a no-op. For example,
@@ -226,16 +225,3 @@ def _install_converted_rules(globals, **context_kwargs):
         enabled_rule_types = (r.strip() for r in enabled_rule_types.split(','))
         for rule_type in set(all_rule_types) - set(enabled_rule_types):
             globals[rule_type] = functools.partial(ignored_buck_rule, rule_type)
-
-
-__all__.append('install_converted_rules')
-def install_converted_rules(globals, **context_kwargs):
-    context_kwargs = {
-        'default_compiler': config.get_default_compiler_family(),
-        'global_compiler': config.get_global_compiler_family(),
-        'coverage': coverage.get_coverage(),
-        'link_style': config.get_default_link_style(),
-        'mode': config.get_build_mode(),
-        'lto_type': config.get_lto_type(),
-    }
-    _install_converted_rules(globals, **context_kwargs)
