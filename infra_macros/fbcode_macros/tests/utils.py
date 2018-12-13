@@ -469,7 +469,7 @@ class Cell:
         def function(name):
             return collections.namedtuple("function", ["name"])(name)
 
-        string = re.sub(r"<function (\w+)>", r'function("\1")', string)
+        string = re.sub(r"<function (\w+)( at \w+)?>", r'function("\1")', string)
         # Yup, eval.... this lets us have nested struct objects easily so we
         # can do stricter type checking
         return eval(

@@ -292,10 +292,24 @@ def _constraint_matches(constraint, version, check_minor = False):
 
     return constraint.op(version, constraint.version, check_minor)
 
+def _normalize_constraint(constraint):
+    """ 
+    Normalizes `constraint` to be a `PythonVersionConstraint` object
+
+    Returns:
+        Either `constraint` if it is a `PythonVersionConstraint` struct, or parses
+        the string/int into a constraint
+    """
+    if hasattr(constraint, "version") and hasattr(constraint, "op"):
+        return constraint
+    else:
+        return _python_version_constraint(constraint)
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
     python_version = _python_version,
     version_supports_flavor = _version_supports_flavor,
     python_version_constraint = _python_version_constraint,
     constraint_matches = _constraint_matches,
+    normalize_constraint = _normalize_constraint,
 )

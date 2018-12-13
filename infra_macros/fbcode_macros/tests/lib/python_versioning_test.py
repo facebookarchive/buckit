@@ -356,3 +356,25 @@ class PythonVersioningTest(tests.utils.TestCase):
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+
+    @tests.utils.with_project()
+    def test_normalizes_constraints(self, root):
+        commands = [
+            (
+                "python_versioning.normalize_constraint("
+                'python_versioning.python_version_constraint("4"))'
+            ),
+            "python_versioning.normalize_constraint(4)",
+            'python_versioning.normalize_constraint("4")',
+        ]
+
+        expected = [
+            self.struct(version_string="4", flavor="", major=4, minor=0, patchlevel=0),
+            self.struct(version_string="4", flavor="", major=4, minor=0, patchlevel=0),
+            self.struct(version_string="4", flavor="", major=4, minor=0, patchlevel=0),
+        ]
+
+        result = root.runUnitTests(self.includes, commands)
+        self.assertSuccess(result)
+        versions = [constraint.version for constraint in result.debug_lines]
+        self.assertEquals(expected, versions)
