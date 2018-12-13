@@ -917,7 +917,7 @@ class PythonConverter(base.Converter):
                 list(attributes['tests']) + [':' + typecheck_rule_name]
             )
         if analyze_imports:
-            self.create_analyze_imports(
+            python_common.analyze_import_binary(
                 name,
                 buck_cxx_platform,
                 python_platform,
@@ -1133,75 +1133,3 @@ class PythonConverter(base.Converter):
                 cmds.append('echo $(location {})'.format(test.target_name))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
-
-    def create_analyze_imports(
-        self,
-        name,
-        buck_cxx_platform,
-        python_platform,
-        python_version,
-        deps,
-        platform_deps,
-        preload_deps,
-        visibility,
-    ):
-        """ Generate a binary to analyze the imports of a given python library """
-        generate_imports_deps = list(deps)
-        if ':generate_par_imports' not in generate_imports_deps:
-            generate_imports_deps.append('//libfb/py:generate_par_imports')
-
-        if ':parutil' not in generate_imports_deps:
-            generate_imports_deps.append('//libfb/py:parutil')
-
-        version_universe = python_common.get_version_universe(python_version)
-
-        generate_par_name = name + '-generate-imports'
-        fb_native.python_binary(
-            name = generate_par_name,
-            main_module = 'libfb.py.generate_par_imports',
-            cxx_platform = buck_cxx_platform,
-            platform = python_platform,
-            deps = generate_imports_deps,
-            platform_deps = platform_deps,
-            preload_deps = preload_deps,
-            # TODO(ambv): labels here shouldn't be hard-coded.
-            labels = ['buck', 'python'],
-            version_universe = version_universe,
-            visibility = visibility,
-        )
-
-        genrule_name = name + '-gen-rule'
-        fb_native.genrule(
-            name = genrule_name,
-            srcs = [":" + generate_par_name],
-            out = '{}-imports_file.py'.format(name),
-            cmd = '$(exe :{}) >"$OUT"'.format(generate_par_name),
-        )
-
-        lib_name = name + '-analyze-lib'
-        fb_native.python_library(
-            name = lib_name,
-            srcs = {'imports_file.py': ':' + genrule_name},
-            base_module = '',
-            deps = [":" + genrule_name],
-        )
-
-        analyze_deps = list(deps)
-        analyze_deps.append(':' + lib_name)
-
-        if ':analyze_par_imports' not in analyze_deps:
-            analyze_deps.append('//libfb/py:analyze_par_imports')
-
-        fb_native.python_binary(
-            name = name + '-analyze-imports',
-            main_module = 'libfb.py.analyze_par_imports',
-            cxx_platform = buck_cxx_platform,
-            platform = python_platform,
-            deps = analyze_deps,
-            platform_deps = platform_deps,
-            preload_deps = preload_deps,
-            # TODO(ambv): labels here shouldn't be hard-coded.
-            labels = ['buck', 'python'],
-            version_universe = version_universe,
-            visibility = visibility,
-        )
