@@ -53,6 +53,7 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -197,7 +198,7 @@ class ThriftLangConverter(base.Converter):
         cmd.append('-I')
         cmd.append(
             '$(location {})'.format(includes))
-        if self.read_bool('thrift', 'use_templates', True):
+        if read_bool('thrift', 'use_templates', True):
             cmd.append('--templates')
             cmd.append('$(location {})'.format(
                 config.get_thrift_templates()))
@@ -523,7 +524,7 @@ class CppThriftConverter(ThriftLangConverter):
         # Support a global config for explicitly opting thrift generated C/C++
         # rules in to using modules.
         modular_headers = (
-            self.read_bool(
+            read_bool(
                 "cxx",
                 "modular_headers_thrift_default",
                 required=False))
@@ -1069,7 +1070,7 @@ class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
             *args, **kwargs)
 
     def get_compiler(self):
-        return self.read_string(
+        return native.read_config(
             'thrift', 'compiler',
             super(JavaDeprecatedThriftConverter, self).get_compiler())
 
@@ -2887,7 +2888,9 @@ class ThriftLibraryConverter(base.Converter):
     def convert(self, base_path, name=None, languages=None, visibility=None, **kwargs):
         rules = []
 
-        supported_languages = self.read_list('thrift', 'supported_languages')
+        supported_languages = read_list(
+            'thrift', 'supported_languages', delimiter=None, required=False,
+        )
         if supported_languages is not None:
             languages = set(languages) & set(supported_languages)
 
