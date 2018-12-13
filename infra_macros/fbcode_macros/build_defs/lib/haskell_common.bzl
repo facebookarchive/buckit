@@ -10,6 +10,7 @@ load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_boolean", "read
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _GENERATED_LIB_SUFFIX = "__generated-lib__"
@@ -350,8 +351,93 @@ def _get_warnings_flags(warnings_flags = None):
 
     return tuple(wflags)
 
+# '^-O[0-9]*$|'
+# '^-v[0-9]*$|'
+# '^(-D\w+)$|'
+# '^(-D\w+=\w+)$|'
+# '^(-U\w+)$|'
+# '^-rtsopts$|'
+# '^-f.*|'
+# '^-ddump.*|'
+# '^-opt.*|'
+# '^-j\d*$|'
+# '^-with-rtsopts=.*$|'
+# '^-g[0-2]?$|'
+# '^-threaded$|'
+# '^-no-hs-main$'
+_VALID_COMPILER_FLAG_PREFIXES = (
+    "-O",
+    "-v",
+    "-D",
+    "-U",
+    "-rtsopts",
+    "-f",
+    "-ddump",
+    "-opt",
+    "-j",
+    "-with-rtsopts=",
+    "-g",
+    "-threaded",
+    "-no-hs-main",
+)
+
+def _is_valid_compiler_flag(flag):
+    for prefix in _VALID_COMPILER_FLAG_PREFIXES:
+        if flag.startswith(prefix):
+            return True
+    return False
+
+_FB_HASKELL_COMPILER_FLAGS = [
+    "-rtsopts",
+]
+
+def _get_compiler_flags(user_compiler_flags, fb_haskell):
+    """
+    Get flags to use that affect compilation.
+    """
+
+    compiler_flags = []
+
+    # Verify that all the user provided compiler flags are valid.
+    bad_compiler_flags = []
+    rts_flags = False
+    for flag in user_compiler_flags:
+        if rts_flags:
+            if flag == "-RTS":
+                rts_flags = False
+        elif flag == "+RTS":
+            rts_flags = True
+        elif not _is_valid_compiler_flag(flag):
+            bad_compiler_flags.append(flag)
+    if bad_compiler_flags:
+        fail(
+            "invalid compiler flags: {!r}"
+                .format(sorted(bad_compiler_flags)),
+        )
+    compiler_flags.extend(user_compiler_flags)
+
+    if fb_haskell:
+        compiler_flags.extend(_FB_HASKELL_COMPILER_FLAGS)
+
+    # -rtsopts has no effect with -no-hs-main, and GHC will emit a
+    # warning. But we might add -rtsopts automatically via
+    # fb_haskell above, so let's suppress the warning:
+    if "-no-hs-main" in compiler_flags:
+        compiler_flags = [
+            x
+            for x in compiler_flags
+            if not (x.startswith("-rtsopts") or
+                    x.startswith("-with-rtsotps"))
+        ]
+
+    if sanitizers.get_sanitizer() == "address":
+        compiler_flags.append("-optP-D__SANITIZE_ADDRESS__")
+
+    return tuple(compiler_flags)
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
+    get_compiler_flags = _get_compiler_flags,
     get_ghc_version = _get_ghc_version,
     get_warnings_flags = _get_warnings_flags,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,

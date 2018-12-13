@@ -35,36 +35,6 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 
-# '^-O[0-9]*$|'
-# '^-v[0-9]*$|'
-# '^(-D\w+)$|'
-# '^(-D\w+=\w+)$|'
-# '^(-U\w+)$|'
-# '^-rtsopts$|'
-# '^-f.*|'
-# '^-ddump.*|'
-# '^-opt.*|'
-# '^-j\d*$|'
-# '^-with-rtsopts=.*$|'
-# '^-g[0-2]?$|'
-# '^-threaded$|'
-# '^-no-hs-main$'
-VALID_COMPILER_FLAG_PREFIXES = (
-    "-O",
-    "-v",
-    "-D",
-    "-U",
-    "-rtsopts",
-    "-f",
-    "-ddump",
-    "-opt",
-    "-j",
-    "-with-rtsopts=",
-    "-g",
-    "-threaded",
-    "-no-hs-main",
-)
-
 # Prefixes of valid language option flags
 # '(-X\w+)$|'
 # '(-f(no-)?irrefutable-tuples)$|'
@@ -134,10 +104,6 @@ FB_HASKELL_PACKAGES = [
     'QuickCheck',
     'unix',
     'vector',
-]
-
-FB_HASKELL_COMPILER_FLAGS = [
-    '-rtsopts',
 ]
 
 IMPLICIT_TP_DEPS = [
@@ -378,54 +344,6 @@ class HaskellConverter(base.Converter):
         """
 
         return IMPLICIT_TP_DEPS
-
-    def _is_valid_compiler_flag(self, flag):
-        for prefix in VALID_COMPILER_FLAG_PREFIXES:
-            if flag.startswith(prefix):
-                return True
-        return False
-
-    def get_compiler_flags(self, user_compiler_flags, fb_haskell):
-        """
-        Get flags to use that affect compilation.
-        """
-
-        compiler_flags = []
-
-        # Verify that all the user provided compiler flags are valid.
-        bad_compiler_flags = set()
-        rts_flags = False
-        for flag in user_compiler_flags:
-            if rts_flags:
-                if flag == '-RTS':
-                    rts_flags = False
-            elif flag == '+RTS':
-                rts_flags = True
-            elif not self._is_valid_compiler_flag(flag):
-                bad_compiler_flags.add(flag)
-        if bad_compiler_flags:
-            raise ValueError(
-                'invalid compiler flags: {!r}'
-                .format(sorted(bad_compiler_flags)))
-        compiler_flags.extend(user_compiler_flags)
-
-        if fb_haskell:
-            compiler_flags.extend(FB_HASKELL_COMPILER_FLAGS)
-
-        # -rtsopts has no effect with -no-hs-main, and GHC will emit a
-        # warning. But we might add -rtsopts automatically via
-        # fb_haskell above, so let's suppress the warning:
-        if '-no-hs-main' in compiler_flags:
-            compiler_flags = filter(
-                lambda x:
-                    not (x.startswith('-rtsopts') or
-                         x.startswith('-with-rtsotps')),
-                compiler_flags)
-
-        if sanitizers.get_sanitizer() == 'address':
-            compiler_flags.append('-optP-D__SANITIZE_ADDRESS__')
-
-        return tuple(compiler_flags)
 
     def _is_valid_language_option(self, option):
         for prefix in VALID_LANG_OPT_PREFIXES:
@@ -690,7 +608,7 @@ class HaskellConverter(base.Converter):
 
         validated_compiler_flags = []
         validated_compiler_flags.extend(
-            self.get_compiler_flags(compiler_flags, fb_haskell))
+            haskell_common.get_compiler_flags(compiler_flags, fb_haskell))
         ldflags = (
             cpp_common.get_ldflags(
                 base_path,
