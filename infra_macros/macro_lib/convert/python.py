@@ -272,45 +272,6 @@ class PythonConverter(base.Converter):
         target, path = target.rsplit('=', 1)
         return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
 
-    def get_python_build_info(
-            self,
-            base_path,
-            name,
-            main_module,
-            platform,
-            python_platform):
-        """
-        Return the build info attributes to install for python rules.
-        """
-
-        py_build_info = collections.OrderedDict()
-
-        py_build_info['main_module'] = main_module
-        py_build_info['par_style'] = 'live'
-        py_build_info['build_tool'] = 'buck'
-
-        interp = python_common.get_interpreter_for_platform(python_platform)
-        py_build_info['python_home'] = paths.dirname(paths.dirname(interp))
-        py_build_info['python_command'] = interp
-
-        # Include the standard build info, converting the keys to the names we
-        # use for python.
-        key_mappings = {
-            'package_name': 'package',
-            'package_version': 'version',
-            'rule': 'build_rule',
-            'rule_type': 'build_rule_type',
-        }
-        info = build_info.get_build_info(
-            base_path,
-            name,
-            self.get_fbconfig_rule_type(),
-            platform)
-        for key in build_info.BUILD_INFO_KEYS:
-            py_build_info[key_mappings.get(key, key)] = getattr(info, key)
-
-        return py_build_info
-
     def generate_manifest(
             self,
             base_path,
@@ -323,9 +284,10 @@ class PythonConverter(base.Converter):
         Build the rules that create the `__manifest__` module.
         """
 
-        build_info = self.get_python_build_info(
+        build_info = python_common.get_build_info(
             base_path,
             name,
+            self.get_fbconfig_rule_type(),
             main_module,
             platform,
             python_platform)

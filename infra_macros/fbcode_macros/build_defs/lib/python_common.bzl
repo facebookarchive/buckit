@@ -1,3 +1,5 @@
+load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
@@ -69,7 +71,60 @@ def _get_interpreter_for_platform(python_platform):
     """ Get the interpreter to use for a buck-native python platform """
     return native.read_config("python#" + python_platform, "interpreter")
 
+def _get_build_info(
+        base_path,
+        name,
+        fbconfig_rule_type,
+        main_module,
+        fbcode_platform,
+        python_platform):
+    """
+    Return the build info attributes to install for python rules.
+
+    Args:
+        base_path: The package for the current build file
+        name: The name of the rule being built
+        fbconfig_rule_type: The name of the main rule being built; used for build_info
+        main_module: The python main module of the binary/test
+        fbcode_platform: The fbcode platform used for the binary/test
+        python_platform: The buck-compatible python_platform that is being used
+
+    Returns:
+        A dictionary of key/value strings to put into a build manifest
+    """
+
+    interpreter = _get_interpreter_for_platform(python_platform)
+
+    # Iteration order is deterministic for dictionaries in buck/skylark
+    py_build_info = {
+        "build_tool": "buck",
+        "main_module": main_module,
+        "par_style": "live",
+        "python_command": interpreter,
+        "python_home": paths.dirname(paths.dirname(interpreter)),
+    }
+
+    # Include the standard build info, converting the keys to the names we
+    # use for python.
+    key_mappings = {
+        "package_name": "package",
+        "package_version": "version",
+        "rule": "build_rule",
+        "rule_type": "build_rule_type",
+    }
+    info = build_info.get_build_info(
+        base_path,
+        name,
+        fbconfig_rule_type,
+        fbcode_platform,
+    )
+    for key in build_info.BUILD_INFO_KEYS:
+        py_build_info[key_mappings.get(key, key)] = getattr(info, key)
+
+    return py_build_info
+
 python_common = struct(
+    get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
