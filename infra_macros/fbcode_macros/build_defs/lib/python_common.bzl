@@ -235,10 +235,20 @@ def _manifest_library(
 
     return manifest_lib_name
 
+def _file_to_python_module(src, base_module):
+    """Python implementation of Buck's toModuleName().
+
+    Original in com.facebook.buck.python.PythonUtil.toModuleName.
+    """
+    src = paths.join(base_module, src)
+    src, ext = paths.split_extension(src)
+    return src.replace("/", ".")  # sic, not os.sep
+
 python_common = struct(
     get_build_info = _get_build_info,
     manifest_library = _manifest_library,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
+    file_to_python_module = _file_to_python_module,
 )

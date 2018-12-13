@@ -1417,7 +1417,7 @@ class PythonConverter(base.Converter):
         for src in sorted(library_srcs):
             lines.append(
                 '    "{}",'.format(
-                    self.file_to_python_module(src, library_base_module or base_path)
+                    python_common.file_to_python_module(src, library_base_module or base_path)
                 )
             )
         lines.append(']')
@@ -1442,11 +1442,4 @@ class PythonConverter(base.Converter):
         )
         return testmodules_library_name
 
-    def file_to_python_module(self, src, base_module):
-        """Python implementation of Buck's toModuleName().
 
-        Original in com.facebook.buck.python.PythonUtil.toModuleName.
-        """
-        src = paths.join(base_module, src)
-        src, ext = paths.split_extension(src)
-        return src.replace('/', '.')  # sic, not os.sep
