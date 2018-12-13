@@ -29,6 +29,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:haskell_common.bzl", "haskell_common")
+load("@fbcode_macros//build_defs/lib:haskell_rules.bzl", "haskell_rules")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@bazel_skylib//lib:paths.bzl", "paths")
@@ -78,7 +79,6 @@ IMPLICIT_TP_DEPS = [
 ALEX = target_utils.ThirdPartyToolRuleTarget('hs-alex', 'alex')
 ALEX_PACKAGES = ['array', 'bytestring']
 
-HAPPY = target_utils.ThirdPartyToolRuleTarget('hs-happy', 'happy')
 HAPPY_PACKAGES = ['array']
 
 C2HS = target_utils.ThirdPartyRuleTarget('stackage-lts', 'bin/c2hs')
@@ -232,26 +232,6 @@ class HaskellConverter(base.Converter):
         """
 
         return IMPLICIT_TP_DEPS
-
-    def convert_happy(self, name, platform, happy_src, visibility):
-        """
-        Create rules to generate a Haskell source from the given happy file.
-        """
-        happy_name = name + '-' + happy_src
-
-        fb_native.genrule(
-            name=happy_name,
-            visibility=get_visibility(visibility, happy_name),
-            out=paths.split_extension(happy_src)[0] + '.hs',
-            srcs=[happy_src],
-            cmd=' && '.join([
-                'mkdir -p `dirname "$OUT"`',
-                '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                    happy=target_utils.target_to_label(HAPPY, platform=platform)),
-            ]),
-        )
-
-        return ':' + happy_name
 
     def convert_alex(self, name, platform, alex_src, visibility):
         """
@@ -526,7 +506,7 @@ class HaskellConverter(base.Converter):
         for src in srcs:
             _, ext = paths.split_extension(src)
             if ext == '.y':
-                src = self.convert_happy(name, platform, src, visibility)
+                src = haskell_rules.happy_rule(name, platform, src, visibility)
                 out_srcs.append(src)
                 implicit_src_deps.update(
                     self.get_deps_for_packages(HAPPY_PACKAGES, platform))
