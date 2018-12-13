@@ -35,6 +35,7 @@ load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@fbcode_macros//build_defs:haskell_library.bzl", "haskell_library")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
+load("@fbcode_macros//build_defs:haskell_unittest.bzl", "haskell_unittest")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
@@ -122,45 +123,6 @@ class HaskellConverter(base.Converter):
             ))
         ]
 
-    def convert_unittest(
-            self,
-            base_path,
-            name,
-            tags=(),
-            env=None,
-            visibility=None,
-            **kwargs):
-        """
-        Buckify a unittest rule.
-        """
-
-        rules = []
-
-        # Generate the test binary rule and fixup the name.
-        binary_name = name + '-binary'
-        binary_rules = (
-            self.convert_rule(
-                base_path,
-                name=binary_name,
-                visibility=visibility,
-                **kwargs))
-        rules.extend(binary_rules)
-
-        platform = platform_utils.get_platform_for_base_path(base_path)
-
-        # Create a `sh_test` rule to wrap the test binary and set it's tags so
-        # that testpilot knows it's a haskell test.
-        fb_native.sh_test(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            test=':' + binary_name,
-            env=env,
-            labels=(
-                label_utils.convert_labels(platform, 'haskell', 'custom-type-hs', *tags)),
-        )
-
-        return rules
-
     def convert(self, base_path, *args, **kwargs):
         """
         Generate rules for a haskell rule.
@@ -169,17 +131,15 @@ class HaskellConverter(base.Converter):
         rtype = self.get_fbconfig_rule_type()
         if rtype == 'haskell_binary':
             haskell_binary(*args, **kwargs)
-            return []
         if rtype == 'haskell_library':
             haskell_library(*args, **kwargs)
-            return []
         elif rtype == 'haskell_unittest':
-            return self.convert_unittest(base_path, *args, **kwargs)
+            haskell_unittest(*args, **kwargs)
         elif rtype == 'haskell_ghci':
             haskell_ghci(*args, **kwargs)
-            return []
         elif rtype == 'haskell_haddock':
             haskell_haddock(*args, **kwargs)
-            return []
+
         else:
             raise Exception('unexpected type: ' + rtype)
+        return []
