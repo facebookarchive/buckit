@@ -153,94 +153,6 @@ class PythonConverter(base.Converter):
         target, path = target.rsplit('=', 1)
         return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
 
-    def get_par_build_args(
-            self,
-            base_path,
-            name,
-            rule_type,
-            platform,
-            argcomplete=None,
-            strict_tabs=None,
-            compile=None,
-            par_style=None,
-            strip_libpar=None,
-            needed_coverage=None,
-            python=None):
-        """
-        Return the arguments we need to pass to the PAR builder wrapper.
-        """
-
-        build_args = []
-        build_mode = config.get_build_mode()
-
-        if config.get_use_custom_par_args():
-            # Arguments that we wanted directly threaded into `make_par`.
-            passthrough_args = []
-            if argcomplete == True:
-                passthrough_args.append('--argcomplete')
-            if strict_tabs == False:
-                passthrough_args.append('--no-strict-tabs')
-            if compile == False:
-                passthrough_args.append('--no-compile')
-                passthrough_args.append('--store-source')
-            elif compile == 'with-source':
-                passthrough_args.append('--store-source')
-            elif compile != True and compile != None:
-                fail((
-                    'Invalid value {} for `compile`, must be True, False, ' +
-                    '"with-source", or None (default)').format(compile)
-                )
-            if par_style != None:
-                passthrough_args.append('--par-style=' + par_style)
-            if needed_coverage != None or coverage.get_coverage():
-                passthrough_args.append('--store-source')
-            if build_mode.startswith('opt'):
-                passthrough_args.append('--optimize')
-
-            # Add arguments to populate build info.
-            mode = build_info.get_build_info_mode(base_path, name)
-            if mode == "none":
-                fail("Invalid build info mode specified")
-            info = (
-                build_info.get_explicit_build_info(
-                    base_path,
-                    name,
-                    mode,
-                    rule_type,
-                    platform,
-                    compiler.get_compiler_for_current_buildfile()))
-            passthrough_args.append(
-                '--build-info-build-mode=' + info.build_mode)
-            passthrough_args.append('--build-info-build-tool=buck')
-            if info.package_name != None:
-                passthrough_args.append(
-                    '--build-info-package-name=' + info.package_name)
-            if info.package_release != None:
-                passthrough_args.append(
-                    '--build-info-package-release=' + info.package_release)
-            if info.package_version != None:
-                passthrough_args.append(
-                    '--build-info-package-version=' + info.package_version)
-            passthrough_args.append('--build-info-platform=' + info.platform)
-            passthrough_args.append('--build-info-rule-name=' + info.rule)
-            passthrough_args.append('--build-info-rule-type=' + info.rule_type)
-
-            build_args.extend(['--passthrough=' + a for a in passthrough_args])
-
-            # Arguments for stripping libomnibus. dbg builds should never strip.
-            if not build_mode.startswith('dbg'):
-                if strip_libpar == True:
-                    build_args.append('--omnibus-debug-info=strip')
-                elif strip_libpar == 'extract':
-                    build_args.append('--omnibus-debug-info=extract')
-                else:
-                    build_args.append('--omnibus-debug-info=separate')
-
-            # Set an explicit python interpreter.
-            if python != None:
-                build_args.append('--python-override=' + python)
-
-        return build_args
 
     def should_generate_interp_rules(self, helper_deps):
         """
@@ -690,7 +602,7 @@ class PythonConverter(base.Converter):
         # Add in the PAR build args.
         if self.get_package_style() == 'standalone':
             build_args = (
-                self.get_par_build_args(
+                python_common.get_par_build_args(
                     base_path,
                     name,
                     rule_type,

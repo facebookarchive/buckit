@@ -5,6 +5,9 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_targ
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
+load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
 
@@ -698,11 +701,108 @@ def _parse_gen_srcs(base_path, srcs):  # type: (str, Union[List[str], Dict[str, 
 
     return out_srcs
 
+def _get_par_build_args(
+        base_path,
+        name,
+        rule_type,
+        platform,
+        argcomplete = None,
+        strict_tabs = None,
+        compile = None,
+        par_style = None,
+        strip_libpar = None,
+        needed_coverage = None,
+        python = None):
+    """
+    Return the arguments we need to pass to the PAR builder wrapper.
+    """
+
+    build_args = []
+    build_mode = config.get_build_mode()
+
+    if config.get_use_custom_par_args():
+        # Arguments that we wanted directly threaded into `make_par`.
+        passthrough_args = []
+        if argcomplete == True:
+            passthrough_args.append("--argcomplete")
+        if strict_tabs == False:
+            passthrough_args.append("--no-strict-tabs")
+        if compile == False:
+            passthrough_args.append("--no-compile")
+            passthrough_args.append("--store-source")
+        elif compile == "with-source":
+            passthrough_args.append("--store-source")
+        elif compile != True and compile != None:
+            fail(
+                (
+                    "Invalid value {} for `compile`, must be True, False, " +
+                    '"with-source", or None (default)'
+                ).format(compile),
+            )
+        if par_style != None:
+            passthrough_args.append("--par-style=" + par_style)
+        if needed_coverage != None or coverage.get_coverage():
+            passthrough_args.append("--store-source")
+        if build_mode.startswith("opt"):
+            passthrough_args.append("--optimize")
+
+        # Add arguments to populate build info.
+        mode = build_info.get_build_info_mode(base_path, name)
+        if mode == "none":
+            fail("Invalid build info mode specified")
+        info = (
+            build_info.get_explicit_build_info(
+                base_path,
+                name,
+                mode,
+                rule_type,
+                platform,
+                compiler.get_compiler_for_current_buildfile(),
+            )
+        )
+        passthrough_args.append(
+            "--build-info-build-mode=" + info.build_mode,
+        )
+        passthrough_args.append("--build-info-build-tool=buck")
+        if info.package_name != None:
+            passthrough_args.append(
+                "--build-info-package-name=" + info.package_name,
+            )
+        if info.package_release != None:
+            passthrough_args.append(
+                "--build-info-package-release=" + info.package_release,
+            )
+        if info.package_version != None:
+            passthrough_args.append(
+                "--build-info-package-version=" + info.package_version,
+            )
+        passthrough_args.append("--build-info-platform=" + info.platform)
+        passthrough_args.append("--build-info-rule-name=" + info.rule)
+        passthrough_args.append("--build-info-rule-type=" + info.rule_type)
+
+        build_args.extend(["--passthrough=" + a for a in passthrough_args])
+
+        # Arguments for stripping libomnibus. dbg builds should never strip.
+        if not build_mode.startswith("dbg"):
+            if strip_libpar == True:
+                build_args.append("--omnibus-debug-info=strip")
+            elif strip_libpar == "extract":
+                build_args.append("--omnibus-debug-info=extract")
+            else:
+                build_args.append("--omnibus-debug-info=separate")
+
+        # Set an explicit python interpreter.
+        if python != None:
+            build_args.append("--python-override=" + python)
+
+    return build_args
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,
+    get_par_build_args = _get_par_build_args,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
     manifest_library = _manifest_library,
