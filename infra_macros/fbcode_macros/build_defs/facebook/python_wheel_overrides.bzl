@@ -38,6 +38,7 @@ OVERRIDES = (
     ("ipython_genutils", "ipython-genutils"),
     ("jsonpickle", "jsonpickle"),
     ("jsonschema", "jsonschema"),
+    ("lxml", "lxml"),
     ("mock", "mock"),
     ("multidict", "multidict"),
     ("mypy", "mypy"),
