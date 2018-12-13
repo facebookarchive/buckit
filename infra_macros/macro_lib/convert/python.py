@@ -1201,11 +1201,15 @@ class PythonConverter(base.Converter):
         if self.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test():
-                if generate_test_modules:
-                    rules.extend(self.gen_test_modules(base_path, library, visibility))
-                interp_deps.append(
-                    ':{}-testmodules-lib'.format(library.attributes['name'])
+                testmodules_library_name = self.gen_test_modules(
+                    base_path,
+                    library.attributes['name'],
+                    library.attributes.get('srcs') or (),
+                    library.attributes.get('base_module'),
+                    visibility,
+                    generate_test_modules = generate_test_modules,
                 )
+                interp_deps.append(':' + testmodules_library_name)
             interp_rules = (
                 self.convert_interp_rules(
                     base_path,
@@ -1729,39 +1733,46 @@ class PythonConverter(base.Converter):
         rules.append(Rule('python_binary', stub_gen_attrs))
         return rules
 
-    def gen_test_modules(self, base_path, library, visibility):
+    def gen_test_modules(self, base_path, library_name, library_srcs, library_base_module, visibility, generate_test_modules):
+        """"
+        Create the rule that generates a __test_modules__.py file for a library
+        """
+
+        testmodules_library_name = library_name + '-testmodules-lib'
+
+        # If we don't actually want to generate the library (generate_test_modules),
+        # at least return the name
+        if not generate_test_modules:
+            return testmodules_library_name
+
         lines = ['TEST_MODULES = [']
-        for src in sorted(library.attributes.get('srcs') or ()):
+        for src in sorted(library_srcs):
             lines.append(
                 '    "{}",'.format(
-                    self.file_to_python_module(
-                        src,
-                        library.attributes.get('base_module') or base_path,
-                    )
+                    self.file_to_python_module(src, library_base_module or base_path)
                 )
             )
         lines.append(']')
 
-        name = library.attributes['name']
-        gen_attrs = collections.OrderedDict()
-        gen_attrs['name'] = name + '-testmodules'
-        if visibility != None:
-            gen_attrs['visibility'] = visibility
-        gen_attrs['out'] = name + '-__test_modules__.py'
-        gen_attrs['cmd'] = ' && '.join(
-            'echo {} >> $OUT'.format(pipes.quote(line))
-            for line in lines
+        genrule_name = library_name + '-testmodules'
+        fb_native.genrule(
+            name = genrule_name,
+            visibility = visibility,
+            out = library_name + '-__test_modules__.py',
+            cmd = ' && '.join([
+                'echo {} >> $OUT'.format(pipes.quote(line))
+                for line in lines
+            ])
         )
-        yield Rule('genrule', gen_attrs)
 
-        lib_attrs = collections.OrderedDict()
-        lib_attrs['name'] = name + '-testmodules-lib'
-        if visibility != None:
-            lib_attrs['visibility'] = visibility
-        lib_attrs['base_module'] = ''
-        lib_attrs['deps'] = ['//python:fbtestmain', ':' + name]
-        lib_attrs['srcs'] = {'__test_modules__.py': ':' + gen_attrs['name']}
-        yield Rule('python_library', lib_attrs)
+        fb_native.python_library(
+            name = testmodules_library_name,
+            visibility = visibility,
+            base_module = '',
+            deps = ['//python:fbtestmain', ':' + library_name],
+            srcs = {'__test_modules__.py': ':' + genrule_name},
+        )
+        return testmodules_library_name
 
     def file_to_python_module(self, src, base_module):
         """Python implementation of Buck's toModuleName().
