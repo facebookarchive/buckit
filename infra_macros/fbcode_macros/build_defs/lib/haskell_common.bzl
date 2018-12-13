@@ -449,6 +449,9 @@ _VALID_LANG_OPT_PREFIXES = (
 )
 
 def _is_valid_language_option(option):
+    # spaces are not allowed
+    if " " in option:
+        return False
     for prefix in _VALID_LANG_OPT_PREFIXES:
         if option.startswith(prefix):
             return True
