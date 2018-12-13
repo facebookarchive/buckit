@@ -895,11 +895,10 @@ class PythonConverter(base.Converter):
         if check_types:
             if python_version.major != 3:
                 fail('parameter `check_types` is only supported on Python 3.')
-            typecheck_rule_name = self.create_typecheck(
-                base_path,
+            typecheck_rule_name = python_common.typecheck_test(
                 name,
                 main_module,
-                platform,
+                buck_cxx_platform,
                 python_platform,
                 python_version,
                 dependencies,
@@ -1215,119 +1214,6 @@ class PythonConverter(base.Converter):
             version_universe = python_common.get_version_universe(python_version),
             visibility = visibility,
         )
-
-    def create_typecheck(
-        self,
-        base_path,
-        name,
-        main_module,
-        platform,
-        python_platform,
-        python_version,
-        deps,
-        platform_deps,
-        preload_deps,
-        typing_options,
-        visibility,
-        emails,
-        library_target,
-        library_versioned_srcs,
-        library_srcs,
-        library_resources,
-        library_base_module,
-    ):
-        typing_config = get_typing_config_target()
-
-        typecheck_deps = deps[:]
-        if ':python_typecheck-library' not in typecheck_deps:
-            # Buck doesn't like duplicate dependencies.
-            typecheck_deps.append('//libfb/py:python_typecheck-library')
-
-        if not typing_config:
-            typecheck_deps.append('//python/typeshed_internal:global_mypy_ini')
-
-        env = {}
-
-        # If the passed library is not a dependency, add its sources here.
-        # This enables python_unittest targets to be type-checked, too.
-        add_library_attrs = library_target not in typecheck_deps
-        if not add_library_attrs:
-            library_versioned_srcs = None
-            library_srcs = None
-            library_resources = None
-            library_base_module = None
-
-        if main_module not in {'__fb_test_main__', 'libfb.py.testslide.unittest'}:
-            # Tests are properly enumerated from passed sources (see above).
-            # For binary targets, we need this subtle hack to let
-            # python_typecheck know where to start type checking the program.
-            env["PYTHON_TYPECHECK_ENTRY_POINT"] = main_module
-
-        typing_options_list = [
-            option.strip() for option in typing_options.split(',')
-        ] if typing_options else []
-        use_pyre = typing_options and 'pyre' in typing_options_list
-
-        if use_pyre:
-            typing_options_list.remove('pyre')
-            typing_options = ','.join(typing_options_list)
-            env["PYRE_ENABLED"] = "1"
-
-        if typing_config:
-            cmd = '$(exe {}) gather '.format(typing_config)
-            if use_pyre:
-                genrule_name = name + "-typing=pyre.json"
-                genrule_out = 'pyre.json'
-                cmd += '--pyre=True '
-            else:
-                genrule_name = name + '-typing=mypy.ini'
-                genrule_out = 'mypy.ini'
-            if typing_options:
-                cmd += '--options="{}" '.format(typing_options)
-            cmd += '$(location {}-typing) $OUT'.format(library_target)
-
-            fb_native.genrule(
-                name = genrule_name,
-                out = genrule_out,
-                cmd = cmd,
-                visibility = visibility,
-            )
-
-            if use_pyre:
-                typing_library_name = name + '-pyre_json'
-            else:
-                typing_library_name = name + '-mypy_ini'
-
-            fb_native.python_library(
-                name = typing_library_name,
-                visibility = visibility,
-                base_module = '',
-                srcs = [":" + genrule_name],
-            )
-            typecheck_deps.append(":" + typing_library_name)
-
-        typecheck_rule_name = name + '-typecheck'
-        fb_native.python_test(
-            name = typecheck_rule_name,
-            main_module = 'python_typecheck',
-            cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
-            platform = python_platform,
-            deps = typecheck_deps,
-            platform_deps = platform_deps,
-            preload_deps = preload_deps,
-            package_style = 'inplace',
-            # TODO(ambv): labels here shouldn't be hard-coded.
-            labels = ['buck', 'python'],
-            version_universe = python_common.get_version_universe(python_version),
-            contacts = emails,
-            visibility = visibility,
-            env = env,
-            versioned_srcs = library_versioned_srcs,
-            srcs = library_srcs,
-            resources = library_resources,
-            base_module = library_base_module,
-        )
-        return typecheck_rule_name
 
     def create_monkeytype_rules(
         self,

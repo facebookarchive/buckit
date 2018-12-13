@@ -1,6 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
+load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
@@ -304,6 +305,152 @@ def _test_modules_library(
     )
     return testmodules_library_name
 
+def _typecheck_test(
+        name,
+        main_module,
+        buck_cxx_platform,
+        python_platform,
+        python_version,
+        deps,
+        platform_deps,
+        preload_deps,
+        typing_options,
+        visibility,
+        emails,
+        library_target,
+        library_versioned_srcs,
+        library_srcs,
+        library_resources,
+        library_base_module):
+    """
+    Create a test and associated libraries for running typechecking
+
+    Args:
+        name: The name of the original binary/test to run typechecks on
+        main_module: The main module of hte binary/test
+        buck_cxx_platform: The buck-formatted cxx_platform to use for the interpreter binary
+        python_version: A `PythonVersion` struct for the version of python to use
+        python_platform: The python platform to pass to buck
+        deps: The deps to pass to the binary in addition to interpeter deps
+        platform_deps: The platform deps to pass to buck
+        preload_deps: The preload deps to pass to buck
+        typing_options: A comma delimited list of strings that configure typing for
+                        this binary/library
+        visibility: The visibilty of the rule
+        library_target: The fully qualified target for the original library used in
+                        the binary/test. This is used to determine whether the following
+                        library_* properties are used in the final test rule
+        library_versioned_srcs: The versioned_srcs property from the library used
+                                to create the original binary/test. This should be the
+                                final value passed to buck: No intermediate representations
+        library_srcs: The srcs property from the library used to create the original
+                      binary/test. This should be the final value passed to
+                      buck: No intermediate representations
+        library_resources: The resources property from the library used to create the
+                           original binary/test. This should be the final value passed
+                           to buck: No intermediate representations
+        library_base_module: The base_module property from the library used  to create
+                             the original binary/test. This should be the final
+                             value passed to buck: No intermediate representations
+
+    Returns:
+        The name of the test library that was created
+    """
+
+    typing_config = get_typing_config_target()
+
+    typecheck_deps = deps[:]
+    if ":python_typecheck-library" not in typecheck_deps:
+        # Buck doesn't like duplicate dependencies.
+        typecheck_deps.append("//libfb/py:python_typecheck-library")
+
+    if not typing_config:
+        typecheck_deps.append("//python/typeshed_internal:global_mypy_ini")
+
+    env = {}
+
+    # If the passed library is not a dependency, add its sources here.
+    # This enables python_unittest targets to be type-checked, too.
+    add_library_attrs = library_target not in typecheck_deps
+    if not add_library_attrs:
+        library_versioned_srcs = None
+        library_srcs = None
+        library_resources = None
+        library_base_module = None
+
+    if main_module not in ("__fb_test_main__", "libfb.py.testslide.unittest"):
+        # Tests are properly enumerated from passed sources (see above).
+        # For binary targets, we need this subtle hack to let
+        # python_typecheck know where to start type checking the program.
+        env["PYTHON_TYPECHECK_ENTRY_POINT"] = main_module
+
+    typing_options_list = [
+        option.strip()
+        for option in typing_options.split(",")
+    ] if typing_options else []
+    use_pyre = typing_options and "pyre" in typing_options_list
+
+    if use_pyre:
+        typing_options_list.remove("pyre")
+        typing_options = ",".join(typing_options_list)
+        env["PYRE_ENABLED"] = "1"
+
+    if typing_config:
+        cmd = "$(exe {}) gather ".format(typing_config)
+        if use_pyre:
+            genrule_name = name + "-typing=pyre.json"
+            genrule_out = "pyre.json"
+            cmd += "--pyre=True "
+        else:
+            genrule_name = name + "-typing=mypy.ini"
+            genrule_out = "mypy.ini"
+        if typing_options:
+            cmd += '--options="{}" '.format(typing_options)
+        cmd += "$(location {}-typing) $OUT".format(library_target)
+
+        fb_native.genrule(
+            name = genrule_name,
+            out = genrule_out,
+            cmd = cmd,
+            visibility = visibility,
+        )
+
+        if use_pyre:
+            typing_library_name = name + "-pyre_json"
+        else:
+            typing_library_name = name + "-mypy_ini"
+
+        fb_native.python_library(
+            name = typing_library_name,
+            visibility = visibility,
+            base_module = "",
+            srcs = [":" + genrule_name],
+        )
+        typecheck_deps.append(":" + typing_library_name)
+
+    typecheck_rule_name = name + "-typecheck"
+    fb_native.python_test(
+        name = typecheck_rule_name,
+        main_module = "python_typecheck",
+        cxx_platform = buck_cxx_platform,
+        platform = python_platform,
+        deps = typecheck_deps,
+        platform_deps = platform_deps,
+        preload_deps = preload_deps,
+        package_style = "inplace",
+        # TODO(ambv): labels here shouldn't be hard-coded.
+        labels = ["buck", "python"],
+        version_universe = _get_version_universe(python_version),
+        contacts = emails,
+        visibility = visibility,
+        env = env,
+        versioned_srcs = library_versioned_srcs,
+        srcs = library_srcs,
+        resources = library_resources,
+        base_module = library_base_module,
+    )
+    return typecheck_rule_name
+
 python_common = struct(
     file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
@@ -312,4 +459,5 @@ python_common = struct(
     interpreter_binaries = _interpreter_binaries,
     manifest_library = _manifest_library,
     test_modules_library = _test_modules_library,
+    typecheck_test = _typecheck_test,
 )
