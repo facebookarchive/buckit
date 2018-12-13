@@ -629,11 +629,46 @@ def _convert_rule(
 
     return attributes
 
+def _dll(base_path, name, dll, visibility = None, **kwargs):
+    """
+    Generate rules to build a dynamic library.
+    """
+    _ignore = dll
+
+    # Generate rules to build the haskell library.  We set `link_whole`
+    # here as it'll be the main component of the shared library we build
+    # below.  We also use an obsfucated name so that dependents must use
+    # their `dll` parameter to depend on it.
+    lib_name = name + "-dll-root"
+    fb_native.haskell_library(
+        **_convert_rule(
+            rule_type = "haskell_library",
+            base_path = base_path,
+            name = lib_name,
+            link_whole = True,
+            force_static = True,
+            visibility = visibility,
+            **kwargs
+        )
+    )
+
+    # For backwards compatiblity with fbbuild, generate a noop rule under
+    # the original name.  This is so unported fbbuild use cases of DLLs
+    # don't break the build.
+
+    fb_native.genrule(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        out = "empty",
+        cmd = 'touch "$OUT"',
+    )
+
 haskell_rules = struct(
     alex_rule = _alex_rule,
     c2hs = _c2hs,
     convert_rule = _convert_rule,
     dep_rule = _dep_rule,
+    dll = _dll,
     get_deps_for_packages = _get_deps_for_packages,
     happy_rule = _happy_rule,
     hsc2hs = _hsc2hs,
