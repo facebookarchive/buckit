@@ -118,7 +118,6 @@ with allow_unsafe_import():  # noqa: F821
 
 base = import_macro_lib('convert/base')
 cython = import_macro_lib('convert/cython')
-haskell = import_macro_lib('convert/haskell')
 try:
     load(  # noqa: F821
         '//fs_image/buck_macros:image_feature.bzl',
