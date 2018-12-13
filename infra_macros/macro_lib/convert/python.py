@@ -42,6 +42,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
+load("@fbcode_macros//build_defs/lib:python_common.bzl", "python_common")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbcode_macros//build_defs/lib:label_utils.bzl", "label_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -264,9 +265,6 @@ class PythonConverter(base.Converter):
 
     def get_interpreter(self, platform):
         return native.read_config('python#' + platform, 'interpreter')
-
-    def get_version_universe(self, python_version):
-        return third_party.get_version_universe([('python', python_version.version_string)])
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
@@ -496,7 +494,7 @@ class PythonConverter(base.Converter):
                 main_module = interp_main_module,
                 cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path),
                 platform = python_platform,
-                version_universe = self.get_version_universe(python_version),
+                version_universe = python_common.get_version_universe(python_version),
                 deps = [interp_dep] + deps,
                 platform_deps = platform_deps,
                 preload_deps = preload_deps,
@@ -1001,7 +999,7 @@ class PythonConverter(base.Converter):
 
         attributes['cxx_platform'] = platform_utils.get_buck_platform_for_base_path(base_path)
         attributes['platform'] = python_platform
-        attributes['version_universe'] = self.get_version_universe(python_version)
+        attributes['version_universe'] = python_common.get_version_universe(python_version)
         attributes['linker_flags'] = (
             self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
 
@@ -1348,7 +1346,7 @@ class PythonConverter(base.Converter):
             preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
             labels = ['buck', 'python'],
-            version_universe = self.get_version_universe(python_version),
+            version_universe = python_common.get_version_universe(python_version),
             visibility = visibility
         )
 
@@ -1384,7 +1382,7 @@ class PythonConverter(base.Converter):
             preload_deps = preload_deps,
             # TODO(ambv): labels here shouldn't be hard-coded.
             labels = ['buck', 'python'],
-            version_universe = self.get_version_universe(python_version),
+            version_universe = python_common.get_version_universe(python_version),
             visibility = visibility,
         )
 
@@ -1426,7 +1424,7 @@ class PythonConverter(base.Converter):
             ('package_style', 'inplace'),
             # TODO(ambv): labels here shouldn't be hard-coded.
             ('labels', ['buck', 'python']),
-            ('version_universe', self.get_version_universe(python_version)),
+            ('version_universe', python_common.get_version_universe(python_version)),
             ('contacts', emails),
         ))
         if visibility != None:
