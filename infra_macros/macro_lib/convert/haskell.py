@@ -223,29 +223,8 @@ class HaskellConverter(base.Converter):
     def is_test(self):
         return self.get_fbconfig_rule_type() in ('haskell_unittest',)
 
-    def get_dep_for_package(self, package, platform):
-        """
-        Convert arguments in the `package` parameter to actual deps.
-        """
-
-        if isinstance(package, basestring):
-            version = None
-        else:
-            package, version = package
-
-        # TODO: ghc-8.4.4
-        if (package == 'compact' and
-                haskell_common.get_ghc_version(platform) == '8.4.4'):
-            package = 'ghc-compact'
-        if package in haskell_common.get_internal_ghc_packages(platform):
-            project = 'ghc'
-        else:
-            project = 'stackage-lts'
-
-        return target_utils.ThirdPartyRuleTarget(project, package)
-
     def get_deps_for_packages(self, packages, platform):
-        return [self.get_dep_for_package(p, platform) for p in packages]
+        return [haskell_common.get_dep_for_package(p, platform) for p in packages]
 
     def get_implicit_deps(self):
         """
@@ -625,7 +604,7 @@ class HaskellConverter(base.Converter):
                 attributes['link_style'] = out_link_style
 
         if self.is_test():
-            dependencies.append(self.get_dep_for_package('HUnit', platform))
+            dependencies.append(haskell_common.get_dep_for_package('HUnit', platform))
             dependencies.append(target_utils.RootRuleTarget('tools/test/stubs', 'fbhsunit'))
 
         # Add in binary-specific link deps.

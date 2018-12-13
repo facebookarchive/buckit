@@ -13,6 +13,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_list", "is_tuple")
 
 _GENERATED_LIB_SUFFIX = "__generated-lib__"
 
@@ -550,11 +551,31 @@ def _get_internal_ghc_packages(platform):
 
     return packages
 
+def _get_dep_for_package(package, platform):
+    """
+    Convert arguments in the `package` parameter to actual deps.
+    """
+
+    if is_list(package) or is_tuple(package):
+        package, _ = package
+
+    # TODO: ghc-8.4.4
+    if (package == "compact" and
+        _get_ghc_version(platform) == "8.4.4"):
+        package = "ghc-compact"
+    if package in _get_internal_ghc_packages(platform):
+        project = "ghc"
+    else:
+        project = "stackage-lts"
+
+    return target_utils.ThirdPartyRuleTarget(project, package)
+
 haskell_common = struct(
     convert_dlls = _convert_dlls,
     get_compiler_flags = _get_compiler_flags,
     get_internal_ghc_packages = _get_internal_ghc_packages,
     get_language_options = _get_language_options,
+    get_dep_for_package = _get_dep_for_package,
     get_ghc_version = _get_ghc_version,
     get_warnings_flags = _get_warnings_flags,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,
