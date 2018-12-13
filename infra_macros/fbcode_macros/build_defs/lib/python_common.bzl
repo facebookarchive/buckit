@@ -280,7 +280,7 @@ def _test_modules_library(
     for src in sorted(library_srcs):
         lines.append(
             '    "{}",'.format(
-                python_common.file_to_python_module(src, library_base_module or base_path),
+                _file_to_python_module(src, library_base_module or base_path),
             ),
         )
     lines.append("]")
