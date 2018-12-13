@@ -52,7 +52,6 @@ load("@fbcode_macros//build_defs/lib:string_macros.bzl", "string_macros")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
-
 INTERPS = [
     ('interp', 'libfb.py.python_interp', '//libfb/py:python_interp'),
     ('ipython', 'libfb.py.ipython_interp', '//libfb/py:ipython_interp'),
@@ -112,163 +111,6 @@ class Manifest(object):
 
 sys.modules[__name__] = Manifest()
 """
-
-
-DEFAULT_MAJOR_VERSION = '3'
-VERSION_CONSTRAINT_SHORTCUTS = {
-    2   : '2',
-    '2' : '2',
-    3   : '3',
-    '3' : '3',
-}
-
-
-class PythonVersionConstraint(object):
-    """An abstraction for Python version constraints.
-
-    This class implements the semantics of the `py_version` and `versioned_srcs`
-    parameters of the 'python_xxx' rule types.
-
-    """
-
-    # Bit masks for partial matching:
-    MAJOR = 1
-    MINOR = 2
-    PATCHLEVEL = 4
-    FLAVOR = 8
-
-    def __init__(self, vcstring):
-        self.op = None
-        self.version = None
-        # By default, we allow constraints to place restrictions on flavor, e.g.
-        # constraints such as ">flavor.3" should work as expected:
-        self.flags = PythonVersionConstraint.FLAVOR
-        if vcstring:
-            self.parse(vcstring)
-        else:
-            # No explicit constraint specified, in which case we fallback to a
-            # partial match for DEFAULT_MAJOR_VERSION:
-            self.version = PythonVersion(DEFAULT_MAJOR_VERSION)
-            self.flags |= PythonVersionConstraint.MAJOR
-
-    def enable_flag(self, mask):
-        self.flags |= mask
-
-    def disable_flag(self, mask):
-        self.flags &= ~mask
-
-    def parse(self, vcstring):
-        """
-        Parse the given `vcstring` into callable which tests a `LooseVersion`
-        object.
-        """
-
-        # Constraint shortcuts allow the user to restrict to a particular major
-        # version:
-        if vcstring in VERSION_CONSTRAINT_SHORTCUTS:
-            vstring = VERSION_CONSTRAINT_SHORTCUTS[vcstring]
-            self.flags = PythonVersionConstraint.MAJOR
-        elif vcstring.startswith('<='):
-            vstring = vcstring[2:].lstrip()
-            self.op = operator.le
-        elif vcstring.startswith('>='):
-            vstring = vcstring[2:].lstrip()
-            self.op = operator.ge
-        elif vcstring.startswith('<'):
-            vstring = vcstring[1:].lstrip()
-            self.op = operator.lt
-        elif vcstring.startswith('='):
-            vstring = vcstring[1:].lstrip()
-            self.op = operator.eq
-        elif vcstring.startswith('>'):
-            vstring = vcstring[1:].lstrip()
-            self.op = operator.gt
-        else:
-            vstring = vcstring
-
-        # We parse the version substring using `PythonVersion` so that flavored
-        # versions can be properly handled:
-        self.version = PythonVersion(vstring)
-
-    def matches(self, version, flags=0):
-        """
-        True if this constraint can be satisfied by the given `version`.
-        """
-
-        # A trivial constraint matches everything:
-        if self.version is None:
-            return True
-
-        # Combine explicit and implicit flags:
-        flags |= self.flags
-        # First make sure flavors are compatible:
-        if flags & PythonVersionConstraint.FLAVOR and \
-           not version.supports(self.version.flavor):
-            return False
-
-        # Then perform version number matching...
-        # Operator matching takes precedence:
-        if self.op:
-            return self.op(version, self.version)
-        # followed by partial matching:
-        elif flags ^ PythonVersionConstraint.FLAVOR:
-            return ((not flags & PythonVersionConstraint.MAJOR or
-                     version.major == self.version.major) and
-                    (not flags & PythonVersionConstraint.MINOR or
-                     version.minor == self.version.minor) and
-                    (not flags & PythonVersionConstraint.PATCHLEVEL or
-                     version.patchlevel == self.version.patchlevel))
-        # and finally default to simple equality matching:
-        else:
-            return self.version == version
-
-
-class PythonVersion(LooseVersion):
-    """An abstraction of tp2/python version strings that supports flavor prefixes.
-
-    See `get_python_platforms_config()` in `tools/build/buck/gen_modes.py` for
-    the format of flavored version strings.
-
-    """
-
-    def __init__(self, vstring):
-        LooseVersion.__init__(self, vstring)
-        if not self.version:
-            fail('{} is not a valid Python version string!'.format(vstring))
-
-        self.flavor = ""
-        if isinstance(self.version[0], basestring):
-            self.flavor = self.version[0]
-            self.version = self.version[1:]
-
-        if not self.version or not isinstance(self.version[0], int):
-            fail("{} is not a valid Python version string!".format(vstring))
-
-    @property
-    def major(self):
-        return self.version[0]
-
-    @property
-    def minor(self):
-        return self.version[1] if len(self.version) > 1 else None
-
-    @property
-    def patchlevel(self):
-        return self.version[2] if len(self.version) > 2 else None
-
-    def supports(self, flavor):
-        """
-        True if this version supports the given `flavor`.
-        """
-        return self.flavor.endswith(flavor)
-
-    def satisfies(self, constraint, flags=0):
-        """
-        True if this version can satisfy `constraint`.
-        """
-        if not isinstance(constraint, PythonVersionConstraint):
-            constraint = PythonVersionConstraint(constraint)
-        return constraint.matches(self, flags)
 
 
 class PythonConverter(base.Converter):
@@ -370,8 +212,11 @@ class PythonConverter(base.Converter):
         major `version` on some active platform.
         """
 
-        return any(pv.major == version and pv.satisfies(constraint)
-                   for pv in self.get_all_versions())
+        constraint = python_versioning.normalize_constraint(constraint)
+        return any(
+            pv.major == version and python_versioning.constraint_matches(constraint, pv)
+            for pv in self.get_all_versions()
+        )
 
     def get_all_versions(self, platform=None):
         """
@@ -388,7 +233,7 @@ class PythonConverter(base.Converter):
                        # pyconf is a list of pairs:
                        # (ORIGINAL_TP2_VERSION, ACTUAL_VERSION)
                        for _, version_str in pyconf)
-        return list(PythonVersion(vstr) for vstr in versions)
+        return list(python_versioning.python_version(vstr) for vstr in versions)
 
     def get_default_version(self, platform, constraint, flavor=""):
         """
@@ -396,11 +241,12 @@ class PythonConverter(base.Converter):
         version that satisfies `constraint` and `flavor` for the given
         `platform`.
         """
-
+        constraint = python_versioning.normalize_constraint(constraint)
+        # TODO: Make this a constant of PythonVersion structs
         pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
         for _, version_str in pyconf:
-            version = PythonVersion(version_str)
-            if version.satisfies(constraint) and version.supports(flavor):
+            version = python_versioning.python_version(version_str)
+            if python_versioning.constraint_matches(constraint, version) and python_versioning.version_supports_flavor(version, flavor):
                 return version
         return None
 
@@ -410,7 +256,7 @@ class PythonConverter(base.Converter):
         """
         pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
         for _, version_str in pyconf:
-            if version_str == version.vstring:
+            if version_str == version.version_string:
                 return True
         return False
 
@@ -418,7 +264,7 @@ class PythonConverter(base.Converter):
         return self.read_string('python#' + platform, 'interpreter')
 
     def get_version_universe(self, python_version):
-        return third_party.get_version_universe([('python', python_version.vstring)])
+        return third_party.get_version_universe([('python', python_version.version_string)])
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
@@ -806,7 +652,7 @@ class PythonConverter(base.Converter):
 
         # Parse the version constraints and normalize all source paths in
         # `versioned_srcs`:
-        parsed_versioned_srcs = tuple((PythonVersionConstraint(pvc),
+        parsed_versioned_srcs = tuple((python_versioning.python_version_constraint(pvc),
                                        self.parse_srcs(base_path,
                                                        'versioned_srcs',
                                                        vs))
@@ -833,16 +679,15 @@ class PythonConverter(base.Converter):
                     py_vers = None
                     for target, constraint_version in constraints.items():
                         if target.endswith("/python:__project__"):
-                            py_vers = PythonVersion(constraint_version)
+                            py_vers = python_versioning.python_version(constraint_version)
                     # 'is None' can become == None when the custom version classes
                     # go away
                     if py_vers is None:
                         fail("Could not get python version for versioned_srcs")
                     build_srcs.extend(
                         dict(vs) for vc, vs in parsed_versioned_srcs
-                        if vc.matches(py_vers,
-                                      (PythonVersionConstraint.MAJOR |
-                                       PythonVersionConstraint.MINOR)))
+                        if python_versioning.constraint_matches(vc, py_vers, check_minor=True)
+                    )
 
                 vsrc = {}
                 for build_src in build_srcs:
@@ -868,7 +713,7 @@ class PythonConverter(base.Converter):
             # Iterate over all potential Python versions and collect srcs for
             # each version:
             for pyversion in self.get_all_versions():
-                if not pyversion.supports(py_flavor):
+                if not python_versioning.version_supports_flavor(pyversion, py_flavor):
                     continue
 
                 ver_srcs = {}
@@ -876,12 +721,13 @@ class PythonConverter(base.Converter):
                     ver_srcs.update(parsed_srcs)
 
                 for constraint, pvsrcs in parsed_versioned_srcs:
-                    if pyversion.satisfies(constraint):
+                    constraint = python_versioning.normalize_constraint(constraint)
+                    if python_versioning.constraint_matches(constraint, pyversion):
                         ver_srcs.update(pvsrcs)
                 if ver_srcs:
                     all_versioned_srcs.append(
                         ({target_utils.target_to_label(pytarget, platform=p) :
-                          pyversion.vstring
+                          pyversion.version_string
                           for p in platforms
                           if self.platform_has_version(p, pyversion)},
                          ver_srcs))
@@ -1389,7 +1235,7 @@ class PythonConverter(base.Converter):
             platform = platform_utils.get_platform_for_base_path(base_path)
             for py_ver in py_version:
                 python_version = self.get_default_version(platform, py_ver)
-                new_name = name + '-' + python_version.vstring
+                new_name = name + '-' + python_version.version_string
                 versions[py_ver] = new_name
         py_tests = []
         # There are some sub-libraries that get generated based on the
