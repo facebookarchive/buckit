@@ -97,22 +97,6 @@ class PythonConverter(base.Converter):
             for pv in python_versioning.get_all_versions()
         )
 
-
-    def get_default_version(self, platform, constraint, flavor=""):
-        """
-        Returns a `PythonVersion` instance corresponding to the first Python
-        version that satisfies `constraint` and `flavor` for the given
-        `platform`.
-        """
-        constraint = python_versioning.normalize_constraint(constraint)
-        # TODO: Make this a constant of PythonVersion structs
-        pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
-        for _, version_str in pyconf:
-            version = python_versioning.python_version(version_str)
-            if python_versioning.constraint_matches(constraint, version) and python_versioning.version_supports_flavor(version, flavor):
-                return version
-        return None
-
     def platform_has_version(self, platform, version):
         """
         True if the Python `version` is configured for `platform`.
@@ -528,7 +512,7 @@ class PythonConverter(base.Converter):
         platform_deps = []
         out_preload_deps = []
         platform = platform_utils.get_platform_for_base_path(base_path)
-        python_version = self.get_default_version(platform=platform,
+        python_version = python_versioning.get_default_version(platform=platform,
                                                   constraint=py_version,
                                                   flavor=py_flavor)
         if python_version is None:
@@ -880,7 +864,7 @@ class PythonConverter(base.Converter):
             versions = {}
             platform = platform_utils.get_platform_for_base_path(base_path)
             for py_ver in py_version:
-                python_version = self.get_default_version(platform, py_ver)
+                python_version = python_versioning.get_default_version(platform, py_ver)
                 new_name = name + '-' + python_version.version_string
                 versions[py_ver] = new_name
         py_tests = []

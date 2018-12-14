@@ -328,9 +328,22 @@ def _get_all_versions(fbcode_platform = None):
             versions[version] = None
     return versions.keys()
 
+def _get_default_version(platform, constraint, flavor = ""):
+    """
+    Returns a `PythonVersion` instance corresponding to the first Python
+    version that satisfies `constraint` and `flavor` for the given
+    `platform`.
+    """
+    constraint = _normalize_constraint(constraint)
+    for version in _ALL_PYTHON_VERSIONS[platform]:
+        if _constraint_matches(constraint, version) and _version_supports_flavor(version, flavor):
+            return version
+    return None
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
     get_all_versions = _get_all_versions,
+    get_default_version = _get_default_version,
     python_version = _python_version,
     version_supports_flavor = _version_supports_flavor,
     python_version_constraint = _python_version_constraint,
