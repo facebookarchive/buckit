@@ -9,6 +9,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
 
@@ -882,6 +883,31 @@ def _convert_needed_coverage_spec(base_path, spec):
     target, path = target.rsplit("=", 1)
     return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
 
+def _should_generate_interp_rules(helper_deps):
+    """
+    Return whether we should generate the interp helpers.
+
+    This is controlled by both the mode, the property, and buckconfig settings
+
+    Args:
+        helper_deps: The value of the `helper_deps` attribute on the users rule.
+                     Should be True or False
+    """
+
+    # We can only work in @mode/dev
+    if not config.get_build_mode().startswith("dev"):
+        return False
+
+    # Our current implementation of the interp helpers is costly when using
+    # omnibus linking, only generate these if explicitly set via config or TARGETS
+    config_setting = read_bool("python", "helpers", required = False)
+
+    if config_setting == None:
+        # No CLI option is set, respect the TARGETS file option.
+        return helper_deps
+
+    return config_setting
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
@@ -897,6 +923,7 @@ python_common = struct(
     monkeytype_binary = _monkeytype_binary,
     parse_gen_srcs = _parse_gen_srcs,
     parse_srcs = _parse_srcs,
+    should_generate_interp_rules = _should_generate_interp_rules,
     test_modules_library = _test_modules_library,
     typecheck_test = _typecheck_test,
 )

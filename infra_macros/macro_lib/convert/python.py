@@ -85,24 +85,6 @@ class PythonConverter(base.Converter):
         return self.get_fbconfig_rule_type() == 'python_library'
 
 
-    def should_generate_interp_rules(self, helper_deps):
-        """
-        Return whether we should generate the interp helpers.
-        """
-        # We can only work in @mode/dev
-        if not config.get_build_mode().startswith('dev'):
-            return False
-
-        # Our current implementation of the interp helpers is costly when using
-        # omnibus linking, only generate these if explicitly set via config or TARGETS
-        config_setting = read_bool('python', 'helpers', required=False)
-
-        if config_setting == None:
-            # No CLI option is set, respect the TARGETS file option.
-            return helper_deps
-
-        return config_setting
-
     def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None, visibility=None):
         """
         Add C/C++ deps which need to preloaded by Python binaries.
@@ -586,7 +568,7 @@ class PythonConverter(base.Converter):
         # We also do this based on an attribute so that we don't have to dedupe
         # rule creation. We'll revisit this in the near future.
         # TODO: Better way to not generate duplicates
-        if self.should_generate_interp_rules(helper_deps):
+        if python_common.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
             if self.is_test():
                 testmodules_library_name = python_common.test_modules_library(
