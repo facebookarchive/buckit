@@ -1,6 +1,7 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:rule_target_types.bzl", "rule_target_types")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:translate_to_fbsource_paths.bzl", "MISSING_CELL")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
 
@@ -158,7 +159,15 @@ def _to_label(repo, path, name):
         A fully qualified target string
     """
 
-    return "{}//{}:{}".format(repo or "", path, name)
+    # `None` represents the current repo, so use empty string.
+    if repo == None:
+        repo = ""
+
+    # If this repo refers to the current cell, use empty string as shorthand.
+    if repo == get_fbsource_cell():
+        repo = ""
+
+    return "{}//{}:{}".format(repo, path, name)
 
 def _target_to_label(target, fbcode_platform = None):
     """

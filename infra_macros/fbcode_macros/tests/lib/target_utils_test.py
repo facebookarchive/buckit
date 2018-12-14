@@ -164,9 +164,10 @@ class TargetUtilsTest(tests.utils.TestCase):
             'target_utils.to_label("cell", "foo/bar", "baz")',
             'target_utils.to_label(None, "foo/bar", "baz")',
             'target_utils.to_label(None, "", "baz")',
+            'target_utils.to_label("fbcode", "foo", "baz")',
         ]
 
-        expected = ["cell//foo/bar:baz", "//foo/bar:baz", "//:baz"]
+        expected = ["cell//foo/bar:baz", "//foo/bar:baz", "//:baz", "//foo:baz"]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 

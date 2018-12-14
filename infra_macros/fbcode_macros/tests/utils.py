@@ -108,6 +108,7 @@ class Cell:
         self.buckconfig = collections.defaultdict(dict)
         self.buckconfig["ui"]["superconsole"] = "disabled"
         self.buckconfig["color"]["ui"] = "false"
+        self.buckconfig["fbsource"]["cell_name"] = "fbcode"
         self.project = project
         self._directories = []
         self._files = recursively_get_files_contents(name, True)
