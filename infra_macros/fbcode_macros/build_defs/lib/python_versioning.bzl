@@ -94,13 +94,24 @@ def _add_flavored_versions(versioned_resources):
                         res.append([new_spec, resource_spec])
     return res
 
-_PythonVersion = provider(fields = [
-    "version_string",
-    "flavor",
-    "major",
-    "minor",
-    "patchlevel",
-])
+# TODO(T38084046): We would rather this to be a provider, but the structs returned from
+#       `provider()` are not hashable. This is likely just a bug in how buck
+#       implements `provider()` in skylark
+#_PythonVersion = provider(fields = [
+#    "version_string",
+#    "flavor",
+#    "major",
+#    "minor",
+#    "patchlevel",
+#])
+def _PythonVersion(version_string, flavor, major, minor, patchlevel):
+    return struct(
+        version_string = version_string,
+        flavor = flavor,
+        major = major,
+        minor = minor,
+        patchlevel = patchlevel,
+    )
 
 def _parse_python_version(version_string):
     if not version_string:

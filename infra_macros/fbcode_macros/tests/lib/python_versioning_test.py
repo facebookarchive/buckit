@@ -384,3 +384,29 @@ class PythonVersioningTest(tests.utils.TestCase):
         self.assertSuccess(result)
         versions = [constraint.version for constraint in result.debug_lines]
         self.assertEquals(expected, versions)
+
+    @tests.utils.with_project()
+    def test_get_all_versions(self, root):
+        commands = [
+            'python_versioning.get_all_versions("gcc5")',
+            "python_versioning.get_all_versions(None)",
+        ]
+
+        expected = [
+            [
+                self.struct(
+                    version_string="2.7", flavor="", major=2, minor=7, patchlevel=0
+                )
+            ],
+            [
+                self.struct(
+                    version_string="2.7", flavor="", major=2, minor=7, patchlevel=0
+                ),
+                self.struct(
+                    version_string="3.7", flavor="", major=3, minor=7, patchlevel=0
+                ),
+            ],
+        ]
+
+        result = root.runUnitTests(self.includes, commands)
+        self.assertSuccess(result, *expected)
