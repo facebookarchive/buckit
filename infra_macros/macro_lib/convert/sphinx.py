@@ -154,6 +154,7 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_targ
 SPHINX_SECTION = "sphinx"
 
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 
 class _SphinxConverter(base.Converter):
@@ -187,7 +188,9 @@ class _SphinxConverter(base.Converter):
         A simple genrule wrapper for running some target which generates rst
         """
         if not genrule_srcs:
-            return
+            return []
+
+        rules = []
 
         for target, outdir in genrule_srcs.items():
             rule = target_utils.parse_target(target, default_base_path=base_path)
@@ -196,32 +199,30 @@ class _SphinxConverter(base.Converter):
             else:
                 root = outdir
                 rest = "."
-            yield Rule(
-                "genrule",
-                collections.OrderedDict(
+            rule_name = name + "-genrule_srcs-" + rule.name
+            fb_native.genrule(
+                name=rule_name,
+                out=root,
+                bash=" ".join(
                     (
-                        ("name", name + "-genrule_srcs-" + rule.name),
-                        ("out", root),
-                        (
-                            "bash",
-                            " ".join(
-                                (
-                                    "mkdir -p $OUT/{rest} &&",
-                                    "PYTHONWARNINGS=i $(exe {target})",
-                                    "$OUT/{rest}",
-                                )
-                            ).format(target=target, rest=rest),
-                        ),
+                        "mkdir -p $OUT/{rest} &&",
+                        "PYTHONWARNINGS=i $(exe {target})",
+                        "$OUT/{rest}",
                     )
-                ),
+                ).format(target=target, rest=rest),
             )
+            rules.append(rule_name)
+
+        return rules
 
     def _gen_apidoc_rules(self, base_path, name, fbsphinx_buck_target, apidoc_modules):
         """
         A simple genrule wrapper for running sphinx-apidoc
         """
         if not apidoc_modules:
-            return
+            return []
+
+        rules = []
 
         for module, outdir in apidoc_modules.items():
             command = " ".join(
@@ -233,16 +234,15 @@ class _SphinxConverter(base.Converter):
                     "$OUT",
                 )
             ).format(fbsphinx_buck_target=fbsphinx_buck_target)
-            yield Rule(
-                "genrule",
-                collections.OrderedDict(
-                    (
-                        ("name", name + "-apidoc-" + module),
-                        ("out", outdir),
-                        ("bash", command),
-                    )
-                ),
+            rule_name = name + "-apidoc-" + module
+            fb_native.genrule(
+                name=rule_name,
+                out=outdir,
+                bash=command,
             )
+            rules.append(rule_name)
+
+        return rules
 
     def convert(
         self,
@@ -277,15 +277,16 @@ class _SphinxConverter(base.Converter):
             yield rule
 
         additional_doc_rules = []
-        for rule in self._gen_apidoc_rules(
-            base_path, name, fbsphinx_buck_target, apidoc_modules
-        ):
-            additional_doc_rules.append(rule)
-            yield rule
 
-        for rule in self._gen_genrule_srcs_rules(base_path, name, genrule_srcs):
-            additional_doc_rules.append(rule)
-            yield rule
+        additional_doc_rules.extend(
+            self._gen_apidoc_rules(
+                base_path, name, fbsphinx_buck_target, apidoc_modules
+            )
+        )
+
+        additional_doc_rules.extend(
+            self._gen_genrule_srcs_rules(base_path, name, genrule_srcs)
+        )
 
         command = " ".join(
             (
@@ -309,7 +310,7 @@ class _SphinxConverter(base.Converter):
             config=json.dumps(config or {}),
             generated_sources=json.dumps(
                 [
-                    "$(location {})".format(rule.target_name)
+                    "$(location :{})".format(rule)
                     for rule in additional_doc_rules
                 ]
             ),
