@@ -8,6 +8,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
 
@@ -797,8 +798,29 @@ def _get_par_build_args(
 
     return build_args
 
+def _associated_targets_library(base_path, name, deps, visibility):
+    """
+    Associated Targets are buck rules that need to be built, when This
+    target is built, but are not a code dependency. Which is why we
+    wrap them in a cxx_library so they could never be a code dependency
+
+    TODO: Python just needs the concept of runtime deps if it doesn't have it.
+          Also, what is the actual use case for this?
+    """
+    rule_name = name + "-build_also"
+    buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+    fb_native.cxx_library(
+        name = rule_name,
+        visibility = visibility,
+        deps = deps,
+        default_platform = buck_platform,
+        defaults = {"platform": buck_platform},
+    )
+    return rule_name
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
+    associated_targets_library = _associated_targets_library,
     file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,

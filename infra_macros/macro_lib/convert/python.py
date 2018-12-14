@@ -228,25 +228,6 @@ class PythonConverter(base.Converter):
             ('inplace', 'standalone'),
             'standalone')
 
-    def gen_associated_targets(self, base_path, name, deps, visibility):
-        """
-        Associated Targets are buck rules that need to be built, when This
-        target is built, but are not a code dependency. Which is why we
-        wrap them in a cxx_library so they could never be a code dependency
-
-        TODO: Python just needs the concept of runtime deps if it doesn't have it
-        """
-        rule_name = name + '-build_also'
-        buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
-        fb_native.cxx_library(
-            name = rule_name,
-            visibility = visibility,
-            deps = deps,
-            default_platform = buck_platform,
-            defaults = {'platform': buck_platform},
-        )
-        return rule_name
-
     def create_library(
         self,
         base_path,
@@ -811,7 +792,7 @@ class PythonConverter(base.Converter):
             )
 
         if runtime_deps:
-            associated_targets_name = self.gen_associated_targets(base_path, library_name, runtime_deps, visibility)
+            associated_targets_name = python_common.associated_targets_library(base_path, library_name, runtime_deps, visibility)
             deps = list(deps) + [":" + associated_targets_name]
 
         library = self.create_library(
