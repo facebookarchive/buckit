@@ -644,7 +644,7 @@ def _parse_srcs(base_path, param, srcs):  # type: (str, str, Union[List[str], Di
     """
 
     # Parse sources in dict form.
-    if is_dict(srcs):
+    if is_dict(srcs) or hasattr(srcs, "items"):
         out_srcs = (
             src_and_dep_helpers.parse_source_map(
                 base_path,
