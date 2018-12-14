@@ -340,6 +340,7 @@ class PythonConverter(base.Converter):
         name,
         implicit_library_target,
         implicit_library_attributes,
+        fbconfig_rule_type,
         is_test,
         tests=[],
         py_version=None,
@@ -462,7 +463,7 @@ class PythonConverter(base.Converter):
         cxx_build_info = cpp_common.cxx_build_info_rule(
             base_path,
             name,
-            self.get_fbconfig_rule_type(),
+            fbconfig_rule_type,
             platform,
             static=False,
             visibility=visibility)
@@ -492,7 +493,7 @@ class PythonConverter(base.Converter):
         manifest_name = python_common.manifest_library(
             base_path,
             name,
-            self.get_fbconfig_rule_type(),
+            fbconfig_rule_type,
             main_module,
             platform,
             python_platform,
@@ -506,7 +507,7 @@ class PythonConverter(base.Converter):
         attributes['platform'] = python_platform
         attributes['version_universe'] = python_common.get_version_universe(python_version)
         attributes['linker_flags'] = (
-            python_common.get_ldflags(base_path, name, self.get_fbconfig_rule_type(), strip_libpar=strip_libpar))
+            python_common.get_ldflags(base_path, name, fbconfig_rule_type, strip_libpar=strip_libpar))
 
         attributes['labels'] = list(tags)
         if is_test:
@@ -667,6 +668,7 @@ class PythonConverter(base.Converter):
         is_test = self.get_fbconfig_rule_type() == 'python_unittest'
         is_library = self.get_fbconfig_rule_type() == 'python_library'
         is_binary = self.get_fbconfig_rule_type() == 'python_binary'
+        fbconfig_rule_type = self.get_fbconfig_rule_type()
 
         # for binary we need a separate library
         if is_library:
@@ -765,8 +767,9 @@ class PythonConverter(base.Converter):
             rules = self.create_binary(
                 base_path,
                 py_name,
-                ":" + library_attributes["name"],
-                library_attributes,
+                implicit_library_target=":" + library_attributes["name"],
+                implicit_library_attributes=library_attributes,
+                fbconfig_rule_type=fbconfig_rule_type,
                 is_test=is_test,
                 tests=tests,
                 py_version=py_ver,
