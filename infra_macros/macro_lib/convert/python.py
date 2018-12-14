@@ -86,25 +86,69 @@ class PythonConverter(base.Converter):
 
 
 
-    def create_library(
+    def implicit_python_library(
         self,
-        base_path,
         name,
         base_module=None,
         srcs=(),
         versioned_srcs=(),
         gen_srcs=(),
-        deps=[],
-        tests=[],
+        deps=(),
+        tests=(),
         tags=(),
-        external_deps=[],
+        external_deps=(),
         visibility=None,
         resources=(),
         cpp_deps=(),
         py_flavor="",
         version_subdirs=None, # Not used for now, will be used in a subsequent diff
     ):
-        attributes = collections.OrderedDict()
+        """
+        Creates a python_library and all supporting libraries
+
+        This library may or may not be consumed as a companion library to a
+        python_binary, or a python_test. The attributes returned vary based on how
+        it will be used.
+
+        Args:
+            name: The name of this library
+            base_module: The basemodule for the library (https://buckbuild.com/rule/python_library.html#base_module)
+            srcs: A sequence of sources/targets to use as srcs. Note that only files
+                  ending in .py are considered sources. All other srcs are added as
+                  resources. Note if this is a dictionary, the key and value are swapped
+                  from the official buck implementation. That is,this rule expects
+                  {<src>: <destination in the library>}
+            versioned_srcs: If provided, a list of tuples of
+                            (<python version constraint string>, <srcs as above>)
+                            These sources are then added to the versioned_srcs attribute
+                            in the library
+            gen_srcs: DEPRECATED A list of srcs that come from `custom_rule`s to be
+                      merged into the final srcs list.
+            deps: A sequence of dependencies for the library. These should only be python
+                  libraries, as python's typing support assumes that dependencies also
+                  have a companion -typing rule
+            tests: The targets that test this library
+            tags: Arbitrary metadata to attach to this library. See https://buckbuild.com/rule/python_library.html#labels
+            external_deps: A sequence of tuples of external dependencies
+            visibility: The visibility of the library
+            resources: A sequence of sources/targets that should be explicitly added
+                       as resoruces. Note that if a dictionary is used, the key and
+                       value are swapped from the official buck implementation. That is,
+                       this rule expects {<src>: <destination in the library>}
+            cpp_deps: A sequence of C++ library depenencies that will be loaded at
+                      runtime
+            py_flavor: The flavor of python to use. By default ("") this is cpython
+            version_subdirs: A sequence of tuples of
+                             (<buck version constring>, <version subdir>). This points
+                             to the subdirectory (or "") that each version constraint
+                             uses. This helps us rewrite things like versioned_srcs for
+                             third-party2 targets.
+
+        Returns:
+            The kwargs to pass to a native.python_library rule
+        """
+        base_path = native.package_name()
+        attributes = {}
         attributes['name'] = name
 
         # Normalize all the sources from the various parameters.
@@ -114,11 +158,13 @@ class PythonConverter(base.Converter):
 
         # Parse the version constraints and normalize all source paths in
         # `versioned_srcs`:
-        parsed_versioned_srcs = tuple((python_versioning.python_version_constraint(pvc),
-                                       python_common.parse_srcs(base_path,
-                                                       'versioned_srcs',
-                                                       vs))
-                                      for pvc, vs in versioned_srcs)
+        parsed_versioned_srcs = [
+            (
+                python_versioning.python_version_constraint(pvc),
+                python_common.parse_srcs(base_path, 'versioned_srcs',vs)
+            )
+            for pvc, vs in versioned_srcs
+        ]
 
         # Contains a mapping of platform name to sources to use for that
         # platform.
@@ -197,8 +243,7 @@ class PythonConverter(base.Converter):
             if py_flavor:
                 parsed_srcs = {}
 
-        if base_module != None:
-            attributes['base_module'] = base_module
+        attributes['base_module'] = base_module
 
         if parsed_srcs:
             # Need to split the srcs into srcs & resources as Buck
@@ -296,7 +341,7 @@ class PythonConverter(base.Converter):
             ).items()
         })
 
-        return Rule('python_library', attributes)
+        return attributes
 
     def create_binary(
         self,
@@ -625,7 +670,7 @@ class PythonConverter(base.Converter):
         helper_deps=False,
         analyze_imports=False,
         additional_coverage_targets=[],
-        version_subdirs=None, # Not used for now, will be used in a subsequent diff
+        version_subdirs=None,
     ):
         # for binary we need a separate library
         if self.is_library():
@@ -654,8 +699,7 @@ class PythonConverter(base.Converter):
             associated_targets_name = python_common.associated_targets_library(base_path, library_name, runtime_deps, visibility)
             deps = list(deps) + [":" + associated_targets_name]
 
-        library = self.create_library(
-            base_path,
+        library_attributes = self.implicit_python_library(
             library_name,
             base_module=base_module,
             srcs=srcs,
@@ -673,7 +717,7 @@ class PythonConverter(base.Converter):
         )
 
         # People use -library of unittests
-        yield library
+        yield Rule("python_library", library_attributes)
 
         if self.is_library():
             # If we are a library then we are done now
@@ -718,8 +762,8 @@ class PythonConverter(base.Converter):
             rules = self.create_binary(
                 base_path,
                 py_name,
-                ":" + library.attributes["name"],
-                library.attributes,
+                ":" + library_attributes["name"],
+                library_attributes,
                 tests=tests,
                 py_version=py_ver,
                 py_flavor=py_flavor,
