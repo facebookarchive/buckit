@@ -185,18 +185,17 @@ class PyWheelDefault(base.Converter):
                 platform_versions[py2_plat] = error_name
                 platform_versions[py3_plat] = error_name
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['platform_deps'] = [
-            ('{}$'.format(re.escape(py_platform)), [':' + version])
-            for py_platform, version in sorted(platform_versions.items())
-        ]
         # TODO: Figure out how to handle typing info from wheels
         if get_typing_config_target():
-            gen_typing_config(attrs['name'], visibility=visibility)
-        yield Rule('python_library', attrs)
+            gen_typing_config(name, visibility=visibility)
+        fb_native.python_library(
+            name=name,
+            visibility=visibility,
+            platform_deps=[
+                ('{}$'.format(re.escape(py_platform)), [':' + version])
+                for py_platform, version in sorted(platform_versions.items())
+            ],
+        )
 
     def convert(self, base_path, platform_versions, visibility=None):
         """
@@ -204,8 +203,9 @@ class PyWheelDefault(base.Converter):
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, platform_versions, visibility=visibility):
-            yield rule
+        self.convert_rule(base_path, platform_versions, visibility=visibility)
+
+        return []
 
 
 class PyWheel(base.Converter):
