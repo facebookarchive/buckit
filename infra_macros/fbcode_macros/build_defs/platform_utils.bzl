@@ -242,7 +242,26 @@ def _get_buck_python_platform(platform, major_version, flavor = ""):
         platform = platform,
     )
 
+def _escape(platform):
+    """Escapes platform characters colliding with RegEx special characters.
+
+    This is needed when passing platform name to attributes expecting regular
+    expressions, e.g., platform_deps.
+
+    Even though regular expressions do have much more special characters,
+    fbcode platforms do not use any except ".". This logic would have to be
+    updated if this assumption is invalidated.
+
+    Args:
+        platform: The fbcode platform
+
+    Returns:
+        A platform name with all RegEx special characters escaped.
+    """
+    return platform.replace(".", "\\.")
+
 platform_utils = struct(
+    escape = _escape,
     get_all_platforms = _get_all_platforms,
     get_buck_platform_for_base_path = _get_buck_platform_for_base_path,
     get_buck_platform_for_current_buildfile = _get_buck_platform_for_current_buildfile,

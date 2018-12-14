@@ -335,3 +335,14 @@ class PlatformTest(tests.utils.TestCase):
             ],
         )
         self.assertSuccess(result, "py3-gcc5", "cpython_py3-gcc5")
+
+    @tests.utils.with_project()
+    def test_escape(self, root):
+        result = root.runUnitTests(
+            self.includes,
+            [
+                'platform_utils.escape("gcc-5-glibc-2.23")',
+                'platform_utils.escape("awesome-platform")',
+            ],
+        )
+        self.assertSuccess(result, "gcc-5-glibc-2\\.23", "awesome-platform")
