@@ -645,11 +645,12 @@ def _create_sanitizer_configuration(
         compiler_flags = cpp_flags.get_extra_cflags(),
         linker_flags = lib_linker_flags,
         platform_linker_flags = platform_linker_flags,
-        # Use link_whole to make sure the build info symbols are always
-        # added to the binary, even if the binary does not refer to them.
+        # Use link_whole to make sure the sanitizer configuration symbols are
+        # always added to the binary, even if the binary does not refer to them.
         link_whole = True,
-        # Use force_static so that the build info symbols are always put
-        # directly in the main binary, even if dynamic linking is used.
+        # Use force_static so that the sanitizer configuration symbols are
+        # always put directly in the main binary, even if dynamic linking
+        # is used.
         force_static = True,
         defaults = {"platform": buck_platform},
         default_platform = buck_platform,
