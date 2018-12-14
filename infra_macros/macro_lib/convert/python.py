@@ -84,15 +84,6 @@ class PythonConverter(base.Converter):
     def is_library(self):
         return self.get_fbconfig_rule_type() == 'python_library'
 
-    def platform_has_version(self, platform, version):
-        """
-        True if the Python `version` is configured for `platform`.
-        """
-        pyconf = third_party.get_third_party_config_for_platform(platform)['build']['projects']['python']
-        for _, version_str in pyconf:
-            if version_str == version.version_string:
-                return True
-        return False
 
     def convert_needed_coverage_spec(self, base_path, spec):
         if len(spec) != 2:
@@ -333,7 +324,7 @@ class PythonConverter(base.Converter):
                         ({target_utils.target_to_label(pytarget, fbcode_platform=p) :
                           pyversion.version_string
                           for p in platforms
-                          if self.platform_has_version(p, pyversion)},
+                          if python_versioning.platform_has_version(p, pyversion)},
                          ver_srcs))
 
             if py_flavor:

@@ -354,6 +354,22 @@ def _constraint_matches_major(constraint, version):
             return True
     return False
 
+def _platform_has_version(platform, version):
+    """
+    Whether Python `version` is configured for `platform`.
+
+    Args:
+        platform: The fbcode platform to investigate
+        version: The `PythonVersion` to inspect
+
+    Returns:
+        Whether `version` is configured for `platform`
+    """
+    for platform_version in _ALL_PYTHON_VERSIONS[platform]:
+        if version.version_string == platform_version.version_string:
+            return True
+    return False
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
     constraint_matches_major = _constraint_matches_major,
@@ -361,6 +377,7 @@ python_versioning = struct(
     get_default_version = _get_default_version,
     python_version = _python_version,
     version_supports_flavor = _version_supports_flavor,
+    platform_has_version = _platform_has_version,
     python_version_constraint = _python_version_constraint,
     constraint_matches = _constraint_matches,
     normalize_constraint = _normalize_constraint,
