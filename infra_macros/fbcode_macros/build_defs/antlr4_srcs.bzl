@@ -1,7 +1,7 @@
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
-def antlr4_srcs(name, srcs, visibility = None):
+def antlr4_srcs(name, srcs, arguments = None, visibility = None):
     """
     Generates a zip file that contains antlr4 srcs from java sources
 
@@ -18,11 +18,15 @@ def antlr4_srcs(name, srcs, visibility = None):
 
     generated_srcs_rule_name = name + "_generated_srcs"
 
+    antlr4_opt = ""
+    if arguments:
+        antlr4_opt = " " + arguments
+
     fb_native.genrule(
         name = generated_srcs_rule_name,
         out = "antlr4_srcs",
         srcs = srcs,
-        cmd = "java -cp $(classpath //third-party-java/org.antlr:antlr4) org.antlr.v4.Tool -o $OUT $SRCS",
+        cmd = "java -cp $(classpath //third-party-java/org.antlr:antlr4) org.antlr.v4.Tool -o $OUT $SRCS" + antlr4_opt,
         visibility = visibility,
     )
     fb_native.zip_file(
