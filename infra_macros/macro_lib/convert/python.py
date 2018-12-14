@@ -75,20 +75,10 @@ class PythonConverter(base.Converter):
     def get_buck_rule_type(self):
         return self.RULE_TYPE_MAP[self._rule_type]
 
-    def is_binary(self):
-        return self.get_fbconfig_rule_type() == 'python_binary'
-
-    def is_test(self):
-        return self.get_fbconfig_rule_type() == 'python_unittest'
-
-    def is_library(self):
-        return self.get_fbconfig_rule_type() == 'python_library'
-
-
-
     def implicit_python_library(
         self,
         name,
+        is_test_companion,
         base_module=None,
         srcs=(),
         versioned_srcs=(),
@@ -112,6 +102,8 @@ class PythonConverter(base.Converter):
 
         Args:
             name: The name of this library
+            is_test_companion: Whether this library is being created and consumed
+                               directly by a test rule
             base_module: The basemodule for the library (https://buckbuild.com/rule/python_library.html#base_module)
             srcs: A sequence of sources/targets to use as srcs. Note that only files
                   ending in .py are considered sources. All other srcs are added as
@@ -248,7 +240,7 @@ class PythonConverter(base.Converter):
         if parsed_srcs:
             # Need to split the srcs into srcs & resources as Buck
             # expects all test srcs to be python modules.
-            if self.is_test():
+            if is_test_companion:
                 formatted_srcs = src_and_dep_helpers.format_source_map({
                     k: v
                     for k, v in parsed_srcs.iteritems()
@@ -325,8 +317,7 @@ class PythonConverter(base.Converter):
                     # We support the auxiliary versions hack for neteng/Django.
                     deprecated_auxiliary_deps=True))
 
-        extra_labels = ['unittest-library'] if self.is_test() else []
-        attributes['labels'] = list(tags) + extra_labels
+        attributes['labels'] = tags
 
         # The above code does a magical dance to split `gen_srcs`, `srcs`,
         # and `versioned_srcs` into pure-Python `srcs` and "everything else"
@@ -349,6 +340,7 @@ class PythonConverter(base.Converter):
         name,
         implicit_library_target,
         implicit_library_attributes,
+        is_test,
         tests=[],
         py_version=None,
         py_flavor="",
@@ -377,7 +369,7 @@ class PythonConverter(base.Converter):
         additional_coverage_targets=[],
         generate_test_modules=False,
     ):
-        if self.is_test() and par_style == None:
+        if is_test and par_style == None:
             par_style = "xar"
         rules = []
         dependencies = []
@@ -402,7 +394,7 @@ class PythonConverter(base.Converter):
 
         attributes = collections.OrderedDict()
         attributes['name'] = name
-        if self.is_test() and additional_coverage_targets:
+        if is_test and additional_coverage_targets:
             attributes["additional_coverage_targets"] = additional_coverage_targets
         if visibility != None:
             attributes['visibility'] = visibility
@@ -412,7 +404,7 @@ class PythonConverter(base.Converter):
 
         # If this is a test, we need to merge the library rule into this
         # one and inherit its deps.
-        if self.is_test():
+        if is_test:
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
                 val = implicit_library_attributes.get(param)
                 if val != None:
@@ -435,7 +427,7 @@ class PythonConverter(base.Converter):
             if main_module.endswith('.py'):
                 main_module = main_module[:-3]
             attributes['main_module'] = main_module
-        elif self.is_test():
+        elif is_test:
             main_module = '__fb_test_main__'
             attributes['main_module'] = main_module
 
@@ -517,7 +509,7 @@ class PythonConverter(base.Converter):
             python_common.get_ldflags(base_path, name, self.get_fbconfig_rule_type(), strip_libpar=strip_libpar))
 
         attributes['labels'] = list(tags)
-        if self.is_test():
+        if is_test:
             attributes['labels'].extend(label_utils.convert_labels(platform, 'python'))
 
         attributes['tests'] = tests
@@ -555,7 +547,7 @@ class PythonConverter(base.Converter):
         # TODO: Better way to not generate duplicates
         if python_common.should_generate_interp_rules(helper_deps):
             interp_deps = list(dependencies)
-            if self.is_test():
+            if is_test:
                 testmodules_library_name = python_common.test_modules_library(
                     base_path,
                     implicit_library_attributes['name'],
@@ -611,7 +603,7 @@ class PythonConverter(base.Converter):
                 out_preload_deps,
                 visibility
             )
-        if self.is_test():
+        if is_test:
             if not dependencies:
                 dependencies = []
             dependencies.append('//python:fbtestmain')
@@ -672,13 +664,17 @@ class PythonConverter(base.Converter):
         additional_coverage_targets=[],
         version_subdirs=None,
     ):
+        is_test = self.get_fbconfig_rule_type() == 'python_unittest'
+        is_library = self.get_fbconfig_rule_type() == 'python_library'
+        is_binary = self.get_fbconfig_rule_type() == 'python_binary'
+
         # for binary we need a separate library
-        if self.is_library():
+        if is_library:
             library_name = name
         else:
             library_name = name + '-library'
 
-        if self.is_library() and check_types:
+        if is_library and check_types:
             fail(
                 'parameter `check_types` is not supported for libraries, did you ' +
                 'mean to specify `typing`?'
@@ -690,7 +686,7 @@ class PythonConverter(base.Converter):
                 base_module if base_module != None else base_path,
                 srcs,
                 [src_and_dep_helpers.convert_build_target(base_path, dep) for dep in deps],
-                typing or (check_types and not self.is_library()),
+                typing or (check_types and not is_library),
                 typing_options,
                 visibility,
             )
@@ -699,15 +695,22 @@ class PythonConverter(base.Converter):
             associated_targets_name = python_common.associated_targets_library(base_path, library_name, runtime_deps, visibility)
             deps = list(deps) + [":" + associated_targets_name]
 
+        extra_tags = []
+        if not is_library:
+            extra_tags.append("generated")
+        if is_test:
+            extra_tags.append('unittest-library')
+
         library_attributes = self.implicit_python_library(
             library_name,
+            is_test_companion=is_test,
             base_module=base_module,
             srcs=srcs,
             versioned_srcs=versioned_srcs,
             gen_srcs=gen_srcs,
             deps=deps,
             tests=tests,
-            tags=list(tags) + ([] if self.is_library() else ["generated"]),
+            tags=list(tags) + extra_tags,
             external_deps=external_deps,
             visibility=visibility,
             resources=resources,
@@ -719,7 +722,7 @@ class PythonConverter(base.Converter):
         # People use -library of unittests
         yield Rule("python_library", library_attributes)
 
-        if self.is_library():
+        if is_library:
             # If we are a library then we are done now
             return
 
@@ -764,6 +767,7 @@ class PythonConverter(base.Converter):
                 py_name,
                 ":" + library_attributes["name"],
                 library_attributes,
+                is_test=is_test,
                 tests=tests,
                 py_version=py_ver,
                 py_flavor=py_flavor,
@@ -792,7 +796,7 @@ class PythonConverter(base.Converter):
                 generate_test_modules=is_first_binary,
             )
             is_first_binary = False
-            if self.is_test():
+            if is_test:
                 py_tests.append(rules[0])
             for rule in rules:
                 yield rule
