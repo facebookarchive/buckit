@@ -541,7 +541,8 @@ def _get_binary_link_deps(
 def _create_sanitizer_configuration(
         base_path,
         name,
-        linker_flags = ()):
+        linker_flags = (),
+        enable_lsan = True):
     """
     Create rules to generate a C/C++ library with sanitizer configuration
 
@@ -567,9 +568,11 @@ def _create_sanitizer_configuration(
     configuration_src = []
 
     if sanitizer and sanitizer.startswith("address"):
+        default_asan_options = dict(sanitizers.ASAN_DEFAULT_OPTIONS)
+        default_asan_options["detect_leaks"] = "1" if enable_lsan else "0"
         configuration_src.append(_sanitizer_config_line(
             "kAsanDefaultOptions",
-            sanitizers.ASAN_DEFAULT_OPTIONS,
+            default_asan_options,
             build_mode.asan_options if build_mode else None,
         ))
         configuration_src.append(_sanitizer_config_line(

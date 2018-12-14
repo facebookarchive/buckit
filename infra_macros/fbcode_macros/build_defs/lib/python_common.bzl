@@ -935,7 +935,13 @@ def _preload_deps(base_path, name, allocator, jemalloc_conf = None, visibility =
         )
 
     # Generate sanitizer configuration even if sanitizers are not used
-    deps.append(cpp_common.create_sanitizer_configuration(base_path, name))
+    deps.append(
+        cpp_common.create_sanitizer_configuration(
+            base_path,
+            name,
+            enable_lsan = False,
+        ),
+    )
 
     # If we're using an allocator, and not a sanitizer, add the allocator-
     # specific deps.
