@@ -307,7 +307,7 @@ class _SphinxConverter(base.Converter):
             target="//{}:{}".format(base_path, name),
             builder=self.get_builder(),
             SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
-            config=json.dumps(config or {}),
+            config=struct(config=(config or {})).to_json(),
             generated_sources=json.dumps(
                 [
                     "$(location :{})".format(rule)
