@@ -85,21 +85,6 @@ class PythonConverter(base.Converter):
         return self.get_fbconfig_rule_type() == 'python_library'
 
 
-    def convert_needed_coverage_spec(self, base_path, spec):
-        if len(spec) != 2:
-            fail((
-                'parameter `needed_coverage`: `{}` must have exactly 2 ' +
-                'elements, a ratio and a target.').format(spec))
-
-        ratio, target = spec
-        if '=' not in target:
-            return (
-                ratio,
-                src_and_dep_helpers.convert_build_target(base_path, target))
-        target, path = target.rsplit('=', 1)
-        return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
-
-
     def should_generate_interp_rules(self, helper_deps):
         """
         Return whether we should generate the interp helpers.
@@ -591,7 +576,7 @@ class PythonConverter(base.Converter):
 
         if needed_coverage:
             attributes['needed_coverage'] = [
-                self.convert_needed_coverage_spec(base_path, s)
+                python_common.convert_needed_coverage_spec(base_path, s)
                 for s in needed_coverage
             ]
 

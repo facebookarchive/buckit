@@ -853,9 +853,39 @@ def _jemalloc_malloc_conf_library(base_path, name, malloc_conf, deps, visibility
 
     return target_utils.RootRuleTarget(base_path, lib_rule_name)
 
+def _convert_needed_coverage_spec(base_path, spec):
+    """
+    Converts `needed_coverage` from fbcode's spec into the buck native spec
+
+    Args:
+        base_path: The base path for this rule; used to get fully qualified targets
+        spec: A tuple of (<needed percentage as int>, <target as a string>)
+
+    Returns:
+        A buck-compatible spec. This is a tuple of two elements if no source name
+        is detected in the target name (with an =) or three elements if it is
+        detected in the form of
+        (<percentage as int>, <full target as string>, <file as string>?)
+    """
+    if len(spec) != 2:
+        fail((
+            "parameter `needed_coverage`: `{}` must have exactly 2 " +
+            "elements, a ratio and a target."
+        ).format(spec))
+
+    ratio, target = spec
+    if "=" not in target:
+        return (
+            ratio,
+            src_and_dep_helpers.convert_build_target(base_path, target),
+        )
+    target, path = target.rsplit("=", 1)
+    return (ratio, src_and_dep_helpers.convert_build_target(base_path, target), path)
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
+    convert_needed_coverage_spec = _convert_needed_coverage_spec,
     file_to_python_module = _file_to_python_module,
     get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,
