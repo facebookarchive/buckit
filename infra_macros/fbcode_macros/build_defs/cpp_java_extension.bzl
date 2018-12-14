@@ -1,3 +1,4 @@
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:config.bzl", "config")
