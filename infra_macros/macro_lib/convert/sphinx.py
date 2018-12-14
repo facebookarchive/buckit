@@ -316,18 +316,14 @@ class _SphinxConverter(base.Converter):
             ),
         )
 
-        yield Rule(
-            "genrule",
-            collections.OrderedDict(
-                (
-                    ("name", name),
-                    ("type", self.get_fbconfig_rule_type()),
-                    ("out", "builder=%s" % self.get_builder()),
-                    ("bash", command),
-                    ("srcs", srcs),
-                    ("labels", self.get_labels(name, **kwargs)),
-                )
-            ),
+        # fb_native rule adds extra labels that genrule fails to swallow
+        native.genrule(
+            name=name,
+            type=self.get_fbconfig_rule_type(),
+            out="builder=%s" % self.get_builder(),
+            bash=command,
+            srcs=srcs,
+            labels=self.get_labels(name, **kwargs),
         )
 
     def get_labels(self, name, **kwargs):
