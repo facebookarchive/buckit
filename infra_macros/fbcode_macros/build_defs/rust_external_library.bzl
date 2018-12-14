@@ -44,7 +44,7 @@ def rust_external_library(
     for dep in external_deps:
         dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
     if dependencies:
-        dependencies = src_and_dep_helpers.format_deps(dependencies, platform = platform)
+        dependencies = src_and_dep_helpers.format_deps(dependencies, fbcode_platform = platform)
 
     fb_native.prebuilt_rust_library(
         name = name,

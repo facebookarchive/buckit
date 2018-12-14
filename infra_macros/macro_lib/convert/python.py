@@ -394,7 +394,7 @@ class PythonConverter(base.Converter):
                         ver_srcs.update(pvsrcs)
                 if ver_srcs:
                     all_versioned_srcs.append(
-                        ({target_utils.target_to_label(pytarget, platform=p) :
+                        ({target_utils.target_to_label(pytarget, fbcode_platform=p) :
                           pyversion.version_string
                           for p in platforms
                           if self.platform_has_version(p, pyversion)},
@@ -459,7 +459,7 @@ class PythonConverter(base.Converter):
                 target_utils.target_to_label(
                     third_party.get_tp2_project_target(
                         third_party.get_tp2_project_name(base_path)),
-                    platform = third_party.get_tp2_platform(base_path),
+                    fbcode_platform = third_party.get_tp2_platform(base_path),
                 )
             )
         for target in deps:

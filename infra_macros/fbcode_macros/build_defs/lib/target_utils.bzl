@@ -160,7 +160,7 @@ def _to_label(repo, path, name):
 
     return "{}//{}:{}".format(repo or "", path, name)
 
-def _target_to_label(target, platform = None):
+def _target_to_label(target, fbcode_platform = None):
     """
     Converts a target struct  to a string to pass to buck
 
@@ -173,7 +173,7 @@ def _target_to_label(target, platform = None):
     """
     if target.base_path == None:
         fail("{} must not have a 'None' base_path".format(target))
-    repo, repo_root = _get_repo_and_repo_root(target.repo, platform)
+    repo, repo_root = _get_repo_and_repo_root(target.repo, fbcode_platform)
     return _to_label(repo, paths.join(repo_root, target.base_path), target.name)
 
 target_utils = struct(

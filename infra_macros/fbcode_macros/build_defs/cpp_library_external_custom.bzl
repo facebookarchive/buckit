@@ -158,7 +158,7 @@ def cpp_library_external_custom(
     for target in external_deps:
         edep = src_and_dep_helpers.normalize_external_dep(target)
         dependencies.append(
-            target_utils.target_to_label(edep, platform = platform),
+            target_utils.target_to_label(edep, fbcode_platform = platform),
         )
     if dependencies:
         attributes["exported_deps"] = dependencies

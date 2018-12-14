@@ -52,7 +52,7 @@ def _get_source_name(src):
     else:
         return src
 
-def _convert_external_build_target(target, platform = None, lang_suffix = ""):
+def _convert_external_build_target(target, fbcode_platform = None, lang_suffix = ""):
     """
     Convert a raw external_dep target to a buck label
 
@@ -67,10 +67,10 @@ def _convert_external_build_target(target, platform = None, lang_suffix = ""):
 
     return target_utils.target_to_label(
         src_and_dep_helpers.normalize_external_dep(target, lang_suffix = lang_suffix),
-        platform = platform,
+        fbcode_platform = fbcode_platform,
     )
 
-def _convert_build_target(base_path, target, platform = None):
+def _convert_build_target(base_path, target, fbcode_platform = None):
     """
     Convert the given raw target string (one given in deps) to a buck label
 
@@ -85,7 +85,7 @@ def _convert_build_target(base_path, target, platform = None):
 
     return target_utils.target_to_label(
         target_utils.parse_target(target, default_base_path = base_path),
-        platform = platform,
+        fbcode_platform = fbcode_platform,
     )
 
 def _convert_source(base_path, src):
@@ -210,12 +210,12 @@ def _format_platform_param(value):
                 out.append(("^{}$".format(buck_platform), result))
     return out
 
-def _format_deps(deps, platform = None):
+def _format_deps(deps, fbcode_platform = None):
     """
     Takes a list of RuleTarget structs, and returns a new list of buck labels for the given platform
     """
 
-    return [target_utils.target_to_label(d, platform = platform) for d in deps]
+    return [target_utils.target_to_label(d, fbcode_platform = fbcode_platform) for d in deps]
 
 def __convert_auxiliary_deps(platform, deps):
     """
@@ -270,7 +270,7 @@ def __format_platform_deps_gen(deps, deprecated_auxiliary_deps, platform, _):
                 for d in pdeps
             ]
 
-    return _format_deps(pdeps, platform = platform)
+    return _format_deps(pdeps, fbcode_platform = platform)
 
 def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
     """
@@ -293,7 +293,7 @@ def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
         partial.make(__format_platform_deps_gen, deps, deprecated_auxiliary_deps),
     )
 
-def _format_all_deps(deps, platform = None):
+def _format_all_deps(deps, fbcode_platform = None):
     """
     Formats a list of `RuleTarget` structs for both `deps` and `platform_deps`
 
@@ -319,9 +319,9 @@ def _format_all_deps(deps, platform = None):
 
     # If we have an explicit platform (as is the case with tp2 projects),
     # we can pass the tp2 deps using the `deps` parameter.
-    if platform != None:
+    if fbcode_platform != None:
         out_deps.extend([
-            target_utils.target_to_label(d, platform = platform)
+            target_utils.target_to_label(d, fbcode_platform = fbcode_platform)
             for d in deps
             if third_party.is_tp2_target(d)
         ])
@@ -355,7 +355,7 @@ def _normalize_external_dep(raw_target, lang_suffix = "", parse_version = False)
 
     return parsed if not parse_version else (parsed, version)
 
-def _format_source(src, platform = None):  # type: (Union[str, RuleTarget], str) -> str
+def _format_source(src, fbcode_platform = None):  # type: (Union[str, RuleTarget], str) -> str
     """
     Converts a 'source' to a string that can be used by buck native rules
 
@@ -368,15 +368,15 @@ def _format_source(src, platform = None):  # type: (Union[str, RuleTarget], str)
     """
 
     if target_utils.is_rule_target(src):
-        if src.repo != None and platform == None:
+        if src.repo != None and fbcode_platform == None:
             fail("Invalid RuleTarget ({}) and platform ({}) provided".format(src, platform))
-        return target_utils.target_to_label(src, platform = platform)
+        return target_utils.target_to_label(src, fbcode_platform = fbcode_platform)
 
     return src
 
 def _format_source_map_partial(tp2_srcs, platform, _):
     return {
-        name: _format_source(src, platform = platform)
+        name: _format_source(src, fbcode_platform = platform)
         for name, src in tp2_srcs.items()
     }
 

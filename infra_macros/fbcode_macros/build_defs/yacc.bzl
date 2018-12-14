@@ -93,7 +93,7 @@ def yacc(name, yacc_flags, yacc_src, platform, visibility):
     out_h = paths.join("buck-out", "gen", base_path, base + ".h", base + ".h")
 
     cmd = commands.format(
-        yacc = target_utils.target_to_label(_YACC, platform = platform),
+        yacc = target_utils.target_to_label(_YACC, fbcode_platform = platform),
         args = " ".join([
             shell.quote(f)
             for f in _YACC_FLAGS + list(yacc_flags)

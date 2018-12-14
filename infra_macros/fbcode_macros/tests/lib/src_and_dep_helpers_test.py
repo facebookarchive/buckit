@@ -318,7 +318,7 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
                 'target_utils.RootRuleTarget("foo/bar", "baz"),'
                 'target_utils.RuleTarget("xplat", "foo/bar", "baz"),'
                 'target_utils.ThirdPartyRuleTarget("foo", "baz"),'
-                '], platform="gcc5")'
+                '], fbcode_platform="gcc5")'
             ),
         ]
         expected = [
@@ -394,7 +394,7 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         commands = [
             'src_and_dep_helpers.format_source("foo/bar.cpp")',
             'src_and_dep_helpers.format_source(target_utils.RootRuleTarget("foo", "bar"))',
-            'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), platform="gcc5")',
+            'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), fbcode_platform="gcc5")',
             (
                 "src_and_dep_helpers.format_source_map({\n"
                 '    "foo/foo.c": "foo/bar/foo.c",\n'

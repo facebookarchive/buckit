@@ -71,7 +71,7 @@ def cpp_module_external(
         exported_deps = (
             src_and_dep_helpers.format_deps(
                 dependencies,
-                platform = platform,
+                fbcode_platform = platform,
             )
         ),
         visibility = get_visibility(visibility, name),

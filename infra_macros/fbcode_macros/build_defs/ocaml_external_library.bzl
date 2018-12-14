@@ -45,7 +45,7 @@ def ocaml_external_library(
     ]
 
     for target in external_deps:
-        dependencies.append(src_and_dep_helpers.convert_external_build_target(target, platform = platform))
+        dependencies.append(src_and_dep_helpers.convert_external_build_target(target, fbcode_platform = platform))
 
     # Add the implicit dep to our own project rule.
     dependencies.append(
@@ -53,7 +53,7 @@ def ocaml_external_library(
             third_party.get_tp2_project_target(
                 third_party.get_tp2_project_name(package_name),
             ),
-            platform = platform,
+            fbcode_platform = platform,
         ),
     )
 

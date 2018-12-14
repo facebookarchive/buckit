@@ -46,7 +46,7 @@ def lex(name, lex_flags, lex_src, platform, visibility):
     source = base + ".cc"
 
     cmd = _LEX_CMD.format(
-        lex = target_utils.target_to_label(_LEX, platform = platform),
+        lex = target_utils.target_to_label(_LEX, fbcode_platform = platform),
         args = " ".join([shell.quote(f) for f in lex_flags]),
         src = shell.quote(source),
         header = shell.quote(header),

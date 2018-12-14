@@ -28,7 +28,7 @@ def _happy_rule(name, platform, happy_src, visibility):
         cmd = " && ".join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {happy}) -o "$OUT" -ag "$SRCS"'.format(
-                happy = target_utils.target_to_label(_HAPPY, platform = platform),
+                happy = target_utils.target_to_label(_HAPPY, fbcode_platform = platform),
             ),
         ]),
     )
@@ -51,7 +51,7 @@ def _alex_rule(name, platform, alex_src, visibility):
         cmd = " && ".join([
             'mkdir -p `dirname "$OUT"`',
             '$(exe {alex}) -o "$OUT" -g "$SRCS"'.format(
-                alex = target_utils.target_to_label(_ALEX, platform = platform),
+                alex = target_utils.target_to_label(_ALEX, fbcode_platform = platform),
             ),
         ]),
     )
@@ -136,7 +136,7 @@ def _c2hs(base_path, name, platform, source, deps, visibility):
                         get_project_root_from_gen_dir(),
                     )
                 ),
-                c2hs = target_utils.target_to_label(C2HS, platform = platform),
+                c2hs = target_utils.target_to_label(C2HS, fbcode_platform = platform),
                 deps = " :" + deps_name,
             )
         ),

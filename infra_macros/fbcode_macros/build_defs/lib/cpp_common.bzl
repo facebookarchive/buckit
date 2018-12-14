@@ -314,7 +314,7 @@ def _format_source_with_flags(src_with_flags, platform = None):
         buck label if no flags were provided for this source
     """
 
-    src = src_and_dep_helpers.format_source(src_with_flags.src, platform = platform)
+    src = src_and_dep_helpers.format_source(src_with_flags.src, fbcode_platform = platform)
     return (src, src_with_flags.flags) if src_with_flags.flags else src
 
 def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):

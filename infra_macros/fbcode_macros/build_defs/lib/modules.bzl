@@ -409,7 +409,7 @@ def _gen_tp2_cpp_module(
     out_deps, out_platform_deps = (
         src_and_dep_helpers.format_all_deps(
             dependencies,
-            platform = platform,
+            fbcode_platform = platform,
         )
     )
 

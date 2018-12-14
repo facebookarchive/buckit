@@ -202,7 +202,7 @@ def cpp_library_external(
 
     exported_deps = None
     if dependencies:
-        exported_deps = src_and_dep_helpers.format_deps(dependencies, platform = platform)
+        exported_deps = src_and_dep_helpers.format_deps(dependencies, fbcode_platform = platform)
 
     fb_native.prebuilt_cxx_library(
         name = name,

@@ -173,11 +173,11 @@ class TargetUtilsTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_target_to_label_works(self, root):
         commands = [
-            'target_utils.target_to_label(target_utils.RootRuleTarget("foo", "bar"), platform="default")',
-            'target_utils.target_to_label(target_utils.ThirdPartyRuleTarget("foo", "bar"), platform="default")',
-            'target_utils.target_to_label(target_utils.parse_target("@/third-party:foo:bar"), platform="default")',
-            'target_utils.target_to_label(target_utils.parse_target("@/third-party-tools:foo:bar"), platform="default")',
-            'target_utils.target_to_label(target_utils.parse_target("cell//foo:bar"), platform="default")',
+            'target_utils.target_to_label(target_utils.RootRuleTarget("foo", "bar"), fbcode_platform="default")',
+            'target_utils.target_to_label(target_utils.ThirdPartyRuleTarget("foo", "bar"), fbcode_platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("@/third-party:foo:bar"), fbcode_platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("@/third-party-tools:foo:bar"), fbcode_platform="default")',
+            'target_utils.target_to_label(target_utils.parse_target("cell//foo:bar"), fbcode_platform="default")',
         ]
 
         expected = [

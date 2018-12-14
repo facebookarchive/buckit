@@ -71,7 +71,7 @@ def _convert_d(
 
     # All D rules get an implicit dep on the runtime.
     dependencies = [
-        target_utils.target_to_label(dep, platform = platform)
+        target_utils.target_to_label(dep, fbcode_platform = platform)
         for dep in _COMMON_DEPENDENCIES
     ]
     for target in deps:
@@ -79,12 +79,12 @@ def _convert_d(
             src_and_dep_helpers.convert_build_target(
                 base_path,
                 target,
-                platform = platform,
+                fbcode_platform = platform,
             ),
         )
     for target in external_deps:
         dependencies.append(
-            src_and_dep_helpers.convert_external_build_target(target, platform = platform),
+            src_and_dep_helpers.convert_external_build_target(target, fbcode_platform = platform),
         )
 
     # Add in binary-specific link deps.
@@ -92,7 +92,7 @@ def _convert_d(
         dependencies.extend(
             src_and_dep_helpers.format_deps(
                 cpp_common.get_binary_link_deps(base_path, name, out_ldflags),
-                platform = platform,
+                fbcode_platform = platform,
             ),
         )
     attributes["linker_flags"] = out_ldflags

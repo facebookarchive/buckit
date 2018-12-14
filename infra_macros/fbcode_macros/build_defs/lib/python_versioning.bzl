@@ -81,7 +81,7 @@ def _add_flavored_versions(versioned_resources):
     platforms = platform_utils.get_platforms_for_host_architecture()
     res = list(versioned_resources)
     for p in platforms:
-        label = target_utils.target_to_label(_TP2_PYTHON_PROJECT, p)
+        label = target_utils.target_to_label(_TP2_PYTHON_PROJECT, fbcode_platform = p)
         for version_spec, resource_spec in versioned_resources:
             if label in version_spec:
                 pyver = version_spec[label]

@@ -43,7 +43,7 @@ def lua_library(
             third_party.get_tp2_platform(base_path) if third_party.is_tp2(base_path) else None
         )
         attributes["deps"], attributes["platform_deps"] = (
-            src_and_dep_helpers.format_all_deps(dependencies, platform = platform)
+            src_and_dep_helpers.format_all_deps(dependencies, fbcode_platform = platform)
         )
 
     fb_native.lua_library(

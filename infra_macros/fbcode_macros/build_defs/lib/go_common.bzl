@@ -118,7 +118,7 @@ def _convert_go(
 
         formatted_deps = src_and_dep_helpers.format_deps(
             d,
-            platform = platform_utils.get_buck_platform_for_base_path(
+            fbcode_platform = platform_utils.get_platform_for_base_path(
                 base_path,
             ),
         )
