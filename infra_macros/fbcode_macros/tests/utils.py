@@ -699,6 +699,7 @@ class TestCase(unittest.TestCase):
                             "projects": {{
                                 "python": "2.7",
                             }},
+                            "auxiliary_versions": {{}},
                         }},
                     }},
                     "gcc6": {{
@@ -712,6 +713,7 @@ class TestCase(unittest.TestCase):
                             "projects": {{
                                 "python": ["2.7", "3.7"],
                             }},
+                            "auxiliary_versions": {{}},
                         }},
                     }},
                     "gcc7": {{
@@ -725,6 +727,7 @@ class TestCase(unittest.TestCase):
                             "projects": {{
                                 "python": ["2.7", "3.7"],
                             }},
+                            "auxiliary_versions": {{}},
                         }},
                     }},
                     "gcc5-other": {{
@@ -738,6 +741,7 @@ class TestCase(unittest.TestCase):
                             "projects": {{
                                 "python": ["2.7", "3.7"],
                             }},
+                            "auxiliary_versions": {{}},
                         }},
                     }},
                     "default": {{
@@ -751,6 +755,7 @@ class TestCase(unittest.TestCase):
                             "projects": {{
                                 "python": ["2.7", "3.7"],
                             }},
+                            "auxiliary_versions": {{}},
                         }},
                     }},
                 }},
