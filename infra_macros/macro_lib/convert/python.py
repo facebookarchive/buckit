@@ -85,40 +85,6 @@ class PythonConverter(base.Converter):
         return self.get_fbconfig_rule_type() == 'python_library'
 
 
-    def get_preload_deps(self, base_path, name, allocator, jemalloc_conf=None, visibility=None):
-        """
-        Add C/C++ deps which need to preloaded by Python binaries.
-        """
-
-        deps = []
-        sanitizer = sanitizers.get_sanitizer()
-
-        # If we're using sanitizers, add the dep on the sanitizer-specific
-        # support library.
-        if sanitizer != None:
-            sanitizer = sanitizers.get_short_name(sanitizer)
-            deps.append(
-                target_utils.RootRuleTarget(
-                    'tools/build/sanitizers',
-                    '{}-py'.format(sanitizer)))
-        # Generate sanitizer configuration even if sanitizers are not used
-        deps.append(cpp_common.create_sanitizer_configuration(base_path, name))
-
-        # If we're using an allocator, and not a sanitizer, add the allocator-
-        # specific deps.
-        if allocator != None and sanitizer == None:
-            allocator_deps = allocators.get_allocator_deps(allocator)
-            if allocator.startswith('jemalloc') and jemalloc_conf != None:
-                conf_dep = python_common.jemalloc_malloc_conf_library(
-                    base_path,
-                    name,
-                    jemalloc_conf,
-                    allocator_deps,
-                    visibility)
-                allocator_deps = [conf_dep]
-            deps.extend(allocator_deps)
-
-        return deps
 
     def get_ldflags(self, base_path, name, strip_libpar=True):
         """
@@ -474,7 +440,7 @@ class PythonConverter(base.Converter):
 
         # Add any special preload deps.
         default_preload_deps = (
-            self.get_preload_deps(base_path, name, allocator, jemalloc_conf, visibility))
+            python_common.preload_deps(base_path, name, allocator, jemalloc_conf, visibility))
         out_preload_deps.extend(src_and_dep_helpers.format_deps(default_preload_deps))
 
         # Add user-provided preloaded deps.

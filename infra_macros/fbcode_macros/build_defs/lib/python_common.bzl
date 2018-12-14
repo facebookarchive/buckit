@@ -1,6 +1,8 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
+load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -9,6 +11,7 @@ load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
+load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
@@ -908,6 +911,49 @@ def _should_generate_interp_rules(helper_deps):
 
     return config_setting
 
+def _preload_deps(base_path, name, allocator, jemalloc_conf = None, visibility = None):
+    """
+    Add C/C++ deps which need to preloaded by Python binaries.
+
+    Returns:
+        A list of additional dependencies (as strings) which should be added to the
+        python binary
+    """
+
+    deps = []
+    sanitizer = sanitizers.get_sanitizer()
+
+    # If we're using sanitizers, add the dep on the sanitizer-specific
+    # support library.
+    if sanitizer != None:
+        sanitizer = sanitizers.get_short_name(sanitizer)
+        deps.append(
+            target_utils.RootRuleTarget(
+                "tools/build/sanitizers",
+                "{}-py".format(sanitizer),
+            ),
+        )
+
+    # Generate sanitizer configuration even if sanitizers are not used
+    deps.append(cpp_common.create_sanitizer_configuration(base_path, name))
+
+    # If we're using an allocator, and not a sanitizer, add the allocator-
+    # specific deps.
+    if allocator != None and sanitizer == None:
+        allocator_deps = allocators.get_allocator_deps(allocator)
+        if allocator.startswith("jemalloc") and jemalloc_conf != None:
+            conf_dep = _jemalloc_malloc_conf_library(
+                base_path,
+                name,
+                jemalloc_conf,
+                allocator_deps,
+                visibility,
+            )
+            allocator_deps = [conf_dep]
+        deps.extend(allocator_deps)
+
+    return deps
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
@@ -923,6 +969,7 @@ python_common = struct(
     monkeytype_binary = _monkeytype_binary,
     parse_gen_srcs = _parse_gen_srcs,
     parse_srcs = _parse_srcs,
+    preload_deps = _preload_deps,
     should_generate_interp_rules = _should_generate_interp_rules,
     test_modules_library = _test_modules_library,
     typecheck_test = _typecheck_test,
