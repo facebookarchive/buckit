@@ -411,59 +411,31 @@ class PythonConverter(base.Converter):
         is_binary = self.get_fbconfig_rule_type() == 'python_binary'
         fbconfig_rule_type = self.get_fbconfig_rule_type()
 
-        # for binary we need a separate library
-        if is_library:
-            library_name = name
-        else:
-            library_name = name + '-library'
-
-        if is_library and check_types:
-            fail(
-                'parameter `check_types` is not supported for libraries, did you ' +
-                'mean to specify `typing`?'
-            )
-
-        if get_typing_config_target():
-            gen_typing_config(
-                library_name,
-                base_module if base_module != None else base_path,
-                srcs,
-                [src_and_dep_helpers.convert_build_target(base_path, dep) for dep in deps],
-                typing or (check_types and not is_library),
-                typing_options,
-                visibility,
-            )
-
-        if runtime_deps:
-            associated_targets_name = python_common.associated_targets_library(base_path, library_name, runtime_deps, visibility)
-            deps = list(deps) + [":" + associated_targets_name]
-
-        extra_tags = []
-        if not is_library:
-            extra_tags.append("generated")
-        if is_test:
-            extra_tags.append('unittest-library')
-
-        library_attributes = python_common.implicit_python_library(
-            library_name,
-            is_test_companion=is_test,
+        library_attributes = python_common.convert_library(
+            is_test=is_test,
+            is_library=is_library,
+            base_path=base_path,
+            name=name,
             base_module=base_module,
-            srcs=srcs,
-            versioned_srcs=versioned_srcs,
-            gen_srcs=gen_srcs,
-            deps=deps,
-            tests=tests,
-            tags=list(tags) + extra_tags,
-            external_deps=external_deps,
-            visibility=visibility,
-            resources=resources,
+            check_types=check_types,
             cpp_deps=cpp_deps,
+            deps=deps,
+            external_deps=external_deps,
+            gen_srcs=gen_srcs,
             py_flavor=py_flavor,
+            resources=resources,
+            runtime_deps=runtime_deps,
+            srcs=srcs,
+            tags=tags,
+            tests=tests,
+            typing=typing,
+            typing_options=typing_options,
             version_subdirs=version_subdirs,
+            versioned_srcs=versioned_srcs,
+            visibility=visibility,
         )
-
         # People use -library of unittests
-        yield Rule("python_library", library_attributes)
+        fb_native.python_library(**library_attributes)
 
         if is_library:
             # If we are a library then we are done now

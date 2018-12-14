@@ -4,7 +4,7 @@ load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
-load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
+load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config", "get_typing_config_target")
 load("@fbcode_macros//build_defs/lib:python_versioning.bzl", "python_versioning")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -1271,9 +1271,98 @@ def _implicit_python_library(
 
     return attributes
 
+def _convert_library(
+        is_test,
+        is_library,
+        base_path,
+        name,
+        base_module,
+        check_types,
+        cpp_deps,
+        deps,
+        external_deps,
+        gen_srcs,
+        py_flavor,
+        resources,
+        runtime_deps,
+        srcs,
+        tags,
+        tests,
+        typing,
+        typing_options,
+        version_subdirs,
+        versioned_srcs,
+        visibility):
+    """
+    Gathers the attributes implicit python_library and creates associated rules
+
+    This is suitable for usage by either python_binary, python_unittest or
+    python_library. See `implicit_python_library` for more details
+
+    Returns:
+        Attributes for a native.python_library,
+    """
+
+    # for binary we need a separate library
+    if is_library:
+        library_name = name
+    else:
+        library_name = name + "-library"
+
+    if is_library and check_types:
+        fail(
+            "parameter `check_types` is not supported for libraries, did you " +
+            "mean to specify `typing`?",
+        )
+
+    if get_typing_config_target():
+        gen_typing_config(
+            library_name,
+            base_module if base_module != None else base_path,
+            srcs,
+            [src_and_dep_helpers.convert_build_target(base_path, dep) for dep in deps],
+            typing or check_types,
+            typing_options,
+            visibility,
+        )
+
+    if runtime_deps:
+        associated_targets_name = _associated_targets_library(
+            base_path,
+            library_name,
+            runtime_deps,
+            visibility,
+        )
+        deps = list(deps) + [":" + associated_targets_name]
+
+    extra_tags = []
+    if not is_library:
+        extra_tags.append("generated")
+    if is_test:
+        extra_tags.append("unittest-library")
+
+    return _implicit_python_library(
+        library_name,
+        is_test_companion = is_test,
+        base_module = base_module,
+        srcs = srcs,
+        versioned_srcs = versioned_srcs,
+        gen_srcs = gen_srcs,
+        deps = deps,
+        tests = tests,
+        tags = list(tags) + extra_tags,
+        external_deps = external_deps,
+        visibility = visibility,
+        resources = resources,
+        cpp_deps = cpp_deps,
+        py_flavor = py_flavor,
+        version_subdirs = version_subdirs,
+    )
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
+    convert_library = _convert_library,
     convert_needed_coverage_spec = _convert_needed_coverage_spec,
     file_to_python_module = _file_to_python_module,
     get_ldflags = _get_ldflags,
