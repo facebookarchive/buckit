@@ -302,7 +302,8 @@ class PythonConverter(base.Converter):
         self,
         base_path,
         name,
-        library,
+        implicit_library_target,
+        implicit_library_attributes,
         tests=[],
         py_version=None,
         py_flavor="",
@@ -368,11 +369,11 @@ class PythonConverter(base.Converter):
         # one and inherit its deps.
         if self.is_test():
             for param in ('versioned_srcs', 'srcs', 'resources', 'base_module'):
-                val = library.attributes.get(param)
+                val = implicit_library_attributes.get(param)
                 if val != None:
                     attributes[param] = val
-            dependencies.extend(library.attributes.get('deps', []))
-            platform_deps.extend(library.attributes.get('platform_deps', []))
+            dependencies.extend(implicit_library_attributes.get('deps', []))
+            platform_deps.extend(implicit_library_attributes.get('platform_deps', []))
 
             # Add the "coverage" library as a dependency for all python tests.
             platform_deps.extend(
@@ -381,7 +382,7 @@ class PythonConverter(base.Converter):
 
         # Otherwise, this is a binary, so just the library portion as a dep.
         else:
-            dependencies.append(':' + library.attributes['name'])
+            dependencies.append(':' + implicit_library_attributes['name'])
 
         # Sanitize the main module, so that it's a proper module reference.
         if main_module != None:
@@ -512,9 +513,9 @@ class PythonConverter(base.Converter):
             if self.is_test():
                 testmodules_library_name = python_common.test_modules_library(
                     base_path,
-                    library.attributes['name'],
-                    library.attributes.get('srcs') or (),
-                    library.attributes.get('base_module'),
+                    implicit_library_attributes['name'],
+                    implicit_library_attributes.get('srcs') or (),
+                    implicit_library_attributes.get('base_module'),
                     visibility,
                     generate_test_modules = generate_test_modules,
                 )
@@ -545,11 +546,11 @@ class PythonConverter(base.Converter):
                 typing_options,
                 visibility,
                 emails,
-                library.target_name,
-                library.attributes.get('versioned_srcs'),
-                library.attributes.get('srcs'),
-                library.attributes.get('resources'),
-                library.attributes.get('base_module'),
+                implicit_library_target,
+                implicit_library_attributes.get('versioned_srcs'),
+                implicit_library_attributes.get('srcs'),
+                implicit_library_attributes.get('resources'),
+                implicit_library_attributes.get('base_module'),
             )
             attributes['tests'] = (
                 list(attributes['tests']) + [':' + typecheck_rule_name]
@@ -580,7 +581,7 @@ class PythonConverter(base.Converter):
             read_bool('fbcode', 'monkeytype', False) and
             python_version.major == 3
         ):
-            python_common.monkeytype_binary(rule_type, attributes, library.attributes['name'])
+            python_common.monkeytype_binary(rule_type, attributes, implicit_library_attributes['name'])
 
         return [Rule(rule_type, attributes)] + rules
 
@@ -717,7 +718,8 @@ class PythonConverter(base.Converter):
             rules = self.create_binary(
                 base_path,
                 py_name,
-                library,
+                ":" + library.attributes["name"],
+                library.attributes,
                 tests=tests,
                 py_version=py_ver,
                 py_flavor=py_flavor,
