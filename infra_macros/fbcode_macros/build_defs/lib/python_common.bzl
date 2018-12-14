@@ -818,6 +818,41 @@ def _associated_targets_library(base_path, name, deps, visibility):
     )
     return rule_name
 
+def _jemalloc_malloc_conf_library(base_path, name, malloc_conf, deps, visibility):
+    """
+    Build a rule which wraps the JEMalloc allocator and links default
+    configuration via the `jemalloc_conf` variable.
+    """
+
+    buck_platform = platform_utils.get_buck_platform_for_base_path(base_path)
+    jemalloc_config_line = ",".join([
+        "{}:{}".format(k, v)
+        for k, v in sorted(malloc_conf.items())
+    ])
+
+    src_rule_name = "__{}_jemalloc_conf_src__".format(name)
+    fb_native.genrule(
+        name = src_rule_name,
+        visibility = visibility,
+        out = "jemalloc_conf.c",
+        cmd = 'echo \'const char* malloc_conf = "{}";\' > "$OUT"'.format(jemalloc_config_line),
+    )
+
+    deps, platform_deps = src_and_dep_helpers.format_all_deps(deps)
+
+    lib_rule_name = "__{}_jemalloc_conf_lib__".format(name)
+    fb_native.cxx_library(
+        name = lib_rule_name,
+        visibility = visibility,
+        srcs = [":" + src_rule_name],
+        default_platform = buck_platform,
+        defaults = {"platform": buck_platform},
+        deps = deps,
+        platform_deps = platform_deps,
+    )
+
+    return target_utils.RootRuleTarget(base_path, lib_rule_name)
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
@@ -827,6 +862,7 @@ python_common = struct(
     get_par_build_args = _get_par_build_args,
     get_version_universe = _get_version_universe,
     interpreter_binaries = _interpreter_binaries,
+    jemalloc_malloc_conf_library = _jemalloc_malloc_conf_library,
     manifest_library = _manifest_library,
     monkeytype_binary = _monkeytype_binary,
     parse_gen_srcs = _parse_gen_srcs,
