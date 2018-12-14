@@ -103,6 +103,31 @@ def _wheel_override_version_check(name, platform_versions):
             )
 
 
+def _error_rules(name, msg, visibility=None):
+    """
+    Return rules which generate an error with the given message at build
+    time.
+    """
+
+    msg = 'ERROR: ' + msg
+    msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
+
+    genrule_name = '{}-gen'.format(name)
+    fb_native.cxx_genrule(
+        name=genrule_name,
+        visibility=get_visibility(visibility, genrule_name),
+        out='out.cpp',
+        cmd='echo {} 1>&2; false'.format(pipes.quote(msg)),
+    )
+
+    fb_native.cxx_library(
+        name=name,
+        srcs=[":{}-gen".format(name)],
+        exported_headers=[":{}-gen".format(name)],
+        visibility=['PUBLIC'],
+    )
+
+
 class PyWheelDefault(base.Converter):
     """
     Produces a RuleTarget named after the base_path that points to the
@@ -115,34 +140,6 @@ class PyWheelDefault(base.Converter):
         return {
             'platform_versions'
         }
-
-    def create_error_rules(self, name, msg, visibility=None):
-        """
-        Return rules which generate an error with the given message at build
-        time.
-        """
-
-        rules = []
-
-        msg = 'ERROR: {}'.format(msg)
-        msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = '{}-gen'.format(name)
-        if visibility is not None:
-            attrs['visibility'] = visibility
-        attrs['out'] = 'out.cpp'
-        attrs['cmd'] = 'echo {} 1>&2; false'.format(pipes.quote(msg))
-        rules.append(Rule('cxx_genrule', attrs))
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        attrs['srcs'] = [":{}-gen".format(name)]
-        attrs['exported_headers'] = [":{}-gen".format(name)]
-        attrs['visibility'] = ['PUBLIC']
-        rules.append(Rule('cxx_library', attrs))
-
-        return rules
 
     def convert_rule(self, base_path, platform_versions, visibility):
         name = os.path.basename(base_path)
@@ -165,8 +162,7 @@ class PyWheelDefault(base.Converter):
                     '{}: wheel does not exist for platform "{}"'
                     .format(name, platform))
                 error_name = '{}-{}-error'.format(name, platform)
-                for rule in self.create_error_rules(error_name, msg):
-                    yield rule
+                _error_rules(error_name, msg)
                 platform_versions[py2_plat] = error_name
                 platform_versions[py3_plat] = error_name
 
