@@ -166,8 +166,8 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             "defs.bzl",
             dedent(
                 """
-        def a_func(prepend, platform, compiler):
-            return "{}-{}-{}".format(prepend, platform, compiler)
+        def a_func(prepend, platform):
+            return "{}-{}-{}".format(prepend, platform.alias, platform.compiler_family)
         """
             ),
         )

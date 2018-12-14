@@ -54,8 +54,8 @@ def _get_extra_ldflags():
 
     return read_flags("cxx", "extra_ldflags", default = ())
 
-def _get_compiler_flags_partial(build_mode, _, compiler):
-    return build_mode.gcc_flags if compiler == "gcc" else build_mode.clang_flags
+def _get_compiler_flags_partial(build_mode, platform):
+    return build_mode.gcc_flags if platform.compiler_family == "gcc" else build_mode.clang_flags
 
 def _get_compiler_flags(base_path):
     """

@@ -314,22 +314,23 @@ def _format_source_with_flags(src_with_flags, platform = None):
         buck label if no flags were provided for this source
     """
 
-    src = src_and_dep_helpers.format_source(src_with_flags.src, fbcode_platform = platform)
+    fbcode_platform = None if platform == None else platform.alias
+    src = src_and_dep_helpers.format_source(src_with_flags.src, fbcode_platform = fbcode_platform)
     return (src, src_with_flags.flags) if src_with_flags.flags else src
 
-def _format_source_with_flags_list_partial(tp2_dep_srcs, platform, _):
+def _format_source_with_flags_list_partial(tp2_dep_srcs, platform):
     return [
         _format_source_with_flags(src, platform = platform)
         for src in tp2_dep_srcs
     ]
 
-def _format_if(if_func, val, empty, platform, compiler):
-    if partial.call(if_func, platform, compiler):
+def _format_if(if_func, val, empty, platform):
+    if partial.call(if_func, platform):
         return val
     return empty
 
-def _modules_enabled_for_platform(platform, compiler):
-    return module_utils.enabled_for_platform(platform_utils.to_buck_platform(platform, compiler))
+def _modules_enabled_for_platform(platform):
+    return module_utils.enabled_for_platform(platform.name)
 
 _modules_enabled_for_platform_partial = partial.make(_modules_enabled_for_platform)
 
@@ -456,8 +457,8 @@ _THIN_LTO_FLAG = ["-flto=thin"]
 
 _LTO_FLAG = ["-flto"]
 
-def _lto_linker_flags(_, compiler):
-    if compiler != "clang":
+def _lto_linker_flags(platform):
+    if platform.compiler_family != "clang":
         return []
     if config.get_lto_type() == "thin":
         return _THIN_LTO_FLAG
@@ -755,8 +756,8 @@ def _get_sanitizer_non_binary_deps():
     else:
         return []
 
-def _get_platform_flags_from_arch_flags_partial(platform_flags, platform, _):
-    return platform_flags.get(platform)
+def _get_platform_flags_from_arch_flags_partial(arch_flags, platform):
+    return arch_flags.get(platform.target_arch)
 
 def _get_platform_flags_from_arch_flags(arch_flags):
     """
@@ -771,16 +772,10 @@ def _get_platform_flags_from_arch_flags(arch_flags):
         buck platform regexes are architecture appropriate.
     """
 
-    platform_flags = {
-        platform: flags
-        for arch, flags in sorted(arch_flags.items())
-        for platform in platform_utils.get_platforms_for_architecture(arch)
-    }
-
     return src_and_dep_helpers.format_platform_param(
         partial.make(
             _get_platform_flags_from_arch_flags_partial,
-            platform_flags,
+            arch_flags,
         ),
     )
 
@@ -1096,8 +1091,8 @@ def _get_ldflags(
 
     return ldflags
 
-def _cuda_compiler_specific_flags_partial(compiler_specific_flags, has_cuda_srcs, _, compiler):
-    return compiler_specific_flags.get("gcc" if has_cuda_srcs else compiler)
+def _cuda_compiler_specific_flags_partial(compiler_specific_flags, has_cuda_srcs, platform):
+    return compiler_specific_flags.get("gcc" if has_cuda_srcs else platform.compiler_family)
 
 # Dependency that contains a standard main that will run folly benchmarks
 _FOLLY_BENCHMARK_DEFAULT_MAIN_TARGET = target_utils.RootRuleTarget("common/benchmark", "benchmark_main")

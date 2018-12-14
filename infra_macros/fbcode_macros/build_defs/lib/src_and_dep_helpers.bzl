@@ -199,9 +199,7 @@ def _format_platform_param(value):
     out = []
     is_partial = hasattr(value, "function")
     for platform in cxx_platforms.get_platforms():
-        # TODO(agallagher): Cleanup dependents to not rely on fbcode platform
-        # name, and just use the raw Buck C/C++ platform object.
-        result = partial.call(value, platform.alias, platform.compiler_family) if is_partial else value
+        result = partial.call(value, platform) if is_partial else value
         if result:
             # Buck expects the platform name as a regex, so anchor it.
             # re.escape is not supported in skylark, however there should not be
@@ -216,12 +214,12 @@ def _format_deps(deps, fbcode_platform = None):
 
     return [target_utils.target_to_label(d, fbcode_platform = fbcode_platform) for d in deps]
 
-def __convert_auxiliary_deps(platform, deps):
+def __convert_auxiliary_deps(fbcode_platform, deps):
     """
     Convert a list of dependencies and versions to a list of potentially versioned RuleTarget struts
 
     Args:
-        platform: The platform to get auxilliary deps for
+        fbcode_platform: The platform to get auxilliary deps for
         deps: A list of (`RuleTarget`, version) tuples where version is either None
               or a string that should be found in the third-party config for this
               third party RuleTarget
@@ -233,8 +231,11 @@ def __convert_auxiliary_deps(platform, deps):
     """
 
     # Load the auxiliary version list from the config.
-    config = third_party.get_third_party_config_for_platform(platform)
-    aux_versions = config["build"]["auxiliary_versions"]
+    config = third_party.get_third_party_config_for_platform(fbcode_platform)
+    if config != None:
+        aux_versions = config["build"]["auxiliary_versions"]
+    else:
+        aux_versions = {}
 
     processed_deps = []
 
@@ -254,22 +255,22 @@ def __convert_auxiliary_deps(platform, deps):
 
     return processed_deps
 
-def __format_platform_deps_gen(deps, deprecated_auxiliary_deps, platform, _):
+def __format_platform_deps_gen(deps, deprecated_auxiliary_deps, platform):
     pdeps = deps
 
     # Auxiliary deps support.
     if deprecated_auxiliary_deps:
-        pdeps = __convert_auxiliary_deps(platform, pdeps)
+        pdeps = __convert_auxiliary_deps(platform.alias, pdeps)
 
     # Process PyFI overrides
     if python_wheel_overrides.should_use_overrides():
-        if platform in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
+        if platform.alias in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
             pdeps = [
                 python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
                 for d in pdeps
             ]
 
-    return _format_deps(pdeps, fbcode_platform = platform)
+    return _format_deps(pdeps, fbcode_platform = platform.alias)
 
 def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
     """
@@ -373,9 +374,9 @@ def _format_source(src, fbcode_platform = None):  # type: (Union[str, RuleTarget
 
     return src
 
-def _format_source_map_partial(tp2_srcs, platform, _):
+def _format_source_map_partial(tp2_srcs, platform):
     return {
-        name: _format_source(src, fbcode_platform = platform)
+        name: _format_source(src, fbcode_platform = platform.alias)
         for name, src in tp2_srcs.items()
     }
 

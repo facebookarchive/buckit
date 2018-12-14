@@ -218,7 +218,7 @@ def _replace_third_party_repo(string, platform):
 
 def _get_third_party_config_for_platform(platform):
     """ Returns the raw third party configuration for a specific platform """
-    return third_party_config["platforms"][platform]
+    return third_party_config["platforms"].get(platform)
 
 def _is_tp2_target(target):
     """

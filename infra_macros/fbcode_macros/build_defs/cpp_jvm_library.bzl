@@ -7,12 +7,11 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _FORMATTER_ARCHS = {"x86_64": "amd64"}
 
-def _formatter_partial(flags, platform, _):
-    arch = platform_utils.get_platform_architecture(platform)
-
+def _formatter_partial(flags, platform):
     # Remap arch to JVM-specific names.
+    arch = platform.target_arch
     arch = _FORMATTER_ARCHS.get(arch, arch)
-    return [flag.format(arch = arch, platform = platform) for flag in flags]
+    return [flag.format(arch = arch, platform = platform.alias) for flag in flags]
 
 def cpp_jvm_library(name, major_version, visibility = None):
     platform_jvm_path = "/usr/local/fb-jdk-{}-{{platform}}".format(major_version)
