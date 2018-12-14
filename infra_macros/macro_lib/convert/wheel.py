@@ -242,10 +242,8 @@ class PyWheel(base.Converter):
             target_name = prebuilt_target(wheel, target_name, visibility)
             wheel_targets[url] = target_name
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = version
-        if visibility is not None:
-            attrs['visibility'] = visibility
+        attrs = {}
+
         # Create the ability to override the platform that wheels use
         wheel_platform = read_config("python", "wheel_platform_override")
 
@@ -274,7 +272,6 @@ class PyWheel(base.Converter):
         cpp_genrule_name = version + "-genrule-hack"
         native.cxx_genrule(name = cpp_genrule_name, out="dummy", cmd="echo '' > $OUT")
         deps = (deps or []) + [":" + cpp_genrule_name]
-        attrs['deps'] = deps
 
         if external_deps:
             if compiled:
@@ -289,8 +286,13 @@ class PyWheel(base.Converter):
 
         # TODO: Figure out how to handle typing info from wheels
         if get_typing_config_target():
-            gen_typing_config(attrs['name'], visibility=visibility)
-        yield Rule('python_library', attrs)
+            gen_typing_config(version, visibility=visibility)
+        fb_native.python_library(
+            name=version,
+            deps=deps,
+            visibility=get_visibility(visibility, version),
+            **attrs
+        )
 
     def get_allowed_args(self):
         return {
@@ -307,8 +309,9 @@ class PyWheel(base.Converter):
         """
         # in python3 this method becomes just.
         # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, version, platform_urls, visibility=visibility, **kwargs):
-            yield rule
+        self.convert_rule(base_path, version, platform_urls, visibility=visibility, **kwargs)
+
+        return []
 
 
 def _override_wheels(deps, wheel_platform):
