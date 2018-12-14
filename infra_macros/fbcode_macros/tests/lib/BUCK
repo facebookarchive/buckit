@@ -12,6 +12,7 @@ TESTS = [
     "cpp_common_test",
     "cpp_flags_test",
     "cuda_test",
+    "fbcode_cxx_platforms_test",
     "haskell_common_test",
     "label_utils_test",
     "lua_common_test",

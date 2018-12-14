@@ -6,6 +6,8 @@ load("@fbcode_macros//build_defs/lib:build_mode.bzl", "build_mode")
 load("@fbcode_macros//build_defs/lib:global_compiler.bzl", _require_global_compiler = "require_global_compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 
+_COMPILERS = ["clang", "gcc"]
+
 def _get_supported_compilers():
     """
     Return list of compilers supported in this build mode.
@@ -17,7 +19,7 @@ def _get_supported_compilers():
         return [global_compiler_family]
 
     # Otherwise, we assume we support clang and gcc.
-    return ["clang", "gcc"]
+    return _COMPILERS
 
 def _get_compiler_for_base_path(base_path):
     """
@@ -54,4 +56,5 @@ compiler = struct(
     get_compiler_for_current_buildfile = _get_compiler_for_current_buildfile,
     get_supported_compilers = _get_supported_compilers,
     require_global_compiler = _require_global_compiler,
+    COMPILERS = _COMPILERS,
 )

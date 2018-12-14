@@ -1,10 +1,9 @@
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
+load("@fbcode_macros//build_defs/lib:cxx_platforms.bzl", "cxx_platforms")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
-load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
-load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 
 # Container for values which have regular and platform-specific parameters.
 _PlatformParam = provider(fields = [
@@ -199,15 +198,15 @@ def _format_platform_param(value):
     """
     out = []
     is_partial = hasattr(value, "function")
-    for platform in platform_utils.get_platforms_for_host_architecture():
-        for _compiler in compiler.get_supported_compilers():
-            result = partial.call(value, platform, _compiler) if is_partial else value
-            if result:
-                # Buck expects the platform name as a regex, so anchor it.
-                # re.escape is not supported in skylark, however there should not be
-                # any collisions in the names we have selected.
-                buck_platform = platform_utils.to_buck_platform(platform, _compiler)
-                out.append(("^{}$".format(buck_platform), result))
+    for platform in cxx_platforms.get_platforms():
+        # TODO(agallagher): Cleanup dependents to not rely on fbcode platform
+        # name, and just use the raw Buck C/C++ platform object.
+        result = partial.call(value, platform.alias, platform.compiler_family) if is_partial else value
+        if result:
+            # Buck expects the platform name as a regex, so anchor it.
+            # re.escape is not supported in skylark, however there should not be
+            # any collisions in the names we have selected.
+            out.append(("^{}$".format(platform.name), result))
     return out
 
 def _format_deps(deps, fbcode_platform = None):
