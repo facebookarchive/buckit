@@ -124,7 +124,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 with allow_unsafe_import():  # noqa: magic
     import collections
-    import json
     import os
 
 FBSPHINX_WRAPPER = "//fbsphinx:buck"
@@ -308,12 +307,10 @@ class _SphinxConverter(base.Converter):
             builder=self.get_builder(),
             SPHINXCONFIG_TGT=SPHINXCONFIG_TGT,
             config=struct(config=(config or {})).to_json(),
-            generated_sources=json.dumps(
-                [
-                    "$(location :{})".format(rule)
-                    for rule in additional_doc_rules
-                ]
-            ),
+            generated_sources="[" + ",".join([
+                "\"$(location :{})\"".format(rule)
+                for rule in additional_doc_rules
+            ]) + "]",
         )
 
         # fb_native rule adds extra labels that genrule fails to swallow
