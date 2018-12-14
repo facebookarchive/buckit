@@ -86,26 +86,6 @@ class PythonConverter(base.Converter):
 
 
 
-    def get_ldflags(self, base_path, name, strip_libpar=True):
-        """
-        Return ldflags to use when linking omnibus libraries in python binaries.
-        """
-
-        # We override stripping for python binaries unless we're in debug mode
-        # (which doesn't get stripped by default).  If either `strip_libpar`
-        # is set or any level of stripping is enabled via config, we do full
-        # stripping.
-        strip_mode = cpp_common.get_strip_mode(base_path, name)
-        if (not config.get_build_mode().startswith('dbg') and
-                (strip_mode != 'none' or strip_libpar == True)):
-            strip_mode = 'full'
-
-        return cpp_common.get_ldflags(
-            base_path,
-            name,
-            self.get_fbconfig_rule_type(),
-            strip_mode=strip_mode)
-
     def get_package_style(self):
         return read_choice(
             'python',
@@ -495,7 +475,7 @@ class PythonConverter(base.Converter):
         attributes['platform'] = python_platform
         attributes['version_universe'] = python_common.get_version_universe(python_version)
         attributes['linker_flags'] = (
-            self.get_ldflags(base_path, name, strip_libpar=strip_libpar))
+            python_common.get_ldflags(base_path, name, self.get_fbconfig_rule_type(), strip_libpar=strip_libpar))
 
         attributes['labels'] = list(tags)
         if self.is_test():

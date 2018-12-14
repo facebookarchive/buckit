@@ -954,11 +954,33 @@ def _preload_deps(base_path, name, allocator, jemalloc_conf = None, visibility =
 
     return deps
 
+def _get_ldflags(base_path, name, fbconfig_rule_type, strip_libpar = True):
+    """
+    Return ldflags to use when linking omnibus libraries in python binaries.
+    """
+
+    # We override stripping for python binaries unless we're in debug mode
+    # (which doesn't get stripped by default).  If either `strip_libpar`
+    # is set or any level of stripping is enabled via config, we do full
+    # stripping.
+    strip_mode = cpp_common.get_strip_mode(base_path, name)
+    if (not config.get_build_mode().startswith("dbg") and
+        (strip_mode != "none" or strip_libpar == True)):
+        strip_mode = "full"
+
+    return cpp_common.get_ldflags(
+        base_path,
+        name,
+        fbconfig_rule_type,
+        strip_mode = strip_mode,
+    )
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
     convert_needed_coverage_spec = _convert_needed_coverage_spec,
     file_to_python_module = _file_to_python_module,
+    get_ldflags = _get_ldflags,
     get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_par_build_args = _get_par_build_args,
