@@ -1,5 +1,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
 load("@fbcode_macros//build_defs/lib:build_info.bzl", "build_info")
 load("@fbcode_macros//build_defs/lib:cpp_common.bzl", "cpp_common")
@@ -981,12 +982,26 @@ def _get_ldflags(base_path, name, fbconfig_rule_type, strip_libpar = True):
         strip_mode = strip_mode,
     )
 
+def _get_package_style():
+    """
+    Get the package_style to use for binary rules from the configuration
+
+    See https://buckbuild.com/rule/python_binary.html#package_style
+    """
+    return read_choice(
+        "python",
+        "package_style",
+        ("inplace", "standalone"),
+        "standalone",
+    )
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
     convert_needed_coverage_spec = _convert_needed_coverage_spec,
     file_to_python_module = _file_to_python_module,
     get_ldflags = _get_ldflags,
+    get_package_style = _get_package_style,
     get_build_info = _get_build_info,
     get_interpreter_for_platform = _get_interpreter_for_platform,
     get_par_build_args = _get_par_build_args,

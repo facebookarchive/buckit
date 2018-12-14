@@ -86,13 +86,6 @@ class PythonConverter(base.Converter):
 
 
 
-    def get_package_style(self):
-        return read_choice(
-            'python',
-            'package_style',
-            ('inplace', 'standalone'),
-            'standalone')
-
     def create_library(
         self,
         base_path,
@@ -401,7 +394,7 @@ class PythonConverter(base.Converter):
             attributes['main_module'] = main_module
 
         # Add in the PAR build args.
-        if self.get_package_style() == 'standalone':
+        if python_common.get_package_style() == 'standalone':
             build_args = (
                 python_common.get_par_build_args(
                     base_path,
@@ -447,7 +440,7 @@ class PythonConverter(base.Converter):
         # that one can have `PYTHONBREAKPOINT=nuclide.set_trace` in their
         # environment (eg .bashrc) and then simply write `breakpoint()`
         # to launch a debugger with no fuss
-        if self.get_package_style() == "inplace":
+        if python_common.get_package_style() == "inplace":
             dependencies.append("//nuclide:debugger-hook")
 
         # Add in a specialized manifest when building inplace binaries.
@@ -467,7 +460,7 @@ class PythonConverter(base.Converter):
             python_platform,
             visibility,
         )
-        if self.get_package_style() == 'inplace':
+        if python_common.get_package_style() == 'inplace':
             dependencies.append(':' + manifest_name)
 
         buck_cxx_platform = platform_utils.get_buck_platform_for_base_path(base_path)
