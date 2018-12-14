@@ -19,7 +19,6 @@ from __future__ import unicode_literals
 
 with allow_unsafe_import():  # noqa: magic
     import collections
-    import re
     import textwrap
 
 
@@ -192,7 +191,7 @@ class PyWheelDefault(base.Converter):
             name=name,
             visibility=visibility,
             platform_deps=[
-                ('{}$'.format(re.escape(py_platform)), [':' + version])
+                ('{}$'.format(platform_utils.escape(py_platform)), [':' + version])
                 for py_platform, version in sorted(platform_versions.items())
             ],
         )
@@ -250,7 +249,7 @@ class PyWheel(base.Converter):
         # Use platform_deps to rely on the correct wheel target for
         # each platform
         attrs['platform_deps'] = [
-            ('{}$'.format(re.escape(py_platform)), None if url is None else [wheel_targets[url]])
+            ('{}$'.format(platform_utils.escape(py_platform)), None if url is None else [wheel_targets[url]])
             for py_platform, url in sorted(platform_urls.items())
             # Some platforms just do not have wheels available. In this case, we remove
             # that platform from platform deps. You just won't get a whl on those
@@ -319,7 +318,7 @@ def _override_wheels(deps, wheel_platform):
     # to the specified wheel platform.
 
     # We're doing this because platforms in the list of deps are also re.escaped.
-    wheel_platform = re.escape(wheel_platform)
+    wheel_platform = platform_utils.escape(wheel_platform)
 
     override_urls = None
     for platform, urls in deps:
