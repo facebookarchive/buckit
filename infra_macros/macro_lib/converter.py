@@ -103,6 +103,7 @@ load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_li
 load("@fbcode_macros//build_defs:ocaml_library.bzl", "ocaml_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
 load("@fbcode_macros//build_defs:python_wheel.bzl", "python_wheel")
+load("@fbcode_macros//build_defs:python_wheel_default.bzl", "python_wheel_default")
 load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
 load("@fbcode_macros//build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
@@ -137,7 +138,6 @@ except IOError:
 python = import_macro_lib('convert/python')
 sphinx = import_macro_lib('convert/sphinx')
 thrift_library = import_macro_lib('convert/thrift_library')
-wheel = import_macro_lib('convert/wheel')
 try:
     facebook = import_macro_lib('convert/facebook/__init__')
     get_fbonly_converters = facebook.get_fbonly_converters
@@ -160,7 +160,6 @@ def convert(base_path, rule):
         thrift_library.ThriftLibraryConverter(),
         sphinx.SphinxWikiConverter(),
         sphinx.SphinxManpageConverter(),
-        wheel.PyWheelDefault(),
     ]
 
     converters += get_fbonly_converters()
@@ -223,6 +222,7 @@ def convert(base_path, rule):
         'ocaml_library': ocaml_library,  # noqa F821
         'prebuilt_jar': prebuilt_jar,  # noqa F821
         'python_wheel': python_wheel,  # noqa F821
+        'python_wheel_default': python_wheel_default,  # noqa F821
         'rust_binary': rust_binary,  # noqa F821
         'rust_bindgen_library': rust_bindgen_library,  # noqa F821
         'rust_external_library': rust_external_library,  # noqa F821
