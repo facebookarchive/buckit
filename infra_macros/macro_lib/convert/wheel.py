@@ -19,7 +19,6 @@ from __future__ import unicode_literals
 
 with allow_unsafe_import():  # noqa: magic
     import collections
-    import os
     import re
     import textwrap
 
@@ -45,12 +44,13 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 def get_url_basename(url):
     """ Urls will have an #md5 etag remove it and return the wheel name"""
-    return os.path.basename(url).rsplit('#md5=')[0]
+    return paths.basename(url).rsplit('#md5=')[0]
 
 
 def remote_wheel(url, out, sha1, visibility):
@@ -109,7 +109,7 @@ def _error_rules(name, msg, visibility=None):
     """
 
     msg = 'ERROR: ' + msg
-    msg = os.linesep.join(textwrap.wrap(msg, 79, subsequent_indent='  '))
+    msg = "\n".join(textwrap.wrap(msg, 79, subsequent_indent='  '))
 
     genrule_name = '{}-gen'.format(name)
     fb_native.cxx_genrule(
@@ -141,7 +141,7 @@ class PyWheelDefault(base.Converter):
         }
 
     def convert_rule(self, base_path, platform_versions, visibility):
-        name = os.path.basename(base_path)
+        name = paths.basename(base_path)
 
         _wheel_override_version_check(name, platform_versions)
 
