@@ -52,6 +52,7 @@ load(  # noqa F821
     "versioned_alias",
 )
 load("@fbcode_macros//build_defs:antlr3_srcs.bzl", "antlr3_srcs")
+load("@fbcode_macros//build_defs:antlr4_srcs.bzl", "antlr4_srcs")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
@@ -167,6 +168,7 @@ def convert(base_path, rule):
     converter_map = {}
     new_converter_map = {
         'antlr3_srcs': antlr3_srcs,
+        'antlr4_srcs': antlr4_srcs,
         'buck_cxx_binary': buck_cxx_binary,  # noqa F821
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821

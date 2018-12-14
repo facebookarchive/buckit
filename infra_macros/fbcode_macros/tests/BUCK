@@ -54,6 +54,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs/lib:visibility.bzl",
     "fbcode_macros//build_defs:allocator_targets.bzl",
     "fbcode_macros//build_defs:antlr3_srcs.bzl",
+    "fbcode_macros//build_defs:antlr4_srcs.bzl",
     "fbcode_macros//build_defs:auto_headers.bzl",
     "fbcode_macros//build_defs:auto_pch_blacklist.bzl",
     "fbcode_macros//build_defs:build_mode_overrides.bzl",

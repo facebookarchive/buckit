@@ -109,6 +109,7 @@ BUCK_RULES = [
 
 FBCODE_RULES = [
     'antlr3_srcs',
+    'antlr4_srcs',
     'cpp_benchmark',
     'cpp_binary',
     'cpp_binary_external',
