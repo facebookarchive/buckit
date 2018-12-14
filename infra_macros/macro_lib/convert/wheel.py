@@ -159,30 +159,3 @@ class PyWheelDefault(base.Converter):
         self.convert_rule(base_path, platform_versions, visibility=visibility)
 
         return []
-
-
-class PyWheel(base.Converter):
-    def get_fbconfig_rule_type(self):
-        return 'python_wheel'
-
-    def get_allowed_args(self):
-        return {
-            'version',
-            'platform_urls',
-            'deps',
-            'external_deps',
-            'tests',
-        }
-
-    def convert(self, base_path, version, platform_urls, visibility=None, **kwargs):
-        """
-        Entry point for converting python_wheel rules
-        """
-        python_wheel(
-            version=version,
-            platform_urls=platform_urls,
-            visibility=visibility,
-            **kwargs
-        )
-
-        return []
