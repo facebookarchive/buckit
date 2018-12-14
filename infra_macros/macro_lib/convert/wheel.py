@@ -37,7 +37,6 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
-compiled_wheel = re.compile('-cp[0-9]{2}-')
 
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -127,6 +126,27 @@ def _error_rules(name, msg, visibility=None):
     )
 
 
+def _is_compiled(url):
+    """
+    Returns True if wheel with provided url is precompiled.
+
+    The logic in this method is a less efficient version of
+    -cp[0-9]{2}- regex matching.
+    """
+    prefix = "-cp"
+    start = 0
+    for _ in range(len(url)):
+        start = url.find(prefix, start)
+        if start == -1 or start + 6 >= len(url):
+            break
+        if url[start + len(prefix)].isdigit() and \
+                url[start + len(prefix) + 1].isdigit() and \
+                url[start + len(prefix) + 2] == "-":
+            return True
+        start += len(prefix)
+    return False
+
+
 class PyWheelDefault(base.Converter):
     """
     Produces a RuleTarget named after the base_path that points to the
@@ -212,7 +232,7 @@ class PyWheel(base.Converter):
         for url in urls:
             if url is None:
                 continue
-            if compiled_wheel.search(url):
+            if _is_compiled(url):
                 compiled = True
             orig_url, _, sha1 = url.rpartition('#sha1=')
             assert sha1, "There is no #sha1= tag on the end of URL: " + url
