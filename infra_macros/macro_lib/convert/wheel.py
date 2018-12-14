@@ -19,7 +19,6 @@ from __future__ import unicode_literals
 
 with allow_unsafe_import():  # noqa: magic
     import collections
-    import textwrap
 
 
 def import_macro_lib(path):
@@ -75,6 +74,22 @@ def _wheel_override_version_check(name, platform_versions):
             )
 
 
+def _wrap_text(text, width=79):
+    """
+    Splits the text into lines at most `width` in width and returns their list.
+
+    Note that unlike textwrap.wrap this function does not try to split at word
+    boundaries and simply takes chunks the text into chunks of size `width`.
+    """
+    lines, chunk = [], 0
+    for _ in range(len(text)):
+        if chunk >= len(text):
+            break
+        lines.append(text[chunk:chunk+width])
+        chunk += width
+    return lines
+
+
 def _error_rules(name, msg, visibility=None):
     """
     Return rules which generate an error with the given message at build
@@ -82,7 +97,7 @@ def _error_rules(name, msg, visibility=None):
     """
 
     msg = 'ERROR: ' + msg
-    msg = "\n".join(textwrap.wrap(msg, 79, subsequent_indent='  '))
+    msg = "\n".join(_wrap_text(msg))
 
     genrule_name = '{}-gen'.format(name)
     fb_native.cxx_genrule(
