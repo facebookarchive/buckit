@@ -179,6 +179,7 @@ class ThirdPartyTest(tests.utils.TestCase):
         expected = {
             "architecture": platform.machine(),
             "tools": {"projects": {"ghc": "8.0.2"}},
+            "build": {"projects": {"python": "2.7"}},
         }
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected)

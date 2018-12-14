@@ -37,7 +37,7 @@ def _get_tp2_project_versions(project, platform):
             res.append(ver[1])
     return res
 
-def _get_all_versions(platform):
+def _get_all_versions_for_platform(platform):
     """
     Return a list of all configured Python versions for `platform`.
     """
@@ -85,7 +85,7 @@ def _add_flavored_versions(versioned_resources):
         for version_spec, resource_spec in versioned_resources:
             if label in version_spec:
                 pyver = version_spec[label]
-                for cver in _get_all_versions(p):
+                for cver in _get_all_versions_for_platform(p):
                     # Simple flavor subsumption rule -- version A subsumes
                     # version B if B is a proper suffix of A:
                     if cver != pyver and cver.endswith(pyver):
@@ -305,8 +305,32 @@ def _normalize_constraint(constraint):
     else:
         return _python_version_constraint(constraint)
 
+_ALL_PYTHON_VERSIONS = {
+    platform: [
+        _python_version(version_string)
+        for version_string in _get_all_versions_for_platform(platform)
+    ]
+    for platform in platform_utils.get_all_platforms()
+}
+
+def _get_all_versions(fbcode_platform = None):
+    """
+    Returns a list of `PythonVersion` instances corresponding to the active
+    Python versions for the given `platform`. If `platform` is not
+    specified, then return versions for all platforms.
+    """
+
+    versions = {}
+    for p in platform_utils.get_platforms_for_host_architecture():
+        if fbcode_platform != None and fbcode_platform != p:
+            continue
+        for version in _ALL_PYTHON_VERSIONS[p]:
+            versions[version] = None
+    return versions.keys()
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
+    get_all_versions = _get_all_versions,
     python_version = _python_version,
     version_supports_flavor = _version_supports_flavor,
     python_version_constraint = _python_version_constraint,

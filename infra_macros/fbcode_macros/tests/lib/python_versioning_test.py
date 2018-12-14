@@ -57,6 +57,12 @@ class PythonVersioningTest(tests.utils.TestCase):
                             "ghc": "8.0.2",
                         }},
                     }},
+                   "build": {{
+                        "projects": {{
+                            "python": "2.7",
+                        }},
+                    }},
+
                 }},
             }},
             "version_universes": [

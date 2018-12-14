@@ -94,25 +94,9 @@ class PythonConverter(base.Converter):
         constraint = python_versioning.normalize_constraint(constraint)
         return any(
             pv.major == version and python_versioning.constraint_matches(constraint, pv)
-            for pv in self.get_all_versions()
+            for pv in python_versioning.get_all_versions()
         )
 
-    def get_all_versions(self, platform=None):
-        """
-        Returns a list of `PythonVersion` instances corresponding to the active
-        Python versions for the given `platform`. If `platform` is not
-        specified, then return versions for all platforms.
-        """
-
-        confs = [third_party.get_third_party_config_for_platform(p)['build']['projects']['python']
-                 for p in platform_utils.get_platforms_for_host_architecture()
-                 if platform == None or p == platform]
-        versions = set(version_str
-                       for pyconf in confs
-                       # pyconf is a list of pairs:
-                       # (ORIGINAL_TP2_VERSION, ACTUAL_VERSION)
-                       for _, version_str in pyconf)
-        return list(python_versioning.python_version(vstr) for vstr in versions)
 
     def get_default_version(self, platform, constraint, flavor=""):
         """
@@ -380,7 +364,7 @@ class PythonConverter(base.Converter):
 
             # Iterate over all potential Python versions and collect srcs for
             # each version:
-            for pyversion in self.get_all_versions():
+            for pyversion in python_versioning.get_all_versions():
                 if not python_versioning.version_supports_flavor(pyversion, py_flavor):
                     continue
 

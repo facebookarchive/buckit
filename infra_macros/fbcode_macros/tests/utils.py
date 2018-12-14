@@ -695,12 +695,22 @@ class TestCase(unittest.TestCase):
                                 "ghc": "8.0.2",
                             }},
                         }},
+                        "build": {{
+                            "projects": {{
+                                "python": "2.7",
+                            }},
+                        }},
                     }},
                     "gcc6": {{
                         "architecture": "{current_arch}",
                         "tools": {{
                             "projects": {{
                                 "ghc": "8.0.2",
+                            }},
+                        }},
+                        "build": {{
+                            "projects": {{
+                                "python": ["2.7", "3.7"],
                             }},
                         }},
                     }},
@@ -711,6 +721,11 @@ class TestCase(unittest.TestCase):
                                 "ghc": "8.0.2",
                             }},
                         }},
+                        "build": {{
+                            "projects": {{
+                                "python": ["2.7", "3.7"],
+                            }},
+                        }},
                     }},
                     "gcc5-other": {{
                         "architecture": "{other_arch}",
@@ -719,12 +734,22 @@ class TestCase(unittest.TestCase):
                                 "ghc": "8.0.2",
                             }},
                         }},
+                        "build": {{
+                            "projects": {{
+                                "python": ["2.7", "3.7"],
+                            }},
+                        }},
                     }},
                     "default": {{
                         "architecture": "{current_arch}",
                         "tools": {{
                             "projects": {{
                                 "ghc": "8.0.2",
+                            }},
+                        }},
+                        "build": {{
+                            "projects": {{
+                                "python": ["2.7", "3.7"],
                             }},
                         }},
                     }},
