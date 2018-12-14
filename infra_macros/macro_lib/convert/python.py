@@ -84,19 +84,6 @@ class PythonConverter(base.Converter):
     def is_library(self):
         return self.get_fbconfig_rule_type() == 'python_library'
 
-
-    def matches_major(self, constraint, version):
-        """
-        True if `constraint` can be satisfied by a Python version that is of
-        major `version` on some active platform.
-        """
-
-        constraint = python_versioning.normalize_constraint(constraint)
-        return any(
-            pv.major == version and python_versioning.constraint_matches(constraint, pv)
-            for pv in python_versioning.get_all_versions()
-        )
-
     def platform_has_version(self, platform, version):
         """
         True if the Python `version` is configured for `platform`.
@@ -877,8 +864,8 @@ class PythonConverter(base.Converter):
             # so we can have the py3 parts type check without a separate target
             if (
                 check_types
-                and self.matches_major(py_ver, version=2)
-                and any(self.matches_major(v, version=3) for v in versions)
+                and python_versioning.constraint_matches_major(py_ver, version=2)
+                and any(python_versioning.constraint_matches_major(v, version=3) for v in versions)
             ):
                 _check_types = False
                 print(

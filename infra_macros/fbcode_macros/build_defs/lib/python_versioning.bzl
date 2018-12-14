@@ -340,8 +340,23 @@ def _get_default_version(platform, constraint, flavor = ""):
             return version
     return None
 
+def _constraint_matches_major(constraint, version):
+    """
+    True if `constraint` can be satisfied by a Python version that is of major `version` on some active platform.
+
+    Args:
+        constraint: A constraint that should be satified (`PythonVersionConstraint` or str)
+        version: An integer major version that must be met in addition to the constraint
+    """
+    constraint = python_versioning.normalize_constraint(constraint)
+    for platform_version in _get_all_versions():
+        if platform_version.major == version and _constraint_matches(constraint, platform_version):
+            return True
+    return False
+
 python_versioning = struct(
     add_flavored_versions = _add_flavored_versions,
+    constraint_matches_major = _constraint_matches_major,
     get_all_versions = _get_all_versions,
     get_default_version = _get_default_version,
     python_version = _python_version,
