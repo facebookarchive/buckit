@@ -17,8 +17,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import pipes
-
 with allow_unsafe_import():  # noqa: magic
     import collections
     import os
@@ -47,6 +45,7 @@ load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_help
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "gen_typing_config")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 
 def get_url_basename(url):
@@ -117,7 +116,7 @@ def _error_rules(name, msg, visibility=None):
         name=genrule_name,
         visibility=get_visibility(visibility, genrule_name),
         out='out.cpp',
-        cmd='echo {} 1>&2; false'.format(pipes.quote(msg)),
+        cmd='echo {} 1>&2; false'.format(shell.quote(msg)),
     )
 
     fb_native.cxx_library(
