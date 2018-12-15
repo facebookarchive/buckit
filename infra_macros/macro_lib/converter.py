@@ -107,6 +107,7 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbcode_macros//build_defs:python_wheel.bzl", "python_wheel")
 load("@fbcode_macros//build_defs:python_wheel_default.bzl", "python_wheel_default")
+load("@fbcode_macros//build_defs:sphinx_manpage.bzl", "sphinx_manpage")
 load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
 load("@fbcode_macros//build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
@@ -158,7 +159,6 @@ def convert(base_path, rule):
         cython.Converter(),
         thrift_library.ThriftLibraryConverter(),
         sphinx.SphinxWikiConverter(),
-        sphinx.SphinxManpageConverter(),
     ]
 
     converters += get_fbonly_converters()
@@ -229,6 +229,7 @@ def convert(base_path, rule):
         'rust_unittest': rust_unittest,  # noqa F821
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
+        'sphinx_manpage': sphinx_manpage,  # noqa F821
         'swig_library': swig_library,  # noqa F821
         'cpp_library_external': cpp_library_external,
         'cpp_benchmark': cpp_benchmark,  # noqa F821

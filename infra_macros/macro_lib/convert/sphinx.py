@@ -95,28 +95,6 @@ Attributes:
         This gets added to the conf.py, but typically is not used by Sphinx
         in the build process.  It is included here as metadata which can
         be used by other tools via ``buck query``.
-
-
-sphinx_manpage
---------------
-This utilizes the Sphinx "man" builder to generate a Unix `Manual Page`
-
-Attributes:
-    srcs: List[Path]
-        A list of paths to the source file (usually .rst or .md)
-
-    description: str
-        A one-line description of the program suitable for the NAME section
-
-    author: str
-        The program author
-
-    section: int
-        The manpage ``section``, defaults to ``1`` which is reserved for
-        programs
-
-    manpage_name: str [Optional]
-        The name of the manpage to use.  The default is to use the target name
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
