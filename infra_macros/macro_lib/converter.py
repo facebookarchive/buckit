@@ -108,6 +108,7 @@ load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbcode_macros//build_defs:python_wheel.bzl", "python_wheel")
 load("@fbcode_macros//build_defs:python_wheel_default.bzl", "python_wheel_default")
 load("@fbcode_macros//build_defs:sphinx_manpage.bzl", "sphinx_manpage")
+load("@fbcode_macros//build_defs:sphinx_wiki.bzl", "sphinx_wiki")
 load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
 load("@fbcode_macros//build_defs:rust_bindgen_library.bzl", "rust_bindgen_library")
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
@@ -139,7 +140,6 @@ except IOError:
     image_feature = None
     image_layer = None
     image_package = None
-sphinx = import_macro_lib('convert/sphinx')
 thrift_library = import_macro_lib('convert/thrift_library')
 try:
     facebook = import_macro_lib('convert/facebook/__init__')
@@ -158,7 +158,6 @@ def convert(base_path, rule):
     converters = [
         cython.Converter(),
         thrift_library.ThriftLibraryConverter(),
-        sphinx.SphinxWikiConverter(),
     ]
 
     converters += get_fbonly_converters()
@@ -230,6 +229,7 @@ def convert(base_path, rule):
         'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
         'sphinx_manpage': sphinx_manpage,  # noqa F821
+        'sphinx_wiki': sphinx_wiki,  # noqa F821
         'swig_library': swig_library,  # noqa F821
         'cpp_library_external': cpp_library_external,
         'cpp_benchmark': cpp_benchmark,  # noqa F821
