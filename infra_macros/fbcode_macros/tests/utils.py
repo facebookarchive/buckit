@@ -772,6 +772,14 @@ class TestCase(unittest.TestCase):
             )
         )
         root.updateBuckconfig("d", "platform", "gcc5")
+        for python_platform in ["py2", "py3"]:
+            for cxx_platform in ["gcc5", "gcc6", "gcc7", "gcc5-other", "default"]:
+                full_platform = "{}-{}".format(python_platform, cxx_platform)
+                root.updateBuckconfig(
+                    "python#" + full_platform,
+                    "interpreter",
+                    "/usr/local/bin/python-" + full_platform,
+                )
         root.project.cells["fbcode_macros"].addFile(
             "build_defs/third_party_config.bzl", third_party_config
         )

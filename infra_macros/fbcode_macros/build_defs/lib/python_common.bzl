@@ -159,7 +159,6 @@ def _get_build_info(
     Returns:
         A dictionary of key/value strings to put into a build manifest
     """
-
     interpreter = _get_interpreter_for_platform(python_platform)
 
     # Iteration order is deterministic for dictionaries in buck/skylark
@@ -225,7 +224,7 @@ def _manifest_library(
     )
 
     fbmake = "\n        ".join([
-        "{!r}: {!r},".format(k, v)
+        "{}: {},".format(repr(k), repr(v))
         for k, v in build_info.items()
     ])
     manifest = _MANIFEST_TEMPLATE.format(fbmake = fbmake)
