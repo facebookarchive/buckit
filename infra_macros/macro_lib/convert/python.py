@@ -54,7 +54,7 @@ load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbcode_macros//build_defs/config:read_configs.bzl", "read_choice")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
-
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_list")
 
 
 class PythonConverter(base.Converter):
@@ -82,34 +82,34 @@ class PythonConverter(base.Converter):
         implicit_library_target,
         implicit_library_attributes,
         fbconfig_rule_type,
+        buck_rule_type,
         is_test,
-        tests=[],
-        py_version=None,
-        py_flavor="",
-        main_module=None,
-        rule_type=None,
-        strip_libpar=True,
-        tags=(),
-        lib_dir=None,
-        par_style=None,
-        emails=None,
-        needed_coverage=None,
-        argcomplete=None,
-        strict_tabs=None,
-        compile=None,
-        args=None,
-        env=None,
-        python=None,
-        allocator=None,
-        check_types=False,
-        preload_deps=(),
-        jemalloc_conf=None,  # TODO: This does not appear to be used anywhere
-        typing_options='',
-        helper_deps=False,
-        visibility=None,
-        analyze_imports=False,
-        additional_coverage_targets=[],
-        generate_test_modules=False,
+        tests,
+        py_version,
+        py_flavor,
+        main_module,
+        strip_libpar,
+        tags,
+        lib_dir,
+        par_style,
+        emails,
+        needed_coverage,
+        argcomplete,
+        strict_tabs,
+        compile,
+        args,
+        env,
+        python,
+        allocator,
+        check_types,
+        preload_deps,
+        jemalloc_conf,  # TODO: This does not appear to be used anywhere
+        typing_options,
+        helper_deps,
+        visibility,
+        analyze_imports,
+        additional_coverage_targets,
+        generate_test_modules,
     ):
         if is_test and par_style == None:
             par_style = "xar"
@@ -120,7 +120,7 @@ class PythonConverter(base.Converter):
         python_version = python_versioning.get_default_version(platform=platform,
                                                   constraint=py_version,
                                                   flavor=py_flavor)
-        if python_version is None:
+        if python_version == None:
             fail((
                 "Unable to find Python version matching constraint" +
                 "'{}' and flavor '{}' on '{}'.").format(py_version, py_flavor, platform)
@@ -133,15 +133,12 @@ class PythonConverter(base.Converter):
         if allocator == None:
             allocator = allocators.normalize_allocator(allocator)
 
-        attributes = collections.OrderedDict()
+        attributes = {}
         attributes['name'] = name
         if is_test and additional_coverage_targets:
             attributes["additional_coverage_targets"] = additional_coverage_targets
         if visibility != None:
             attributes['visibility'] = visibility
-
-        if not rule_type:
-            rule_type = self.get_buck_rule_type()
 
         # If this is a test, we need to merge the library rule into this
         # one and inherit its deps.
@@ -178,7 +175,7 @@ class PythonConverter(base.Converter):
                 python_common.get_par_build_args(
                     base_path,
                     name,
-                    rule_type,
+                    buck_rule_type,
                     platform,
                     argcomplete=argcomplete,
                     strict_tabs=strict_tabs,
@@ -359,7 +356,7 @@ class PythonConverter(base.Converter):
             read_bool('fbcode', 'monkeytype', False) and
             python_version.major == 3
         ):
-            python_common.monkeytype_binary(rule_type, attributes, implicit_library_attributes['name'])
+            python_common.monkeytype_binary(buck_rule_type, attributes, implicit_library_attributes['name'])
 
         return attributes
 
@@ -409,6 +406,7 @@ class PythonConverter(base.Converter):
         is_library = self.get_fbconfig_rule_type() == 'python_library'
         is_binary = self.get_fbconfig_rule_type() == 'python_binary'
         fbconfig_rule_type = self.get_fbconfig_rule_type()
+        buck_rule_type = self.get_buck_rule_type()
 
         library_attributes = python_common.convert_library(
             is_test=is_test,
@@ -443,10 +441,10 @@ class PythonConverter(base.Converter):
         # For binary rules, create a separate library containing the sources.
         # This will be added as a dep for python binaries and merged in for
         # python tests.
-        if isinstance(py_version, list) and len(py_version) == 1:
+        if is_list(py_version) and len(py_version) == 1:
             py_version = py_version[0]
 
-        if not isinstance(py_version, list):
+        if not is_list(py_version):
             versions = {py_version: name}
         else:
             versions = {}
@@ -466,7 +464,10 @@ class PythonConverter(base.Converter):
             if (
                 check_types
                 and python_versioning.constraint_matches_major(py_ver, version=2)
-                and any(python_versioning.constraint_matches_major(v, version=3) for v in versions)
+                and any([
+                    python_versioning.constraint_matches_major(v, version=3)
+                    for v in versions
+                ])
             ):
                 _check_types = False
                 print(
@@ -482,6 +483,7 @@ class PythonConverter(base.Converter):
                 implicit_library_target=":" + library_attributes["name"],
                 implicit_library_attributes=library_attributes,
                 fbconfig_rule_type=fbconfig_rule_type,
+                buck_rule_type=buck_rule_type,
                 is_test=is_test,
                 tests=tests,
                 py_version=py_ver,
@@ -510,7 +512,7 @@ class PythonConverter(base.Converter):
                 additional_coverage_targets=additional_coverage_targets,
                 generate_test_modules=is_first_binary,
             )
-            yield Rule(self.get_buck_rule_type(), binary_attributes)
+            yield Rule(buck_rule_type, binary_attributes)
 
             is_first_binary = False
             if is_test:
