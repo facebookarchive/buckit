@@ -124,7 +124,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 with allow_unsafe_import():  # noqa: magic
     import collections
-    import os
 
 FBSPHINX_WRAPPER = "//fbsphinx:buck"
 SPHINXCONFIG_TGT = "//:.sphinxconfig"
@@ -301,7 +300,7 @@ class _SphinxConverter(base.Converter):
                 "$OUT",
             )
         ).format(
-            BUCK_NONCE=os.environ.get("BUCK_NONCE", ""),
+            BUCK_NONCE=read_config("sphinx", "buck_nonce", ""),
             fbsphinx_buck_target=fbsphinx_buck_target,
             target="//{}:{}".format(base_path, name),
             builder=self.get_builder(),
