@@ -26,9 +26,6 @@ from __future__ import unicode_literals
 import collections
 import itertools
 
-with allow_unsafe_import():  # noqa: magic
-    import os
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
@@ -109,7 +106,7 @@ class Converter(base.Converter):
         return paths.join(package, src_and_dep_helpers.get_source_name(src))
 
     def get_module_name_and_path(self, package, src):
-        module_path = os.path.relpath(paths.split_extension(src)[0], package)
+        module_path = paths.relativize(paths.split_extension(src)[0], package)
         module_name = paths.basename(module_path)
         return module_name, module_path
 
