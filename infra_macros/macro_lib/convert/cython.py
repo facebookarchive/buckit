@@ -80,6 +80,14 @@ def split_matching_extensions(srcs, exts):
     return matched, other
 
 
+def _get_visibility(visibility, base_path):
+    if visibility and 'PUBLIC' not in visibility:
+        # Make it harder to break subrules
+        return ("//" + base_path + ":", ) + tuple(visibility)
+    else:
+        return visibility
+
+
 class Converter(base.Converter):
     LIB_SUFFIX = '__cython-lib'
     INCLUDES_SUFFIX = '__cython-includes'
@@ -426,24 +434,6 @@ class Converter(base.Converter):
         if isinstance(headers, unicode) and api:
             raise ValueError('"api" and AutoHeaders can not be used together')
 
-        def _get_visibility():
-            if visibility and 'PUBLIC' not in visibility:
-                # Make it harder to break subrules
-                return ("//" + base_path + ":", ) + tuple(visibility)
-            else:
-                return visibility
-
-        def set_visibility(rule):
-            rule_visibility = _get_visibility()
-            if rule_visibility:
-                rule.attributes['visibility'] = rule_visibility
-            return rule
-
-        def set_tests(rule):
-            if tests:
-                rule.attributes.setdefault('tests', tests)
-            return rule
-
         pyx_srcs, srcs = split_matching_extensions(srcs, self.SOURCE_EXTS)
         pxd_headers, headers = split_matching_extensions(
             headers, self.HEADER_EXTS)
@@ -463,7 +453,7 @@ class Converter(base.Converter):
             package,
             pxd_headers,
             itertools.chain(deps, external_deps),
-            _get_visibility(),
+            _get_visibility(visibility, base_path),
         )
 
         # Set some default flags that everyone should use
@@ -488,11 +478,12 @@ class Converter(base.Converter):
                 # generate rule to convert source file.
                 cython_name = self.convert_src(
                     base_path, name, module_path, pyx_src, flags, pyx_dst,
-                    out_src, _get_visibility(),
+                    out_src, _get_visibility(visibility, base_path),
                 )
                 # Generate the copy_rule
                 src_target = self.prefix_target_copy_rule(
-                    name, cython_name, out_src, module_path + out_ext, _get_visibility(),
+                    name, cython_name, out_src, module_path + out_ext,
+                    _get_visibility(visibility, base_path),
                 )
 
                 # generate an extension for the generated src
@@ -512,12 +503,13 @@ class Converter(base.Converter):
 
                 # Generate _api.h header rules.
                 api_target = self.gen_api_header(
-                    name, cython_name, module_path, module_name, api, _get_visibility(),
+                    name, cython_name, module_path, module_name, api,
+                    _get_visibility(visibility, base_path),
                 )
                 if api_target:
                     api_headers.append(api_target)
 
-            subrule_visibility = _get_visibility()
+            subrule_visibility = _get_visibility(visibility, base_path)
             for pyx_src, pyx_dst in items[1:]:
                 _create_sos(
                     pyx_src,
@@ -559,7 +551,7 @@ class Converter(base.Converter):
             cpp_library(
                 name=name,
                 deps=[':' + name + self.LIB_SUFFIX],
-                visibility = _get_visibility(),
+                visibility = _get_visibility(visibility, base_path),
                 tests = tests,
             )
 
