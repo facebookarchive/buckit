@@ -102,6 +102,7 @@ load("@fbcode_macros//build_defs:ocaml_binary.bzl", "ocaml_binary")
 load("@fbcode_macros//build_defs:ocaml_external_library.bzl", "ocaml_external_library")
 load("@fbcode_macros//build_defs:ocaml_library.bzl", "ocaml_library")
 load("@fbcode_macros//build_defs:prebuilt_jar.bzl", "prebuilt_jar")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_wheel.bzl", "python_wheel")
 load("@fbcode_macros//build_defs:python_wheel_default.bzl", "python_wheel_default")
 load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
@@ -154,7 +155,6 @@ def convert(base_path, rule):
 
     converters = [
         cython.Converter(),
-        python.PythonConverter('python_library'),
         python.PythonConverter('python_binary'),
         python.PythonConverter('python_unittest'),
         thrift_library.ThriftLibraryConverter(),
@@ -246,6 +246,7 @@ def convert(base_path, rule):
         'd_library': d_library,
         'd_library_external': d_library_external,
         'd_unittest': d_unittest,
+        'python_library': python_library,  # noqa F821
     }
 
     if image_feature:

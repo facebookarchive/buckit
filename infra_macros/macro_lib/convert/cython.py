@@ -42,12 +42,12 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target", "gen_typing_config")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
@@ -98,9 +98,6 @@ class Converter(base.Converter):
 
     def __init__(self):
         super(Converter, self).__init__()
-        self.python_library = python.PythonConverter(
-            'python_library',
-        )
 
     def get_fbconfig_rule_type(self):
         return 'cython_library'
@@ -248,15 +245,15 @@ class Converter(base.Converter):
         typing_options,
     ):
         name = parent + self.TYPING_SUFFIX
-        return ':' + name, self.python_library.convert(
+        python_library(
             name=name,
-            base_path=base_path,
             base_module=package,
             srcs=types,
             typing=True,
             typing_options=typing_options,
             tags=["generated"],
         )
+        return ':' + name
 
     def py_normalize_externals(self, external_deps):
         """
@@ -525,11 +522,9 @@ class Converter(base.Converter):
 
             typing_target = None
             if types:
-                typing_target, typing_rules = self.gen_typing_target(
+                typing_target = self.gen_typing_target(
                     name, base_path, package, types, typing_options
                 )
-                for rule in typing_rules:
-                    yield set_visibility(rule)
 
             pyx_src, pyx_dst = items[0]
             first_pyx_deps = extensions + deps + external_deps
