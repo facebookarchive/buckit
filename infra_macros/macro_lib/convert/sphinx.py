@@ -158,12 +158,13 @@ class _SphinxConverter(base.Converter):
 
     def get_allowed_args(self):
         return {
+            "apidoc_modules",
+            "config",
+            "genrule_srcs",
             "name",
             "python_binary_deps",
             "python_library_deps",
-            "apidoc_modules",
-            "genrule_srcs",
-            "config",
+            "srcs",
         }
 
     def get_buck_rule_type(self):
@@ -309,9 +310,6 @@ class _SphinxConverter(base.Converter):
         )
         return []
 
-    def get_labels(self, name, **kwargs):
-        return ()
-
 
 class SphinxWikiConverter(_SphinxConverter):
     """
@@ -320,7 +318,7 @@ class SphinxWikiConverter(_SphinxConverter):
 
     def get_allowed_args(self):
         allowed_args = super(SphinxWikiConverter, self).get_allowed_args()
-        allowed_args.update({"srcs", "wiki_root_path"})
+        allowed_args.update({"wiki_root_path"})
         return allowed_args
 
     def get_fbconfig_rule_type(self):
@@ -341,7 +339,7 @@ class SphinxManpageConverter(_SphinxConverter):
     def get_allowed_args(self):
         allowed_args = super(SphinxManpageConverter, self).get_allowed_args()
         allowed_args.update(
-            {"srcs", "author", "description", "section", "manpage_name"}
+            {"author", "description", "section", "manpage_name"}
         )
         return allowed_args
 
