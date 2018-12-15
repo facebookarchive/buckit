@@ -113,7 +113,6 @@ class PythonConverter(base.Converter):
     ):
         if is_test and par_style == None:
             par_style = "xar"
-        rules = []
         dependencies = []
         platform_deps = []
         out_preload_deps = []
@@ -362,7 +361,7 @@ class PythonConverter(base.Converter):
         ):
             python_common.monkeytype_binary(rule_type, attributes, implicit_library_attributes['name'])
 
-        return [Rule(rule_type, attributes)] + rules
+        return attributes
 
     def convert(
         self,
@@ -477,7 +476,7 @@ class PythonConverter(base.Converter):
             else:
                 _check_types = check_types
 
-            rules = self.create_binary(
+            binary_attributes = self.create_binary(
                 base_path,
                 py_name,
                 implicit_library_target=":" + library_attributes["name"],
@@ -511,12 +510,15 @@ class PythonConverter(base.Converter):
                 additional_coverage_targets=additional_coverage_targets,
                 generate_test_modules=is_first_binary,
             )
+            yield Rule(self.get_buck_rule_type(), binary_attributes)
+
             is_first_binary = False
             if is_test:
-                py_tests.append(rules[0])
-            for rule in rules:
-                yield rule
+                py_tests.append(
+                    (":" + binary_attributes['name'], binary_attributes.get('tests'))
+                )
 
+        # TODO: This should probably just be test_suite?
         # Create a genrule to wrap all the tests for easy running
         if len(py_tests) > 1:
             attrs = collections.OrderedDict()
@@ -526,14 +528,14 @@ class PythonConverter(base.Converter):
             attrs['out'] = '.' # TODO: This should be a real directory
             # We are propogating tests from sub targets to this target
             gen_tests = set()
-            for r in py_tests:
-                gen_tests.add(r.target_name)
-                if 'tests' in r.attributes:
-                    gen_tests.update(r.attributes['tests'])
+            for test_target, tests_attribute in py_tests:
+                gen_tests.add(test_target)
+                if tests_attribute != None:
+                    gen_tests.update(tests_attribute)
             attrs['tests'] = sorted(list(gen_tests))
             # With this we are telling buck we depend on the test targets
             cmds = []
-            for test in py_tests:
-                cmds.append('echo $(location {})'.format(test.target_name))
+            for test_target, _ in py_tests:
+                cmds.append('echo $(location {})'.format(test_target))
             attrs['cmd'] = ' && '.join(cmds)
             yield Rule('genrule', attrs)
