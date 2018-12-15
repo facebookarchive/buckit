@@ -52,7 +52,9 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:copy_rule.bzl", "copy_rule")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 def split_matching_extensions(srcs, exts):
     """
@@ -104,11 +106,11 @@ class Converter(base.Converter):
 
     def get_source_with_path(self, package, src):
         """Attach the package to the src path to get a full module path"""
-        return os.path.join(package, src_and_dep_helpers.get_source_name(src))
+        return paths.join(package, src_and_dep_helpers.get_source_name(src))
 
     def get_module_name_and_path(self, package, src):
-        module_path = os.path.relpath(os.path.splitext(src)[0], package)
-        module_name = os.path.basename(module_path)
+        module_path = os.path.relpath(paths.split_extension(src)[0], package)
+        module_name = paths.basename(module_path)
         return module_name, module_path
 
     def gen_deps_tree(
@@ -149,7 +151,7 @@ class Converter(base.Converter):
         fb_native.genrule(
             name=genrule_name,
             labels=["generated"],
-            out=os.curdir,
+            out=common_paths.CURRENT_DIRECTORY,
             srcs=files,
             # Use find to create a __init__ file so cython knows the directories
             # are packages
@@ -177,10 +179,10 @@ class Converter(base.Converter):
 
         cython_compiler = config.get_cython_compiler()
         attrs = {}
-        src_name = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
+        src_name = paths.join(parent + self.CONVERT_SUFFIX, module_path)
 
         cmds = []
-        package_path = os.path.dirname(dst_src)
+        package_path = paths.dirname(dst_src)
         # We need to make sure the pyx is located in its package path
         # so cython can correctly detect its import location
         if package_path:
@@ -215,12 +217,12 @@ class Converter(base.Converter):
         # Insure an _api.h file is always generated
         cmds.append(
             'touch $OUT/{module}_api.h'
-            .format(module=os.path.splitext(out_src)[0])
+            .format(module=paths.split_extension(out_src)[0])
         )
 
         fb_native.genrule(
             name=src_name,
-            out=os.curdir,
+            out=common_paths.CURRENT_DIRECTORY,
             cmd=' && '.join(cmds),
             labels=["generated"],
             visibility=visibility,
@@ -294,12 +296,12 @@ class Converter(base.Converter):
         name=None,
         tests=None,
     ):
-        typing_rule_name_prefix = os.path.join(parent, module_path)
+        typing_rule_name_prefix = paths.join(parent, module_path)
         name = name or typing_rule_name_prefix
         cpp_python_extension(
             name=name,
             base_module=package,
-            module_name=os.path.basename(module_path),
+            module_name=paths.basename(module_path),
             srcs=[src],
             deps=(
                 [':' + parent + self.LIB_SUFFIX] +
@@ -498,7 +500,7 @@ class Converter(base.Converter):
 
                 # generate an extension for the generated src
                 so_target = self.gen_extension_rule(
-                    base_path, name, module_path, os.path.dirname(pyx_dst),
+                    base_path, name, module_path, paths.dirname(pyx_dst),
                     src_target, python_deps, python_external_deps,
                     cpp_compiler_flags, raw_deps=extra_deps, visibility=visibility,
                     name=main_name, tests=tests,
