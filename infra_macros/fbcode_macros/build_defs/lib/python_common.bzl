@@ -1170,12 +1170,12 @@ def _implicit_python_library(
         if is_test_companion:
             formatted_srcs = src_and_dep_helpers.format_source_map({
                 k: v
-                for k, v in parsed_srcs.iteritems()
+                for k, v in parsed_srcs.items()
                 if k.endswith(".py")
             })
             formatted_resources = src_and_dep_helpers.format_source_map({
                 k: v
-                for k, v in parsed_srcs.iteritems()
+                for k, v in parsed_srcs.items()
                 if not k.endswith(".py")
             })
             attributes["resources"] = formatted_resources.value
