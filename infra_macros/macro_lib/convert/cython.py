@@ -53,6 +53,7 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs/lib:copy_rule.bzl", "copy_rule")
 load("@fbcode_macros//build_defs:config.bzl", "config")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 def split_matching_extensions(srcs, exts):
     """
@@ -112,7 +113,7 @@ class Converter(base.Converter):
         return module_name, module_path
 
     def gen_deps_tree(
-        self, name, package, headers, deps
+        self, name, package, headers, deps, visibility,
     ):
         """
         Every cython_library will have a cython-includes target to go
@@ -140,18 +141,24 @@ class Converter(base.Converter):
                 continue
             files.append(header)
             cmds.append('mv {} $OUT/{}'.format(header, dst))
-        attrs = collections.OrderedDict()
-        attrs['name'] = name + tree_suffix
-        attrs['labels'] = ["generated"]
-        attrs['out'] = os.curdir
-        attrs['srcs'] = files
-        # Use find to create a __init__ file so cython knows the directories
-        # are packages
+
         cmds.append(
             'find "$OUT" -type d | xargs -I {} touch {}/__init__.pxd'
         )
-        attrs['cmd'] = '\n'.join(cmds)
-        return ':' + attrs['name'], Rule('genrule', attrs)
+
+        genrule_name = name + tree_suffix
+        fb_native.genrule(
+            name=genrule_name,
+            labels=["generated"],
+            out=os.curdir,
+            srcs=files,
+            # Use find to create a __init__ file so cython knows the directories
+            # are packages
+            cmd='\n'.join(cmds),
+            visibility=visibility,
+        )
+
+        return ':' + genrule_name
 
     def convert_src(
         self,
@@ -448,13 +455,13 @@ class Converter(base.Converter):
         if package is None:
             package = base_path.replace('.', '/')
 
-        deps_tree, deps_tree_rule = self.gen_deps_tree(
+        deps_tree = self.gen_deps_tree(
             name,
             package,
             pxd_headers,
             itertools.chain(deps, external_deps),
+            _get_visibility(),
         )
-        yield set_visibility(deps_tree_rule)
 
         # Set some default flags that everyone should use
         # Also Add instruct cython how to find its deps_tree
