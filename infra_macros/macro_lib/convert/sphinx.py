@@ -312,9 +312,6 @@ class _SphinxConverter(base.Converter):
     def get_labels(self, name, **kwargs):
         return ()
 
-    def get_extra_confpy_assignments(self, name, **kwargs):
-        return {}
-
 
 class SphinxWikiConverter(_SphinxConverter):
     """
@@ -361,16 +358,3 @@ class SphinxManpageConverter(_SphinxConverter):
             "section:%d" % kwargs.get("section", 1),
             "manpage_name:%s" % kwargs.get("manpage_name", name),
         )
-
-    def get_extra_confpy_assignments(self, name, **kwargs):
-        return {
-            "man_pages": [
-                {
-                    "doc": "master_doc",
-                    "name": kwargs.get("manpage_name", name),
-                    "description": kwargs.get("description"),
-                    "author": kwargs.get("author"),
-                    "section": kwargs.get("section", 1),
-                }
-            ]
-        }
