@@ -32,6 +32,7 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
+load("@bazel_skylib//lib:collections.bzl", "collections")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs/lib:allocators.bzl", "allocators")
@@ -234,24 +235,27 @@ class PythonConverter(base.Converter):
                     (":" + binary_attributes['name'], binary_attributes.get('tests'))
                 )
 
-        # TODO: This should probably just be test_suite?
+        # TODO: This should probably just be test_suite? This rule really doesn't
+        #       make sense....
         # Create a genrule to wrap all the tests for easy running
         if len(py_tests) > 1:
-            attrs = collections.OrderedDict()
-            attrs['name'] = name
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['out'] = '.' # TODO: This should be a real directory
             # We are propogating tests from sub targets to this target
-            gen_tests = set()
+            gen_tests = []
             for test_target, tests_attribute in py_tests:
-                gen_tests.add(test_target)
-                if tests_attribute != None:
-                    gen_tests.update(tests_attribute)
-            attrs['tests'] = sorted(list(gen_tests))
-            # With this we are telling buck we depend on the test targets
-            cmds = []
-            for test_target, _ in py_tests:
-                cmds.append('echo $(location {})'.format(test_target))
-            attrs['cmd'] = ' && '.join(cmds)
-            yield Rule('genrule', attrs)
+                gen_tests.append(test_target)
+                if tests_attribute:
+                    gen_tests.extend(tests_attribute)
+            gen_tests = collections.uniq(gen_tests)
+
+            cmd = ' && '.join([
+                'echo $(location {})'.format(test_target)
+                for test_target in gen_tests
+            ])
+
+            fb_native.genrule(
+                name = name,
+                visibility = visibility,
+                out = 'unused',
+                tests = gen_tests,
+                cmd = cmd,
+            )
