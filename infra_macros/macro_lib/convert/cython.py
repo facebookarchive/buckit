@@ -398,6 +398,67 @@ class Converter(base.Converter):
             tags=["generated"],
         )
 
+    def _create_sos(
+            self,
+            pyx_src,
+            pyx_dst,
+            main_name,
+            visibility,
+            extra_deps,
+            update_extensions,
+            tests,
+            package,
+            out_ext,
+            base_path,
+            name,
+            flags,
+            python_deps,
+            python_external_deps,
+            cpp_compiler_flags,
+            api):
+        pyx_dst = self.get_source_with_path(package, pyx_dst)
+        module_name, module_path = self.get_module_name_and_path(
+            package, pyx_dst)
+        out_src = module_name + out_ext
+        # generate rule to convert source file.
+        cython_name = self.convert_src(
+            base_path, name, module_path, pyx_src, flags, pyx_dst,
+            out_src, _get_visibility(visibility, base_path),
+        )
+        # Generate the copy_rule
+        src_target = self.prefix_target_copy_rule(
+            name, cython_name, out_src, module_path + out_ext,
+            _get_visibility(visibility, base_path),
+        )
+
+        # generate an extension for the generated src
+        so_target = self.gen_extension_rule(
+            base_path, name, module_path, paths.dirname(pyx_dst),
+            src_target, python_deps, python_external_deps,
+            cpp_compiler_flags, raw_deps=extra_deps, visibility=visibility,
+            name=main_name, tests=tests,
+        )
+
+        # The fist extension will not be a sub extension
+        # So we can have this rule be a cxx_python_extension
+        # and not be an empty .so
+
+        extensions = []
+        if update_extensions:
+            extensions.append(so_target)
+
+        # Generate _api.h header rules.
+        api_target = self.gen_api_header(
+            name, cython_name, module_path, module_name, api,
+            _get_visibility(visibility, base_path),
+        )
+
+        api_headers = []
+        if api_target:
+            api_headers.append(api_target)
+
+        return extensions, api_headers
+
     def convert_rule(
         self,
         base_path,
@@ -470,55 +531,28 @@ class Converter(base.Converter):
         if pyx_srcs:
             extensions = []
             items = pyx_srcs.items()
-            def _create_sos(pyx_src, pyx_dst, main_name, visibility, extra_deps, update_extensions, tests):
-                pyx_dst = self.get_source_with_path(package, pyx_dst)
-                module_name, module_path = self.get_module_name_and_path(
-                    package, pyx_dst)
-                out_src = module_name + out_ext
-                # generate rule to convert source file.
-                cython_name = self.convert_src(
-                    base_path, name, module_path, pyx_src, flags, pyx_dst,
-                    out_src, _get_visibility(visibility, base_path),
-                )
-                # Generate the copy_rule
-                src_target = self.prefix_target_copy_rule(
-                    name, cython_name, out_src, module_path + out_ext,
-                    _get_visibility(visibility, base_path),
-                )
-
-                # generate an extension for the generated src
-                so_target = self.gen_extension_rule(
-                    base_path, name, module_path, paths.dirname(pyx_dst),
-                    src_target, python_deps, python_external_deps,
-                    cpp_compiler_flags, raw_deps=extra_deps, visibility=visibility,
-                    name=main_name, tests=tests,
-                )
-
-                # The fist extension will not be a sub extension
-                # So we can have this rule be a cxx_python_extension
-                # and not be an empty .so
-
-                if update_extensions:
-                    extensions.append(so_target)
-
-                # Generate _api.h header rules.
-                api_target = self.gen_api_header(
-                    name, cython_name, module_path, module_name, api,
-                    _get_visibility(visibility, base_path),
-                )
-                if api_target:
-                    api_headers.append(api_target)
 
             subrule_visibility = _get_visibility(visibility, base_path)
             for pyx_src, pyx_dst in items[1:]:
-                _create_sos(
+                exts, api_hdrs = self._create_sos(
                     pyx_src,
                     pyx_dst,
                     main_name=None,
                     visibility=subrule_visibility,
                     extra_deps=(),
                     update_extensions=True,
-                    tests=None)
+                    tests=None,
+                    package=package,
+                    out_ext=out_ext,
+                    base_path=base_path,
+                    name=name,
+                    flags=flags,
+                    python_deps=python_deps,
+                    python_external_deps=python_external_deps,
+                    cpp_compiler_flags=cpp_compiler_flags,
+                    api=api)
+                extensions.extend(exts)
+                api_headers.extend(api_hdrs)
 
             typing_target = None
             if types:
@@ -534,14 +568,25 @@ class Converter(base.Converter):
             # The first pyx will be the named target and it will depend on all
             # the other generated extensions
             # Don't forget to depend on the .so from our cython deps
-            _create_sos(
+            exts, api_hdrs = self._create_sos(
                 pyx_src,
                 pyx_dst,
                 main_name=name,
                 visibility=visibility,
                 extra_deps=first_pyx_deps,
                 update_extensions=False,
-                tests=tests)
+                tests=tests,
+                package=package,
+                out_ext=out_ext,
+                base_path=base_path,
+                name=name,
+                flags=flags,
+                python_deps=python_deps,
+                python_external_deps=python_external_deps,
+                cpp_compiler_flags=cpp_compiler_flags,
+                api=api)
+            extensions.extend(exts)
+            api_headers.extend(api_hdrs)
         else:
             # gen an empty cpp_library instead, so we don't get an empty .so
             # this allows use to use cython_library as a way to gather up
