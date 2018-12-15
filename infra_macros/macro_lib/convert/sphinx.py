@@ -121,10 +121,6 @@ Attributes:
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-
-with allow_unsafe_import():  # noqa: magic
-    import collections
-
 FBSPHINX_WRAPPER = "//fbsphinx:buck"
 SPHINXCONFIG_TGT = "//:.sphinxconfig"
 
@@ -321,7 +317,7 @@ class _SphinxConverter(base.Converter):
         return ()
 
     def get_extra_confpy_assignments(self, name, **kwargs):
-        return collections.OrderedDict()
+        return {}
 
 
 class SphinxWikiConverter(_SphinxConverter):
