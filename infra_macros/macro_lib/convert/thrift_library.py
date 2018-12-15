@@ -34,13 +34,13 @@ def import_macro_lib(path):
 
 base = import_macro_lib('convert/base')
 cython = import_macro_lib('convert/cython')
-python = import_macro_lib('convert/python')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
@@ -2475,8 +2475,6 @@ class ThriftLibraryConverter(base.Converter):
             for name in converter.get_names():
                 self._name_to_lang[name] = converter.get_lang()
 
-        self._py_converter = python.PythonConverter('python_binary')
-
     def get_fbconfig_rule_type(self):
         return 'thrift_library'
 
@@ -2600,10 +2598,7 @@ class ThriftLibraryConverter(base.Converter):
                     'python-future',
                     'six',
                 ]
-                remotes.extend(
-                    self._py_converter.convert(
-                        base_path,
-                        **attrs))
+                python_binary(**attrs)
 
         return remotes
 

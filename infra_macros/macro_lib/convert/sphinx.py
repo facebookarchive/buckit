@@ -153,6 +153,7 @@ SPHINX_SECTION = "sphinx"
 
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 
 
 class _SphinxConverter(base.Converter):
@@ -163,10 +164,6 @@ class _SphinxConverter(base.Converter):
 
     def __init__(self):
         super(_SphinxConverter, self).__init__()
-
-        self._converters = {
-            "python_binary": python.PythonConverter("python_binary")
-        }
 
     def get_allowed_args(self):
         return {
@@ -264,15 +261,13 @@ class _SphinxConverter(base.Converter):
             + (FBSPHINX_WRAPPER,)
         )
         fbsphinx_buck_target = "%s-fbsphinx-buck" % name
-        for rule in self._converters["python_binary"].convert(
-            base_path,
+        python_binary(
             name=fbsphinx_buck_target,
             par_style="xar",
             py_version=">=3.6",
             main_module="fbsphinx.bin.fbsphinx_buck",
             deps=python_deps,
-        ):
-            yield rule
+        )
 
         additional_doc_rules = []
 
@@ -321,6 +316,7 @@ class _SphinxConverter(base.Converter):
             srcs=srcs,
             labels=self.get_labels(name, **kwargs),
         )
+        return []
 
     def get_labels(self, name, **kwargs):
         return ()
