@@ -119,119 +119,54 @@ class PythonConverter(base.Converter):
         version_subdirs=None,
     ):
         is_test = self.get_fbconfig_rule_type() == 'python_unittest'
-        is_library = self.get_fbconfig_rule_type() == 'python_library'
         is_binary = self.get_fbconfig_rule_type() == 'python_binary'
         fbconfig_rule_type = self.get_fbconfig_rule_type()
         buck_rule_type = self.get_buck_rule_type()
         binary_constructor = fb_native.python_binary if is_binary else fb_native.python_test
 
-        library_attributes = python_common.convert_library(
+        all_binary_attributes = python_common.convert_binary(
             is_test=is_test,
-            is_library=is_library,
+            fbconfig_rule_type=fbconfig_rule_type,
+            buck_rule_type=buck_rule_type,
             base_path=base_path,
             name=name,
-            base_module=base_module,
-            check_types=check_types,
-            cpp_deps=cpp_deps,
-            deps=deps,
-            external_deps=external_deps,
-            gen_srcs=gen_srcs,
+            py_version=py_version,
             py_flavor=py_flavor,
-            resources=resources,
-            runtime_deps=runtime_deps,
+            base_module=base_module,
+            main_module=main_module,
+            strip_libpar=strip_libpar,
             srcs=srcs,
+            versioned_srcs=versioned_srcs,
             tags=tags,
+            gen_srcs=gen_srcs,
+            deps=deps,
             tests=tests,
+            par_style=par_style,
+            emails=emails,
+            external_deps=external_deps,
+            needed_coverage=needed_coverage,
+            argcomplete=argcomplete,
+            strict_tabs=strict_tabs,
+            compile=compile,
+            args=args,
+            env=env,
+            python=python,
+            allocator=allocator,
+            check_types=check_types,
+            preload_deps=preload_deps,
+            visibility=visibility,
+            resources=resources,
+            jemalloc_conf=jemalloc_conf,
             typing=typing,
             typing_options=typing_options,
-            version_subdirs=version_subdirs,
-            versioned_srcs=versioned_srcs,
-            visibility=visibility,
+            check_types_options=check_types_options,
+            runtime_deps=runtime_deps,
+            cpp_deps=cpp_deps,
+            helper_deps=helper_deps,
+            analyze_imports=analyze_imports,
+            additional_coverage_targets=additional_coverage_targets,
+            version_subdirs=version_subdirs
         )
-        # People use -library of unittests
-        fb_native.python_library(**library_attributes)
-
-        if is_library:
-            # If we are a library then we are done now
-            return
-
-        # For binary rules, create a separate library containing the sources.
-        # This will be added as a dep for python binaries and merged in for
-        # python tests.
-        if is_list(py_version) and len(py_version) == 1:
-            py_version = py_version[0]
-
-        if not is_list(py_version):
-            versions = {py_version: name}
-        else:
-            versions = {}
-            platform = platform_utils.get_platform_for_base_path(base_path)
-            for py_ver in py_version:
-                python_version = python_versioning.get_default_version(platform, py_ver)
-                new_name = name + '-' + python_version.version_string
-                versions[py_ver] = new_name
-
-        # There are some sub-libraries that get generated based on the
-        # name of the original library, not the binary. Make sure they're only
-        # generated once.
-        is_first_binary = True
-        all_binary_attributes = []
-        for py_ver, py_name in sorted(versions.items()):
-            # Turn off check types for py2 targets when py3 is in versions
-            # so we can have the py3 parts type check without a separate target
-            if (
-                check_types
-                and python_versioning.constraint_matches_major(py_ver, version=2)
-                and any([
-                    python_versioning.constraint_matches_major(v, version=3)
-                    for v in versions
-                ])
-            ):
-                _check_types = False
-                print(
-                    base_path + ':' + py_name,
-                    'will not be typechecked because it is the python 2 part',
-                )
-            else:
-                _check_types = check_types
-
-            binary_attributes = python_common.single_binary_or_unittest(
-                base_path,
-                py_name,
-                implicit_library_target=":" + library_attributes["name"],
-                implicit_library_attributes=library_attributes,
-                fbconfig_rule_type=fbconfig_rule_type,
-                buck_rule_type=buck_rule_type,
-                is_test=is_test,
-                tests=tests,
-                py_version=py_ver,
-                py_flavor=py_flavor,
-                main_module=main_module,
-                strip_libpar=strip_libpar,
-                tags=tags,
-                par_style=par_style,
-                emails=emails,
-                needed_coverage=needed_coverage,
-                argcomplete=argcomplete,
-                strict_tabs=strict_tabs,
-                compile=compile,
-                args=args,
-                env=env,
-                python=python,
-                allocator=allocator,
-                check_types=_check_types,
-                preload_deps=preload_deps,
-                jemalloc_conf=jemalloc_conf,
-                typing_options=check_types_options,
-                helper_deps=helper_deps,
-                visibility=visibility,
-                analyze_imports=analyze_imports,
-                additional_coverage_targets=additional_coverage_targets,
-                generate_test_modules=is_first_binary,
-            )
-            all_binary_attributes.append(binary_attributes)
-
-            is_first_binary = False
 
         py_tests = []
         for binary_attributes in all_binary_attributes:
@@ -241,6 +176,7 @@ class PythonConverter(base.Converter):
                     (":" + binary_attributes['name'], binary_attributes.get('tests'))
                 )
 
+        # TODO: Move this to python_unittest
         # TODO: This should probably just be test_suite? This rule really doesn't
         #       make sense....
         # Create a genrule to wrap all the tests for easy running

@@ -18,7 +18,7 @@ load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:sanitizers.bzl", "sanitizers")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_list")
 
 _INTERPRETERS = [
     # name suffix, main module, dependencies
@@ -1664,9 +1664,165 @@ def _single_binary_or_unittest(
 
     return attributes
 
+def _convert_binary(
+        is_test,
+        fbconfig_rule_type,
+        buck_rule_type,
+        base_path,
+        name,
+        py_version,
+        py_flavor,
+        base_module,
+        main_module,
+        strip_libpar,
+        srcs,
+        versioned_srcs,
+        tags,
+        gen_srcs,
+        deps,
+        tests,
+        par_style,
+        emails,
+        external_deps,
+        needed_coverage,
+        argcomplete,
+        strict_tabs,
+        compile,
+        args,
+        env,
+        python,
+        allocator,
+        check_types,
+        preload_deps,
+        visibility,
+        resources,
+        jemalloc_conf,
+        typing,
+        typing_options,
+        check_types_options,
+        runtime_deps,
+        cpp_deps,
+        helper_deps,
+        analyze_imports,
+        additional_coverage_targets,
+        version_subdirs):
+    """
+    Generate binary rules and library rules for a python_binary or python_unittest
+
+    Returns:
+        A list of kwargs for all unittests/binaries that need to be created
+    """
+
+    library_attributes = python_common.convert_library(
+        is_test = is_test,
+        is_library = False,
+        base_path = base_path,
+        name = name,
+        base_module = base_module,
+        check_types = check_types,
+        cpp_deps = cpp_deps,
+        deps = deps,
+        external_deps = external_deps,
+        gen_srcs = gen_srcs,
+        py_flavor = py_flavor,
+        resources = resources,
+        runtime_deps = runtime_deps,
+        srcs = srcs,
+        tags = tags,
+        tests = tests,
+        typing = typing,
+        typing_options = typing_options,
+        version_subdirs = version_subdirs,
+        versioned_srcs = versioned_srcs,
+        visibility = visibility,
+    )
+
+    # People use -library of unittests
+    fb_native.python_library(**library_attributes)
+
+    # For binary rules, create a separate library containing the sources.
+    # This will be added as a dep for python binaries and merged in for
+    # python tests.
+    if is_list(py_version) and len(py_version) == 1:
+        py_version = py_version[0]
+
+    if not is_list(py_version):
+        versions = {py_version: name}
+    else:
+        versions = {}
+        platform = platform_utils.get_platform_for_base_path(base_path)
+        for py_ver in py_version:
+            python_version = python_versioning.get_default_version(platform, py_ver)
+            new_name = name + "-" + python_version.version_string
+            versions[py_ver] = new_name
+
+    # There are some sub-libraries that get generated based on the
+    # name of the original library, not the binary. Make sure they're only
+    # generated once.
+    is_first_binary = True
+    all_binary_attributes = []
+    for py_ver, py_name in sorted(versions.items()):
+        # Turn off check types for py2 targets when py3 is in versions
+        # so we can have the py3 parts type check without a separate target
+        if (
+            check_types and
+            python_versioning.constraint_matches_major(py_ver, version = 2) and
+            any([
+                python_versioning.constraint_matches_major(v, version = 3)
+                for v in versions
+            ])
+        ):
+            _check_types = False
+            print(
+                base_path + ":" + py_name,
+                "will not be typechecked because it is the python 2 part",
+            )
+        else:
+            _check_types = check_types
+
+        binary_attributes = _single_binary_or_unittest(
+            base_path,
+            py_name,
+            implicit_library_target = ":" + library_attributes["name"],
+            implicit_library_attributes = library_attributes,
+            fbconfig_rule_type = fbconfig_rule_type,
+            buck_rule_type = buck_rule_type,
+            is_test = is_test,
+            tests = tests,
+            py_version = py_ver,
+            py_flavor = py_flavor,
+            main_module = main_module,
+            strip_libpar = strip_libpar,
+            tags = tags,
+            par_style = par_style,
+            emails = emails,
+            needed_coverage = needed_coverage,
+            argcomplete = argcomplete,
+            strict_tabs = strict_tabs,
+            compile = compile,
+            args = args,
+            env = env,
+            python = python,
+            allocator = allocator,
+            check_types = _check_types,
+            preload_deps = preload_deps,
+            jemalloc_conf = jemalloc_conf,
+            typing_options = check_types_options,
+            helper_deps = helper_deps,
+            visibility = visibility,
+            analyze_imports = analyze_imports,
+            additional_coverage_targets = additional_coverage_targets,
+            generate_test_modules = is_first_binary,
+        )
+        is_first_binary = False
+        all_binary_attributes.append(binary_attributes)
+
+    return all_binary_attributes
+
 python_common = struct(
     analyze_import_binary = _analyze_import_binary,
     associated_targets_library = _associated_targets_library,
+    convert_binary = _convert_binary,
     convert_library = _convert_library,
     convert_needed_coverage_spec = _convert_needed_coverage_spec,
     file_to_python_module = _file_to_python_module,
