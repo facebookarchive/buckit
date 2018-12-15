@@ -256,7 +256,7 @@ def _file_to_python_module(src, base_module):
     Original in com.facebook.buck.python.PythonUtil.toModuleName.
     """
     src = paths.join(base_module, src)
-    src, ext = paths.split_extension(src)
+    src, _ext = paths.split_extension(src)
     return src.replace("/", ".")  # sic, not os.sep
 
 def _test_modules_library(
@@ -1712,7 +1712,7 @@ def _convert_binary(
         A list of kwargs for all unittests/binaries that need to be created
     """
 
-    library_attributes = python_common.convert_library(
+    library_attributes = _convert_library(
         is_test = is_test,
         is_library = False,
         base_path = base_path,
@@ -1819,28 +1819,6 @@ def _convert_binary(
     return all_binary_attributes
 
 python_common = struct(
-    analyze_import_binary = _analyze_import_binary,
-    associated_targets_library = _associated_targets_library,
     convert_binary = _convert_binary,
     convert_library = _convert_library,
-    convert_needed_coverage_spec = _convert_needed_coverage_spec,
-    file_to_python_module = _file_to_python_module,
-    get_ldflags = _get_ldflags,
-    get_package_style = _get_package_style,
-    get_build_info = _get_build_info,
-    get_interpreter_for_platform = _get_interpreter_for_platform,
-    get_par_build_args = _get_par_build_args,
-    get_version_universe = _get_version_universe,
-    implicit_python_library = _implicit_python_library,
-    interpreter_binaries = _interpreter_binaries,
-    jemalloc_malloc_conf_library = _jemalloc_malloc_conf_library,
-    manifest_library = _manifest_library,
-    monkeytype_binary = _monkeytype_binary,
-    parse_gen_srcs = _parse_gen_srcs,
-    parse_srcs = _parse_srcs,
-    preload_deps = _preload_deps,
-    single_binary_or_unittest = _single_binary_or_unittest,
-    should_generate_interp_rules = _should_generate_interp_rules,
-    test_modules_library = _test_modules_library,
-    typecheck_test = _typecheck_test,
 )
