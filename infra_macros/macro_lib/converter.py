@@ -138,7 +138,6 @@ except IOError:
     image_feature = None
     image_layer = None
     image_package = None
-python = import_macro_lib('convert/python')
 sphinx = import_macro_lib('convert/sphinx')
 thrift_library = import_macro_lib('convert/thrift_library')
 try:

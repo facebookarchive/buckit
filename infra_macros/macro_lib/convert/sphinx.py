@@ -146,7 +146,6 @@ def import_macro_lib(path):
 
 base = import_macro_lib("convert/base")
 Rule = import_macro_lib("rule").Rule
-python = import_macro_lib("convert/python")
 fbcode_target = import_macro_lib("fbcode_target")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
 SPHINX_SECTION = "sphinx"
