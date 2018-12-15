@@ -18,7 +18,6 @@ load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
-load("@fbcode_macros//build_defs:auto_pch_blacklist.bzl", "auto_pch_blacklist")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs:coverage.bzl", "coverage")
@@ -127,8 +126,6 @@ defaulted in a function's arg list, vs. actually passed in from the caller
 with such a value.
 """
 
-_ABSENT_PARAM = struct(_is_absent = True)
-
 _CXX_BUILD_INFO_TEMPLATE = """\
 #include <stdint.h>
 
@@ -175,78 +172,6 @@ def _default_headers_library():
         exported_headers = native.glob(_DEFAULT_HEADERS_GLOB_PATTERN),
     )
     return _DEFAULT_HEADERS_RULE_TARGET
-
-def _is_cpp_source(filename):
-    """ Whether the specified `filename` looks like a c++ source """
-    if not is_string(filename) and not is_unicode(filename):
-        return False
-    for ext in _CPP_SOURCE_EXTS:
-        if filename.endswith(ext):
-            return True
-    return False
-
-def _get_fbcode_default_pch(srcs, base_path, name):
-    """
-    Determine a default precompiled_header rule to use for a specific C++ rule.
-
-    Args:
-        srcs: A list of sources that are used by the original rule to ensure that
-              PCH is not used for non-C++ sources
-        base_path: The package that the C++ rule is in
-        name: The name of the C++ rule
-
-    Returns:
-        `None` if no default PCH configured / applicable to this rule, otherwise the
-        rule to use for precompiled_header
-        (see https://buckbuild.com/rule/cxx_library.html#precompiled_header)
-    """
-
-    # No sources to compile?  Then no point in precompiling.
-    if not srcs:
-        return None
-
-    # Don't mess with core tools + deps (mainly to keep rule keys stable).
-    if _exclude_from_auto_pch(base_path, name):
-        return None
-
-    # Don't allow this to be used for anything non-C++.
-    has_only_cpp_srcs = all([_is_cpp_source(s) for s in srcs])
-    if not has_only_cpp_srcs:
-        return None
-
-    # Return the default PCH setting from config (`None` if absent).
-    ret = native.read_config("fbcode", "default_pch", None)
-
-    # Literally the word 'None'?  This is to support disabling via command
-    # line or in a .buckconfig from e.g. a unit test (see lua_cpp_main.py).
-    if ret == "None":
-        ret = None
-    return ret
-
-def _exclude_from_auto_pch(base_path, name):
-    """
-    Some cxx_library rules should not get PCHs auto-added; for the most
-    part this is for core tools and their dependencies, so we don't
-    change their rule keys.
-    """
-    if core_tools.is_core_tool(base_path, name):
-        return True
-    path = base_path.split("//", 1)[-1]
-
-    if not path:
-        return True
-    path += "/"
-
-    slash_idx = len(path)
-    for _ in range(slash_idx):
-        if slash_idx == -1:
-            break
-        if sets.contains(auto_pch_blacklist, path[:slash_idx]):
-            return True
-        slash_idx = path.rfind("/", 0, slash_idx)
-
-    # No reason to disable auto-PCH, that we know of.
-    return False
 
 def _assert_linker_flags(flags):
     """
@@ -1121,7 +1046,7 @@ def _convert_cpp(
         arch_preprocessor_flags = {},
         preprocessor_flags = (),
         prefix_header = None,
-        precompiled_header = _ABSENT_PARAM,
+        precompiled_header = None,
         propagated_pp_flags = (),
         link_whole = None,
         global_symbols = [],
@@ -1273,7 +1198,7 @@ def _convert_cpp(
     # Don't build precompiled headers with modules.
     if cpp_rule_type == "cpp_precompiled_header":
         out_modules = False
-    if precompiled_header != _ABSENT_PARAM:
+    if precompiled_header != None:
         out_modules = False
 
     attributes = {
@@ -2017,21 +1942,7 @@ def _convert_cpp(
         if "deps" not in attributes:
             attributes["deps"] = []
 
-    # Should we use a default PCH for this C++ lib / binary?
-    # Only applies to certain rule types.
-    if cpp_rule_type in (
-        "cpp_library",
-        "cpp_binary",
-        "cpp_unittest",
-        "cxx_library",
-        "cxx_binary",
-        "cxx_test",
-    ):
-        # Was completely left out in the rule? (vs. None to disable autoPCH)
-        if precompiled_header == _ABSENT_PARAM:
-            precompiled_header = _get_fbcode_default_pch(out_srcs.srcs, base_path, name)
-
-    if precompiled_header != _ABSENT_PARAM and precompiled_header:
+    if precompiled_header != None:
         attributes["precompiled_header"] = precompiled_header
 
     if is_binary and versions != None:
@@ -2142,7 +2053,6 @@ def _cxx_build_info_rule(
     return target_utils.RootRuleTarget(base_path, lib_name)
 
 cpp_common = struct(
-    ABSENT_PARAM = _ABSENT_PARAM,
     SOURCE_EXTS = _SOURCE_EXTS,
     SourceWithFlags = _SourceWithFlags,
     assert_linker_flags = _assert_linker_flags,
@@ -2152,13 +2062,11 @@ cpp_common = struct(
     create_sanitizer_configuration = _create_sanitizer_configuration,
     cxx_build_info_rule = _cxx_build_info_rule,
     default_headers_library = _default_headers_library,
-    exclude_from_auto_pch = _exclude_from_auto_pch,
     format_source_with_flags = _format_source_with_flags,
     format_source_with_flags_list = _format_source_with_flags_list,
     get_binary_ldflags = _get_binary_ldflags,
     get_binary_link_deps = _get_binary_link_deps,
     get_build_info_linker_flags = _get_build_info_linker_flags,
-    get_fbcode_default_pch = _get_fbcode_default_pch,
     get_headers_from_sources = _get_headers_from_sources,
     get_implicit_deps = _get_implicit_deps,
     get_ldflags = _get_ldflags,
@@ -2168,7 +2076,6 @@ cpp_common = struct(
     get_sanitizer_non_binary_deps = _get_sanitizer_non_binary_deps,
     get_strip_ldflag = _get_strip_ldflag,
     get_strip_mode = _get_strip_mode,
-    is_cpp_source = _is_cpp_source,
     normalize_dlopen_enabled = _normalize_dlopen_enabled,
     split_matching_extensions_and_other = _split_matching_extensions_and_other,
 )

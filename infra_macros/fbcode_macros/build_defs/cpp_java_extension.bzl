@@ -23,7 +23,7 @@ def cpp_java_extension(
         modules = None,
         nodefaultlibs = False,
         nvcc_flags = (),
-        precompiled_header = cpp_common.ABSENT_PARAM,
+        precompiled_header = None,
         preprocessor_flags = (),
         py3_sensitive_deps = (),
         shared_system_deps = None,
