@@ -123,6 +123,7 @@ class PythonConverter(base.Converter):
         is_binary = self.get_fbconfig_rule_type() == 'python_binary'
         fbconfig_rule_type = self.get_fbconfig_rule_type()
         buck_rule_type = self.get_buck_rule_type()
+        binary_constructor = fb_native.python_binary if is_binary else fb_native.python_test
 
         library_attributes = python_common.convert_library(
             is_test=is_test,
@@ -169,11 +170,12 @@ class PythonConverter(base.Converter):
                 python_version = python_versioning.get_default_version(platform, py_ver)
                 new_name = name + '-' + python_version.version_string
                 versions[py_ver] = new_name
-        py_tests = []
+
         # There are some sub-libraries that get generated based on the
         # name of the original library, not the binary. Make sure they're only
         # generated once.
         is_first_binary = True
+        all_binary_attributes = []
         for py_ver, py_name in sorted(versions.items()):
             # Turn off check types for py2 targets when py3 is in versions
             # so we can have the py3 parts type check without a separate target
@@ -227,9 +229,13 @@ class PythonConverter(base.Converter):
                 additional_coverage_targets=additional_coverage_targets,
                 generate_test_modules=is_first_binary,
             )
-            yield Rule(buck_rule_type, binary_attributes)
+            all_binary_attributes.append(binary_attributes)
 
             is_first_binary = False
+
+        py_tests = []
+        for binary_attributes in all_binary_attributes:
+            binary_constructor(**binary_attributes)
             if is_test:
                 py_tests.append(
                     (":" + binary_attributes['name'], binary_attributes.get('tests'))
@@ -259,3 +265,4 @@ class PythonConverter(base.Converter):
                 tests = gen_tests,
                 cmd = cmd,
             )
+        return []
