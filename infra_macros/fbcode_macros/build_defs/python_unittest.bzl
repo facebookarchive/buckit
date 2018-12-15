@@ -110,7 +110,7 @@ def python_unittest(
         cmd = " && ".join([
             "echo $(location {})".format(test_target)
             for test_target in gen_tests
-        ])
+        ] + ["touch $OUT"])
 
         fb_native.genrule(
             name = name,
