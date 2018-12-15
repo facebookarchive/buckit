@@ -42,7 +42,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-Rule = import_macro_lib('rule').Rule
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
@@ -169,6 +168,7 @@ class Converter(base.Converter):
         flags,
         dst_src,  # src with final pkg path attached
         out_src,
+        visibility,
     ):
         """
         This creates a genrule to run the cython transpiler. It returns
@@ -176,10 +176,8 @@ class Converter(base.Converter):
         """
 
         cython_compiler = config.get_cython_compiler()
-        attrs = collections.OrderedDict()
-        attrs['name'] = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
-        attrs['out'] = os.curdir
-        attrs['labels'] = ["generated"]
+        attrs = {}
+        src_name = os.path.join(parent + self.CONVERT_SUFFIX, module_path)
 
         cmds = []
         package_path = os.path.dirname(dst_src)
@@ -220,10 +218,16 @@ class Converter(base.Converter):
             .format(module=os.path.splitext(out_src)[0])
         )
 
-        attrs['cmd'] = ' && '.join(cmds)
+        fb_native.genrule(
+            name=src_name,
+            out=os.curdir,
+            cmd=' && '.join(cmds),
+            labels=["generated"],
+            visibility=visibility,
+            **attrs
+        )
 
-        # Return the name and genrule
-        return ':' + attrs['name'], Rule('genrule', attrs)
+        return ':' + src_name
 
     def prefix_target_copy_rule(
         self, prefix, target, in_src, out_src, visibility,
@@ -483,11 +487,10 @@ class Converter(base.Converter):
                     package, pyx_dst)
                 out_src = module_name + out_ext
                 # generate rule to convert source file.
-                cython_name, cython_rule = self.convert_src(
+                cython_name = self.convert_src(
                     base_path, name, module_path, pyx_src, flags, pyx_dst,
-                    out_src
+                    out_src, _get_visibility(),
                 )
-                yield set_visibility(cython_rule)
                 # Generate the copy_rule
                 src_target = self.prefix_target_copy_rule(
                     name, cython_name, out_src, module_path + out_ext, _get_visibility(),
@@ -517,15 +520,14 @@ class Converter(base.Converter):
 
             subrule_visibility = _get_visibility()
             for pyx_src, pyx_dst in items[1:]:
-                for rule in _create_sos(
-                        pyx_src,
-                        pyx_dst,
-                        main_name=None,
-                        visibility=subrule_visibility,
-                        extra_deps=(),
-                        update_extensions=True,
-                        tests=None):
-                    yield rule
+                _create_sos(
+                    pyx_src,
+                    pyx_dst,
+                    main_name=None,
+                    visibility=subrule_visibility,
+                    extra_deps=(),
+                    update_extensions=True,
+                    tests=None)
 
             typing_target = None
             if types:
@@ -541,15 +543,14 @@ class Converter(base.Converter):
             # The first pyx will be the named target and it will depend on all
             # the other generated extensions
             # Don't forget to depend on the .so from our cython deps
-            for rule in _create_sos(
-                    pyx_src,
-                    pyx_dst,
-                    main_name=name,
-                    visibility=visibility,
-                    extra_deps=first_pyx_deps,
-                    update_extensions=False,
-                    tests=tests):
-                yield rule
+            _create_sos(
+                pyx_src,
+                pyx_dst,
+                main_name=name,
+                visibility=visibility,
+                extra_deps=first_pyx_deps,
+                update_extensions=False,
+                tests=tests)
         else:
             # gen an empty cpp_library instead, so we don't get an empty .so
             # this allows use to use cython_library as a way to gather up
@@ -620,7 +621,6 @@ class Converter(base.Converter):
         """
         Entry point for converting cython_library rules
         """
-        # in python3 this method becomes just.
-        # yield from self.convert_rule(base_path, name, **kwargs)
-        for rule in self.convert_rule(base_path, name, **kwargs):
-            yield rule
+        self.convert_rule(base_path, name, **kwargs)
+
+        return []
