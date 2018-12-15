@@ -141,10 +141,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib("convert/base")
-Rule = import_macro_lib("rule").Rule
-fbcode_target = import_macro_lib("fbcode_target")
-load("@fbcode_macros//build_defs/lib:python_typing.bzl", "get_typing_config_target")
-SPHINX_SECTION = "sphinx"
 
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
