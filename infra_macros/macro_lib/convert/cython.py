@@ -23,7 +23,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import itertools
 
 
@@ -67,10 +66,10 @@ def split_matching_extensions(srcs, exts):
         return ({}, srcs)
 
     if not isinstance(srcs, dict):
-        srcs = collections.OrderedDict(((src, src) for src in srcs))
+        srcs = {src: src for src in srcs}
 
-    matched = collections.OrderedDict()
-    other = collections.OrderedDict()
+    matched = {}
+    other = {}
 
     for src, dst in srcs.items():
         if dst.endswith(exts):
@@ -361,8 +360,7 @@ class Converter(base.Converter):
         # cython_library will follow python_library in this so we need to
         # convert one direction to the other
         if isinstance(headers, dict):
-            headers = collections.OrderedDict(((v, k)
-                                               for k, v in headers.items()))
+            headers = {v: k for k, v in headers.items()}
 
         if api_headers:
             # Add all the api_headers to our headers
