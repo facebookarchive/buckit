@@ -300,7 +300,7 @@ def _assert_preprocessor_flags(param, flags):
                 .format(" ".join(bad_flags), param),
         )
 
-def _format_source_with_flags(src_with_flags, platform = None):
+def _format_source_with_flags(src_with_flags, virtual_cells = None):
     """
     Format a `SourceWithFlags` object into a label useable by buck native rules
 
@@ -314,13 +314,12 @@ def _format_source_with_flags(src_with_flags, platform = None):
         buck label if no flags were provided for this source
     """
 
-    fbcode_platform = None if platform == None else platform.alias
-    src = src_and_dep_helpers.format_source(src_with_flags.src, fbcode_platform = fbcode_platform)
+    src = src_and_dep_helpers.format_source(src_with_flags.src, virtual_cells = virtual_cells)
     return (src, src_with_flags.flags) if src_with_flags.flags else src
 
 def _format_source_with_flags_list_partial(tp2_dep_srcs, platform):
     return [
-        _format_source_with_flags(src, platform = platform)
+        _format_source_with_flags(src, virtual_cells = platform.virtual_cells)
         for src in tp2_dep_srcs
     ]
 

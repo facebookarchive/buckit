@@ -1,6 +1,5 @@
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs/facebook:python_wheel_overrides.bzl", "python_wheel_overrides")
 load("@fbcode_macros//build_defs/lib:cxx_platforms.bzl", "cxx_platforms")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
@@ -207,12 +206,12 @@ def _format_platform_param(value):
             out.append(("^{}$".format(platform.name), result))
     return out
 
-def _format_deps(deps, fbcode_platform = None):
+def _format_deps(deps, fbcode_platform = None, virtual_cells = None):
     """
     Takes a list of RuleTarget structs, and returns a new list of buck labels for the given platform
     """
 
-    return [target_utils.target_to_label(d, fbcode_platform = fbcode_platform) for d in deps]
+    return [target_utils.target_to_label(d, fbcode_platform = fbcode_platform, virtual_cells = virtual_cells) for d in deps]
 
 def __convert_auxiliary_deps(fbcode_platform, deps):
     """
@@ -262,15 +261,7 @@ def __format_platform_deps_gen(deps, deprecated_auxiliary_deps, platform):
     if deprecated_auxiliary_deps:
         pdeps = __convert_auxiliary_deps(platform.alias, pdeps)
 
-    # Process PyFI overrides
-    if python_wheel_overrides.should_use_overrides():
-        if platform.alias in python_wheel_overrides.PYFI_SUPPORTED_PLATFORMS:
-            pdeps = [
-                python_wheel_overrides.PYFI_OVERRIDES.get(d.base_path, d)
-                for d in pdeps
-            ]
-
-    return _format_deps(pdeps, fbcode_platform = platform.alias)
+    return _format_deps(pdeps, virtual_cells = platform.virtual_cells)
 
 def _format_platform_deps(deps, deprecated_auxiliary_deps = False):
     """
@@ -355,7 +346,7 @@ def _normalize_external_dep(raw_target, lang_suffix = "", parse_version = False)
 
     return parsed if not parse_version else (parsed, version)
 
-def _format_source(src, fbcode_platform = None):  # type: (Union[str, RuleTarget], str) -> str
+def _format_source(src, virtual_cells = None):  # type: (Union[str, RuleTarget], str) -> str
     """
     Converts a 'source' to a string that can be used by buck native rules
 
@@ -368,15 +359,15 @@ def _format_source(src, fbcode_platform = None):  # type: (Union[str, RuleTarget
     """
 
     if target_utils.is_rule_target(src):
-        if src.repo != None and fbcode_platform == None:
+        if src.repo != None and virtual_cells == None:
             fail("Invalid RuleTarget ({}) and platform ({}) provided".format(src, platform))
-        return target_utils.target_to_label(src, fbcode_platform = fbcode_platform)
+        return target_utils.target_to_label(src, virtual_cells = virtual_cells)
 
     return src
 
 def _format_source_map_partial(tp2_srcs, platform):
     return {
-        name: _format_source(src, fbcode_platform = platform.alias)
+        name: _format_source(src, virtual_cells = platform.virtual_cells)
         for name, src in tp2_srcs.items()
     }
 

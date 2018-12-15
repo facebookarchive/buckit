@@ -22,7 +22,7 @@ class CppLibraryExternalCustomTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_cpp_library_external_custom_parses(self, root):
         root.addFile(
-            "third-party-buck/bar/baz/BUCK",
+            "third-party-buck/gcc7/baz/BUCK",
             dedent(
                 """
             load("@fbcode_macros//build_defs:cpp_library_external_custom.bzl", "cpp_library_external_custom")
@@ -68,4 +68,4 @@ class CppLibraryExternalCustomTest(tests.utils.TestCase):
             ),
         )
 
-        self.assertSuccess(root.runAudit(["third-party-buck/bar/baz/BUCK"]))
+        self.assertSuccess(root.runAudit(["third-party-buck/gcc7/baz/BUCK"]))

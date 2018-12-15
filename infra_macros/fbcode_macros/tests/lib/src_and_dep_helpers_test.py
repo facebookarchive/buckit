@@ -366,13 +366,13 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_convert_external_build_target(self, root):
         commands = [
-            'src_and_dep_helpers.convert_external_build_target(("foo"), "plat")',
-            'src_and_dep_helpers.convert_external_build_target(("foo"), "plat", "-py")',
+            'src_and_dep_helpers.convert_external_build_target(("foo"), "gcc5")',
+            'src_and_dep_helpers.convert_external_build_target(("foo"), "gcc5", "-py")',
         ]
 
         expected = [
-            "//third-party-buck/plat/build/foo:foo",
-            "//third-party-buck/plat/build/foo:foo-py",
+            "//third-party-buck/gcc5/build/foo:foo",
+            "//third-party-buck/gcc5/build/foo:foo-py",
         ]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
@@ -382,19 +382,25 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         commands = [
             'src_and_dep_helpers.convert_build_target("foo", ":bar")',
             'src_and_dep_helpers.convert_build_target("foo", "//bar:baz")',
-            'src_and_dep_helpers.convert_build_target("foo", "@/third-party:bar:baz", "plat")',
+            'src_and_dep_helpers.convert_build_target("foo", "@/third-party:bar:baz", "gcc5")',
         ]
 
-        expected = ["//foo:bar", "//bar:baz", "//third-party-buck/plat/build/bar:baz"]
+        expected = ["//foo:bar", "//bar:baz", "//third-party-buck/gcc5/build/bar:baz"]
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_format_source(self, root):
+        includes = self.includes + [
+            (
+                "@fbcode_macros//build_defs/lib:fbcode_cxx_platforms.bzl",
+                "fbcode_cxx_platforms",
+            )
+        ]
         commands = [
             'src_and_dep_helpers.format_source("foo/bar.cpp")',
             'src_and_dep_helpers.format_source(target_utils.RootRuleTarget("foo", "bar"))',
-            'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), fbcode_platform="gcc5")',
+            'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), virtual_cells = fbcode_cxx_platforms.TP2_VIRTUAL_CELLS["gcc5"])',
             (
                 "src_and_dep_helpers.format_source_map({\n"
                 '    "foo/foo.c": "foo/bar/foo.c",\n'
@@ -446,7 +452,7 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
                 ],
             ),
         ]
-        self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
+        self.assertSuccess(root.runUnitTests(includes, commands), *expected)
 
     @tests.utils.with_project()
     def test_without_platforms(self, root):

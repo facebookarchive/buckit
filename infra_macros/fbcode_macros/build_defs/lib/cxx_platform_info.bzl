@@ -18,4 +18,9 @@ CxxPlatformInfo = provider(fields = [
     "target_arch",
     # The OS this platform builds for.
     "target_os",
+    # A map of virtual cells to functions used to translate them to real
+    # targets (e.g. how to translate `third-party//boost:boost` to
+    # `fbcode//third-party-buck/platform007/build/boost:boost` for the
+    # "platform007" fbcode toolchain).
+    "virtual_cells",
 ])

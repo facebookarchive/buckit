@@ -55,6 +55,7 @@ BUILD_DEFS = [
     "fbcode_macros//build_defs/lib:string_macros.bzl",
     "fbcode_macros//build_defs/lib:target_utils.bzl",
     "fbcode_macros//build_defs/lib:third_party.bzl",
+    "fbcode_macros//build_defs/lib:virtual_cells.bzl",
     "fbcode_macros//build_defs/lib:visibility.bzl",
     "fbcode_macros//build_defs:allocator_targets.bzl",
     "fbcode_macros//build_defs:antlr3_srcs.bzl",

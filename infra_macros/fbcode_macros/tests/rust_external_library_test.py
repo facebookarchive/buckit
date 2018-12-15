@@ -14,7 +14,7 @@ from tests.utils import dedent
 class RustExternalLibraryTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_rust_external_library_parses(self, root):
-        buckfile = "third-party-buck/platform/build/foo/BUCK"
+        buckfile = "third-party-buck/default/build/foo/BUCK"
         root.addFile(
             buckfile,
             dedent(
@@ -49,8 +49,8 @@ class RustExternalLibraryTest(tests.utils.TestCase):
                   ],
                   rlib = "rlib/liblibsqlite3_sys-104f194a162d4a87.rlib",
                   deps = [
-                    "//third-party-buck/platform/build/foo:pkg-config-0.3.14",
-                    "//third-party-buck/platform/build/sqlite:sqlite",
+                    "//third-party-buck/default/build/foo:pkg-config-0.3.14",
+                    "//third-party-buck/default/build/sqlite:sqlite",
                   ],
                   visibility = [
                     "PUBLIC",

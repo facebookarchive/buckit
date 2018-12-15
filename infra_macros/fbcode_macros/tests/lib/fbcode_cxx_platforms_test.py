@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
+import textwrap
 
 import tests.utils
 
@@ -18,7 +19,9 @@ class PlatformTest(tests.utils.TestCase):
         (
             "@fbcode_macros//build_defs/lib:fbcode_cxx_platforms.bzl",
             "fbcode_cxx_platforms",
-        )
+        ),
+        ("@fbcode_macros//build_defs/lib:virtual_cells.bzl", "virtual_cells"),
+        ("@fbcode_macros//build_defs/lib:rule_target_types.bzl", "rule_target_types"),
     ]
 
     @tests.utils.with_project()
@@ -27,7 +30,11 @@ class PlatformTest(tests.utils.TestCase):
         self.assertSuccess(
             root.runUnitTests(
                 self.includes,
-                ["fbcode_cxx_platforms.build_platforms({})".format(json.dumps(config))],
+                [
+                    "fbcode_cxx_platforms.build_platforms({}, virtual_cells = False)".format(
+                        json.dumps(config)
+                    )
+                ],
             ),
             [
                 self.struct(
@@ -38,6 +45,7 @@ class PlatformTest(tests.utils.TestCase):
                     name="foo-clang",
                     target_arch="blah",
                     target_os="linux",
+                    virtual_cells=None,
                 ),
                 self.struct(
                     alias="foo",
@@ -47,6 +55,39 @@ class PlatformTest(tests.utils.TestCase):
                     name="foo-gcc",
                     target_arch="blah",
                     target_os="linux",
+                    virtual_cells=None,
                 ),
             ],
+        )
+
+    @tests.utils.with_project()
+    def test_build_virtual_cells(self, root):
+        self.assertSuccess(
+            root.runUnitTests(
+                self.includes,
+                [
+                    textwrap.dedent(
+                        """\
+                        virtual_cells.translate_target(
+                            fbcode_cxx_platforms.build_tp2_virtual_cells("plat"),
+                            rule_target_types.ThirdPartyRuleTarget("foo", "bar"),
+                        )
+                        """
+                    ),
+                    textwrap.dedent(
+                        """\
+                        virtual_cells.translate_target(
+                            fbcode_cxx_platforms.build_tp2_virtual_cells("plat"),
+                            rule_target_types.ThirdPartyToolRuleTarget("foo", "bar"),
+                        )
+                        """
+                    ),
+                ],
+            ),
+            self.struct(
+                base_path="third-party-buck/plat/build/foo", name="bar", repo="fbcode"
+            ),
+            self.struct(
+                base_path="third-party-buck/plat/tools/foo", name="bar", repo="fbcode"
+            ),
         )

@@ -102,7 +102,7 @@ class PythonVersioningTest(tests.utils.TestCase):
             self.includes,
             [
                 "target_utils.target_to_label("
-                "third_party.get_tp2_project_target('python'), 'gcc5')"
+                "third_party.get_tp2_project_target('python'), fbcode_platform = 'gcc5')"
             ],
         )
         self.assertSuccess(result)

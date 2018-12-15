@@ -24,6 +24,7 @@ TESTS = [
     "string_macros_test",
     "target_utils_test",
     "third_party_test",
+    "virtual_cells_test",
     "visibility_test",
 ]
 

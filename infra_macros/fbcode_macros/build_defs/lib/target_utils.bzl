@@ -1,6 +1,6 @@
-load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib:fbcode_cxx_platforms.bzl", "fbcode_cxx_platforms")
 load("@fbcode_macros//build_defs/lib:rule_target_types.bzl", "rule_target_types")
-load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
+load("@fbcode_macros//build_defs/lib:virtual_cells.bzl", virtual_cell_utils = "virtual_cells")
 load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:translate_to_fbsource_paths.bzl", "MISSING_CELL")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_unicode")
@@ -130,22 +130,6 @@ def _parse_external_dep(raw_target, lang_suffix = ""):
 
     return (rule_target_types.RuleTarget(repo, project, rule), version)
 
-def _get_repo_and_repo_root(repo, platform):
-    """
-    Gets any additional paths that should be prepended to the package based on repo.
-
-    This is primarily used to add third-party and third-party-tools paths
-    """
-    if repo == None:
-        return (repo, "")
-    elif repo == rule_target_types.THIRD_PARTY_REPO:
-        return (None, third_party.get_build_path(platform))
-    elif repo == rule_target_types.THIRD_PARTY_TOOLS_REPO:
-        return (None, third_party.get_tools_path(platform))
-    else:
-        # If another cell is directly referenced, just keep its normal path
-        return (repo, "")
-
 def _to_label(repo, path, name):
     """
     Returns the target string to pass to buck
@@ -169,21 +153,26 @@ def _to_label(repo, path, name):
 
     return "{}//{}:{}".format(repo, path, name)
 
-def _target_to_label(target, fbcode_platform = None):
+def _target_to_label(target, virtual_cells = None, fbcode_platform = None):
     """
     Converts a target struct  to a string to pass to buck
 
     Args:
         target: A struct returned from root_rule_target() or third_party_rule_target()
-        platform: If provided, the fbcode platform to use
+        virtual_cells: If provided, virtual cells used to translate the target
 
     Returns:
         A fully qualified target string
     """
     if target.base_path == None:
         fail("{} must not have a 'None' base_path".format(target))
-    repo, repo_root = _get_repo_and_repo_root(target.repo, fbcode_platform)
-    return _to_label(repo, paths.join(repo_root, target.base_path), target.name)
+    if virtual_cells != None:
+        target = virtual_cell_utils.translate_target(virtual_cells, target)
+
+    # Support deprecated use of an fbcode platform name for now.
+    if fbcode_platform != None:
+        target = virtual_cell_utils.translate_target(fbcode_cxx_platforms.TP2_VIRTUAL_CELLS[fbcode_platform], target)
+    return _to_label(target.repo, target.base_path, target.name)
 
 target_utils = struct(
     RootRuleTarget = rule_target_types.RootRuleTarget,
