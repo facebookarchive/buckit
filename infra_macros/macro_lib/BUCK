@@ -2,7 +2,6 @@ python_library(
     name = "macro_lib",
     srcs = glob([
         "**/*.py",
-        "../../../../../fs_image/buck_macros/*.py",
     ]),
     # Buck macros must be runnable from source tree and so *cannot* have any
     # deps.
