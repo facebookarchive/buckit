@@ -23,8 +23,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import itertools
-
 
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
@@ -511,7 +509,7 @@ class Converter(base.Converter):
             name,
             package,
             pxd_headers,
-            itertools.chain(deps, external_deps),
+            deps + external_deps,
             _get_visibility(visibility, base_path),
         )
 
@@ -601,14 +599,10 @@ class Converter(base.Converter):
         # Generate a typing_config target to gather up all types for us and
         # our deps
         if get_typing_config_target():
+            tdeps = python_deps + deps
             if types:
-                tdeps = itertools.chain(
-                    python_deps,
-                    deps,
-                    [':{}{}'.format(name, self.TYPING_SUFFIX)]
-                )
-            else:
-                tdeps = itertools.chain(python_deps, deps)
+                tdeps = list(deps)
+                tdeps.append(':{}{}'.format(name, self.TYPING_SUFFIX))
             gen_typing_config(name, deps=tdeps, visibility=visibility)
 
         # Generate the cython-lib target for allowing cython_libraries
@@ -617,7 +611,7 @@ class Converter(base.Converter):
         self.gen_shared_lib(
             name,
             api_headers,
-            itertools.chain(deps, external_deps),
+            deps + external_deps,
             cpp_compiler_flags,
             cpp_deps,
             srcs,
