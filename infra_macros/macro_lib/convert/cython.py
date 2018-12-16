@@ -49,6 +49,7 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
 
 def split_matching_extensions(srcs, exts):
     """
@@ -60,10 +61,10 @@ def split_matching_extensions(srcs, exts):
 
     # If you get a unicode then just return it as is.
     # Its a AutoHeaders
-    if not srcs or isinstance(srcs, unicode):
+    if not srcs or is_unicode(srcs):
         return ({}, srcs)
 
-    if not isinstance(srcs, dict):
+    if not is_dict(srcs):
         srcs = {src: src for src in srcs}
 
     matched = {}
@@ -336,7 +337,7 @@ class Converter(base.Converter):
         thrift_py3 uses this to move it into the gen-py3 directory.
         ex: {'path/module': 'gen-py3/path/module'}
         """
-        if isinstance(api, dict):
+        if is_dict(api):
             api_map = api
         else:
             api_map = {k: module_path for k in api}
@@ -357,12 +358,12 @@ class Converter(base.Converter):
         # python_library is src -> dst
         # cython_library will follow python_library in this so we need to
         # convert one direction to the other
-        if isinstance(headers, dict):
+        if is_dict(headers):
             headers = {v: k for k, v in headers.items()}
 
         if api_headers:
             # Add all the api_headers to our headers
-            if isinstance(headers, dict):
+            if is_dict(headers):
                 headers.update({src_and_dep_helpers.get_source_name(h): h for h in api_headers})
             else:  # Its a list, if it was a unicode we would have rasied already
                 headers.extend(api_headers)
@@ -485,10 +486,10 @@ class Converter(base.Converter):
             raise AttributeError('"python_deps" and "python_external_deps" '
                                  'cannot be used with empty "srcs"')
 
-        if isinstance(headers, bytes):
+        if is_string(headers):
             raise ValueError('"headers" must be a collection or AutoHeaders')
 
-        if isinstance(headers, unicode) and api:
+        if is_unicode(headers) and api:
             raise ValueError('"api" and AutoHeaders can not be used together')
 
         pyx_srcs, srcs = split_matching_extensions(srcs, self.SOURCE_EXTS)
