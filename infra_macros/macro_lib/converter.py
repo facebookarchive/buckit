@@ -123,10 +123,6 @@ load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 base = import_macro_lib('convert/base')
 try:
     load(  # noqa: F821
-        '//fs_image/buck_macros:image_feature.bzl',
-        'image_feature',
-    )
-    load(  # noqa: F821
         '//fs_image/buck_macros:image_layer.bzl',
         'image_layer',
     )
@@ -137,7 +133,6 @@ try:
 except IOError:
     # Some sparse checkouts don't need `image_*` macros, and fbcode/fs_image
     # is not currently part of the sparse base (while `infra_macros` are).
-    image_feature = None
     image_layer = None
     image_package = None
 thrift_library = import_macro_lib('convert/thrift_library')
@@ -251,8 +246,6 @@ def convert(base_path, rule):
         'python_unittest': python_unittest,  # noqa F821
     }
 
-    if image_feature:
-        new_converter_map['image_feature'] = image_feature
     if image_layer:
         new_converter_map['image_layer'] = image_layer
     if image_package:

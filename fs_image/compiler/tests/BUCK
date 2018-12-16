@@ -4,6 +4,11 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
+load(
+    "//fs_image/buck_macros:image_feature.bzl",
+    "image_feature",
+)
+
 buck_genrule(
     name = "hello_world.tar",
     out = "hello_world.tar",
