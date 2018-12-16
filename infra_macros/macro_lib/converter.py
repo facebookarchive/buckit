@@ -71,6 +71,7 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_library_external_custom.bzl", "cpp_library_external_custom")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
 load("@fbcode_macros//build_defs:d_library.bzl", "d_library")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
@@ -120,7 +121,6 @@ load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
 base = import_macro_lib('convert/base')
-cython = import_macro_lib('convert/cython')
 try:
     load(  # noqa: F821
         '//fs_image/buck_macros:image_feature.bzl',
@@ -156,7 +156,6 @@ def convert(base_path, rule):
     """
 
     converters = [
-        cython.Converter(),
         thrift_library.ThriftLibraryConverter(),
     ]
 
@@ -183,6 +182,7 @@ def convert(base_path, rule):
         'buck_sh_test': buck_sh_test,  # noqa F821
         'buck_zip_file': buck_zip_file,  # noqa F821
         'cgo_library': cgo_library,  # noqa F821
+        'cython_library': cython_library,  # noqa F821
         'dewey_artifact': dewey_artifact,
         'cpp_binary_external': discard,  # noqa F821
         'haskell_genscript': discard,  # noqa F821
