@@ -16,15 +16,12 @@ import collections
 import contextlib
 import json
 import os
-import platform
 import shutil
 import sys
 import tempfile
 import unittest
 
 from tools.build.buck.parser import Parser
-
-from ..macro_lib import BuildMode
 
 
 ConverterState = (
@@ -114,8 +111,6 @@ class ConverterTestCase(unittest.TestCase):
             yield
 
         config = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/config.bzl')
-        create_build_mode = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/create_build_mode.bzl')
-        base = parser.load_include('tools/build/buck/infra_macros/macro_lib/convert/base.py')
 
         build_file_deps = []
         include_defs = []

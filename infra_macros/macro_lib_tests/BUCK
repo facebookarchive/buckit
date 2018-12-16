@@ -12,7 +12,6 @@ python_library(
 python_unittest(
     name = "tests",
     srcs = [
-        "base_tests.py",
         "fbcode_target_tests.py",
         "thrift_library_py3.py",
     ],
