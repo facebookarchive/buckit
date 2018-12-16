@@ -121,15 +121,6 @@ load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
 base = import_macro_lib('convert/base')
-try:
-    load(  # noqa: F821
-        '//fs_image/buck_macros:image_package.bzl',
-        'image_package',
-    )
-except IOError:
-    # Some sparse checkouts don't need `image_*` macros, and fbcode/fs_image
-    # is not currently part of the sparse base (while `infra_macros` are).
-    image_package = None
 thrift_library = import_macro_lib('convert/thrift_library')
 try:
     facebook = import_macro_lib('convert/facebook/__init__')
@@ -240,9 +231,6 @@ def convert(base_path, rule):
         'python_library': python_library,  # noqa F821
         'python_unittest': python_unittest,  # noqa F821
     }
-
-    if image_package:
-        new_converter_map['image_package'] = image_package
 
     for converter in converters:
         converter_map[converter.get_fbconfig_rule_type()] = converter

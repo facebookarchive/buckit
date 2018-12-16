@@ -12,6 +12,10 @@ load(
     "//fs_image/buck_macros:image_layer.bzl",
     "image_layer",
 )
+load(
+    "//fs_image/buck_macros:image_package.bzl",
+    "image_package",
+)
 
 buck_genrule(
     name = "hello_world.tar",
