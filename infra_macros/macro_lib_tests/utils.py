@@ -27,7 +27,7 @@ from tools.build.buck.parser import Parser
 ConverterState = (
     collections.namedtuple(
         'ConverterState',
-        ['parser', 'build_file_deps', 'include_defs']))
+        ['parser']))
 
 
 class ConverterTestCase(unittest.TestCase):
@@ -112,9 +112,4 @@ class ConverterTestCase(unittest.TestCase):
 
         config = parser.load_include('tools/build/buck/infra_macros/fbcode_macros/build_defs/config.bzl')
 
-        build_file_deps = []
-        include_defs = []
-        return ConverterState(
-            parser=parser,
-            build_file_deps=build_file_deps,
-            include_defs=include_defs)
+        return ConverterState(parser=parser)
