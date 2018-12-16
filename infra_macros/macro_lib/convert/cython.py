@@ -277,12 +277,14 @@ class Converter(base.Converter):
         for a cpp_python_extension.  So we parse them then turn them
         back into tuple form as expected by the convert method of cpp.py
         """
+        normalized = []
         for dep in external_deps:
             parsed, version = target_utils.parse_external_dep(dep, lang_suffix='-py')
             if parsed.repo is None:
-                yield (parsed.base_path, version, parsed.name)
+                normalized.append((parsed.base_path, version, parsed.name))
             else:
-                yield (parsed.repo, parsed.base_path, version, parsed.name)
+                normalized.append((parsed.repo, parsed.base_path, version, parsed.name))
+        return normalized
 
     def gen_extension_rule(
         self,
@@ -310,9 +312,7 @@ class Converter(base.Converter):
                 [':' + parent + self.LIB_SUFFIX] +
                 list(python_deps)
             ) + list(raw_deps),
-            external_deps=tuple(
-                self.py_normalize_externals(python_external_deps)
-            ),
+            external_deps=self.py_normalize_externals(python_external_deps),
             compiler_flags=['-w'] + list(cpp_compiler_flags),
             visibility=visibility,
             tests=tests,
