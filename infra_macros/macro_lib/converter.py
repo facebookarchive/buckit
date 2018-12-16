@@ -122,12 +122,6 @@ load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 base = import_macro_lib('convert/base')
 thrift_library = import_macro_lib('convert/thrift_library')
-try:
-    facebook = import_macro_lib('convert/facebook/__init__')
-    get_fbonly_converters = facebook.get_fbonly_converters
-except ImportError:
-    def get_fbonly_converters():
-        return []
 
 
 def convert(base_path, rule):
@@ -139,8 +133,6 @@ def convert(base_path, rule):
     converters = [
         thrift_library.ThriftLibraryConverter(),
     ]
-
-    converters += get_fbonly_converters()
 
     converter_map = {}
     new_converter_map = {
