@@ -10,16 +10,6 @@ python_library(
     external_deps = [],
 )
 
-# Export `BuildMode.py` for fbbuild.
-python_library(
-    name = "build_mode",
-    srcs = [
-        "BuildMode.py",
-    ],
-    # BUILD_MODE files and fbbuild expect this to have no base module.
-    base_module = "",
-)
-
 python_library(
     name = "cxx_sources",
     srcs = [
