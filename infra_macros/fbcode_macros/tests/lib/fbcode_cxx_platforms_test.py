@@ -69,7 +69,7 @@ class PlatformTest(tests.utils.TestCase):
                     textwrap.dedent(
                         """\
                         virtual_cells.translate_target(
-                            fbcode_cxx_platforms.build_tp2_virtual_cells("plat"),
+                            fbcode_cxx_platforms.build_tp2_virtual_cells("default"),
                             rule_target_types.ThirdPartyRuleTarget("foo", "bar"),
                         )
                         """
@@ -77,7 +77,7 @@ class PlatformTest(tests.utils.TestCase):
                     textwrap.dedent(
                         """\
                         virtual_cells.translate_target(
-                            fbcode_cxx_platforms.build_tp2_virtual_cells("plat"),
+                            fbcode_cxx_platforms.build_tp2_virtual_cells("default"),
                             rule_target_types.ThirdPartyToolRuleTarget("foo", "bar"),
                         )
                         """
@@ -85,9 +85,13 @@ class PlatformTest(tests.utils.TestCase):
                 ],
             ),
             self.struct(
-                base_path="third-party-buck/plat/build/foo", name="bar", repo="fbcode"
+                base_path="third-party-buck/default/build/foo",
+                name="bar",
+                repo="fbcode",
             ),
             self.struct(
-                base_path="third-party-buck/plat/tools/foo", name="bar", repo="fbcode"
+                base_path="third-party-buck/default/tools/foo",
+                name="bar",
+                repo="fbcode",
             ),
         )

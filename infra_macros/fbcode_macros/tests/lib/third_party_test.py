@@ -178,8 +178,19 @@ class ThirdPartyTest(tests.utils.TestCase):
         commands = ['third_party.get_third_party_config_for_platform("gcc5")']
         expected = {
             "architecture": platform.machine(),
-            "tools": {"projects": {"ghc": "8.0.2"}},
-            "build": {"projects": {"python": "2.7"}, "auxiliary_versions": {}},
+            "tools": {"projects": {"flex": "1.0", "bison": "1.0", "ghc": "8.0.2"}},
+            "build": {
+                "projects": {
+                    "bar": "1.0",
+                    "bzip2": "2.0",
+                    "foo": "1.0",
+                    "ghc": "8.0.2",
+                    "glibc": "2.26",
+                    "ImageMagick": "1.67",
+                    "python": "2.7",
+                },
+                "auxiliary_versions": {},
+            },
         }
 
         self.assertSuccess(root.runUnitTests(self.includes, commands), expected)

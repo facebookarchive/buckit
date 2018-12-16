@@ -7,7 +7,7 @@ load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 load("@fbcode_macros//build_defs:compiler.bzl", "compiler")
 load("@fbcode_macros//build_defs:third_party_config.bzl", "third_party_config")
 
-def _translate_target(fbcode_platform, base, base_path, name):
+def _translate_target(fbcode_platform, tp_type, base, base_path, name):
     """
     Translate a `third-party//` or `third-party-tools//` target to an fbcode
     target pointing to the fbcode-platform-specific third-party2 root.
@@ -19,6 +19,17 @@ def _translate_target(fbcode_platform, base, base_path, name):
             target = python_wheel_overrides.PYFI_OVERRIDES.get(base_path)
             if target != None:
                 return target
+
+    # Redirect unsupported projects to an error rule.
+    config = third_party_config["platforms"][fbcode_platform][tp_type]
+    if (base_path not in config["projects"] and
+        # Gross workaround to handle deprecated `auxiliary_versions`.
+        base_path.rsplit("-")[0] not in config.get("auxiliary_versions", {})):
+        return rule_target_types.RuleTarget(
+            "fbcode",
+            "third-party-buck/missing/{0}".format(base_path),
+            name,
+        )
 
     # Translate to the appropriate third-party-buck root.
     return rule_target_types.RuleTarget(
@@ -37,11 +48,13 @@ def _build_tp2_virtual_cells(fbcode_platform):
         "third-party": partial.make(
             _translate_target,
             fbcode_platform,
+            "build",
             third_party.get_build_path(fbcode_platform),
         ),
         "third-party-tools": partial.make(
             _translate_target,
             fbcode_platform,
+            "tools",
             third_party.get_tools_path(fbcode_platform),
         ),
     }

@@ -7,6 +7,8 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import re
+
 import tests.utils
 from tests.utils import dedent
 
@@ -23,7 +25,6 @@ class MissingTp2ProjectTest(tests.utils.TestCase):
             missing_tp2_project(
                 name="foo_some_long_project_name",
                 project="really_long_project",
-                platform="random_platform",
             )
             cxx_binary(
                 name = "main",
@@ -38,10 +39,12 @@ class MissingTp2ProjectTest(tests.utils.TestCase):
 
         self.assertFailureWithMessage(
             result,
-            (
-                "ERROR: foo_some_long_project_name: project "
-                + '"really_long_project" does\n       not exist for '
-                + 'platform "random_platform"'
+            re.compile(
+                "ERROR: foo_some_long_project_name: third-party project "
+                '"really_long_project" does not exist for platform "default"'.replace(
+                    " ", "\s+"
+                ),
+                re.M,
             ),
         )
         self.assertFalse(

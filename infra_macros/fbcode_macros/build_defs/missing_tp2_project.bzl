@@ -7,7 +7,7 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
 _CMD_TEMPLATE = """echo {} | fold -s -w 70 | sed 's, *$,,' | awk 'NR == 1 {{ print $0 }} NR > 1 {{ printf("       %s\\n", $0) }}' 1>&2; exit 1"""
 
-def missing_tp2_project(name, platform, project):
+def missing_tp2_project(name, project):
     """
     Rule to fail if a project is not available for a platform
 
@@ -21,10 +21,9 @@ def missing_tp2_project(name, platform, project):
                   (e.g. "openssl", or "gflags")
         platform: The name of the platform that the project is unavailable for
     """
-    msg = 'ERROR: {}: project "{}" does not exist for platform "{}"'.format(
+    msg = 'ERROR: {}: third-party project "{}" does not exist for platform "$(platform-name)"'.format(
         name,
         project,
-        platform,
     )
     error_rule = name + "-error"
     fb_native.cxx_genrule(

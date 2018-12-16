@@ -31,7 +31,7 @@ class RustExternalLibraryTest(tests.utils.TestCase):
                 ":pkg-config-0.3.14",
             ],
             external_deps = [
-                ("sqlite", None, "sqlite"),
+                ("foo", None, "bar"),
             ],
         )
         """
@@ -50,7 +50,7 @@ class RustExternalLibraryTest(tests.utils.TestCase):
                   rlib = "rlib/liblibsqlite3_sys-104f194a162d4a87.rlib",
                   deps = [
                     "//third-party-buck/default/build/foo:pkg-config-0.3.14",
-                    "//third-party-buck/default/build/sqlite:sqlite",
+                    "//third-party-buck/default/build/foo:bar",
                   ],
                   visibility = [
                     "PUBLIC",

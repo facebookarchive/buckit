@@ -693,11 +693,19 @@ class TestCase(unittest.TestCase):
                         "architecture": "{current_arch}",
                         "tools": {{
                             "projects": {{
+                                "flex": "1.0",
+                                "bison": "1.0",
                                 "ghc": "8.0.2",
                             }},
                         }},
                         "build": {{
                             "projects": {{
+                                "bar": "1.0",
+                                "bzip2": "2.0",
+                                "foo": "1.0",
+                                "ghc": "8.0.2",
+                                "glibc": "2.26",
+                                "ImageMagick": "1.67",
                                 "python": "2.7",
                             }},
                             "auxiliary_versions": {{}},
@@ -712,6 +720,10 @@ class TestCase(unittest.TestCase):
                         }},
                         "build": {{
                             "projects": {{
+                                "bar": "1.0",
+                                "foo": "1.0",
+                                "ghc": "8.0.2",
+                                "glibc": "2.26",
                                 "python": ["2.7", "3.7"],
                             }},
                             "auxiliary_versions": {{}},
@@ -726,6 +738,10 @@ class TestCase(unittest.TestCase):
                         }},
                         "build": {{
                             "projects": {{
+                                "bar": "1.0",
+                                "foo": "1.0",
+                                "ghc": "8.0.2",
+                                "glibc": "2.26",
                                 "python": ["2.7", "3.7"],
                             }},
                             "auxiliary_versions": {{}},
@@ -740,6 +756,10 @@ class TestCase(unittest.TestCase):
                         }},
                         "build": {{
                             "projects": {{
+                                "bar": "1.0",
+                                "foo": "1.0",
+                                "ghc": "8.0.2",
+                                "glibc": "2.26",
                                 "python": ["2.7", "3.7"],
                             }},
                             "auxiliary_versions": {{}},
@@ -749,11 +769,16 @@ class TestCase(unittest.TestCase):
                         "architecture": "{current_arch}",
                         "tools": {{
                             "projects": {{
+                                "foo": "1.0",
                                 "ghc": "8.0.2",
                             }},
                         }},
                         "build": {{
                             "projects": {{
+                                "bar": "1.0",
+                                "foo": "1.0",
+                                "ghc": "8.0.2",
+                                "glibc": "2.26",
                                 "python": ["2.7", "3.7"],
                             }},
                             "auxiliary_versions": {{}},
@@ -878,14 +903,15 @@ class TestCase(unittest.TestCase):
         """ Make sure that we failed with a substring in stderr """
         self.assertNotEqual(0, result.returncode)
         try:
-            self.assertIn(expected_message, result.stderr)
+            if hasattr(expected_message, "search"):
+                self.assertRegexpMatches(result.stderr, expected_message)
+            else:
+                self.assertIn(expected_message, result.stderr)
         except AssertionError as e:
             # If we get a parse error, it's a lot easier to read as multiple
             # lines, rather than a single line witn \n in it
             e.args = (e.args[0].replace(r"\n", "\n"),) + e.args[1:]
             raise e
-        for message in expected_message:
-            self.assertIn(message, result.stderr)
 
     def validateAudit(self, expected_results, result):
         """

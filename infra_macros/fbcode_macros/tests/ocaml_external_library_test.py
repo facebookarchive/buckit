@@ -14,7 +14,7 @@ from tests.utils import dedent
 class OcamlExternalLibraryTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_ocaml_external_library_parses(self, root):
-        buckfile = "third-party-buck/default/build/supercaml/BUCK"
+        buckfile = "third-party-buck/default/build/foo/BUCK"
         root.addFile(
             buckfile,
             dedent(
@@ -35,8 +35,8 @@ class OcamlExternalLibraryTest(tests.utils.TestCase):
                 "share/dotopam/default/lib/re2/re2.cmxa",
             ],
             external_deps = [
-                ("supercaml", None, "bin_prot"),
-                ("re2", None, "re2"),
+                ("bar", None, "baz"),
+                ("foo", None, "bar"),
             ],
             native = False,
         )
@@ -59,9 +59,9 @@ class OcamlExternalLibraryTest(tests.utils.TestCase):
                   lib_name = "re2",
                   native_lib = "share/dotopam/default/lib/re2/re2.cmxa",
                   deps = [
-                    "//third-party-buck/default/build/supercaml:bin_prot",
-                    "//third-party-buck/default/build/re2:re2",
-                    "//third-party-buck/default/build/supercaml:__project__",
+                    "//third-party-buck/default/build/bar:baz",
+                    "//third-party-buck/default/build/foo:bar",
+                    "//third-party-buck/default/build/foo:__project__",
                   ],
                   visibility = [
                     "PUBLIC",
