@@ -18,25 +18,9 @@ import functools
 
 with allow_unsafe_import():
     import os
-    import sys
-
-
-def find_cell_root(start_path):
-    # Keep going up until we find a .buckconfig file
-    path = os.path.split(start_path)[0]
-    path_terminal = os.path.splitdrive(path)[0] or '/'
-
-    add_build_file_dep('//.buckconfig')
-    while path != path_terminal:
-        if os.path.exists(os.path.join(path, '.buckconfig')):
-            return path
-        path = os.path.split(path)[0]
-    raise Exception(
-        "Could not find .buckconfig in a directory above {}".format(start_path))
 
 
 macros_py_dir = os.path.dirname(__file__)
-CELL_ROOT = find_cell_root(macros_py_dir)
 MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 
 # We're allowed to do absolute paths in add_build_file_dep and include_defs
@@ -59,74 +43,6 @@ include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 
 __all__ = []
-
-def get_oss_third_party_config():
-    interpreter = read_config('python#py3', 'interpreter', 'python3')
-    if interpreter.endswith('python3'):
-        with allow_unsafe_import():
-            import subprocess
-        print(
-            'No explicit interpreter was provided, so python3 version '
-            'detection is falling back to running the "python3" command. '
-            'Update python#py3.interpreter in your .buckconfig in order to '
-            'not have to run this command each time, and avoid potential '
-            'problems with buck overcaching', file=sys.stderr)
-        try:
-            py3_version = subprocess.check_output([interpreter, '--version'])
-            py3_version = py3_version.encode('utf-8').split()[1]
-        except subprocess.CalledProcessError:
-            print(
-                '{} --version failed. python3 version could '
-                'not be determined'.format(interpreter), file=sys.stderr)
-            raise
-    else:
-        py3_version = interpreter.rpartition('python')[-1]
-    py3_version = '.'.join(py3_version.split('.')[0:2])
-
-    default_platform = read_config('cxx', 'default_platform', 'default')
-    default_arch = read_config('buckit', 'architecture', 'x86_64')
-    gcc_version = read_config('buckit', 'gcc_version', '4.9')
-    return {
-        'platforms': {
-            default_platform: {
-                'architecture': default_arch,
-                'build': {
-                    'auxiliary_versions': {},
-                    'projects': {
-                        'python': [('2.7', '2.7'), (py3_version, py3_version)],
-                    },
-                },
-                'tools': {
-                    'projects': {
-                        'gcc': gcc_version,
-                    },
-                },
-            },
-        },
-        'version_universes': [
-            {
-                'python': '2.7',
-            },
-            {
-                'python': py3_version,
-            },
-        ],
-    }
-
-
-if config.get_third_party_config_path():
-    # Load the third-party config.
-    config_path = os.path.join(CELL_ROOT, config.get_third_party_config_path())
-    add_build_file_dep('//' + config.get_third_party_config_path())
-    with open(config_path) as f:
-        code = compile(f.read(), config_path, 'exec')
-    vals = {}
-    eval(code, vals)
-    third_party_config = vals['config']
-else:
-    # If we're not given a file with a third-party config (like on dev servers)
-    # don't try to load the third-party-config
-    third_party_config = get_oss_third_party_config()
 
 
 CXX_RULES = set([
