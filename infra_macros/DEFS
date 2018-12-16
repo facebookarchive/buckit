@@ -7,11 +7,6 @@
 
 # A simple definitions file that lets us bootstrap the
 # macros library.
-with allow_unsafe_import():
-  import os
 
-__path = '//{}'.format(
-  os.path.abspath(os.path.join(os.path.dirname(__file__), 'macros.py')))
-add_build_file_dep(__path)
-include_defs(__path)
+load(":macros.py", "install_converted_rules")
 install_converted_rules(globals())
