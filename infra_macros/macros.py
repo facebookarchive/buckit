@@ -17,10 +17,6 @@ from __future__ import print_function
 import functools
 
 with allow_unsafe_import():
-    import warnings
-    warnings.simplefilter("ignore", ImportWarning)
-    warnings.simplefilter("ignore", DeprecationWarning)
-    warnings.simplefilter("ignore", PendingDeprecationWarning)
     import os
     import sys
 
