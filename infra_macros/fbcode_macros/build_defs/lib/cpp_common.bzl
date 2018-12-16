@@ -1074,7 +1074,6 @@ def _convert_cpp(
         yacc_args = (),
         runtime_files = (),
         additional_coverage_targets = (),
-        py3_sensitive_deps = (),
         dlls = {},
         versions = None,
         visibility = None,
@@ -1693,8 +1692,6 @@ def _convert_cpp(
     #    and because it's just a little fragile
     current_os = config.get_current_os()
     for dep in deps:
-        dependencies.append(target_utils.parse_target(dep, default_base_path = base_path))
-    for dep in py3_sensitive_deps:
         dependencies.append(target_utils.parse_target(dep, default_base_path = base_path))
     for os, _deps in os_deps:
         if os == current_os:
