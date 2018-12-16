@@ -26,6 +26,11 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_unicode")
 
+def _is_dict(val):
+    # This is a temporary hack until all OrderedDict usages are removed from
+    # macro lib. is_dict should be used once all of them are removed.
+    return is_dict(val) or hasattr(val, "items")
+
 def _split_matching_extensions(srcs, exts):
     """
     Split the lists/dict srcs/headers on the extensions.
@@ -39,7 +44,7 @@ def _split_matching_extensions(srcs, exts):
     if not srcs or is_unicode(srcs):
         return ({}, srcs)
 
-    if not is_dict(srcs):
+    if not _is_dict(srcs):
         srcs = {src: src for src in srcs}
 
     matched = {}
@@ -307,7 +312,7 @@ def _api_header(
     thrift_py3 uses this to move it into the gen-py3 directory.
     ex: {'path/module': 'gen-py3/path/module'}
     """
-    if is_dict(api):
+    if _is_dict(api):
         api_map = api
     else:
         api_map = {k: module_path for k in api}
@@ -339,12 +344,12 @@ def _shared_lib(
     # python_library is src -> dst
     # cython_library will follow python_library in this so we need to
     # convert one direction to the other
-    if is_dict(headers):
+    if _is_dict(headers):
         headers = {v: k for k, v in headers.items()}
 
     if api_headers:
         # Add all the api_headers to our headers
-        if is_dict(headers):
+        if _is_dict(headers):
             headers.update({src_and_dep_helpers.get_source_name(h): h for h in api_headers})
         else:  # Its a list, if it was a unicode we would have rasied already
             headers.extend(api_headers)
