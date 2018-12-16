@@ -33,7 +33,6 @@ def import_macro_lib(path):
 
 
 base = import_macro_lib('convert/base')
-cython = import_macro_lib('convert/cython')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
@@ -42,6 +41,7 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
@@ -1748,7 +1748,6 @@ class Python3ThriftConverter(ThriftLangConverter):
 
     def __init__(self, *args, **kwargs):
         super(Python3ThriftConverter, self).__init__(*args, **kwargs)
-        self.cython_library = cython.Converter()
 
     def get_lang(self):
         return 'py3'
@@ -1909,9 +1908,8 @@ class Python3ThriftConverter(ThriftLangConverter):
     ):
         """Generates rules for Thrift types."""
 
-        for rule in self.cython_library.convert(
+        cython_library(
             name=name + self.types_suffix,
-            base_path=base_path,
             package=namespace,
             srcs=collections.OrderedDict((generated('types.pyx', src)
                                           for src in thrift_srcs)),
@@ -1929,8 +1927,9 @@ class Python3ThriftConverter(ThriftLangConverter):
             ] + [d + self.types_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
-        ):
-            yield rule
+        )
+
+        return []
 
     def gen_rule_thrift_services(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
@@ -1971,9 +1970,8 @@ class Python3ThriftConverter(ThriftLangConverter):
                 dst = os.path.join('gen-py3', module_path)
                 yield module_path, dst
 
-        for rule in self.cython_library.convert(
+        cython_library(
             name=name + self.services_suffix,
-            base_path=base_path,
             package=namespace,
             srcs=collections.OrderedDict(services_srcs()),
             headers=collections.OrderedDict(services_headers()),
@@ -1989,8 +1987,9 @@ class Python3ThriftConverter(ThriftLangConverter):
             api=collections.OrderedDict(
                 cython_api('services', thrift_srcs)),
             visibility=visibility,
-        ):
-            yield rule
+        )
+
+        return []
 
     def gen_rule_thrift_clients(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
@@ -2018,9 +2017,8 @@ class Python3ThriftConverter(ThriftLangConverter):
                     continue
                 yield generated('clients.pyi', src)
 
-        for rule in self.cython_library.convert(
+        cython_library(
             name=name + self.clients_suffix,
-            base_path=base_path,
             package=namespace,
             srcs=collections.OrderedDict(clients_srcs()),
             headers=collections.OrderedDict(clients_headers()),
@@ -2034,8 +2032,9 @@ class Python3ThriftConverter(ThriftLangConverter):
             ] + [d + self.clients_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
-        ):
-            yield rule
+        )
+
+        return []
 
 
 class ThriftdocPythonThriftConverter(ThriftLangConverter):
