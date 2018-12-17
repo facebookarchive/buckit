@@ -569,7 +569,6 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-        return []
 
 
 class DThriftConverter(ThriftLangConverter):
@@ -625,7 +624,6 @@ class DThriftConverter(ThriftLangConverter):
             srcs = sources,
             deps = deps + ['//thrift/lib/d:thrift'],
         )
-        return []
 
 
 class GoThriftConverter(ThriftLangConverter):
@@ -752,8 +750,6 @@ class GoThriftConverter(ThriftLangConverter):
             package_name = pkg_name,
             exported_deps = sets.to_list(export_deps),
         )
-
-        return []
 
 
 class HaskellThriftConverter(ThriftLangConverter):
@@ -953,7 +949,6 @@ class HaskellThriftConverter(ThriftLangConverter):
             platform_deps = platform_deps,
             enable_profiling = enable_profiling,
         )
-        return []
 
 
 class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
@@ -995,7 +990,6 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             visibility=None,
             **kwargs):
 
-        rules = []
         out_srcs = []
 
         # Pack all generated source directories into a source zip, which we'll
@@ -1030,8 +1024,6 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             maven_publisher_version_prefix=(
                 javadeprecated_maven_publisher_version_prefix),
             visibility=visibility)
-
-        return rules
 
 
 class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
@@ -1189,7 +1181,6 @@ class JsThriftConverter(ThriftLangConverter):
             srcs = sources.values(),
             cmd = ' && '.join(cmds),
         )
-        return []
 
 
 class JavaSwiftConverter(ThriftLangConverter):
@@ -1323,8 +1314,6 @@ class JavaSwiftConverter(ThriftLangConverter):
             exported_deps=out_deps,
             maven_coords=java_swift_maven_coords,
             maven_publisher_enabled=maven_publisher_enabled)
-
-        return rules
 
 
 class LegacyPythonThriftConverter(ThriftLangConverter):
@@ -1590,7 +1579,6 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             base_module = base_module,
             deps = out_deps,
         )
-        return []
 
 
 class OCamlThriftConverter(ThriftLangConverter):
@@ -1691,8 +1679,6 @@ class OCamlThriftConverter(ThriftLangConverter):
             srcs=thrift_common.merge_sources_map(sources_map).values(),
             deps=(src_and_dep_helpers.format_all_deps(dependencies))[0],
         )
-
-        return []
 
 
 class Python3ThriftConverter(ThriftLangConverter):
@@ -1878,7 +1864,6 @@ class Python3ThriftConverter(ThriftLangConverter):
                 name, base_path, sources, thrift_srcs,
                 py3_namespace, deps, generated, visibility=visibility,
             )
-        return []
 
     def gen_rule_thrift_types(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
@@ -2135,7 +2120,6 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             srcs=src_and_dep_helpers.convert_source_map(base_path, py_library_srcs),
             deps=deps,
         )
-        return []
 
 RUST_KEYWORDS = {
     "abstract", "alignof", "as", "become", "box",
@@ -2409,8 +2393,6 @@ class RustThriftConverter(ThriftLangConverter):
             base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
         self.get_rust_crate_map(
             base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
-
-        return []
 
 
 class ThriftLibraryConverter(base.Converter):
@@ -2732,16 +2714,15 @@ class ThriftLibraryConverter(base.Converter):
                     deps,
                 )
             # Generate the per-language rules.
-            rules.extend(
-                converter.get_language_rule(
-                    base_path,
-                    name + '-' + lang,
-                    thrift_srcs,
-                    options,
-                    all_gen_srcs,
-                    [dep + '-' + lang for dep in deps],
-                    visibility=visibility,
-                    **kwargs))
+            converter.get_language_rule(
+                base_path,
+                name + '-' + lang,
+                thrift_srcs,
+                options,
+                all_gen_srcs,
+                [dep + '-' + lang for dep in deps],
+                visibility=visibility,
+                **kwargs)
         return rules
 
     def get_allowed_args(self):
