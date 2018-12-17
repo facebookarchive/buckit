@@ -2586,20 +2586,21 @@ class ThriftLibraryConverter(base.Converter):
         rules = []
 
         for name, src in srcs.items():
-            attrs = collections.OrderedDict()
-            attrs['name'] = '{}={}'.format(compile_name, src)
-            attrs['labels'] = ['generated']
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['out'] = src
-            attrs['cmd'] = ' && '.join([
+            cmd = ' && '.join([
                 'mkdir -p `dirname $OUT`',
                 'cp -R $(location :{})/{} $OUT'.format(compile_name, src),
             ])
-            rules.append(Rule('genrule', attrs))
-            out[name] = ':' + attrs['name']
+            genrule_name = '{}={}'.format(compile_name, src)
+            fb_native.genrule(
+                name = genrule_name,
+                labels = ['generated'],
+                visibility = visibility,
+                out = src,
+                cmd = cmd,
+            )
+            out[name] = ':' + genrule_name
 
-        return out, rules
+        return out
 
     def convert_macros(
             self,
@@ -2717,13 +2718,12 @@ class ThriftLibraryConverter(base.Converter):
                         options,
                         visibility=visibility,
                         **kwargs))
-                gen_srcs, gen_src_rules = (
-                    self.generate_generated_source_rules(
-                        compile_rule_name,
-                        gen_srcs,
-                        visibility=visibility))
+                gen_srcs = self.generate_generated_source_rules(
+                    compile_rule_name,
+                    gen_srcs,
+                    visibility=visibility
+                )
                 all_gen_srcs[thrift_name] = gen_srcs
-                rules.extend(gen_src_rules)
 
             # Generate rules from Thrift plugins
             for plugin in plugins:
