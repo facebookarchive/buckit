@@ -576,10 +576,9 @@ def _get_dep_for_package(package, platform):
 haskell_common = struct(
     convert_dlls = _convert_dlls,
     get_compiler_flags = _get_compiler_flags,
-    get_internal_ghc_packages = _get_internal_ghc_packages,
-    get_language_options = _get_language_options,
     get_dep_for_package = _get_dep_for_package,
     get_ghc_version = _get_ghc_version,
+    get_language_options = _get_language_options,
     get_warnings_flags = _get_warnings_flags,
     read_extra_ghc_compiler_flags = _read_extra_ghc_compiler_flags,
     read_extra_ghc_linker_flags = _read_extra_ghc_linker_flags,
