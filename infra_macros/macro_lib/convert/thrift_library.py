@@ -104,7 +104,7 @@ class ThriftLangConverter(base.Converter):
         Return which thrift compiler to use.
         """
 
-        return config.get_thrift_compiler()
+        return thrift_interface.default_get_compiler()
 
     def get_lang(self):
         """

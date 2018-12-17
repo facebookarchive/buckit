@@ -5,6 +5,9 @@ Common methods used to implement a 'language' in the thrift_library macro
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 
+def _default_get_compiler():
+    return config.get_thrift_compiler()
+
 def _default_get_compiler_command(compiler, compiler_args, includes, additional_compiler):
     cmd = []
     cmd.append("$(exe {})".format(compiler))
@@ -39,5 +42,6 @@ def _default_get_compiler_command(compiler, compiler_args, includes, additional_
     return " ".join(cmd)
 
 thrift_interface = struct(
+    default_get_compiler = _default_get_compiler,
     default_get_compiler_command = _default_get_compiler_command,
 )
