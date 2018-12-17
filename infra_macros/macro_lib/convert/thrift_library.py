@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 
 import collections
 import itertools
-import hashlib
 import pipes
 
 with allow_unsafe_import():  # noqa: magic
@@ -768,7 +767,7 @@ class GoThriftConverter(ThriftLangConverter):
         pkg_name = os.path.join(
             base_path,
             # generate unique package name to avoid pkg name clash
-            hashlib.sha1("{}{}".format(name, rules)).hexdigest(),
+            "{}-__generated{}".format(name, hash(name)),
         )
 
         attrs = collections.OrderedDict()
