@@ -515,20 +515,20 @@ def _convert_rule(
     for src in srcs:
         _, ext = paths.split_extension(src)
         if ext == ".y":
-            src = haskell_rules.happy_rule(name, platform, src, visibility)
+            src = _happy_rule(name, platform, src, visibility)
             out_srcs.append(src)
             implicit_src_deps.extend(
                 _get_deps_for_packages(_HAPPY_PACKAGES, platform),
             )
         elif ext == ".x":
-            src = haskell_rules.alex_rule(name, platform, src, visibility)
+            src = _alex_rule(name, platform, src, visibility)
             out_srcs.append(src)
             implicit_src_deps.extend(
                 _get_deps_for_packages(_ALEX_PACKAGES, platform),
             )
         elif ext == ".hsc":
             src = (
-                haskell_rules.hsc2hs(
+                _hsc2hs(
                     base_path,
                     name,
                     platform,
@@ -540,7 +540,7 @@ def _convert_rule(
             out_srcs.append(src)
         elif ext == ".chs":
             src = (
-                haskell_rules.c2hs(
+                _c2hs(
                     base_path,
                     name,
                     platform,
@@ -664,12 +664,7 @@ def _dll(base_path, name, dll, visibility = None, **kwargs):
     )
 
 haskell_rules = struct(
-    alex_rule = _alex_rule,
-    c2hs = _c2hs,
     convert_rule = _convert_rule,
-    dep_rule = _dep_rule,
     dll = _dll,
     get_deps_for_packages = _get_deps_for_packages,
-    happy_rule = _happy_rule,
-    hsc2hs = _hsc2hs,
 )
