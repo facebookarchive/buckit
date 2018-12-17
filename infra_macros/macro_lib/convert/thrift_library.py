@@ -31,6 +31,7 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
@@ -700,8 +701,7 @@ class GoThriftConverter(ThriftLangConverter):
             visibility=None,
             **kwargs):
 
-        rules = []
-        export_deps = set(deps)
+        export_deps = sets.make(deps)
         for thrift_src, sources in sources_map.items():
             pkg = self.go_package_name(
                 go_thrift_namespaces,
@@ -714,15 +714,7 @@ class GoThriftConverter(ThriftLangConverter):
             )[0]
 
             rule_name = "{}-{}".format(name, paths.basename(pkg))
-            export_deps.add(":{}".format(rule_name))
-
-            attrs = collections.OrderedDict()
-            attrs['name'] = rule_name
-            attrs['labels'] = ['generated']
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['srcs'] = sources.values()
-            attrs['package_name'] = pkg
+            sets.insert(export_deps, ":{}".format(rule_name))
 
             out_deps = []
             out_deps.extend(deps)
@@ -732,11 +724,16 @@ class GoThriftConverter(ThriftLangConverter):
                 for local_dep in go_thrift_src_inter_deps[thrift_noext]:
                     local_dep_name = ":{}-{}".format(name, local_dep)
                     out_deps.append(local_dep_name)
-                    export_deps.add(local_dep_name)
+                    sets.insert(export_deps, local_dep_name)
 
-            attrs['deps'] = out_deps
-
-            rules.extend([Rule('go_library', attrs)])
+            fb_native.go_library(
+                name = rule_name,
+                labels = ['generated'],
+                visibility = visibility,
+                srcs = sources.values(),
+                package_name = pkg,
+                deps = out_deps,
+            )
 
         # Generate a parent package with exported deps of the each thrift_src.
         # Since this package has no go source files and is never used directly
@@ -747,17 +744,15 @@ class GoThriftConverter(ThriftLangConverter):
             "{}-__generated{}".format(name, hash(name)),
         )
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = []
-        attrs['package_name'] = pkg_name
-        attrs['exported_deps'] = sorted(export_deps)
+        fb_native.go_library(
+            name = name,
+            visibility = visibility,
+            srcs = [],
+            package_name = pkg_name,
+            exported_deps = sets.to_list(export_deps),
+        )
 
-        rules.extend([Rule('go_library', attrs)])
-
-        return rules
+        return []
 
 
 class HaskellThriftConverter(ThriftLangConverter):
