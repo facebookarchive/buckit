@@ -53,6 +53,8 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
+load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
+
 
 THRIFT_FLAGS = [
     '--allow-64bit-consts',
@@ -93,12 +95,6 @@ class ThriftLangConverter(base.Converter):
     Base class for language-specific converters.  New languages should
     subclass this class.
     """
-
-    def merge_sources_map(self, sources_map):
-        sources = collections.OrderedDict()
-        for srcs in sources_map.values():
-            sources.update(srcs)
-        return sources
 
     def get_thrift_dep_target(self, base_path, target):
         """
@@ -415,7 +411,7 @@ class CppThriftConverter(ThriftLangConverter):
         when clients/services are not actually needed.
         """
 
-        sources = self.merge_sources_map(sources_map)
+        sources = thrift_common.merge_sources_map(sources_map)
 
         types_suffix = '-types'
         types_sources = src_and_dep_helpers.convert_source_list(base_path, cpp2_srcs)
@@ -633,7 +629,7 @@ class DThriftConverter(ThriftLangConverter):
             visibility,
             **kwargs):
 
-        sources = self.merge_sources_map(sources_map)
+        sources = thrift_common.merge_sources_map(sources_map)
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
@@ -951,7 +947,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         attrs['name'] = name
         if visibility is not None:
             attrs['visibility'] = visibility
-        attrs['srcs'] = self.merge_sources_map(sources_map)
+        attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
 
         dependencies = []
         if not self._is_hs2:
@@ -1192,7 +1188,7 @@ class JsThriftConverter(ThriftLangConverter):
             visibility=None,
             **kwargs):
 
-        sources = self.merge_sources_map(sources_map)
+        sources = thrift_common.merge_sources_map(sources_map)
 
         cmds = []
 
@@ -1569,7 +1565,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         attrs['name'] = name
         if visibility is not None:
             attrs['visibility'] = visibility
-        attrs['srcs'] = self.merge_sources_map(sources_map)
+        attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
         attrs['base_module'] = self.get_base_module(**kwargs)
 
         out_deps = []
@@ -1709,7 +1705,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         fb_native.ocaml_library(
             name=name,
             visibility=get_visibility(visibility, name),
-            srcs=self.merge_sources_map(sources_map).values(),
+            srcs=thrift_common.merge_sources_map(sources_map).values(),
             deps=(src_and_dep_helpers.format_all_deps(dependencies))[0],
         )
 
@@ -2100,7 +2096,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
         # each JSON into a PAR-includable `thriftdoc_ast.py` file, to be
         # collated into a `python_library` at the very end.
         for thrift_filename, json_experimental_rule in \
-                self.merge_sources_map(sources_map).iteritems():
+                thrift_common.merge_sources_map(sources_map).iteritems():
             # This genrule will end up writing its output here:
             #
             #   base_path/
@@ -2257,7 +2253,7 @@ class RustThriftConverter(ThriftLangConverter):
             deps,
             visibility,
             **kwargs):
-        sources = self.merge_sources_map(sources_map).values()
+        sources = thrift_common.merge_sources_map(sources_map).values()
         crate_maps = ['--crate-map-file $(location {}-crate-map)'.format(dep)
                         for dep in deps]
 
@@ -2808,7 +2804,6 @@ class ThriftLibraryConverter(base.Converter):
                     self.get_exported_include_tree(':' + name),
                     deps,
                 )
-
             # Generate the per-language rules.
             rules.extend(
                 converter.get_language_rule(
