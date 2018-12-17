@@ -56,6 +56,7 @@ load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_inter
 load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:java.bzl", "java_deprecated_thrift_converter", "java_deprecated_apache_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:cpp2.bzl", "cpp2_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:cpp2.bzl", "cpp2_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:haskell.bzl", "haskell_deprecated_thrift_converter", "haskell_hs2_thrift_converter")
@@ -196,170 +197,6 @@ class ThriftLangConverter(base.Converter):
         """
 
         raise NotImplementedError()
-
-
-class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
-    """
-    Specializer to support generating Java libraries from thrift sources
-    using plain fbthrift or Apache Thrift.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(JavaDeprecatedThriftBaseConverter, self).__init__(
-            *args, **kwargs)
-
-    def get_compiler_lang(self):
-        return 'java'
-
-    def get_generated_sources(
-            self,
-            base_path,
-            name,
-            thrift_src,
-            services,
-            options,
-            **kwargs):
-
-        # We want *all* the generated sources, so top-level directory.
-        return collections.OrderedDict([('', 'gen-java')])
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            options,
-            sources_map,
-            deps,
-            javadeprecated_maven_coords=None,
-            javadeprecated_maven_publisher_enabled=False,
-            javadeprecated_maven_publisher_version_prefix='1.0',
-            visibility=None,
-            **kwargs):
-
-        out_srcs = []
-
-        # Pack all generated source directories into a source zip, which we'll
-        # feed into the Java library rule.
-        if sources_map:
-            src_zip_name = name + '.src.zip'
-            fb_native.zip_file(
-                name = src_zip_name,
-                labels = ['generated'],
-                visibility = visibility,
-                srcs = [
-                    source
-                    for sources in sources_map.values()
-                    for source in sources.values()
-                ],
-                out = src_zip_name,
-            )
-            out_srcs.append(':' + src_zip_name)
-
-        # Wrap the source zip in a java library rule, with an implicit dep on
-        # the thrift library.
-        out_deps = []
-        out_deps.extend(deps)
-        out_deps.extend(self._get_runtime_dependencies())
-        java_library(
-            name=name,
-            srcs=out_srcs,
-            duplicate_finder_enabled_DO_NOT_USE=False,
-            exported_deps=out_deps,
-            maven_coords=javadeprecated_maven_coords,
-            maven_publisher_enabled=javadeprecated_maven_publisher_enabled,
-            maven_publisher_version_prefix=(
-                javadeprecated_maven_publisher_version_prefix),
-            visibility=visibility)
-
-
-class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
-    """
-    Specializer to support generating Java libraries from thrift sources
-    using fbthrift.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(JavaDeprecatedThriftConverter, self).__init__(
-            *args, **kwargs)
-
-    def get_compiler(self):
-        return native.read_config(
-            'thrift', 'compiler',
-            super(JavaDeprecatedThriftConverter, self).get_compiler())
-
-    def get_compiler_command(
-            self,
-            compiler,
-            compiler_args,
-            includes,
-            additional_compiler):
-        check_cmd = ' '.join([
-            '$(exe //tools/build/buck/java:check_thrift_flavor)',
-            'fb',
-            '$SRCS',
-        ])
-
-        return '{} && {}'.format(
-            check_cmd,
-            super(JavaDeprecatedThriftBaseConverter, self).get_compiler_command(
-                compiler, compiler_args, includes, additional_compiler))
-
-    def get_lang(self):
-        return 'javadeprecated'
-
-    def _get_runtime_dependencies(self):
-        return [
-            '//thrift/lib/java:thrift',
-            '//third-party-java/org.slf4j:slf4j-api',
-        ]
-
-
-class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
-    """
-    Specializer to support generating Java libraries from thrift sources
-    using the Apache Thrift compiler.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(JavaDeprecatedApacheThriftConverter, self).__init__(
-            *args, **kwargs)
-
-    def get_lang(self):
-        return 'javadeprecated-apache'
-
-    def get_compiler(self):
-        return config.get_thrift_deprecated_apache_compiler()
-
-    def get_compiler_command(
-            self,
-            compiler,
-            compiler_args,
-            includes,
-            additional_compiler):
-        check_cmd = ' '.join([
-            '$(exe //tools/build/buck/java:check_thrift_flavor)',
-            'apache',
-            '$SRCS',
-        ])
-
-        cmd = []
-        cmd.append('$(exe {})'.format(compiler))
-        cmd.extend(compiler_args)
-        cmd.append('-I')
-        cmd.append(
-            '$(location {})'.format(includes))
-        cmd.append('-o')
-        cmd.append('"$OUT"')
-        cmd.append('"$SRCS"')
-
-        return check_cmd + ' && ' + ' '.join(cmd)
-
-    def _get_runtime_dependencies(self):
-        return [
-            '//third-party-java/org.apache.thrift:libthrift',
-            '//third-party-java/org.slf4j:slf4j-api',
-        ]
 
 
 class JavaSwiftConverter(ThriftLangConverter):
@@ -788,8 +625,8 @@ class ThriftLibraryConverter(base.Converter):
                 flavor=LegacyPythonThriftConverter.PYI),
             LegacyPythonThriftConverter(
                 flavor=LegacyPythonThriftConverter.PYI_ASYNCIO),
-            JavaDeprecatedApacheThriftConverter(),
-            JavaDeprecatedThriftConverter(),
+            java_deprecated_thrift_converter,
+            java_deprecated_apache_thrift_converter,
             JavaSwiftConverter(),
         ]
         self._converters = {}
