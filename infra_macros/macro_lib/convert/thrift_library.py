@@ -58,9 +58,6 @@ load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
 
-THRIFT_FLAGS = [
-    '--allow-64bit-consts',
-]
 
 
 # The capitalize method from the string will also make the
@@ -76,20 +73,6 @@ def camel(s):
     return ''.join(w[0].upper() + w[1:] for w in s.split('_') if w != '')
 
 
-def format_options(options):
-    """
-    Format a thrift option dict into a compiler-ready string.
-    """
-
-    option_list = []
-
-    for option, val in options.items():
-        if val != None:
-            option_list.append('{}={}'.format(option, val))
-        else:
-            option_list.append(option)
-
-    return ','.join(option_list)
 
 
 class ThriftLangConverter(base.Converter):
@@ -157,6 +140,7 @@ class ThriftLangConverter(base.Converter):
 
     def get_compiler_args(
             self,
+            compiler_lang,
             flags,
             options,
             **kwargs):
@@ -164,13 +148,7 @@ class ThriftLangConverter(base.Converter):
         Return args to pass into the compiler when generating sources.
         """
 
-        args = []
-        args.append('--gen')
-        args.append(
-            '{}:{}'.format(self.get_compiler_lang(), format_options(options)))
-        args.extend(THRIFT_FLAGS)
-        args.extend(flags)
-        return args
+        return thrift_interface.default_get_compiler_args(compiler_lang, flags, options, **kwargs)
 
     def get_compiler_command(
             self,
@@ -807,6 +785,7 @@ class HaskellThriftConverter(ThriftLangConverter):
 
     def get_compiler_args(
             self,
+            compiler_lang,
             flags,
             options,
             hs_required_symbols=None,
@@ -818,6 +797,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         # If this isn't `hs2` fall back to getting the regular copmiler args.
         if self.get_lang() != 'hs2':
             return super(HaskellThriftConverter, self).get_compiler_args(
+                compiler_lang,
                 flags,
                 options)
 
@@ -1181,6 +1161,7 @@ class JavaSwiftConverter(ThriftLangConverter):
 
     def get_compiler_args(
             self,
+            compiler_lang,
             flags,
             options,
             **kwargs):
@@ -1590,6 +1571,7 @@ class OCamlThriftConverter(ThriftLangConverter):
 
     def get_compiler_args(
             self,
+            compiler_lang,
             flags,
             options,
             **kwargs):
@@ -2154,6 +2136,7 @@ class RustThriftConverter(ThriftLangConverter):
 
     def get_compiler_args(
             self,
+            compiler_lang,
             flags,
             options,
             hs_required_symbols=None,
@@ -2641,6 +2624,7 @@ class ThriftLibraryConverter(base.Converter):
                 options.update(cpp2_options)
 
             compiler_args = converter.get_compiler_args(
+                converter.get_compiler_lang(),
                 thrift_args,
                 converter.get_options(base_path, options),
                 **kwargs)

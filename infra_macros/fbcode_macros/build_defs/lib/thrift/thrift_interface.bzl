@@ -5,6 +5,10 @@ Common methods used to implement a 'language' in the thrift_library macro
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
 
+_THRIFT_FLAGS = (
+    "--allow-64bit-consts",
+)
+
 def _default_get_compiler():
     return config.get_thrift_compiler()
 
@@ -53,9 +57,33 @@ def _default_get_postprocess_command(base_path, thrift_src, out_dir, **_kwargs):
 def _default_get_additional_compiler():
     return None
 
+def _format_options(options):
+    """
+    Format a thrift option dict into a compiler-ready string.
+    """
+
+    option_list = []
+
+    for option, val in options.items():
+        if val != None:
+            option_list.append("{}={}".format(option, val))
+        else:
+            option_list.append(option)
+
+    return ",".join(option_list)
+
+def _default_get_compiler_args(compiler_lang, flags, options, **_kwargs):
+    args = []
+    args.append("--gen")
+    args.append("{}:{}".format(compiler_lang, _format_options(options)))
+    args.extend(_THRIFT_FLAGS)
+    args.extend(flags)
+    return args
+
 thrift_interface = struct(
     default_get_additional_compiler = _default_get_additional_compiler,
     default_get_compiler = _default_get_compiler,
+    default_get_compiler_args = _default_get_compiler_args,
     default_get_compiler_command = _default_get_compiler_command,
     default_get_extra_includes = _default_get_extra_includes,
     default_get_postprocess_command = _default_get_postprocess_command,
