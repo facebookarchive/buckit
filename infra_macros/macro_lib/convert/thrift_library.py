@@ -1874,11 +1874,11 @@ class Python3ThriftConverter(ThriftLangConverter):
         for gen_func in (self.gen_rule_thrift_types,
                          self.gen_rule_thrift_services,
                          self.gen_rule_thrift_clients):
-            for rule in gen_func(
+            gen_func(
                 name, base_path, sources, thrift_srcs,
                 py3_namespace, deps, generated, visibility=visibility,
-            ):
-                yield rule
+            )
+        return []
 
     def gen_rule_thrift_types(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
@@ -1906,8 +1906,6 @@ class Python3ThriftConverter(ThriftLangConverter):
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
         )
-
-        return []
 
     def gen_rule_thrift_services(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
@@ -1967,8 +1965,6 @@ class Python3ThriftConverter(ThriftLangConverter):
             visibility=visibility,
         )
 
-        return []
-
     def gen_rule_thrift_clients(
         self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
         visibility,
@@ -2011,8 +2007,6 @@ class Python3ThriftConverter(ThriftLangConverter):
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
         )
-
-        return []
 
 
 class ThriftdocPythonThriftConverter(ThriftLangConverter):
