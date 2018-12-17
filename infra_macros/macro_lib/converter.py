@@ -36,7 +36,6 @@ load("@fbcode_macros//build_defs:export_files.bzl",  # noqa F821
 load(  # noqa F821
     "@fbcode_macros//build_defs:native_rules.bzl",
     "buck_command_alias",
-    "buck_cxx_binary",
     "cxx_genrule",
     "buck_cxx_library",
     "buck_cxx_test",
@@ -134,7 +133,6 @@ def convert(base_path, rule):
 
     converter_map = {}
     new_converter_map = {
-        'buck_cxx_binary': buck_cxx_binary,  # noqa F821
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_jvm_library': cpp_jvm_library,  # noqa F821
