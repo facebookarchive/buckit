@@ -617,19 +617,13 @@ class DThriftConverter(ThriftLangConverter):
             **kwargs):
 
         sources = thrift_common.merge_sources_map(sources_map)
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = sources
-
-        out_deps = []
-        out_deps.extend(deps)
-        out_deps.append('//thrift/lib/d:thrift')
-        attrs['deps'] = out_deps
-
-        return [Rule('d_library', attrs)]
+        fb_native.d_library(
+            name = name,
+            visibility = visibility,
+            srcs = sources,
+            deps = deps + ['//thrift/lib/d:thrift'],
+        )
+        return []
 
 
 class GoThriftConverter(ThriftLangConverter):
