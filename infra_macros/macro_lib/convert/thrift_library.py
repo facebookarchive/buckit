@@ -544,13 +544,14 @@ class GoThriftConverter(ThriftLangConverter):
 
         thrift_namespaces = go_thrift_namespaces or {}
         thrift_file = paths.basename(thrift_src)
-        try:
-            namespace = thrift_namespaces[thrift_file]
+
+        namespace = thrift_namespaces.get(thrift_file)
+        if namespace != None:
             return namespace.replace('.', '/')
-        except KeyError:
-            if go_pkg_base_path != None:
-                base_path = go_pkg_base_path
-            return paths.join(base_path, paths.split_extension(thrift_file)[0])
+
+        if go_pkg_base_path != None:
+            base_path = go_pkg_base_path
+        return paths.join(base_path, paths.split_extension(thrift_file)[0])
 
     def get_generated_sources(
             self,
@@ -577,14 +578,13 @@ class GoThriftConverter(ThriftLangConverter):
         for service in services:
             genfiles.append('{}.go'.format(service.lower()))
 
-        return collections.OrderedDict(
-            [(path, paths.join('gen-go', path)) for path in
-                [paths.join(thrift_prefix, gf) for gf in genfiles]])
+        gen_paths = [paths.join(thrift_prefix, gf) for gf in genfiles]
+        return {path: paths.join('gen-go', path) for path in gen_paths}
 
     def get_options(self, base_path, parsed_options):
-        opts = collections.OrderedDict(
-            thrift_import='thrift/lib/go/thrift',
-        )
+        opts = {
+            "thrift_import": 'thrift/lib/go/thrift',
+        }
         opts.update(parsed_options)
         return opts
 
