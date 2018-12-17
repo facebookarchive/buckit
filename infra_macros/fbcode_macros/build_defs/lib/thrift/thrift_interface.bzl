@@ -80,11 +80,16 @@ def _default_get_compiler_args(compiler_lang, flags, options, **_kwargs):
     args.extend(flags)
     return args
 
+def _default_get_options(base_path, parsed_options):
+    _ignore = base_path
+    return parsed_options
+
 thrift_interface = struct(
     default_get_additional_compiler = _default_get_additional_compiler,
     default_get_compiler = _default_get_compiler,
     default_get_compiler_args = _default_get_compiler_args,
     default_get_compiler_command = _default_get_compiler_command,
     default_get_extra_includes = _default_get_extra_includes,
+    default_get_options = _default_get_options,
     default_get_postprocess_command = _default_get_postprocess_command,
 )

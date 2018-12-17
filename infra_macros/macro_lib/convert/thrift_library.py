@@ -184,7 +184,7 @@ class ThriftLangConverter(base.Converter):
         Apply any conversions to parsed language-specific thrift options.
         """
 
-        return parsed_options
+        return thrift_interface.default_get_options(base_path, parsed_options)
 
     def get_language_rule(
             self,
