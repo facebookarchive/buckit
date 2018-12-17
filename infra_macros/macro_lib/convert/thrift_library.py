@@ -95,18 +95,6 @@ class ThriftLangConverter(base.Converter):
     subclass this class.
     """
 
-    def get_thrift_dep_target(self, base_path, target):
-        """
-        Gets the translated target for a base_path and target. In fbcode, this
-        will be a target_utils.RootRuleTarget. Outside of fbcode, we have to make sure that
-        the specified third-party repo is used
-        """
-        if config.get_current_repo_name() == 'fbcode':
-            target = target_utils.RootRuleTarget(base_path, target)
-        else:
-            repo = base_path.split('/')[0]
-            target = target_utils.ThirdPartyRuleTarget(repo, base_path, target)
-        return target_utils.target_to_label(target)
 
     def get_compiler(self):
         """
@@ -416,8 +404,8 @@ class CppThriftConverter(ThriftLangConverter):
         types_sources = src_and_dep_helpers.convert_source_list(base_path, cpp2_srcs)
         types_headers = src_and_dep_helpers.convert_source_list(base_path, cpp2_headers)
         types_deps = [
-            self.get_thrift_dep_target('folly', 'indestructible'),
-            self.get_thrift_dep_target('folly', 'optional'),
+            thrift_common.get_thrift_dep_target('folly', 'indestructible'),
+            thrift_common.get_thrift_dep_target('folly', 'optional'),
         ]
         clients_and_services_suffix = '-clients_and_services'
         clients_suffix = '-clients'
@@ -428,8 +416,8 @@ class CppThriftConverter(ThriftLangConverter):
         services_headers = []
 
         clients_deps = [
-            self.get_thrift_dep_target('folly/futures', 'core'),
-            self.get_thrift_dep_target('folly/io', 'iobuf'),
+            thrift_common.get_thrift_dep_target('folly/futures', 'core'),
+            thrift_common.get_thrift_dep_target('folly/io', 'iobuf'),
             ':%s%s' % (name, types_suffix),
         ]
         services_deps = [
@@ -467,12 +455,12 @@ class CppThriftConverter(ThriftLangConverter):
         # Add required dependencies for Stream support
         if 'stream' in options:
             common_deps.append(
-                self.get_thrift_dep_target('yarpl', 'yarpl'))
+                thrift_common.get_thrift_dep_target('yarpl', 'yarpl'))
             clients_deps.append(
-                self.get_thrift_dep_target(
+                thrift_common.get_thrift_dep_target(
                     'thrift/lib/cpp2/transport/core', 'thrift_client'))
             services_deps.append(
-                self.get_thrift_dep_target(
+                thrift_common.get_thrift_dep_target(
                     'thrift/lib/cpp2/transport/core',
                     'thrift_processor'))
         # The 'json' thrift option will generate code that includes
@@ -480,26 +468,26 @@ class CppThriftConverter(ThriftLangConverter):
         # so all external header paths will also be added.
         if 'json' in options:
             common_deps.append(
-                self.get_thrift_dep_target('thrift/lib/cpp', 'json_deps'))
+                thrift_common.get_thrift_dep_target('thrift/lib/cpp', 'json_deps'))
         if 'frozen' in options:
-            common_deps.append(self.get_thrift_dep_target(
+            common_deps.append(thrift_common.get_thrift_dep_target(
                 'thrift/lib/cpp', 'frozen'))
         if 'frozen2' in options:
-            common_deps.append(self.get_thrift_dep_target(
+            common_deps.append(thrift_common.get_thrift_dep_target(
                 'thrift/lib/cpp2/frozen', 'frozen'))
 
         # any c++ rule that generates thrift files must depend on the
         # thrift lib; add that dep now if it wasn't explicitly stated
         # already
         types_deps.append(
-            self.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
+            thrift_common.get_thrift_dep_target('thrift/lib/cpp2', 'types_deps'))
         clients_deps.append(
-            self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+            thrift_common.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
         services_deps.append(
-            self.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
+            thrift_common.get_thrift_dep_target('thrift/lib/cpp2', 'thrift_base'))
         if self.get_static_reflection(options):
             common_deps.append(
-                self.get_thrift_dep_target(
+                thrift_common.get_thrift_dep_target(
                     'thrift/lib/cpp2/reflection', 'reflection'))
 
         types_deps.extend(common_deps)
@@ -1915,9 +1903,9 @@ class Python3ThriftConverter(ThriftLangConverter):
                 self.get_cpp2_dep(d) for d in fdeps
             ],
             deps=[
-                self.get_thrift_dep_target('thrift/lib/py3', 'exceptions'),
-                self.get_thrift_dep_target('thrift/lib/py3', 'std_libcpp'),
-                self.get_thrift_dep_target('thrift/lib/py3', 'types'),
+                thrift_common.get_thrift_dep_target('thrift/lib/py3', 'exceptions'),
+                thrift_common.get_thrift_dep_target('thrift/lib/py3', 'std_libcpp'),
+                thrift_common.get_thrift_dep_target('thrift/lib/py3', 'types'),
             ] + [d + self.types_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
@@ -1975,7 +1963,7 @@ class Python3ThriftConverter(ThriftLangConverter):
             ],
             deps=[
                 ':' + name + self.types_suffix,
-                self.get_thrift_dep_target('thrift/lib/py3', 'server'),
+                thrift_common.get_thrift_dep_target('thrift/lib/py3', 'server'),
             ] + [d + self.services_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
             api=collections.OrderedDict(
@@ -2022,7 +2010,7 @@ class Python3ThriftConverter(ThriftLangConverter):
             ],
             deps=[
                 ':' + name + self.types_suffix,
-                self.get_thrift_dep_target('thrift/lib/py3', 'client'),
+                thrift_common.get_thrift_dep_target('thrift/lib/py3', 'client'),
             ] + [d + self.clients_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
             visibility=visibility,
