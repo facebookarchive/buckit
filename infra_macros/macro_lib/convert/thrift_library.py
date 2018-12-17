@@ -54,6 +54,7 @@ load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
 load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
 load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
@@ -1356,108 +1357,6 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             deps = out_deps,
         )
 
-
-class OCamlThriftConverter(ThriftLangConverter):
-    """
-    Specializer to support generating OCaml libraries from thrift sources.
-    """
-
-    THRIFT_OCAML_LIBS = [
-        target_utils.RootRuleTarget('common/ocaml/thrift', 'thrift'),
-    ]
-
-    THRIFT_OCAML_DEPS = [
-        target_utils.RootRuleTarget('hphp/hack/src/third-party/core', 'core'),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(OCamlThriftConverter, self).__init__(*args, **kwargs)
-
-    def get_compiler(self):
-        return config.get_thrift_ocaml_compiler()
-
-    def get_lang(self):
-        return 'ocaml2'
-
-    def get_extra_includes(self, **kwargs):
-        return []
-
-    def get_compiler_args(
-            self,
-            compiler_lang,
-            flags,
-            options,
-            **kwargs):
-        """
-        Return compiler args when compiling for ocaml.
-        """
-
-        args = []
-
-        # The OCaml compiler relies on the HS2 compiler to parse .thrift sources to JSON
-        args.append('-c')
-        args.append('$(exe {})'.format(config.get_thrift_hs2_compiler()))
-
-        # Format the options and pass them into the ocaml compiler.
-        for option, val in options.items():
-            flag = '--' + option
-            if val != None:
-                flag += '=' + val
-            args.append(flag)
-
-        # Include rule-specific flags.
-        args.extend(flags)
-
-        return args
-
-    def get_generated_sources(
-            self,
-            base_path,
-            name,
-            thrift_src,
-            services,
-            options,
-            **kwargs):
-
-        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-        thrift_base = thrift_common.capitalize_only(thrift_base)
-
-        genfiles = []
-
-        genfiles.append('%s_consts.ml' % thrift_base)
-        genfiles.append('%s_types.ml' % thrift_base)
-        for service in services:
-            service = thrift_common.capitalize_only(service)
-            genfiles.append('%s.ml' % service)
-
-        return collections.OrderedDict(
-            [(path, path) for path in genfiles])
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            options,
-            sources_map,
-            deps,
-            visibility,
-            **kwargs):
-
-        dependencies = []
-        dependencies.extend(self.THRIFT_OCAML_DEPS)
-        dependencies.extend(self.THRIFT_OCAML_LIBS)
-        for dep in deps:
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-
-        fb_native.ocaml_library(
-            name=name,
-            visibility=get_visibility(visibility, name),
-            srcs=thrift_common.merge_sources_map(sources_map).values(),
-            deps=(src_and_dep_helpers.format_all_deps(dependencies))[0],
-        )
-
-
 class ThriftLibraryConverter(base.Converter):
 
     def __init__(self):
@@ -1471,7 +1370,7 @@ class ThriftLibraryConverter(base.Converter):
             HaskellThriftConverter(is_hs2=False),
             HaskellThriftConverter(is_hs2=True),
             JsThriftConverter(),
-            OCamlThriftConverter(),
+            ocaml_thrift_converter,
             rust_thrift_converter,
             thriftdoc_python_thrift_converter,
             python3_thrift_converter,
