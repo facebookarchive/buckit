@@ -36,7 +36,6 @@ load("@fbcode_macros//build_defs/lib:python_typing.bzl",
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
-load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs/lib:merge_tree.bzl", "merge_tree")
@@ -52,6 +51,7 @@ load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
+load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
 
@@ -2545,57 +2545,6 @@ class ThriftLibraryConverter(base.Converter):
             new_srcs[name] = services
         return new_srcs
 
-    def generate_py_remotes(
-        self,
-        base_path,
-        name,
-        thrift_srcs,
-        base_module,
-        include_sr=False,
-        visibility=None,
-    ):
-        """
-        Generate all the py-remote rules.
-        """
-
-        # Find and normalize the base module.
-        if base_module == None:
-            base_module = base_path
-        base_module = base_module.replace('/', '.')
-
-        for thrift_src, services in thrift_srcs.items():
-            thrift_base = (
-                paths.split_extension(
-                    paths.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
-            for service in services:
-                if include_sr:
-                    sr_rule = '//thrift/facebook/remote/sr:remote'
-                else:
-                    sr_rule = '//thrift/lib/py/util:remote'
-                main_module = '.'.join([
-                    element for element in [
-                        base_module,
-                        thrift_base,
-                        service + '-remote',
-                    ]
-                    if element
-                ])
-                python_binary(
-                    name = '{}-{}-pyremote'.format(name, service),
-                    visibility = visibility,
-                    py_version = '<3',
-                    base_module = '',
-                    main_module = main_module,
-                    deps = [
-                        ':{}-py'.format(name),
-                        sr_rule,
-                    ],
-                    external_deps = [
-                        'python-future',
-                        'six',
-                    ],
-                )
-
     def get_exported_include_tree(self, dep):
         """
         Generate the exported thrift source includes target use for the given
@@ -2874,6 +2823,7 @@ class ThriftLibraryConverter(base.Converter):
         return allowed_args
 
     def convert(self, base_path, name=None, languages=None, visibility=None, **kwargs):
+        visibility = get_visibility(visibility, name)
         rules = []
 
         supported_languages = read_list(
@@ -2891,11 +2841,11 @@ class ThriftLibraryConverter(base.Converter):
         # rules.
         # TODO: Move this logic into convert_macros
         if 'py' in languages or 'python' in languages:
-            self.generate_py_remotes(
+            py_remote_binaries(
                 base_path,
-                name,
-                self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
-                kwargs.get('py_base_module'),
+                name=name,
+                thrift_srcs=self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
+                base_module=kwargs.get('py_base_module'),
                 include_sr=kwargs.get('py_remote_service_router', False),
                 visibility=visibility)
 
