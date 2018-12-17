@@ -54,6 +54,7 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
 load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
+load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
@@ -526,62 +527,6 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-
-
-class DThriftConverter(ThriftLangConverter):
-    """
-    Specializer to support generating D libraries from thrift sources.
-    """
-
-    def get_lang(self):
-        return 'd'
-
-    def get_generated_sources(
-            self,
-            base_path,
-            name,
-            thrift_src,
-            services,
-            options,
-            d_thrift_namespaces=None,
-            **kwargs):
-
-        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-        thrift_namespaces = d_thrift_namespaces or {}
-        thrift_prefix = (
-            thrift_namespaces.get(thrift_src, '').replace('.', '/'))
-
-        genfiles = []
-
-        genfiles.append('%s_types.d' % thrift_base)
-        genfiles.append('%s_constants.d' % thrift_base)
-
-        for service in services:
-            genfiles.append('%s.d' % service)
-
-        return collections.OrderedDict(
-            [(path, paths.join('gen-d', path)) for path in
-                [paths.join(thrift_prefix, genfile) for genfile in genfiles]])
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            options,
-            sources_map,
-            deps,
-            visibility,
-            **kwargs):
-
-        sources = thrift_common.merge_sources_map(sources_map)
-        fb_native.d_library(
-            name = name,
-            visibility = visibility,
-            srcs = sources,
-            deps = deps + ['//thrift/lib/d:thrift'],
-        )
-
 
 class GoThriftConverter(ThriftLangConverter):
     """
@@ -2368,7 +2313,7 @@ class ThriftLibraryConverter(base.Converter):
         # Setup the macro converters.
         converters = [
             CppThriftConverter(),
-            DThriftConverter(),
+            d_thrift_converter,
             GoThriftConverter(),
             HaskellThriftConverter(is_hs2=False),
             HaskellThriftConverter(is_hs2=True),
