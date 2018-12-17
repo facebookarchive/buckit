@@ -64,15 +64,6 @@ load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
 
 
-# The capitalize method from the string will also make the
-# other characters in the word lower case.  This version only
-# makes the first character upper case.
-def capitalize(word):
-    if len(word) > 0:
-        return word[0].upper() + word[1:]
-    return word
-
-
 def camel(s):
     return ''.join(w[0].upper() + w[1:] for w in s.split('_') if w != '')
 
@@ -653,7 +644,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             **kwargs):
 
         thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-        thrift_base = capitalize(thrift_base)
+        thrift_base = thrift_common.capitalize_only(thrift_base)
         namespace = hs_namespace or ''
         lang = self.get_lang()
 
@@ -663,7 +654,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             genfiles.append('%s_Consts.hs' % thrift_base)
             genfiles.append('%s_Types.hs' % thrift_base)
             for service in services:
-                service = capitalize(service)
+                service = thrift_common.capitalize_only(service)
                 genfiles.append('%s.hs' % service)
                 genfiles.append('%s_Client.hs' % service)
                 genfiles.append('%s_Iface.hs' % service)
@@ -1429,14 +1420,14 @@ class OCamlThriftConverter(ThriftLangConverter):
             **kwargs):
 
         thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-        thrift_base = capitalize(thrift_base)
+        thrift_base = thrift_common.capitalize_only(thrift_base)
 
         genfiles = []
 
         genfiles.append('%s_consts.ml' % thrift_base)
         genfiles.append('%s_types.ml' % thrift_base)
         for service in services:
-            service = capitalize(service)
+            service = thrift_common.capitalize_only(service)
             genfiles.append('%s.ml' % service)
 
         return collections.OrderedDict(

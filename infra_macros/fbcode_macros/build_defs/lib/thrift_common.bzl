@@ -40,7 +40,16 @@ def _get_thrift_dep_target(base_path, rule_name):
         target = target_utils.ThirdPartyRuleTarget(repo, base_path, rule_name)
     return target_utils.target_to_label(target)
 
+# The capitalize method from the string will also make the
+# other characters in the word lower case.  This version only
+# makes the first character upper case.
+def _capitalize_only(word):
+    if len(word) > 0:
+        return word[0].upper() + word[1:]
+    return word
+
 thrift_common = struct(
+    capitalize_only = _capitalize_only,
     merge_sources_map = _merge_sources_map,
     get_thrift_dep_target = _get_thrift_dep_target,
 )
