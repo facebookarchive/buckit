@@ -1001,16 +1001,17 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
         # feed into the Java library rule.
         if sources_map:
             src_zip_name = name + '.src.zip'
-            attrs = collections.OrderedDict()
-            attrs['name'] = src_zip_name
-            attrs['labels'] = ['generated']
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['srcs'] = (
-                [source for sources in sources_map.itervalues()
-                    for source in sources.itervalues()])
-            attrs['out'] = src_zip_name
-            rules.append(Rule('zip_file', attrs))
+            fb_native.zip_file(
+                name = src_zip_name,
+                labels = ['generated'],
+                visibility = visibility,
+                srcs = [
+                    source
+                    for sources in sources_map.values()
+                    for source in sources.values()
+                ],
+                out = src_zip_name,
+            )
             out_srcs.append(':' + src_zip_name)
 
         # Wrap the source zip in a java library rule, with an implicit dep on
