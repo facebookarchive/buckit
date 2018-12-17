@@ -919,11 +919,7 @@ class HaskellThriftConverter(ThriftLangConverter):
 
         platform = platform_utils.get_platform_for_base_path(base_path)
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
+        srcs = thrift_common.merge_sources_map(sources_map)
 
         dependencies = []
         if not self._is_hs2:
@@ -945,12 +941,18 @@ class HaskellThriftConverter(ThriftLangConverter):
                 dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
         for dep in deps:
             dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        attrs['deps'], attrs['platform_deps'] = (
-            src_and_dep_helpers.format_all_deps(dependencies))
-        if haskell_common.read_hs_profile():
-            attrs['enable_profiling'] = True
+        deps, platform_deps = src_and_dep_helpers.format_all_deps(dependencies)
+        enable_profiling = True if haskell_common.read_hs_profile() else None
 
-        return [Rule('haskell_library', attrs)]
+        fb_native.haskell_library(
+            name = name,
+            visibility = visibility,
+            srcs = srcs,
+            deps = deps,
+            platform_deps = platform_deps,
+            enable_profiling = enable_profiling,
+        )
+        return []
 
 
 class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
