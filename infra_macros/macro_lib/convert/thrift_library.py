@@ -145,7 +145,7 @@ class ThriftLangConverter(base.Converter):
         Useful for adding language-specific error checking.
         """
 
-        return None
+        return thrift_interface.default_get_postprocess_command(base_path, thrift_src, out_dir, **kwargs)
 
     def get_additional_compiler(self):
         """
@@ -153,7 +153,7 @@ class ThriftLangConverter(base.Converter):
         compiler (or None)
         """
 
-        return None
+        return thrift_interface.default_get_additional_compiler()
 
     def get_compiler_args(
             self,

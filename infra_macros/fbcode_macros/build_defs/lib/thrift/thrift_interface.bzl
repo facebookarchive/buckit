@@ -44,8 +44,19 @@ def _default_get_compiler_command(compiler, compiler_args, includes, additional_
 def _default_get_extra_includes(**_kwargs):
     return []
 
+def _default_get_postprocess_command(base_path, thrift_src, out_dir, **_kwargs):
+    _ignore = base_path
+    _ignore = thrift_src
+    _ignore = out_dir
+    return None
+
+def _default_get_additional_compiler():
+    return None
+
 thrift_interface = struct(
+    default_get_additional_compiler = _default_get_additional_compiler,
     default_get_compiler = _default_get_compiler,
     default_get_compiler_command = _default_get_compiler_command,
     default_get_extra_includes = _default_get_extra_includes,
+    default_get_postprocess_command = _default_get_postprocess_command,
 )
