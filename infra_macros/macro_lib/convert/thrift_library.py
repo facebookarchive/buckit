@@ -213,7 +213,7 @@ class CppThriftConverter(ThriftLangConverter):
     SERVICES_HEADER = 4
     SERVICES_SOURCE = 5
 
-    SUFFIXES = collections.OrderedDict([
+    SUFFIXES = [
         ('_constants.h', TYPES_HEADER),
         ('_constants.cpp', TYPES_SOURCE),
         ('_types.h', TYPES_HEADER),
@@ -234,7 +234,7 @@ class CppThriftConverter(ThriftLangConverter):
         ('.tcc', SERVICES_HEADER),
         ('.h', SERVICES_HEADER),
         ('.cpp', SERVICES_SOURCE),
-    ])
+    ]
 
     def __init__(self, *args, **kwargs):
         super(CppThriftConverter, self).__init__(*args, **kwargs)
@@ -252,8 +252,9 @@ class CppThriftConverter(ThriftLangConverter):
         return 'mstch_cpp2'
 
     def get_options(self, base_path, parsed_options):
-        options = collections.OrderedDict()
-        options['include_prefix'] = base_path
+        options = {
+            'include_prefix': base_path,
+        }
         options.update(parsed_options)
         return options
 
@@ -304,20 +305,18 @@ class CppThriftConverter(ThriftLangConverter):
             genfiles.append('%s.tcc' % (service,))
 
         # Everything is in the 'gen-cpp2' directory
-        lang = self.get_lang()
-        return collections.OrderedDict(
-            [(p, p) for p in
-                [paths.join('gen-' + lang, path) for path in genfiles]])
+        gen_paths = [paths.join('gen-cpp2', path) for path in genfiles]
+        return {path: path for path in gen_paths}
 
     def is_header(self, src):
         _, ext = paths.split_extension(src)
         return ext in ('.h', '.tcc')
 
     def get_src_type(self, src):
-        return next((
-            type
-            for suffix, type in self.SUFFIXES.items()
-            if src.endswith(suffix)))
+        for suffix, type in self.SUFFIXES:
+            if src.endswith(suffix):
+                return type
+        return None
 
     def get_language_rule(
             self,
@@ -393,9 +392,9 @@ class CppThriftConverter(ThriftLangConverter):
             elif source_type == self.SERVICES_HEADER:
                 services_headers.append(file_target)
 
-        types_deps.extend((d + types_suffix for d in deps))
-        clients_deps.extend((d + clients_suffix for d in deps))
-        services_deps.extend((d + services_suffix for d in deps))
+        types_deps.extend([d + types_suffix for d in deps])
+        clients_deps.extend([d + clients_suffix for d in deps])
+        services_deps.extend([d + services_suffix for d in deps])
 
         # Add in cpp-specific deps and external_deps
         common_deps = []
