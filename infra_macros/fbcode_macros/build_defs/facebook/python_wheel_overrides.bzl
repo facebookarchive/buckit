@@ -15,7 +15,7 @@ load("@fbcode_macros//build_defs:config.bzl", "config")
 # TP2 dependencies mapped to the new PyFI //python/wheel TARGET.
 # These will be use with python_* TARGETS to allow for a cleaner migration to PyFI
 
-OVERRIDES = (
+_OVERRIDES = (
     # TP2 Name, PyFI Target Name
     ("Jinja2", "jinja2"),
     ("MarkupSafe", "markupsafe"),
@@ -99,7 +99,7 @@ def _generate_pyfi_overrides(overrides):
 def _should_use_overrides():
     return bool(config.get_pyfi_overrides_path())
 
-_PYFI_OVERRIDES = _generate_pyfi_overrides(OVERRIDES)
+_PYFI_OVERRIDES = _generate_pyfi_overrides(_OVERRIDES)
 
 python_wheel_overrides = struct(
     PYFI_OVERRIDES = _PYFI_OVERRIDES,
