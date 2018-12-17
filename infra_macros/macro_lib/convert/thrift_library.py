@@ -132,7 +132,7 @@ class ThriftLangConverter(base.Converter):
         thrift compiler include tree.
         """
 
-        return []
+        return thrift_interface.default_get_extra_includes(**kwargs)
 
     def get_postprocess_command(
             self,

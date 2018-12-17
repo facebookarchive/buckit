@@ -41,7 +41,11 @@ def _default_get_compiler_command(compiler, compiler_args, includes, additional_
 
     return " ".join(cmd)
 
+def _default_get_extra_includes(**_kwargs):
+    return []
+
 thrift_interface = struct(
     default_get_compiler = _default_get_compiler,
     default_get_compiler_command = _default_get_compiler_command,
+    default_get_extra_includes = _default_get_extra_includes,
 )
