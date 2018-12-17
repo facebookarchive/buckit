@@ -1280,16 +1280,17 @@ class JavaSwiftConverter(ThriftLangConverter):
         # feed into the Java library rule.
         if sources_map:
             src_zip_name = name + '.src.zip'
-            attrs = collections.OrderedDict()
-            attrs['name'] = src_zip_name
-            attrs['labels'] = ['generated']
-            if visibility != None:
-                attrs['visibility'] = visibility
-            attrs['srcs'] = (
-                [source for sources in sources_map.values()
-                    for source in sources.values()])
-            attrs['out'] = src_zip_name
-            rules.append(Rule('zip_file', attrs))
+            fb_native.zip_file(
+                name = src_zip_name,
+                labels = ['generated'],
+                visibility = visibility,
+                srcs = [
+                    source
+                    for sources in sources_map.values()
+                    for source in sources.values()
+                ],
+                out = src_zip_name,
+            )
             out_srcs.append(':' + src_zip_name)
 
         out_deps = []
@@ -1304,14 +1305,14 @@ class JavaSwiftConverter(ThriftLangConverter):
             maven_publisher_enabled = False  # TODO(T34003348)
             expected_coords_prefix = "com.facebook.thrift:"
             if not java_swift_maven_coords.startswith(expected_coords_prefix):
-                raise ValueError(
-                    "java_swift_maven_coords must start with '%s'"
-                    % expected_coords_prefix)
-            expected_options = set(['EXTEND_RUNTIME_EXCEPTION'])
-            if set(options) != expected_options:
-                raise ValueError(
-                    "When java_swift_maven_coords is specified, you must set"
-                    " thrift_java_swift_options = %s" % expected_options)
+                fail(
+                    "java_swift_maven_coords must start with '{}'".format(expected_coords_prefix))
+            expected_options = sets.make(('EXTEND_RUNTIME_EXCEPTION',))
+            if not sets.is_equal(sets.make(options), expected_options):
+                fail((
+                    "When java_swift_maven_coords is specified, you must set" +
+                    " thrift_java_swift_options = {}"
+                ).format(sets.to_list(expected_options)))
 
         java_library(
             name=name,
