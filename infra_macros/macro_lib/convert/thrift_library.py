@@ -1542,12 +1542,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             visibility,
             **kwargs):
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
-        attrs['base_module'] = self.get_base_module(**kwargs)
+        srcs = thrift_common.merge_sources_map(sources_map)
+        base_module = self.get_base_module(**kwargs)
 
         out_deps = []
         out_deps.extend(deps)
@@ -1574,21 +1570,27 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         else:
             has_types = False
 
-        attrs['deps'] = out_deps
         if get_typing_config_target():
-            base_module = attrs['base_module']
             if has_types:
                 gen_typing_config(
                     name,
                     base_module if base_module != None else base_path,
-                    attrs['srcs'].keys(),
+                    srcs.keys(),
                     out_deps,
                     typing=True,
                     visibility=visibility,
                 )
             else:
                 gen_typing_config(name)
-        yield Rule('python_library', attrs)
+
+        fb_native.python_library(
+            name = name,
+            visibility = visibility,
+            srcs = srcs,
+            base_module = base_module,
+            deps = out_deps,
+        )
+        return []
 
 
 class OCamlThriftConverter(ThriftLangConverter):
