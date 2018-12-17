@@ -29,6 +29,20 @@ _THRIFT_PY_LIB_RULE_NAME = target_utils.RootRuleTarget("thrift/lib/py", "py")
 _THRIFT_PY_TWISTED_LIB_RULE_NAME = target_utils.RootRuleTarget("thrift/lib/py", "twisted")
 _THRIFT_PY_ASYNCIO_LIB_RULE_NAME = target_utils.RootRuleTarget("thrift/lib/py", "asyncio")
 
+_POSTPROCESS_MSG_NO_BASE_MODULE = """
+Compiling {src} did not generate source in {ttypes_path}
+Does the "\\"namespace {py_flavor}\\"" directive in the thrift file match the base_module specified in the TARGETS file?
+  base_module not specified, assumed to be "\\"{base_module}\\""
+  thrift file should contain "\\"namespace {py_flavor} {expected_ns}\\""
+""".strip()
+
+_POSTPROCESS_MSG_WITH_BASE_MODULE = """
+Compiling {src} did not generate source in {ttypes_path}
+Does the "\\"namespace {py_flavor}\\"" directive in the thrift file match the base_module specified in the TARGETS file?
+  base_module is "\\"{base_module}\\""
+  thrift file should contain "\\"namespace {py_flavor} {expected_ns}\\""
+""".strip()
+
 def _get_name(flavor, prefix, sep, base_module = False):
     if flavor in (_PYI, _PYI_ASYNCIO):
         if not base_module:
@@ -160,10 +174,6 @@ def _get_postprocess_command(
     output_dir = paths.join(out_dir, "gen-py", thrift_dir)
     ttypes_path = paths.join(output_dir, "ttypes" + ext)
 
-    msg = [
-        "Compiling %s did not generate source in %s" %
-        (paths.join(base_path, thrift_src), ttypes_path),
-    ]
     if flavor == _ASYNCIO or flavor == _PYI_ASYNCIO:
         py_flavor = "py.asyncio"
     elif flavor == _TWISTED:
@@ -171,32 +181,27 @@ def _get_postprocess_command(
     else:
         py_flavor = "py"
 
-    # TODO: Just turn this into one large error string and use proper formatters
-    msg.append(
-        ('Does the "\\"namespace %s\\"" directive in the thrift file ' +
-         "match the base_module specified in the TARGETS file?") %
-        (py_flavor,),
-    )
     base_module = _get_base_module(flavor = flavor, **kwargs)
     if base_module == None:
         base_module = base_path
-        msg.append(
-            '  base_module not specified, assumed to be "\\"%s\\""' %
-            (base_path,),
-        )
+        msg_template = _POSTPROCESS_MSG_NO_BASE_MODULE
     else:
-        msg.append('  base_module is "\\"%s\\""' % (base_module,))
+        msg_template = _POSTPROCESS_MSG_WITH_BASE_MODULE
 
     expected_ns = [p for p in base_module.split("/") if p]
     expected_ns.append(thrift_base)
     expected_ns = ".".join(expected_ns)
-    msg.append(
-        '  thrift file should contain "\\"namespace %s %s\\""' %
-        (py_flavor, expected_ns),
+
+    msg = msg_template.format(
+        src = paths.join(base_path, thrift_src),
+        ttypes_path = ttypes_path,
+        py_flavor = py_flavor,
+        base_module = base_module,
+        expected_ns = expected_ns,
     )
 
     cmd = "if [ ! -f %s ]; then " % (ttypes_path,)
-    for line in msg:
+    for line in msg.splitlines():
         cmd += ' echo "%s" >&2;' % (line,)
     cmd += " false; fi"
 
