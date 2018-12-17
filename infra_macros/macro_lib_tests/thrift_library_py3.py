@@ -22,7 +22,7 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
         super(Py3ThriftConverterTest, self).setUp()
         try:
             self.setup_with_config({}, {})
-        except:
+        except Exception:
             super(Py3ThriftConverterTest, self).tearDown()
             raise
 
@@ -40,7 +40,7 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
 
     def test_cpp2_auto_included(self):
         with self._state.parser._with_stacked_build_env(BuildFileContext("base")):
-            rules = self._converter.convert(
+            self._converter.convert(
                 'base',
                 'name',
                 thrift_srcs={'service.thrift': []},
@@ -48,27 +48,33 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
                     'py3',
                 ]
             )
-        for rule in rules:
-            if rule.attributes['name'] == "name-cpp2":
-                self.assertEqual('cxx_library', rule.type)
-                break
-        else:
-            self.fail('cpp2 thrift language not added for py3 lang target')
+            # convert() does not return Rule objects anynore, peek into the build env
+            # to see what rules have been generated
+            for rule in self._state.parser._build_env_stack[-1].rules:
+                rule = rule.rule
+                if rule.attributes['name'] == "name-cpp2":
+                    self.assertEqual('cxx_library', rule.type)
+                    break
+            else:
+                self.fail('cpp2 thrift language not added for py3 lang target')
 
     def test_cpp2_options_copy_to_py3_options(self):
         OPTIONS = "BLAHBLAHBLAH"
         with self._state.parser._with_stacked_build_env(BuildFileContext("base")):
-            rules = self._converter.convert(
+            self._converter.convert(
                 'base',
                 'name',
                 thrift_srcs={'service.thrift': []},
                 languages=['py3', 'cpp2'],
                 thrift_cpp2_options=OPTIONS,
             )
-        for rule in rules:
-            if rule.attributes['name'] == "name-py3-service.thrift":
-                self.assertEqual('genrule', rule.type)
-                self.assertTrue(OPTIONS in rule.attributes['cmd'])
-                break
-        else:
-            self.fail('failed to find py3 thrift compiler target')
+            # convert() does not return Rule objects anynore, peek into the build env
+            # to see what rules have been generated
+            for rule in self._state.parser._build_env_stack[-1].rules:
+                rule = rule.rule
+                if rule.attributes['name'] == "name-py3-service.thrift":
+                    self.assertEqual('genrule', rule.type)
+                    self.assertTrue(OPTIONS in rule.attributes['cmd'])
+                    break
+            else:
+                self.fail('failed to find py3 thrift compiler target')

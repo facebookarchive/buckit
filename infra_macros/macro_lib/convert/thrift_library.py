@@ -2554,17 +2554,9 @@ class ThriftLibraryConverter(base.Converter):
         Generate a rule which runs the thrift compiler for the given inputs.
         """
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = (
+        genrule_name = (
             '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
-        attrs['labels'] = ['generated']
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = common_paths.CURRENT_DIRECTORY
-        attrs['srcs'] = [source]
-
         cmds = []
-
         cmds.append(
             self._converters[lang].get_compiler_command(
                 compiler,
@@ -2574,9 +2566,15 @@ class ThriftLibraryConverter(base.Converter):
         if postprocess_cmd != None:
             cmds.append(postprocess_cmd)
 
-        attrs['cmd'] = ' && '.join(cmds)
-
-        return Rule('genrule', attrs)
+        fb_native.genrule(
+            name = genrule_name,
+            labels = ['generated'],
+            visibility = visibility,
+            out = common_paths.CURRENT_DIRECTORY,
+            srcs = [source],
+            cmd = ' && '.join(cmds),
+        )
+        return genrule_name
 
     def generate_generated_source_rules(self, compile_name, srcs, visibility):
         """
@@ -2693,7 +2691,7 @@ class ThriftLibraryConverter(base.Converter):
                 thrift_name = src_and_dep_helpers.get_source_name(thrift_src)
 
                 # Generate the thrift compile rules.
-                compile_rule = (
+                compile_rule_name = (
                     self.generate_compile_rule(
                         base_path,
                         name,
@@ -2707,7 +2705,6 @@ class ThriftLibraryConverter(base.Converter):
                             '$OUT',
                             **kwargs),
                         visibility=visibility))
-                rules.append(compile_rule)
 
                 # Create wrapper rules to extract individual generated sources
                 # and expose via target refs in the UI.
@@ -2722,7 +2719,7 @@ class ThriftLibraryConverter(base.Converter):
                         **kwargs))
                 gen_srcs, gen_src_rules = (
                     self.generate_generated_source_rules(
-                        compile_rule.attributes['name'],
+                        compile_rule_name,
                         gen_srcs,
                         visibility=visibility))
                 all_gen_srcs[thrift_name] = gen_srcs
