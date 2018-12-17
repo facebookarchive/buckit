@@ -58,7 +58,6 @@ load("@fbcode_macros//build_defs:cpp_benchmark.bzl", "cpp_benchmark")
 load("@fbcode_macros//build_defs:cpp_lua_extension.bzl", "cpp_lua_extension")
 load("@fbcode_macros//build_defs:cpp_lua_main_module.bzl", "cpp_lua_main_module")
 load("@fbcode_macros//build_defs:cpp_java_extension.bzl", "cpp_java_extension")
-load("@fbcode_macros//build_defs:cpp_jvm_library.bzl", "cpp_jvm_library")
 load("@fbcode_macros//build_defs:cpp_module_external.bzl", "cpp_module_external")
 load("@fbcode_macros//build_defs:cpp_node_extension.bzl", "cpp_node_extension")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
@@ -135,7 +134,6 @@ def convert(base_path, rule):
     new_converter_map = {
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
-        'cpp_jvm_library': cpp_jvm_library,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
         'custom_unittest': custom_unittest,  # noqa F821
         'buck_cxx_library': buck_cxx_library,  # noqa F821
