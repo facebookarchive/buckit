@@ -1505,8 +1505,9 @@ class Python3ThriftConverter(ThriftLangConverter):
         return 'mstch_py3'
 
     def get_options(self, base_path, parsed_options):
-        options = collections.OrderedDict()
-        options['include_prefix'] = base_path
+        options = {
+            'include_prefix': base_path
+        }
         options.update(parsed_options)
         return options
 
@@ -1582,20 +1583,21 @@ class Python3ThriftConverter(ThriftLangConverter):
             cython_genfiles = self.CYTHON_TYPES_GENFILES
             cpp_genfiles = ()
 
-        cython_paths = (
+        cython_paths = [
             paths.join(package, genfile)
             for genfile in cython_genfiles
-        )
+        ]
 
-        cpp_paths = (
+        cpp_paths = [
             paths.join(thrift_name, genfile)
             for genfile in cpp_genfiles
-        )
+        ]
 
-        return collections.OrderedDict((
-            (path, paths.join('gen-py3', path))
-            for path in itertools.chain(cython_paths, cpp_paths)
-        ))
+        return {
+            path: paths.join('gen-py3', path)
+            for src_paths in (cython_paths, cpp_paths)
+            for path in src_paths
+        }
 
     def thrift_name(self, thrift_src):
         return paths.split_extension(paths.basename(thrift_src))[0]
@@ -1605,6 +1607,20 @@ class Python3ThriftConverter(ThriftLangConverter):
             dep = dep[:-len('-py3')]
 
         return dep + '-cpp2'
+
+    def generated(self, sources, py3_namespace, src, thrift_src):
+        thrift_src = src_and_dep_helpers.get_source_name(thrift_src)
+        thrift_name = self.thrift_name(thrift_src)
+        thrift_package = paths.join(thrift_name, src)
+        if src in self.CXX_RPC_GENFILES:
+            full_src = thrift_package
+            dst = paths.join('gen-py3', full_src)
+        else:
+            full_src = paths.join(
+                py3_namespace.replace('.', '/'), thrift_package
+            )
+            dst = thrift_package
+        return (sources[thrift_src][full_src], dst)
 
     def get_language_rule(
             self,
@@ -1622,49 +1638,41 @@ class Python3ThriftConverter(ThriftLangConverter):
         rules).
         """
 
-        def generated(src, thrift_src):
-            thrift_src = src_and_dep_helpers.get_source_name(thrift_src)
-            thrift_name = self.thrift_name(thrift_src)
-            thrift_package = paths.join(thrift_name, src)
-            if src in self.CXX_RPC_GENFILES:
-                full_src = thrift_package
-                dst = paths.join('gen-py3', full_src)
-            else:
-                full_src = paths.join(
-                    py3_namespace.replace('.', '/'), thrift_package
-                )
-                dst = thrift_package
-            return sources[thrift_src][full_src], dst
-
         # Strip off the gen target prefixes, from .thrift sources
-        thrift_srcs = collections.OrderedDict(
-            {src_and_dep_helpers.get_source_name(thrift_src): services
-             for thrift_src, services in thrift_srcs.items()}
-        )
+        thrift_srcs = {
+            src_and_dep_helpers.get_source_name(thrift_src): services
+            for thrift_src, services in thrift_srcs.items()
+        }
 
         for gen_func in (self.gen_rule_thrift_types,
                          self.gen_rule_thrift_services,
                          self.gen_rule_thrift_clients):
             gen_func(
                 name, base_path, sources, thrift_srcs,
-                py3_namespace, deps, generated, visibility=visibility,
+                py3_namespace, deps, visibility=visibility,
             )
 
     def gen_rule_thrift_types(
-        self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        self, name, base_path, sources, thrift_srcs, namespace, fdeps,
         visibility,
     ):
         """Generates rules for Thrift types."""
 
+        srcs = {}
+        headers = {}
+        types = {}
+
+        for src in thrift_srcs:
+            srcs.update((self.generated(sources, namespace, "types.pyx", src),))
+            headers.update((self.generated(sources, namespace, "types.pxd", src),))
+            types.update((self.generated(sources, namespace, "types.pyi", src),))
+
         cython_library(
             name=name + self.types_suffix,
             package=namespace,
-            srcs=collections.OrderedDict((generated('types.pyx', src)
-                                          for src in thrift_srcs)),
-            headers=collections.OrderedDict((generated('types.pxd', src)
-                                             for src in thrift_srcs)),
-            types=collections.OrderedDict((generated('types.pyi', src)
-                                          for src in thrift_srcs)),
+            srcs=srcs,
+            headers=headers,
+            types=types,
             cpp_deps=[':' + self.get_cpp2_dep(name)] + [
                 self.get_cpp2_dep(d) for d in fdeps
             ],
@@ -1678,50 +1686,40 @@ class Python3ThriftConverter(ThriftLangConverter):
         )
 
     def gen_rule_thrift_services(
-        self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        self, name, base_path, sources, thrift_srcs, namespace, fdeps,
         visibility,
     ):
         """Generate rules for Thrift Services"""
         # Services and support
-        def services_srcs():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('services.pyx', src)
-                yield generated('services_wrapper.cpp', src)
+        services_srcs = {}
+        services_headers = {}
+        services_typing = {}
 
-        def services_headers():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('services.pxd', src)
-                yield generated('services_wrapper.pxd', src)
-                yield generated('services_wrapper.h', src)
+        cython_api = {}
 
-        def services_typing():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('services.pyi', src)
+        for src, services in thrift_srcs.items():
+            if not services:
+                continue
+            services_srcs.update((self.generated(sources, namespace, 'services.pyx', src),))
+            services_srcs.update((self.generated(sources, namespace, 'services_wrapper.cpp', src),))
+            services_headers.update((self.generated(sources, namespace, 'services.pxd', src),))
+            services_headers.update((self.generated(sources, namespace, 'services_wrapper.pxd', src),))
+            services_headers.update((self.generated(sources, namespace, 'services_wrapper.h', src),))
+            services_typing.update((self.generated(sources, namespace, 'services.pyi', src),))
 
-        def cython_api(module, thrift_srcs):
-            """Build out a cython_api dict, to place the _api.h files inside
-            the gen-py3/ root so the c++ code can find it
-            """
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                thrift_name = self.thrift_name(src)
-                module_path = paths.join(thrift_name, module)
-                dst = paths.join('gen-py3', module_path)
-                yield module_path, dst
+            # Build out a cython_api dict, to place the _api.h files inside
+            # the gen-py3/ root so the c++ code can find it
+            thrift_name = self.thrift_name(src)
+            module_path = paths.join(thrift_name, 'services')
+            dst = paths.join('gen-py3', module_path)
+            cython_api[module_path] = dst
 
         cython_library(
             name=name + self.services_suffix,
             package=namespace,
-            srcs=collections.OrderedDict(services_srcs()),
-            headers=collections.OrderedDict(services_headers()),
-            types=collections.OrderedDict(services_typing()),
+            srcs=services_srcs,
+            headers=services_headers,
+            types=services_typing,
             cpp_deps=[
                 ':' + self.get_cpp2_dep(name),
             ],
@@ -1730,43 +1728,35 @@ class Python3ThriftConverter(ThriftLangConverter):
                 thrift_common.get_thrift_dep_target('thrift/lib/py3', 'server'),
             ] + [d + self.services_suffix for d in fdeps],
             cpp_compiler_flags=['-fno-strict-aliasing'],
-            api=collections.OrderedDict(
-                cython_api('services', thrift_srcs)),
+            api=cython_api,
             visibility=visibility,
         )
 
     def gen_rule_thrift_clients(
-        self, name, base_path, sources, thrift_srcs, namespace, fdeps, generated,
+        self, name, base_path, sources, thrift_srcs, namespace, fdeps,
         visibility,
     ):
         # Clients and support
-        def clients_srcs():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('clients.pyx', src)
-                yield generated('clients_wrapper.cpp', src)
+        clients_srcs = {}
+        clients_headers = {}
+        clients_typing = {}
 
-        def clients_headers():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('clients.pxd', src)
-                yield generated('clients_wrapper.pxd', src)
-                yield generated('clients_wrapper.h', src)
-
-        def clients_typing():
-            for src, services in thrift_srcs.items():
-                if not services:
-                    continue
-                yield generated('clients.pyi', src)
+        for src, services in thrift_srcs.items():
+            if not services:
+                continue
+            clients_srcs.update((self.generated(sources, namespace,'clients.pyx', src),))
+            clients_srcs.update((self.generated(sources, namespace,'clients_wrapper.cpp', src),))
+            clients_headers.update((self.generated(sources, namespace,'clients.pxd', src),))
+            clients_headers.update((self.generated(sources, namespace,'clients_wrapper.pxd', src),))
+            clients_headers.update((self.generated(sources, namespace,'clients_wrapper.h', src),))
+            clients_typing.update((self.generated(sources, namespace,'clients.pyi', src),))
 
         cython_library(
             name=name + self.clients_suffix,
             package=namespace,
-            srcs=collections.OrderedDict(clients_srcs()),
-            headers=collections.OrderedDict(clients_headers()),
-            types=collections.OrderedDict(clients_typing()),
+            srcs=clients_srcs,
+            headers=clients_headers,
+            types=clients_typing,
             cpp_deps=[
                 ':' + self.get_cpp2_dep(name),
             ],
