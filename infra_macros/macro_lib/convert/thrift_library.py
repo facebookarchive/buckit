@@ -2595,8 +2595,6 @@ class ThriftLibraryConverter(base.Converter):
         support).
         """
 
-        rules = []
-
         # Parse incoming options.
         thrift_srcs = self.fixup_thrift_srcs(thrift_srcs)
         thrift_args = self.parse_thrift_args(thrift_args)
@@ -2723,7 +2721,6 @@ class ThriftLibraryConverter(base.Converter):
                 [dep + '-' + lang for dep in deps],
                 visibility=visibility,
                 **kwargs)
-        return rules
 
     def get_allowed_args(self):
         """
@@ -2783,7 +2780,6 @@ class ThriftLibraryConverter(base.Converter):
 
     def convert(self, base_path, name=None, languages=None, visibility=None, **kwargs):
         visibility = get_visibility(visibility, name)
-        rules = []
 
         supported_languages = read_list(
             'thrift', 'supported_languages', delimiter=None, required=False,
@@ -2794,7 +2790,7 @@ class ThriftLibraryConverter(base.Converter):
         # Convert rules we support via macros.
         macro_languages = self.get_languages(languages)
         if macro_languages:
-            rules.extend(self.convert_macros(base_path, name=name, languages=languages, visibility=visibility, **kwargs))
+            self.convert_macros(base_path, name=name, languages=languages, visibility=visibility, **kwargs)
 
         # If python is listed in languages, then also generate the py-remote
         # rules.
@@ -2808,4 +2804,4 @@ class ThriftLibraryConverter(base.Converter):
                 include_sr=kwargs.get('py_remote_service_router', False),
                 visibility=visibility)
 
-        return rules
+        return []
