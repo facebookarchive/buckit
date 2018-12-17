@@ -1177,15 +1177,15 @@ class JsThriftConverter(ThriftLangConverter):
             cmds.append('mkdir -p {}'.format(paths.dirname(dst)))
             cmds.append('cp {} {}'.format(paths.basename(src), dst))
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = name
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = common_paths.CURRENT_DIRECTORY
-        attrs['labels'] = ['generated']
-        attrs['srcs'] = sources.values()
-        attrs['cmd'] = ' && '.join(cmds)
-        return [Rule('genrule', attrs)]
+        fb_native.genrule(
+            name = name,
+            visibility = visibility,
+            out = common_paths.CURRENT_DIRECTORY,
+            labels = ['generated'],
+            srcs = sources.values(),
+            cmd = ' && '.join(cmds),
+        )
+        return []
 
 
 class JavaSwiftConverter(ThriftLangConverter):
