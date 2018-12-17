@@ -56,19 +56,14 @@ load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_inter
 load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:haskell.bzl", "haskell_deprecated_thrift_converter", "haskell_hs2_thrift_converter")
+
 load("@fbcode_macros//build_defs/lib/thrift:js.bzl", "js_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:go.bzl", "go_thrift_converter")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
-
-
-
-
-def camel(s):
-    return ''.join(w[0].upper() + w[1:] for w in s.split('_') if w != '')
-
 
 
 
@@ -523,207 +518,6 @@ class CppThriftConverter(ThriftLangConverter):
             visibility=visibility,
             modular_headers=modular_headers,
         )
-
-class HaskellThriftConverter(ThriftLangConverter):
-    """
-    Specializer to support generating Haskell libraries from thrift sources.
-    """
-
-    THRIFT_HS_LIBS = [
-        target_utils.RootRuleTarget('thrift/lib/hs', 'thrift'),
-        target_utils.RootRuleTarget('thrift/lib/hs', 'types'),
-        target_utils.RootRuleTarget('thrift/lib/hs', 'protocol'),
-        target_utils.RootRuleTarget('thrift/lib/hs', 'transport'),
-    ]
-
-    THRIFT_HS_LIBS_DEPRECATED = [
-        target_utils.RootRuleTarget('thrift/lib/hs', 'hs'),
-    ]
-
-    THRIFT_HS2_LIBS = [
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'codegen-types-only'),
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'protocol'),
-    ]
-
-    THRIFT_HS2_SERVICE_LIBS = [
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'channel'),
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'codegen'),
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'processor'),
-        target_utils.RootRuleTarget('common/hs/thrift/lib', 'types'),
-        target_utils.RootRuleTarget('common/hs/thrift/lib/if', 'application-exception-hs2')
-    ]
-
-    THRIFT_HS_PACKAGES = [
-        'base',
-        'bytestring',
-        'containers',
-        'deepseq',
-        'hashable',
-        'QuickCheck',
-        'text',
-        'unordered-containers',
-        'vector',
-    ]
-
-    THRIFT_HS2_PACKAGES = [
-        'aeson',
-        'base',
-        'binary-parsers',
-        'bytestring',
-        'containers',
-        'data-default',
-        'deepseq',
-        'hashable',
-        'STMonadTrans',
-        'text',
-        'transformers',
-        'unordered-containers',
-        'vector',
-    ]
-
-    def __init__(self, *args, **kwargs):
-        is_hs2 = kwargs.pop('is_hs2', False)
-        super(HaskellThriftConverter, self).__init__(*args, **kwargs)
-        self._is_hs2 = is_hs2
-
-    def get_compiler(self):
-        if self._is_hs2:
-            return config.get_thrift_hs2_compiler()
-        else:
-            return config.get_thrift_compiler()
-
-    def get_lang(self):
-        return 'hs2' if self._is_hs2 else 'hs'
-
-    def get_extra_includes(self, hs_includes=(), **kwargs):
-        return hs_includes
-
-    def get_compiler_args(
-            self,
-            compiler_lang,
-            flags,
-            options,
-            hs_required_symbols=None,
-            **kwargs):
-        """
-        Return compiler args when compiling for haskell languages.
-        """
-
-        # If this isn't `hs2` fall back to getting the regular copmiler args.
-        if self.get_lang() != 'hs2':
-            return super(HaskellThriftConverter, self).get_compiler_args(
-                compiler_lang,
-                flags,
-                options)
-
-        args = ["--hs"]
-
-        # Format the options and pass them into the hs2 compiler.
-        for option, val in options.items():
-            flag = '--' + option
-            if val != None:
-                flag += '=' + val
-            args.append(flag)
-
-        # Include rule-specific flags.
-        args.extend(flags)
-
-        # Add in the require symbols parameter.
-        if hs_required_symbols != None:
-            args.append('--required-symbols')
-            args.append(hs_required_symbols)
-
-        return args
-
-    def get_generated_sources(
-            self,
-            base_path,
-            name,
-            thrift_src,
-            services,
-            options,
-            hs_namespace=None,
-            **kwargs):
-
-        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-        thrift_base = thrift_common.capitalize_only(thrift_base)
-        namespace = hs_namespace or ''
-        lang = self.get_lang()
-
-        genfiles = []
-
-        if lang == 'hs':
-            genfiles.append('%s_Consts.hs' % thrift_base)
-            genfiles.append('%s_Types.hs' % thrift_base)
-            for service in services:
-                service = thrift_common.capitalize_only(service)
-                genfiles.append('%s.hs' % service)
-                genfiles.append('%s_Client.hs' % service)
-                genfiles.append('%s_Iface.hs' % service)
-                genfiles.append('%s_Fuzzer.hs' % service)
-            namespace = namespace.replace('.', '/')
-
-        elif lang == 'hs2':
-            thrift_base = camel(thrift_base)
-            namespace = '/'.join(map(camel, namespace.split('.')))
-            genfiles.append('%s/Types.hs' % thrift_base)
-            for service in services:
-                genfiles.append('%s/%s/Client.hs' % (thrift_base, service))
-                genfiles.append('%s/%s/Service.hs' % (thrift_base, service))
-
-        return collections.OrderedDict(
-            [(path, paths.join('gen-' + lang, path)) for path in
-                [paths.join(namespace, genfile) for genfile in genfiles]])
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            options,
-            sources_map,
-            deps,
-            hs_packages=(),
-            hs2_deps=[],
-            visibility=None,
-            **kwargs):
-
-        platform = platform_utils.get_platform_for_base_path(base_path)
-
-        srcs = thrift_common.merge_sources_map(sources_map)
-
-        dependencies = []
-        if not self._is_hs2:
-            if 'new_deps' in options:
-                dependencies.extend(self.THRIFT_HS_LIBS)
-            else:
-                dependencies.extend(self.THRIFT_HS_LIBS_DEPRECATED)
-            dependencies.extend(haskell_rules.get_deps_for_packages(
-                self.THRIFT_HS_PACKAGES, platform))
-        else:
-            for services in thrift_srcs.itervalues():
-                if services:
-                    dependencies.extend(self.THRIFT_HS2_SERVICE_LIBS)
-                    break
-            dependencies.extend(self.THRIFT_HS2_LIBS)
-            dependencies.extend(haskell_rules.get_deps_for_packages(
-                self.THRIFT_HS2_PACKAGES + (hs_packages or []), platform))
-            for dep in hs2_deps:
-                dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        for dep in deps:
-            dependencies.append(target_utils.parse_target(dep, default_base_path=base_path))
-        deps, platform_deps = src_and_dep_helpers.format_all_deps(dependencies)
-        enable_profiling = True if haskell_common.read_hs_profile() else None
-
-        fb_native.haskell_library(
-            name = name,
-            visibility = visibility,
-            srcs = srcs,
-            deps = deps,
-            platform_deps = platform_deps,
-            enable_profiling = enable_profiling,
-        )
-
 
 class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
     """
@@ -1298,8 +1092,8 @@ class ThriftLibraryConverter(base.Converter):
             CppThriftConverter(),
             d_thrift_converter,
             go_thrift_converter,
-            HaskellThriftConverter(is_hs2=False),
-            HaskellThriftConverter(is_hs2=True),
+            haskell_deprecated_thrift_converter,
+            haskell_hs2_thrift_converter,
             js_thrift_converter,
             ocaml_thrift_converter,
             rust_thrift_converter,
