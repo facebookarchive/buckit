@@ -16,10 +16,6 @@ import collections
 import itertools
 import pipes
 
-with allow_unsafe_import():  # noqa: magic
-    import os
-
-
 # Hack to make internal Buck macros flake8-clean until we switch to buildozer.
 def import_macro_lib(path):
     global _import_macro_lib__imported
@@ -34,9 +30,11 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:custom_rule.bzl", "get_project_root_from_gen_dir")
 load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
@@ -54,6 +52,7 @@ load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
 
 THRIFT_FLAGS = [
@@ -332,8 +331,8 @@ class CppThriftConverter(ThriftLangConverter):
             **kwargs):
 
         thrift_base = (
-            os.path.splitext(
-                os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
+            paths.split_extension(
+                paths.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
 
         genfiles = []
 
@@ -369,10 +368,10 @@ class CppThriftConverter(ThriftLangConverter):
         lang = self.get_lang()
         return collections.OrderedDict(
             [(p, p) for p in
-                [os.path.join('gen-' + lang, path) for path in genfiles]])
+                [paths.join('gen-' + lang, path) for path in genfiles]])
 
     def is_header(self, src):
-        _, ext = os.path.splitext(src)
+        _, ext = paths.split_extension(src)
         return ext in ('.h', '.tcc')
 
     def get_src_type(self, src):
@@ -601,10 +600,10 @@ class DThriftConverter(ThriftLangConverter):
             d_thrift_namespaces=None,
             **kwargs):
 
-        thrift_base = os.path.splitext(os.path.basename(thrift_src))[0]
+        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
         thrift_namespaces = d_thrift_namespaces or {}
         thrift_prefix = (
-            thrift_namespaces.get(thrift_src, '').replace('.', os.sep))
+            thrift_namespaces.get(thrift_src, '').replace('.', '/'))
 
         genfiles = []
 
@@ -615,8 +614,8 @@ class DThriftConverter(ThriftLangConverter):
             genfiles.append('%s.d' % service)
 
         return collections.OrderedDict(
-            [(path, os.path.join('gen-d', path)) for path in
-                [os.path.join(thrift_prefix, genfile) for genfile in genfiles]])
+            [(path, paths.join('gen-d', path)) for path in
+                [paths.join(thrift_prefix, genfile) for genfile in genfiles]])
 
     def get_language_rule(
             self,
@@ -660,14 +659,14 @@ class GoThriftConverter(ThriftLangConverter):
             thrift_src):
 
         thrift_namespaces = go_thrift_namespaces or {}
-        thrift_file = os.path.basename(thrift_src)
+        thrift_file = paths.basename(thrift_src)
         try:
             namespace = thrift_namespaces[thrift_file]
-            return namespace.replace('.', os.sep)
+            return namespace.replace('.', '/')
         except KeyError:
             if go_pkg_base_path != None:
                 base_path = go_pkg_base_path
-            return os.path.join(base_path, os.path.splitext(thrift_file)[0])
+            return paths.join(base_path, paths.split_extension(thrift_file)[0])
 
     def get_generated_sources(
             self,
@@ -695,8 +694,8 @@ class GoThriftConverter(ThriftLangConverter):
             genfiles.append('{}.go'.format(service.lower()))
 
         return collections.OrderedDict(
-            [(path, os.path.join('gen-go', path)) for path in
-                [os.path.join(thrift_prefix, gf) for gf in genfiles]])
+            [(path, paths.join('gen-go', path)) for path in
+                [paths.join(thrift_prefix, gf) for gf in genfiles]])
 
     def get_options(self, base_path, parsed_options):
         opts = collections.OrderedDict(
@@ -728,11 +727,11 @@ class GoThriftConverter(ThriftLangConverter):
                 base_path,
                 thrift_src
             )
-            thrift_noext = os.path.splitext(
-                os.path.basename(thrift_src)
+            thrift_noext = paths.split_extension(
+                paths.basename(thrift_src)
             )[0]
 
-            rule_name = "{}-{}".format(name, os.path.basename(pkg))
+            rule_name = "{}-{}".format(name, paths.basename(pkg))
             export_deps.add(":{}".format(rule_name))
 
             attrs = collections.OrderedDict()
@@ -760,7 +759,7 @@ class GoThriftConverter(ThriftLangConverter):
         # Generate a parent package with exported deps of the each thrift_src.
         # Since this package has no go source files and is never used directly
         # the name doesn't matter and it only needs to be unique.
-        pkg_name = os.path.join(
+        pkg_name = paths.join(
             base_path,
             # generate unique package name to avoid pkg name clash
             "{}-__generated{}".format(name, hash(name)),
@@ -898,7 +897,7 @@ class HaskellThriftConverter(ThriftLangConverter):
             hs_namespace=None,
             **kwargs):
 
-        thrift_base = os.path.splitext(os.path.basename(thrift_src))[0]
+        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
         thrift_base = capitalize(thrift_base)
         namespace = hs_namespace or ''
         lang = self.get_lang()
@@ -918,15 +917,15 @@ class HaskellThriftConverter(ThriftLangConverter):
 
         elif lang == 'hs2':
             thrift_base = camel(thrift_base)
-            namespace = os.sep.join(map(camel, namespace.split('.')))
+            namespace = '/'.join(map(camel, namespace.split('.')))
             genfiles.append('%s/Types.hs' % thrift_base)
             for service in services:
                 genfiles.append('%s/%s/Client.hs' % (thrift_base, service))
                 genfiles.append('%s/%s/Service.hs' % (thrift_base, service))
 
         return collections.OrderedDict(
-            [(path, os.path.join('gen-' + lang, path)) for path in
-                [os.path.join(namespace, genfile) for genfile in genfiles]])
+            [(path, paths.join('gen-' + lang, path)) for path in
+                [paths.join(namespace, genfile) for genfile in genfiles]])
 
     def get_language_rule(
             self,
@@ -1161,7 +1160,7 @@ class JsThriftConverter(ThriftLangConverter):
             options,
             **kwargs):
 
-        thrift_base = os.path.splitext(os.path.basename(thrift_src))[0]
+        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
 
         genfiles = []
         genfiles.append('%s_types.js' % thrift_base)
@@ -1171,8 +1170,8 @@ class JsThriftConverter(ThriftLangConverter):
         out_dir = 'gen-nodejs' if 'node' in options else 'gen-js'
         gen_srcs = collections.OrderedDict()
         for path in genfiles:
-            dst = os.path.join('node_modules', thrift_base, path)
-            src = os.path.join(out_dir, path)
+            dst = paths.join('node_modules', thrift_base, path)
+            src = paths.join(out_dir, path)
             gen_srcs[dst] = src
 
         return gen_srcs
@@ -1197,15 +1196,15 @@ class JsThriftConverter(ThriftLangConverter):
 
         for dst, raw_src in sources.items():
             src = src_and_dep_helpers.get_source_name(raw_src)
-            dst = os.path.join('"$OUT"', dst)
-            cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
-            cmds.append('cp {} {}'.format(os.path.basename(src), dst))
+            dst = paths.join('"$OUT"', dst)
+            cmds.append('mkdir -p {}'.format(paths.dirname(dst)))
+            cmds.append('cp {} {}'.format(paths.basename(src), dst))
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
         if visibility != None:
             attrs['visibility'] = visibility
-        attrs['out'] = os.curdir
+        attrs['out'] = common_paths.CURRENT_DIRECTORY
         attrs['labels'] = ['generated']
         attrs['srcs'] = sources.values()
         attrs['cmd'] = ' && '.join(cmds)
@@ -1399,7 +1398,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return 'py'
 
     def get_thrift_base(self, thrift_src):
-        return os.path.splitext(os.path.basename(thrift_src))[0]
+        return paths.split_extension(paths.basename(thrift_src))[0]
 
     def get_base_module(self, **kwargs):
         """
@@ -1421,14 +1420,14 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         # Otherwise, since we accept pathy base modules, normalize it to look
         # like a proper module.
-        return os.sep.join(base_module.split('.'))
+        return '/'.join(base_module.split('.'))
 
     def get_thrift_dir(self, base_path, thrift_src, **kwargs):
         thrift_base = self.get_thrift_base(thrift_src)
         base_module = self.get_base_module(**kwargs)
         if base_module == None:
             base_module = base_path
-        return os.path.join(base_module, thrift_base)
+        return paths.join(base_module, thrift_base)
 
     def get_postprocess_command(
             self,
@@ -1446,12 +1445,12 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         thrift_base = self.get_thrift_base(thrift_src)
         thrift_dir = self.get_thrift_dir(base_path, thrift_src, **kwargs)
 
-        output_dir = os.path.join(out_dir, 'gen-py', thrift_dir)
-        ttypes_path = os.path.join(output_dir, 'ttypes' + self._ext)
+        output_dir = paths.join(out_dir, 'gen-py', thrift_dir)
+        ttypes_path = paths.join(output_dir, 'ttypes' + self._ext)
 
         msg = [
             'Compiling %s did not generate source in %s'
-            % (os.path.join(base_path, thrift_src), ttypes_path)
+            % (paths.join(base_path, thrift_src), ttypes_path)
         ]
         if self._flavor == self.ASYNCIO or self._flavor == self.PYI_ASYNCIO:
             py_flavor = 'py.asyncio'
@@ -1472,7 +1471,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         else:
             msg.append('  base_module is "\\"%s\\""' % (base_module,))
 
-        expected_ns = [p for p in base_module.split(os.sep) if p]
+        expected_ns = [p for p in base_module.split('/') if p]
         expected_ns.append(thrift_base)
         expected_ns = '.'.join(expected_ns)
         msg.append(
@@ -1537,8 +1536,8 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             return path
 
         return collections.OrderedDict(
-            [(add_ext(os.path.join(thrift_base, path), self._ext),
-              os.path.join('gen-py', thrift_dir, path)) for path in genfiles])
+            [(add_ext(paths.join(thrift_base, path), self._ext),
+              paths.join('gen-py', thrift_dir, path)) for path in genfiles])
 
     def get_pyi_dependency(self, name):
         if name.endswith('-asyncio'):
@@ -1671,7 +1670,7 @@ class OCamlThriftConverter(ThriftLangConverter):
             options,
             **kwargs):
 
-        thrift_base = os.path.splitext(os.path.basename(thrift_src))[0]
+        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
         thrift_base = capitalize(thrift_base)
 
         genfiles = []
@@ -1771,13 +1770,13 @@ class Python3ThriftConverter(ThriftLangConverter):
         # there is probably a mismatch between the py3_namespace parameter in the
         # TARGETS file and the "namespace py3" directive in the .thrift file.
         thrift_name = self.thrift_name(thrift_src)
-        package = os.path.join(py3_namespace, thrift_name).replace('.', '/')
-        output_dir = os.path.join(out_dir, 'gen-py3', package)
-        types_path = os.path.join(output_dir, 'types.pyx')
+        package = paths.join(py3_namespace, thrift_name).replace('.', '/')
+        output_dir = paths.join(out_dir, 'gen-py3', package)
+        types_path = paths.join(output_dir, 'types.pyx')
 
         msg = [
             'Compiling %s did not generate source in %s'
-            % (os.path.join(base_path, thrift_src), types_path)
+            % (paths.join(base_path, thrift_src), types_path)
         ]
         msg.append(
             "Does the 'namespace py3' directive in the thrift file "
@@ -1817,7 +1816,7 @@ class Python3ThriftConverter(ThriftLangConverter):
         their different compilation behaviors
         """
         thrift_name = self.thrift_name(thrift_src)
-        package = os.path.join(py3_namespace, thrift_name).replace('.', '/')
+        package = paths.join(py3_namespace, thrift_name).replace('.', '/')
 
         # If there are services defined then there will be services/clients files
         # and cpp files.
@@ -1829,22 +1828,22 @@ class Python3ThriftConverter(ThriftLangConverter):
             cpp_genfiles = ()
 
         cython_paths = (
-            os.path.join(package, genfile)
+            paths.join(package, genfile)
             for genfile in cython_genfiles
         )
 
         cpp_paths = (
-            os.path.join(thrift_name, genfile)
+            paths.join(thrift_name, genfile)
             for genfile in cpp_genfiles
         )
 
         return collections.OrderedDict((
-            (path, os.path.join('gen-py3', path))
+            (path, paths.join('gen-py3', path))
             for path in itertools.chain(cython_paths, cpp_paths)
         ))
 
     def thrift_name(self, thrift_src):
-        return os.path.splitext(os.path.basename(thrift_src))[0]
+        return paths.split_extension(paths.basename(thrift_src))[0]
 
     def get_cpp2_dep(self, dep):
         if dep.endswith('-py3'):
@@ -1871,12 +1870,12 @@ class Python3ThriftConverter(ThriftLangConverter):
         def generated(src, thrift_src):
             thrift_src = src_and_dep_helpers.get_source_name(thrift_src)
             thrift_name = self.thrift_name(thrift_src)
-            thrift_package = os.path.join(thrift_name, src)
+            thrift_package = paths.join(thrift_name, src)
             if src in self.CXX_RPC_GENFILES:
                 full_src = thrift_package
-                dst = os.path.join('gen-py3', full_src)
+                dst = paths.join('gen-py3', full_src)
             else:
-                full_src = os.path.join(
+                full_src = paths.join(
                     py3_namespace.replace('.', '/'), thrift_package
                 )
                 dst = thrift_package
@@ -1961,8 +1960,8 @@ class Python3ThriftConverter(ThriftLangConverter):
                 if not services:
                     continue
                 thrift_name = self.thrift_name(src)
-                module_path = os.path.join(thrift_name, module)
-                dst = os.path.join('gen-py3', module_path)
+                module_path = paths.join(thrift_name, module)
+                dst = paths.join('gen-py3', module_path)
                 yield module_path, dst
 
         cython_library(
@@ -2122,7 +2121,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             # guarantee a Python-safe path using `py_base_module` for the
             # base, but this does not seem worth it -- almost all paths in
             # fbcode are Python-safe.
-            output_file = os.path.join(
+            output_file = paths.join(
                 base_path,
                 thrift_filename[:-len('.thrift')],
                 self.AST_FILE,
@@ -2233,15 +2232,15 @@ class RustThriftConverter(ThriftLangConverter):
             rs_namespace=None,
             **kwargs):
         thrift_base = (
-            os.path.splitext(
-                os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
+            paths.split_extension(
+                paths.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
         namespace = rs_namespace or ''
 
         genfiles = ["%s.ast" % thrift_base]
 
         return collections.OrderedDict(
             [(path, path) for path in
-                [os.path.join(namespace, genfile) for genfile in genfiles]])
+                [paths.join(namespace, genfile) for genfile in genfiles]])
 
     def get_ast_to_rust(
             self,
@@ -2262,19 +2261,21 @@ class RustThriftConverter(ThriftLangConverter):
         attrs['labels'] = ['generated']
         if visibility != None:
             attrs['visibility'] = visibility
-        attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
+        attrs['out'] = '%s/%s/lib.rs' % (common_paths.CURRENT_DIRECTORY, name)
         attrs['srcs'] = sources
 
         # Hacky hack to deal with `codegen`s dynamic dependency on
         # proc_macro.so in the rust libraries, via the `quote` crate.
         # At least avoid hard-coding platform and arch.
-        rustc_path = os.path.abspath(
+        rustc_path = paths.join(
+            "$GEN_DIR",
+            get_project_root_from_gen_dir(),
             third_party.get_tool_path(
                 'rust/lib/rustlib/{arch}/lib/'
                     .format(arch = 'x86_64-unknown-linux-gnu'),
                 'platform007'))
         attrs['cmd'] = \
-            'env LD_LIBRARY_PATH={rustc} $(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
+            'env LD_LIBRARY_PATH=\\$(realpath {rustc}) $(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
             .format(
                 rustc = rustc_path,
                 sources=' '.join('$(location %s)' % s for s in sources),
@@ -2381,8 +2382,8 @@ class RustThriftConverter(ThriftLangConverter):
 
         crate_map = []
         for src in thrift_srcs.keys():
-            src = os.path.join(base_path, src_and_dep_helpers.get_source_name(src))
-            modname = os.path.splitext(os.path.basename(src))[0]
+            src = paths.join(base_path, src_and_dep_helpers.get_source_name(src))
+            modname = paths.split_extension(paths.basename(src))[0]
             if len(thrift_srcs) > 1:
                 crate_map.append("{} {} {} {}"
                                  .format(src, crate_name, crate_name, modname))
@@ -2396,7 +2397,7 @@ class RustThriftConverter(ThriftLangConverter):
         attrs['labels'] = ['generated']
         if visibility != None:
             attrs['visibility'] = visibility
-        attrs['out'] = os.path.join(os.curdir, crate_map_name + ".txt")
+        attrs['out'] = paths.join(common_paths.CURRENT_DIRECTORY, crate_map_name + ".txt")
         attrs['cmd'] = (
             'mkdir -p `dirname $OUT` && echo {0} > $OUT'
             .format(pipes.quote('\n'.join(crate_map))))
@@ -2562,12 +2563,12 @@ class ThriftLibraryConverter(base.Converter):
         # Find and normalize the base module.
         if base_module == None:
             base_module = base_path
-        base_module = base_module.replace(os.sep, '.')
+        base_module = base_module.replace('/', '.')
 
         for thrift_src, services in thrift_srcs.items():
             thrift_base = (
-                os.path.splitext(
-                    os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
+                paths.split_extension(
+                    paths.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
             for service in services:
                 attrs = collections.OrderedDict()
                 attrs['name'] = '{}-{}-pyremote'.format(name, service)
@@ -2624,7 +2625,7 @@ class ThriftLibraryConverter(base.Converter):
         attrs['labels'] = ['generated']
         if visibility != None:
             attrs['visibility'] = visibility
-        attrs['out'] = os.curdir
+        attrs['out'] = common_paths.CURRENT_DIRECTORY
         attrs['srcs'] = [source]
 
         cmds = []
