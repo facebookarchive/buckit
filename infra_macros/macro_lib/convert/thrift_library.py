@@ -53,6 +53,7 @@ load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
+load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
@@ -177,34 +178,12 @@ class ThriftLangConverter(base.Converter):
             compiler_args,
             includes,
             additional_compiler):
-        cmd = []
-        cmd.append('$(exe {})'.format(compiler))
-        cmd.extend(compiler_args)
-        cmd.append('-I')
-        cmd.append(
-            '$(location {})'.format(includes))
-        if read_bool('thrift', 'use_templates', True):
-            cmd.append('--templates')
-            cmd.append('$(location {})'.format(
-                config.get_thrift_templates()))
-        cmd.append('-o')
-        cmd.append('"$OUT"')
-        # TODO(T17324385): Work around an issue where dep chains of binaries
-        # (e.g. one binary which delegates to another when it runs), aren't
-        # added to the rule key when run in `genrule`s.  So, we need to
-        # explicitly add these deps to the `genrule` using `$(exe ...)`.
-        # However, since the implemenetation of `--python-compiler` in thrift
-        # requires a single file path, and since `$(exe ...)` actually expands
-        # to a list of args, we ues `$(query_outputs ...)` here and just append
-        # `$(exe ...)` to the end of the command below, in a comment.
-        if additional_compiler:
-            cmd.append('--python-compiler')
-            cmd.append('$(query_outputs "{}")'.format(additional_compiler))
-        cmd.append('"$SRCS"')
-        # TODO(T17324385): Followup mentioned in above comment.
-        if additional_compiler:
-            cmd.append('# $(exe {})'.format(additional_compiler))
-        return ' '.join(cmd)
+        return thrift_interface.default_get_compiler_command(
+            compiler,
+            compiler_args,
+            includes,
+            additional_compiler,
+        )
 
     def get_generated_sources(
             self,
