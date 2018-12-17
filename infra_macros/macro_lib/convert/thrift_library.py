@@ -2092,12 +2092,14 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
             #   ThriftRuleName-thriftdoc-py-SourceFile.thrift
             #
             # In contrast to `gen_srcs`, nothing splits the rule name on `='.
-            assert json_experimental_rule.endswith(source_suffix)
+            if not json_experimental_rule.endswith(source_suffix):
+                fail("Expected {} to end with {}".format(json_experimental_rule, source_suffix))
             thriftdoc_rule = json_experimental_rule.replace(
                 source_suffix, '=' + self.AST_FILE
             )
 
-            assert thrift_filename.endswith('.thrift')
+            if not thrift_filename.endswith('.thrift'):
+                fail("Expected {} to end with .thrift".format(thrift_filename))
             # The output filename should be unique in our Python library's
             # linktree, and should be importable from Python.  The filename
             # below is a slight modification of the `.thrift` file's
@@ -2110,11 +2112,13 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
                 thrift_filename[:-len('.thrift')],
                 self.AST_FILE,
             )
-            assert output_file not in py_library_srcs
+            if output_file in py_library_srcs:
+                fail("Expected {} to be absent from {}".format(output_file, py_library_srcs))
             py_library_srcs[output_file] = thriftdoc_rule
 
-            assert thriftdoc_rule.startswith(':')
-            yield Rule('genrule', collections.OrderedDict(
+            if not thriftdoc_rule.startswith(':'):
+                fail("Expected {} to be a relative rule".format(thriftdoc_rule))
+            fb_native.genrule(
                 name=thriftdoc_rule[1:],  # Get rid of the initial ':',
                 visibility=visibility,
                 labels=['generated'],
@@ -2126,18 +2130,18 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
                     # will get an unknown positional arg, and fail loudly.
                     generator_binary + ' --format py > "$OUT" < "$SRCS"/*',
                 ]),
-            ))
+            )
         if get_typing_config_target():
             gen_typing_config(name)
-        yield Rule('python_library', collections.OrderedDict(
+        fb_native.python_library(
             name=name,
             visibility=visibility,
             # tupperware.thriftdoc.validator.registry recursively loads this:
             base_module='tupperware.thriftdoc.generated_asts',
             srcs=src_and_dep_helpers.convert_source_map(base_path, py_library_srcs),
             deps=deps,
-        ))
-
+        )
+        return []
 
 RUST_KEYWORDS = {
     "abstract", "alignof", "as", "become", "box",
