@@ -81,7 +81,7 @@ def format_options(options):
 
     option_list = []
 
-    for option, val in options.iteritems():
+    for option, val in options.items():
         if val != None:
             option_list.append('{}={}'.format(option, val))
         else:
@@ -440,7 +440,7 @@ class CppThriftConverter(ThriftLangConverter):
         ]
 
         # Get sources/headers for the -types, -clients and -services rules
-        for filename, file_target in sources.iteritems():
+        for filename, file_target in sources.items():
             source_type = self.get_src_type(filename)
             if source_type == self.TYPES_SOURCE:
                 types_sources.append(file_target)
@@ -721,7 +721,7 @@ class GoThriftConverter(ThriftLangConverter):
 
         rules = []
         export_deps = set(deps)
-        for thrift_src, sources in sources_map.iteritems():
+        for thrift_src, sources in sources_map.items():
             pkg = self.go_package_name(
                 go_thrift_namespaces,
                 go_pkg_base_path,
@@ -872,7 +872,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         args = ["--hs"]
 
         # Format the options and pass them into the hs2 compiler.
-        for option, val in options.iteritems():
+        for option, val in options.items():
             flag = '--' + option
             if val != None:
                 flag += '=' + val
@@ -1195,7 +1195,7 @@ class JsThriftConverter(ThriftLangConverter):
         for dep in deps:
             cmds.append('rsync -a $(location {})/ "$OUT"'.format(dep))
 
-        for dst, raw_src in sources.iteritems():
+        for dst, raw_src in sources.items():
             src = src_and_dep_helpers.get_source_name(raw_src)
             dst = os.path.join('"$OUT"', dst)
             cmds.append('mkdir -p {}'.format(os.path.dirname(dst)))
@@ -1651,7 +1651,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         args.append('$(exe {})'.format(config.get_thrift_hs2_compiler()))
 
         # Format the options and pass them into the ocaml compiler.
-        for option, val in options.iteritems():
+        for option, val in options.items():
             flag = '--' + option
             if val != None:
                 flag += '=' + val
@@ -2096,7 +2096,7 @@ class ThriftdocPythonThriftConverter(ThriftLangConverter):
         # each JSON into a PAR-includable `thriftdoc_ast.py` file, to be
         # collated into a `python_library` at the very end.
         for thrift_filename, json_experimental_rule in \
-                thrift_common.merge_sources_map(sources_map).iteritems():
+                thrift_common.merge_sources_map(sources_map).items():
             # This genrule will end up writing its output here:
             #
             #   base_path/
@@ -2198,7 +2198,7 @@ class RustThriftConverter(ThriftLangConverter):
 
     def format_options(self, options):
         args = []
-        for option, val in options.iteritems():
+        for option, val in options.items():
             flag = '--' + option
             if val != None:
                 flag += '=' + val
@@ -2536,7 +2536,7 @@ class ThriftLibraryConverter(base.Converter):
 
     def fixup_thrift_srcs(self, srcs):
         new_srcs = collections.OrderedDict()
-        for name, services in sorted(srcs.iteritems()):
+        for name, services in sorted(srcs.items()):
             if services == None:
                 services = []
             elif not isinstance(services, (tuple, list)):
@@ -2564,7 +2564,7 @@ class ThriftLibraryConverter(base.Converter):
             base_module = base_path
         base_module = base_module.replace(os.sep, '.')
 
-        for thrift_src, services in thrift_srcs.iteritems():
+        for thrift_src, services in thrift_srcs.items():
             thrift_base = (
                 os.path.splitext(
                     os.path.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
@@ -2651,7 +2651,7 @@ class ThriftLibraryConverter(base.Converter):
         out = collections.OrderedDict()
         rules = []
 
-        for name, src in srcs.iteritems():
+        for name, src in srcs.items():
             attrs = collections.OrderedDict()
             attrs['name'] = '{}={}'.format(compile_name, src)
             attrs['labels'] = ['generated']
@@ -2753,7 +2753,7 @@ class ThriftLibraryConverter(base.Converter):
                 **kwargs)
 
             all_gen_srcs = collections.OrderedDict()
-            for thrift_src, services in thrift_srcs.iteritems():
+            for thrift_src, services in thrift_srcs.items():
                 thrift_name = src_and_dep_helpers.get_source_name(thrift_src)
 
                 # Generate the thrift compile rules.
