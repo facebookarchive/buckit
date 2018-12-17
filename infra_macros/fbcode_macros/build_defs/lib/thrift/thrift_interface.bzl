@@ -84,6 +84,38 @@ def _default_get_options(base_path, parsed_options):
     _ignore = base_path
     return parsed_options
 
+def _make(
+        get_lang,
+        get_names,
+        get_generated_sources,
+        get_language_rule,
+        get_compiler = _default_get_compiler,
+        get_compiler_lang = None,
+        get_extra_includes = _default_get_extra_includes,
+        get_postprocess_command = _default_get_postprocess_command,
+        get_additional_compiler = _default_get_additional_compiler,
+        get_compiler_args = _default_get_compiler_args,
+        get_compiler_command = _default_get_compiler_command,
+        get_options = _default_get_options):
+    """
+    Factory method to create a class like object for instantiating rules for a given language
+    """
+    get_compiler_lang = get_compiler_lang or get_lang
+    return struct(
+        get_lang = get_lang,
+        get_names = get_names,
+        get_generated_sources = get_generated_sources,
+        get_language_rule = get_language_rule,
+        get_compiler = get_compiler,
+        get_compiler_lang = get_compiler_lang,
+        get_extra_includes = get_extra_includes,
+        get_postprocess_command = get_postprocess_command,
+        get_additional_compiler = get_additional_compiler,
+        get_compiler_args = get_compiler_args,
+        get_compiler_command = get_compiler_command,
+        get_options = get_options,
+    )
+
 thrift_interface = struct(
     default_get_additional_compiler = _default_get_additional_compiler,
     default_get_compiler = _default_get_compiler,
@@ -92,4 +124,5 @@ thrift_interface = struct(
     default_get_extra_includes = _default_get_extra_includes,
     default_get_options = _default_get_options,
     default_get_postprocess_command = _default_get_postprocess_command,
+    make = _make,
 )
