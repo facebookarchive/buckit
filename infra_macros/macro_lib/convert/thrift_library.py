@@ -2558,8 +2558,6 @@ class ThriftLibraryConverter(base.Converter):
         Generate all the py-remote rules.
         """
 
-        remotes = []
-
         # Find and normalize the base module.
         if base_module == None:
             base_module = base_path
@@ -2570,32 +2568,33 @@ class ThriftLibraryConverter(base.Converter):
                 paths.split_extension(
                     paths.basename(src_and_dep_helpers.get_source_name(thrift_src)))[0])
             for service in services:
-                attrs = collections.OrderedDict()
-                attrs['name'] = '{}-{}-pyremote'.format(name, service)
-                if visibility != None:
-                    attrs['visibility'] = visibility
-                attrs['py_version'] = '<3'
-                attrs['base_module'] = ''
-                attrs['main_module'] = '.'.join(filter(bool, [
-                    base_module,
-                    thrift_base,
-                    service + '-remote',
-                ]))
                 if include_sr:
-                    sr_rule = 'thrift/facebook/remote/sr'
+                    sr_rule = '//thrift/facebook/remote/sr:remote'
                 else:
-                    sr_rule = 'thrift/lib/py/util'
-                attrs['deps'] = [
-                    ':{}-py'.format(name),
-                    '//{}:remote'.format(sr_rule),
-                ]
-                attrs['external_deps'] = [
-                    'python-future',
-                    'six',
-                ]
-                python_binary(**attrs)
-
-        return remotes
+                    sr_rule = '//thrift/lib/py/util:remote'
+                main_module = '.'.join([
+                    element for element in [
+                        base_module,
+                        thrift_base,
+                        service + '-remote',
+                    ]
+                    if element
+                ])
+                python_binary(
+                    name = '{}-{}-pyremote'.format(name, service),
+                    visibility = visibility,
+                    py_version = '<3',
+                    base_module = '',
+                    main_module = main_module,
+                    deps = [
+                        ':{}-py'.format(name),
+                        sr_rule,
+                    ],
+                    external_deps = [
+                        'python-future',
+                        'six',
+                    ],
+                )
 
     def get_exported_include_tree(self, dep):
         """
@@ -2890,14 +2889,14 @@ class ThriftLibraryConverter(base.Converter):
 
         # If python is listed in languages, then also generate the py-remote
         # rules.
+        # TODO: Move this logic into convert_macros
         if 'py' in languages or 'python' in languages:
-            rules.extend(
-                self.generate_py_remotes(
-                    base_path,
-                    name,
-                    self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
-                    kwargs.get('py_base_module'),
-                    include_sr=kwargs.get('py_remote_service_router', False),
-                    visibility=visibility))
+            self.generate_py_remotes(
+                base_path,
+                name,
+                self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
+                kwargs.get('py_base_module'),
+                include_sr=kwargs.get('py_remote_service_router', False),
+                visibility=visibility)
 
         return rules
