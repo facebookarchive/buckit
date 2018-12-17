@@ -82,7 +82,7 @@ def format_options(options):
     option_list = []
 
     for option, val in options.iteritems():
-        if val is not None:
+        if val != None:
             option_list.append('{}={}'.format(option, val))
         else:
             option_list.append(option)
@@ -633,7 +633,7 @@ class DThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['srcs'] = sources
 
@@ -665,7 +665,7 @@ class GoThriftConverter(ThriftLangConverter):
             namespace = thrift_namespaces[thrift_file]
             return namespace.replace('.', os.sep)
         except KeyError:
-            if go_pkg_base_path is not None:
+            if go_pkg_base_path != None:
                 base_path = go_pkg_base_path
             return os.path.join(base_path, os.path.splitext(thrift_file)[0])
 
@@ -738,7 +738,7 @@ class GoThriftConverter(ThriftLangConverter):
             attrs = collections.OrderedDict()
             attrs['name'] = rule_name
             attrs['labels'] = ['generated']
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = sources.values()
             attrs['package_name'] = pkg
@@ -768,7 +768,7 @@ class GoThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['srcs'] = []
         attrs['package_name'] = pkg_name
@@ -874,7 +874,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         # Format the options and pass them into the hs2 compiler.
         for option, val in options.iteritems():
             flag = '--' + option
-            if val is not None:
+            if val != None:
                 flag += '=' + val
             args.append(flag)
 
@@ -882,7 +882,7 @@ class HaskellThriftConverter(ThriftLangConverter):
         args.extend(flags)
 
         # Add in the require symbols parameter.
-        if hs_required_symbols is not None:
+        if hs_required_symbols != None:
             args.append('--required-symbols')
             args.append(hs_required_symbols)
 
@@ -945,7 +945,7 @@ class HaskellThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
 
@@ -1026,7 +1026,7 @@ class JavaDeprecatedThriftBaseConverter(ThriftLangConverter):
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
             attrs['labels'] = ['generated']
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = (
                 [source for sources in sources_map.itervalues()
@@ -1203,7 +1203,7 @@ class JsThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['labels'] = ['generated']
@@ -1304,7 +1304,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             attrs = collections.OrderedDict()
             attrs['name'] = src_zip_name
             attrs['labels'] = ['generated']
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['srcs'] = (
                 [source for sources in sources_map.values()
@@ -1321,7 +1321,7 @@ class JavaSwiftConverter(ThriftLangConverter):
             '//third-party-java/com.facebook.swift:swift-annotations')
 
         maven_publisher_enabled = False
-        if java_swift_maven_coords is not None:
+        if java_swift_maven_coords != None:
             maven_publisher_enabled = False  # TODO(T34003348)
             expected_coords_prefix = "com.facebook.thrift:"
             if not java_swift_maven_coords.startswith(expected_coords_prefix):
@@ -1412,11 +1412,11 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         # If no asyncio/twisted specific base module parameter is present,
         # fallback to using the general `py_base_module` parameter.
-        if base_module is None:
+        if base_module == None:
             base_module = kwargs.get('py_base_module')
 
         # If nothing is set, just return `None`.
-        if base_module is None:
+        if base_module == None:
             return None
 
         # Otherwise, since we accept pathy base modules, normalize it to look
@@ -1426,7 +1426,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
     def get_thrift_dir(self, base_path, thrift_src, **kwargs):
         thrift_base = self.get_thrift_base(thrift_src)
         base_module = self.get_base_module(**kwargs)
-        if base_module is None:
+        if base_module == None:
             base_module = base_path
         return os.path.join(base_module, thrift_base)
 
@@ -1464,7 +1464,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             'match the base_module specified in the TARGETS file?' %
             (py_flavor,))
         base_module = self.get_base_module(**kwargs)
-        if base_module is None:
+        if base_module == None:
             base_module = base_path
             msg.append(
                 '  base_module not specified, assumed to be "\\"%s\\""' %
@@ -1563,7 +1563,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         attrs = collections.OrderedDict()
         attrs['name'] = name
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['srcs'] = thrift_common.merge_sources_map(sources_map)
         attrs['base_module'] = self.get_base_module(**kwargs)
@@ -1599,7 +1599,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             if has_types:
                 gen_typing_config(
                     name,
-                    base_module if base_module is not None else base_path,
+                    base_module if base_module != None else base_path,
                     attrs['srcs'].keys(),
                     out_deps,
                     typing=True,
@@ -1653,7 +1653,7 @@ class OCamlThriftConverter(ThriftLangConverter):
         # Format the options and pass them into the ocaml compiler.
         for option, val in options.iteritems():
             flag = '--' + option
-            if val is not None:
+            if val != None:
                 flag += '=' + val
             args.append(flag)
 
@@ -2200,7 +2200,7 @@ class RustThriftConverter(ThriftLangConverter):
         args = []
         for option, val in options.iteritems():
             flag = '--' + option
-            if val is not None:
+            if val != None:
                 flag += '=' + val
             args.append(flag)
         return args
@@ -2260,7 +2260,7 @@ class RustThriftConverter(ThriftLangConverter):
         attrs = collections.OrderedDict()
         attrs['name'] = '%s-gen-rs' % name
         attrs['labels'] = ['generated']
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = '%s/%s/lib.rs' % (os.curdir, name)
         attrs['srcs'] = sources
@@ -2394,7 +2394,7 @@ class RustThriftConverter(ThriftLangConverter):
         attrs = collections.OrderedDict()
         attrs['name'] = crate_map_name
         attrs['labels'] = ['generated']
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = os.path.join(os.curdir, crate_map_name + ".txt")
         attrs['cmd'] = (
@@ -2482,12 +2482,12 @@ class ThriftLibraryConverter(base.Converter):
 
         languages = set()
 
-        if names is None:
+        if names == None:
             raise TypeError('thrift_library() requires languages argument')
 
         for name in names:
             lang = self._name_to_lang.get(name)
-            if lang is None:
+            if lang == None:
                 raise TypeError(
                     'thrift_library() does not support language {!r}'
                     .format(name))
@@ -2537,7 +2537,7 @@ class ThriftLibraryConverter(base.Converter):
     def fixup_thrift_srcs(self, srcs):
         new_srcs = collections.OrderedDict()
         for name, services in sorted(srcs.iteritems()):
-            if services is None:
+            if services == None:
                 services = []
             elif not isinstance(services, (tuple, list)):
                 services = [services]
@@ -2560,7 +2560,7 @@ class ThriftLibraryConverter(base.Converter):
         remotes = []
 
         # Find and normalize the base module.
-        if base_module is None:
+        if base_module == None:
             base_module = base_path
         base_module = base_module.replace(os.sep, '.')
 
@@ -2571,7 +2571,7 @@ class ThriftLibraryConverter(base.Converter):
             for service in services:
                 attrs = collections.OrderedDict()
                 attrs['name'] = '{}-{}-pyremote'.format(name, service)
-                if visibility is not None:
+                if visibility != None:
                     attrs['visibility'] = visibility
                 attrs['py_version'] = '<3'
                 attrs['base_module'] = ''
@@ -2622,7 +2622,7 @@ class ThriftLibraryConverter(base.Converter):
         attrs['name'] = (
             '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
         attrs['labels'] = ['generated']
-        if visibility is not None:
+        if visibility != None:
             attrs['visibility'] = visibility
         attrs['out'] = os.curdir
         attrs['srcs'] = [source]
@@ -2635,7 +2635,7 @@ class ThriftLibraryConverter(base.Converter):
                 compiler_args,
                 self.get_exported_include_tree(':' + name)))
 
-        if postprocess_cmd is not None:
+        if postprocess_cmd != None:
             cmds.append(postprocess_cmd)
 
         attrs['cmd'] = ' && '.join(cmds)
@@ -2655,7 +2655,7 @@ class ThriftLibraryConverter(base.Converter):
             attrs = collections.OrderedDict()
             attrs['name'] = '{}={}'.format(compile_name, src)
             attrs['labels'] = ['generated']
-            if visibility is not None:
+            if visibility != None:
                 attrs['visibility'] = visibility
             attrs['out'] = src
             attrs['cmd'] = ' && '.join([
@@ -2879,7 +2879,7 @@ class ThriftLibraryConverter(base.Converter):
         supported_languages = read_list(
             'thrift', 'supported_languages', delimiter=None, required=False,
         )
-        if supported_languages is not None:
+        if supported_languages != None:
             languages = set(languages) & set(supported_languages)
 
         # Convert rules we support via macros.
