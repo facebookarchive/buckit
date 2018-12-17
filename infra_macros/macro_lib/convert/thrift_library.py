@@ -31,6 +31,7 @@ base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
 load("@fbcode_macros//build_defs/lib:python_typing.bzl",
      "get_typing_config_target")
@@ -2196,10 +2197,10 @@ class RustThriftConverter(ThriftLangConverter):
 
         # Exclude AST specific flags,
         # that are needed for get_ast_to_rust only
-        args = filter(lambda a: a not in RUST_AST_CODEGEN_FLAGS, args)
+        args = [arg for arg in args if arg not in RUST_AST_CODEGEN_FLAGS]
 
         # Include rule-specific flags.
-        args.extend(filter(lambda a: a not in ['--strict'], flags))
+        args.extend([flag for flag in flags if flag not in ('--strict')])
 
         return args
 
@@ -2234,16 +2235,10 @@ class RustThriftConverter(ThriftLangConverter):
             visibility,
             **kwargs):
         sources = thrift_common.merge_sources_map(sources_map).values()
-        crate_maps = ['--crate-map-file $(location {}-crate-map)'.format(dep)
-                        for dep in deps]
-
-        attrs = collections.OrderedDict()
-        attrs['name'] = '%s-gen-rs' % name
-        attrs['labels'] = ['generated']
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = '%s/%s/lib.rs' % (common_paths.CURRENT_DIRECTORY, name)
-        attrs['srcs'] = sources
+        crate_maps = [
+            '--crate-map-file $(location {}-crate-map)'.format(dep)
+            for dep in deps
+        ]
 
         # Hacky hack to deal with `codegen`s dynamic dependency on
         # proc_macro.so in the rust libraries, via the `quote` crate.
@@ -2255,17 +2250,27 @@ class RustThriftConverter(ThriftLangConverter):
                 'rust/lib/rustlib/{arch}/lib/'
                     .format(arch = 'x86_64-unknown-linux-gnu'),
                 'platform007'))
-        attrs['cmd'] = \
-            'env LD_LIBRARY_PATH=\\$(realpath {rustc}) $(exe //common/rust/thrift/compiler:codegen) -o $OUT {crate_maps} {options} {sources}; /bin/rustfmt $OUT' \
-            .format(
-                rustc = rustc_path,
-                sources=' '.join('$(location %s)' % s for s in sources),
-                options=' '.join(self.format_options(options)),
-                crate_maps=' '.join(crate_maps))
+        cmd = (
+            'env LD_LIBRARY_PATH=\\$(realpath {rustc}) ' +
+            '$(exe //common/rust/thrift/compiler:codegen) -o $OUT ' +
+            '{crate_maps} {options} {sources}; /bin/rustfmt $OUT'
+        ).format(
+            rustc = rustc_path,
+            sources=' '.join('$(location {})'.format(src) for src in sources),
+            options=' '.join(self.format_options(options)),
+            crate_maps=' '.join(crate_maps)
+        )
 
         # generated file: <name>/lib.rs
 
-        return [Rule('genrule', attrs)]
+        fb_native.genrule(
+            name = '%s-gen-rs' % name,
+            labels = ['generated'],
+            visibility = visibility,
+            out = '{}/{}/lib.rs'.format(common_paths.CURRENT_DIRECTORY, name),
+            srcs = sources,
+            cmd = cmd,
+        )
 
     def get_rust_to_rlib(
             self,
@@ -2373,17 +2378,16 @@ class RustThriftConverter(ThriftLangConverter):
 
         crate_map_name = '%s-crate-map' % name
 
-        attrs = collections.OrderedDict()
-        attrs['name'] = crate_map_name
-        attrs['labels'] = ['generated']
-        if visibility != None:
-            attrs['visibility'] = visibility
-        attrs['out'] = paths.join(common_paths.CURRENT_DIRECTORY, crate_map_name + ".txt")
-        attrs['cmd'] = (
-            'mkdir -p `dirname $OUT` && echo {0} > $OUT'
-            .format(pipes.quote('\n'.join(crate_map))))
+        cmd = 'mkdir -p `dirname $OUT` && echo {0} > $OUT'.format(shell.quote('\n'.join(crate_map)))
+        fb_native.genrule(
+            name = crate_map_name,
+            labels = ['generated'],
+            visibility = visibility,
+            out = paths.join(common_paths.CURRENT_DIRECTORY, crate_map_name + ".txt"),
+            cmd = cmd,
+        )
 
-        return [Rule('genrule', attrs)]
+        return []
 
     def get_language_rule(
             self,
@@ -2399,18 +2403,14 @@ class RustThriftConverter(ThriftLangConverter):
         # json -> rust
         # rust -> rlib
 
-        rules = []
-
-        rules.extend(
-            self.get_ast_to_rust(
-                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
+        self.get_ast_to_rust(
+            base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
         self.get_rust_to_rlib(
             base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
-        rules.extend(
-            self.get_rust_crate_map(
-                base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs))
+        self.get_rust_crate_map(
+            base_path, name, thrift_srcs, options, sources_map, deps, visibility, **kwargs)
 
-        return rules
+        return []
 
 
 class ThriftLibraryConverter(base.Converter):
