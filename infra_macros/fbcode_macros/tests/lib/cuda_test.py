@@ -20,15 +20,12 @@ class CudaTest(tests.utils.TestCase):
     @tests.utils.with_project()
     def test_cuda_src_methods(self, root):
         commands = [
-            'cuda.has_cuda_dep([target_utils.RootRuleTarget("foo", "bar")])',
-            'cuda.has_cuda_dep([target_utils.ThirdPartyRuleTarget("foo", "bar")])',
-            'cuda.has_cuda_dep([target_utils.ThirdPartyRuleTarget("cuda", "bar")])',
             'cuda.is_cuda_src("foo/bar.h")',
             'cuda.is_cuda_src(":foo=cuda.cu")',
             'cuda.is_cuda_src(":foo")',
             'cuda.is_cuda_src("//foo:bar")',
         ]
-        expected = [False, False, True, False, True, False, False]
+        expected = [False, True, False, False]
         self.assertSuccess(root.runUnitTests(self.includes, commands), *expected)
 
     @tests.utils.with_project()

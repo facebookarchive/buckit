@@ -1721,13 +1721,6 @@ def _convert_cpp(
     for dep in external_deps:
         dependencies.append(src_and_dep_helpers.normalize_external_dep(dep))
 
-    # Add in any CUDA deps.  We only add this if it's not always present,
-    # it's common to explicitly depend on the cuda runtime.
-    if has_cuda_srcs and not cuda.has_cuda_dep(dependencies):
-        # TODO: If this won't work, should it just fail?
-        print(("Warning: rule {}:{} with .cu files has to specify CUDA " +
-               "external_dep to work.").format(base_path, name))
-
     # Set the build platform, via both the `default_platform` parameter and
     # the default flavors support.
     if cpp_rule_type != "cpp_precompiled_header":

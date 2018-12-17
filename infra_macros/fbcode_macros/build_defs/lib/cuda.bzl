@@ -33,23 +33,6 @@ def _has_cuda_srcs(srcs):
             return True
     return False
 
-def _has_cuda_dep(dependencies):
-    """
-    Returns whether there is any dependency on CUDA tp2.
-
-    Args:
-        dependencies: A list of `RuleTarget` structs
-
-    Returns:
-        True if any dependency is in the 'cuda' directory, else False
-    """
-
-    for dep in dependencies:
-        if dep.repo != None and dep.base_path == "cuda":
-            return True
-
-    return False
-
 _BANNED_CUDA_FLAGS = sets.make([
     "-DUSE_CUDNN=1",
     "-DUSE_CUDNN",
@@ -136,7 +119,6 @@ def _strip_cuda_properties(
     )
 
 cuda = struct(
-    has_cuda_dep = _has_cuda_dep,
     has_cuda_srcs = _has_cuda_srcs,
     is_cuda_src = _is_cuda_src,
     strip_cuda_properties = _strip_cuda_properties,
