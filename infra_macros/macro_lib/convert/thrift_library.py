@@ -56,6 +56,7 @@ load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_inter
 load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:js.bzl", "js_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:go.bzl", "go_thrift_converter")
@@ -888,76 +889,6 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
         ]
 
 
-class JsThriftConverter(ThriftLangConverter):
-    """
-    Specializer to support generating D libraries from thrift sources.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(JsThriftConverter, self).__init__(*args, **kwargs)
-
-    def get_lang(self):
-        return 'js'
-
-    def get_generated_sources(
-            self,
-            base_path,
-            name,
-            thrift_src,
-            services,
-            options,
-            **kwargs):
-
-        thrift_base = paths.split_extension(paths.basename(thrift_src))[0]
-
-        genfiles = []
-        genfiles.append('%s_types.js' % thrift_base)
-        for service in services:
-            genfiles.append('%s.js' % service)
-
-        out_dir = 'gen-nodejs' if 'node' in options else 'gen-js'
-        gen_srcs = collections.OrderedDict()
-        for path in genfiles:
-            dst = paths.join('node_modules', thrift_base, path)
-            src = paths.join(out_dir, path)
-            gen_srcs[dst] = src
-
-        return gen_srcs
-
-    def get_language_rule(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            options,
-            sources_map,
-            deps,
-            visibility=None,
-            **kwargs):
-
-        sources = thrift_common.merge_sources_map(sources_map)
-
-        cmds = []
-
-        for dep in deps:
-            cmds.append('rsync -a $(location {})/ "$OUT"'.format(dep))
-
-        for dst, raw_src in sources.items():
-            src = src_and_dep_helpers.get_source_name(raw_src)
-            dst = paths.join('"$OUT"', dst)
-            cmds.append('mkdir -p {}'.format(paths.dirname(dst)))
-            cmds.append('cp {} {}'.format(paths.basename(src), dst))
-
-        fb_native.genrule(
-            name = name,
-            visibility = visibility,
-            out = common_paths.CURRENT_DIRECTORY,
-            labels = ['generated'],
-            srcs = sources.values(),
-            cmd = ' && '.join(cmds),
-        )
-
-
 class JavaSwiftConverter(ThriftLangConverter):
     """
     Specializer to support generating Java Swift libraries from thrift sources.
@@ -1369,7 +1300,7 @@ class ThriftLibraryConverter(base.Converter):
             go_thrift_converter,
             HaskellThriftConverter(is_hs2=False),
             HaskellThriftConverter(is_hs2=True),
-            JsThriftConverter(),
+            js_thrift_converter,
             ocaml_thrift_converter,
             rust_thrift_converter,
             thriftdoc_python_thrift_converter,
