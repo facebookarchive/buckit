@@ -224,8 +224,7 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         self._flavor = flavor
         self._ext = '.py' if flavor not in (self.PYI, self.PYI_ASYNCIO) else '.pyi'
 
-    def get_name(self, prefix, sep, base_module=False):
-        flavor = self._flavor
+    def get_name(self, flavor, prefix, sep, base_module=False):
         if flavor in (self.PYI, self.PYI_ASYNCIO):
             if not base_module:
                 return flavor
@@ -240,29 +239,38 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return prefix
 
     def get_names(self):
+        return self._get_names(self._flavor)
+
+    def _get_names(self, flavor):
         return frozenset([
-            self.get_name('py', '-'),
-            self.get_name('python', '-')])
+            self.get_name(flavor, 'py', '-'),
+            self.get_name(flavor, 'python', '-')])
 
     def get_lang(self, prefix='py'):
-        return self.get_name('py', '-')
+        return self._get_lang(self._flavor, prefix)
+
+    def _get_lang(self, flavor, prefix='py'):
+        return self.get_name(flavor, 'py', '-')
 
     def get_compiler_lang(self):
-        if self._flavor in (self.PYI, self.PYI_ASYNCIO):
+        return self._get_compiler_lang(self._flavor)
+
+    def _get_compiler_lang(self, flavor):
+        if flavor in (self.PYI, self.PYI_ASYNCIO):
             return 'mstch_pyi'
         return 'py'
 
     def get_thrift_base(self, thrift_src):
         return paths.split_extension(paths.basename(thrift_src))[0]
 
-    def get_base_module(self, **kwargs):
+    def get_base_module(self, flavor, **kwargs):
         """
         Get the user-specified base-module set in via the parameter in the
         `thrift_library()`.
         """
 
         base_module = kwargs.get(
-            self.get_name('py', '_', base_module=True) + '_base_module')
+            self.get_name(flavor,'py', '_', base_module=True) + '_base_module')
 
         # If no asyncio/twisted specific base module parameter is present,
         # fallback to using the general `py_base_module` parameter.
@@ -277,9 +285,9 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         # like a proper module.
         return '/'.join(base_module.split('.'))
 
-    def get_thrift_dir(self, base_path, thrift_src, **kwargs):
+    def get_thrift_dir(self, base_path, thrift_src, flavor, **kwargs):
         thrift_base = self.get_thrift_base(thrift_src)
-        base_module = self.get_base_module(**kwargs)
+        base_module = self.get_base_module(flavor, **kwargs)
         if base_module == None:
             base_module = base_path
         return paths.join(base_module, thrift_base)
@@ -290,6 +298,16 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             thrift_src,
             out_dir,
             **kwargs):
+        return self._get_postprocess_command(base_path, thrift_src, out_dir, flavor=self._flavor, ext=self._ext, **kwargs)
+
+    def _get_postprocess_command(
+            self,
+            base_path,
+            thrift_src,
+            out_dir,
+            flavor,
+            ext,
+            **kwargs):
 
         # The location of the generated thrift files depends on the value of
         # the "namespace py" directive in the .thrift file, and we
@@ -298,26 +316,27 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         # there is probably a mismatch between the base_module parameter in the
         # TARGETS file and the "namespace py" directive in the .thrift file.
         thrift_base = self.get_thrift_base(thrift_src)
-        thrift_dir = self.get_thrift_dir(base_path, thrift_src, **kwargs)
+        thrift_dir = self.get_thrift_dir(base_path, thrift_src, flavor, **kwargs)
 
         output_dir = paths.join(out_dir, 'gen-py', thrift_dir)
-        ttypes_path = paths.join(output_dir, 'ttypes' + self._ext)
+        ttypes_path = paths.join(output_dir, 'ttypes' + ext)
 
         msg = [
             'Compiling %s did not generate source in %s'
             % (paths.join(base_path, thrift_src), ttypes_path)
         ]
-        if self._flavor == self.ASYNCIO or self._flavor == self.PYI_ASYNCIO:
+        if flavor == self.ASYNCIO or flavor == self.PYI_ASYNCIO:
             py_flavor = 'py.asyncio'
-        elif self._flavor == self.TWISTED:
+        elif flavor == self.TWISTED:
             py_flavor = 'py.twisted'
         else:
             py_flavor = 'py'
+        # TODO: Just turn this into one large error string and use proper formatters
         msg.append(
             'Does the "\\"namespace %s\\"" directive in the thrift file '
             'match the base_module specified in the TARGETS file?' %
             (py_flavor,))
-        base_module = self.get_base_module(**kwargs)
+        base_module = self.get_base_module(flavor=flavor, **kwargs)
         if base_module == None:
             base_module = base_path
             msg.append(
@@ -341,17 +360,19 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
         return cmd
 
     def get_options(self, base_path, parsed_options):
-        options = collections.OrderedDict()
+        return self._get_options(base_path, parsed_options, self._flavor)
+
+    def _get_options(self, base_path, parsed_options, flavor):
+        options = {}
 
         # We always use new style for non-python3.
         if 'new_style' in parsed_options:
-            raise ValueError(
-                'the "new_style" thrift python option is redundant')
+            fail('the "new_style" thrift python option is redundant')
 
         # Add flavor-specific option.
-        if self._flavor == self.TWISTED:
+        if flavor == self.TWISTED:
             options['twisted'] = None
-        elif self._flavor in (self.ASYNCIO, self.PYI_ASYNCIO):
+        elif flavor in (self.ASYNCIO, self.PYI_ASYNCIO):
             options['asyncio'] = None
 
         # Always use "new_style" classes.
@@ -361,6 +382,11 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         return options
 
+    def _add_ext(self, path, ext):
+        if not path.endswith(ext):
+            path += ext
+        return path
+
     def get_generated_sources(
             self,
             base_path,
@@ -369,37 +395,53 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             services,
             options,
             **kwargs):
+        return self._get_generated_sources(
+            base_path,
+            name,
+            thrift_src,
+            services,
+            options,
+            flavor = self._flavor,
+            ext = self._ext,
+            **kwargs)
+
+    def _get_generated_sources(
+            self,
+            base_path,
+            name,
+            thrift_src,
+            services,
+            options,
+            flavor,
+            ext,
+            **kwargs):
 
         thrift_base = self.get_thrift_base(thrift_src)
-        thrift_dir = self.get_thrift_dir(base_path, thrift_src, **kwargs)
+        thrift_dir = self.get_thrift_dir(base_path, thrift_src, flavor, **kwargs)
 
         genfiles = []
 
-        genfiles.append('constants' + self._ext)
-        genfiles.append('ttypes' + self._ext)
+        genfiles.append('constants' + ext)
+        genfiles.append('ttypes' + ext)
 
         for service in services:
             # "<service>.py" and "<service>-remote" are generated for each
             # service
-            genfiles.append(service + self._ext)
-            if self._flavor == self.NORMAL:
+            genfiles.append(service + ext)
+            if flavor == self.NORMAL:
                 genfiles.append(service + '-remote')
 
-        def add_ext(path, ext):
-            if not path.endswith(ext):
-                path += ext
-            return path
+        return {
+            self._add_ext(paths.join(thrift_base, path), ext): paths.join('gen-py', thrift_dir, path)
+            for path in genfiles
+        }
 
-        return collections.OrderedDict(
-            [(add_ext(paths.join(thrift_base, path), self._ext),
-              paths.join('gen-py', thrift_dir, path)) for path in genfiles])
-
-    def get_pyi_dependency(self, name):
+    def get_pyi_dependency(self, name, flavor):
         if name.endswith('-asyncio'):
             name = name[:-len('-asyncio')]
         if name.endswith('-py'):
             name = name[:-len('-py')]
-        if self._flavor == self.ASYNCIO:
+        if flavor == self.ASYNCIO:
             return name + '-pyi-asyncio'
         else:
             return name + '-pyi'
@@ -414,9 +456,31 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
             deps,
             visibility,
             **kwargs):
+        self._get_language_rule(
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            visibility,
+            self._flavor,
+            **kwargs)
+
+    def _get_language_rule(
+            self,
+            base_path,
+            name,
+            thrift_srcs,
+            options,
+            sources_map,
+            deps,
+            visibility,
+            flavor,
+            **kwargs):
 
         srcs = thrift_common.merge_sources_map(sources_map)
-        base_module = self.get_base_module(**kwargs)
+        base_module = self.get_base_module(flavor, **kwargs)
 
         out_deps = []
         out_deps.extend(deps)
@@ -427,18 +491,18 @@ class LegacyPythonThriftConverter(ThriftLangConverter):
 
         # If thrift files are build with twisted support, add also
         # dependency on the thrift's twisted transport library.
-        if self._flavor == self.TWISTED or 'twisted' in options:
+        if flavor == self.TWISTED or 'twisted' in options:
             out_deps.append(
                 target_utils.target_to_label(self.THRIFT_PY_TWISTED_LIB_RULE_NAME))
 
         # If thrift files are build with asyncio support, add also
         # dependency on the thrift's asyncio transport library.
-        if self._flavor == self.ASYNCIO or 'asyncio' in options:
+        if flavor == self.ASYNCIO or 'asyncio' in options:
             out_deps.append(
                 target_utils.target_to_label(self.THRIFT_PY_ASYNCIO_LIB_RULE_NAME))
 
-        if self._flavor in (self.NORMAL, self.ASYNCIO):
-            out_deps.append(':' + self.get_pyi_dependency(name))
+        if flavor in (self.NORMAL, self.ASYNCIO):
+            out_deps.append(':' + self.get_pyi_dependency(name, flavor))
             has_types = True
         else:
             has_types = False
