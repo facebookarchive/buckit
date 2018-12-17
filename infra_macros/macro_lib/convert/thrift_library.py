@@ -175,7 +175,8 @@ class ThriftLangConverter(base.Converter):
             self,
             compiler,
             compiler_args,
-            includes):
+            includes,
+            additional_compiler):
         cmd = []
         cmd.append('$(exe {})'.format(compiler))
         cmd.extend(compiler_args)
@@ -188,7 +189,6 @@ class ThriftLangConverter(base.Converter):
                 config.get_thrift_templates()))
         cmd.append('-o')
         cmd.append('"$OUT"')
-        additional_compiler = self.get_additional_compiler()
         # TODO(T17324385): Work around an issue where dep chains of binaries
         # (e.g. one binary which delegates to another when it runs), aren't
         # added to the rule key when run in `genrule`s.  So, we need to
@@ -1045,7 +1045,8 @@ class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
             self,
             compiler,
             compiler_args,
-            includes):
+            includes,
+            additional_compiler):
         check_cmd = ' '.join([
             '$(exe //tools/build/buck/java:check_thrift_flavor)',
             'fb',
@@ -1055,7 +1056,7 @@ class JavaDeprecatedThriftConverter(JavaDeprecatedThriftBaseConverter):
         return '{} && {}'.format(
             check_cmd,
             super(JavaDeprecatedThriftBaseConverter, self).get_compiler_command(
-                compiler, compiler_args, includes))
+                compiler, compiler_args, includes, additional_compiler))
 
     def get_lang(self):
         return 'javadeprecated'
@@ -1087,7 +1088,8 @@ class JavaDeprecatedApacheThriftConverter(JavaDeprecatedThriftBaseConverter):
             self,
             compiler,
             compiler_args,
-            includes):
+            includes,
+            additional_compiler):
         check_cmd = ' '.join([
             '$(exe //tools/build/buck/java:check_thrift_flavor)',
             'apache',
@@ -1229,7 +1231,8 @@ class JavaSwiftConverter(ThriftLangConverter):
             self,
             compiler,
             compiler_args,
-            includes):
+            includes,
+            additional_compiler):
         cmd = []
         cmd.append('$(exe {})'.format(compiler))
         cmd.append('-include_paths')
@@ -2533,11 +2536,13 @@ class ThriftLibraryConverter(base.Converter):
         genrule_name = (
             '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
         cmds = []
+        converter = self._converters[lang]
         cmds.append(
-            self._converters[lang].get_compiler_command(
+            converter.get_compiler_command(
                 compiler,
                 compiler_args,
-                self.get_exported_include_tree(':' + name)))
+                self.get_exported_include_tree(':' + name),
+                converter.get_additional_compiler()))
 
         if postprocess_cmd != None:
             cmds.append(postprocess_cmd)
