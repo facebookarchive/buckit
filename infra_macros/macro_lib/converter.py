@@ -13,8 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-load("@fbcode_macros//build_defs:export_files.bzl",  # noqa F821
-        "export_file", "export_files", "buck_export_file")
 load(  # noqa F821
     "@fbcode_macros//build_defs:native_rules.bzl",
     "buck_command_alias",
@@ -96,7 +94,6 @@ def convert(rule_type, attributes):
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
-        'buck_export_file': buck_export_file,  # noqa F821
         'buck_filegroup': buck_filegroup,  # noqa F821
         'buck_genrule': buck_genrule,  # noqa F821
         'buck_python_library': buck_python_library,  # noqa F821
@@ -106,8 +103,6 @@ def convert(rule_type, attributes):
         'cgo_library': cgo_library,  # noqa F821
         'cython_library': cython_library,  # noqa F821
         'cpp_binary_external': discard,  # noqa F821
-        'export_file': export_file,  # noqa F821
-        'export_files': export_files,  # noqa F821
         'versioned_alias': versioned_alias,  # noqa F821
         'remote_file': remote_file,  # noqa F821
         'test_suite': test_suite,  # noqa F821

@@ -11,6 +11,12 @@
 load(":macros.py", "install_converted_rules")
 install_converted_rules(globals())
 
+load(
+    "@fbcode_macros//build_defs:export_files.bzl",
+    "buck_export_file",
+    "export_file",
+    "export_files",
+)
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
