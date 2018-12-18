@@ -63,6 +63,9 @@ load(
     "fixup_thrift_srcs",
     "get_exported_include_tree",
     "filter_language_specific_kwargs",
+    "get_languages",
+    "generate_compile_rule",
+    "generate_generated_source_rules",
 )
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_list")
@@ -78,90 +81,7 @@ class ThriftLibraryConverter(base.Converter):
     def get_buck_rule_type(self):
         return 'thrift_library'
 
-    def get_languages(self, names):
-        """
-        Convert the `languages` parameter to a normalized list of languages.
-        """
 
-        languages = {}
-
-        if names == None:
-            fail('thrift_library() requires languages argument')
-
-        for name in names:
-            lang = NAMES_TO_LANG.get(name)
-            if lang == None:
-                fail('thrift_library() does not support language {}'.format(name))
-            if lang in languages:
-                fail('thrift_library() given duplicate language {}'.format(lang))
-            languages[lang] = None
-
-        return languages
-
-
-    def generate_compile_rule(
-            self,
-            base_path,
-            name,
-            compiler,
-            lang,
-            compiler_args,
-            source,
-            postprocess_cmd=None,
-            visibility=None):
-        """
-        Generate a rule which runs the thrift compiler for the given inputs.
-        """
-
-        genrule_name = (
-            '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
-        cmds = []
-        converter = CONVERTERS[lang]
-        cmds.append(
-            converter.get_compiler_command(
-                compiler,
-                compiler_args,
-                get_exported_include_tree(':' + name),
-                converter.get_additional_compiler()))
-
-        if postprocess_cmd != None:
-            cmds.append(postprocess_cmd)
-
-        fb_native.genrule(
-            name = genrule_name,
-            labels = ['generated'],
-            visibility = visibility,
-            out = common_paths.CURRENT_DIRECTORY,
-            srcs = [source],
-            cmd = ' && '.join(cmds),
-        )
-        return genrule_name
-
-    def generate_generated_source_rules(self, compile_name, srcs, visibility):
-        """
-        Create rules to extra individual sources out of the directory of thrift
-        sources the compiler generated.
-        """
-
-        out = {}
-        rules = []
-
-        for name, src in srcs.items():
-            cmd = ' && '.join([
-                'mkdir -p `dirname $OUT`',
-                'cp -R $(location :{})/{} $OUT'.format(compile_name, src),
-            ])
-            genrule_name = '{}={}'.format(compile_name, src)
-            fb_native.genrule(
-                name = genrule_name,
-                labels = ['generated'],
-                visibility = visibility,
-                out = src,
-                cmd = cmd,
-            )
-            out[name] = ':' + genrule_name
-
-        return out
 
     def convert_macros(
             self,
@@ -184,7 +104,7 @@ class ThriftLibraryConverter(base.Converter):
         # rid of `kwargs at the top level over convert()`
         thrift_srcs = fixup_thrift_srcs(thrift_srcs)
         thrift_args = parse_thrift_args(thrift_args)
-        languages = self.get_languages(languages)
+        languages = get_languages(languages)
         deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
 
         # Setup the exported include tree to dependents.
@@ -250,8 +170,7 @@ class ThriftLibraryConverter(base.Converter):
 
                 # Generate the thrift compile rules.
                 compile_rule_name = (
-                    self.generate_compile_rule(
-                        base_path,
+                    generate_compile_rule(
                         name,
                         compiler,
                         lang,
@@ -275,7 +194,7 @@ class ThriftLibraryConverter(base.Converter):
                         options,
                         visibility=visibility,
                         **kwargs))
-                gen_srcs = self.generate_generated_source_rules(
+                gen_srcs = generate_generated_source_rules(
                     compile_rule_name,
                     gen_srcs,
                     visibility=visibility
@@ -432,7 +351,7 @@ class ThriftLibraryConverter(base.Converter):
                     sets.make(languages), sets.make(supported_languages)))
 
         # Convert rules we support via macros.
-        macro_languages = self.get_languages(languages)
+        macro_languages = get_languages(languages)
         if macro_languages:
             language_kwargs = filter_language_specific_kwargs(
                 cpp2_compiler_flags=cpp2_compiler_flags,

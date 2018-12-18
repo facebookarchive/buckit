@@ -18,8 +18,10 @@ load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_conver
 load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:swift.bzl", "swift_thrift_converter")
 load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
+load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_list", "is_string", "is_tuple")
 
 _PY_REMOTES_EXTERNAL_DEPS = (
@@ -60,6 +62,91 @@ def _instantiate_converters():
 # TODO: Make private
 CONVERTERS, NAMES_TO_LANG = _instantiate_converters()
 
+# TODO: Make private
+def generate_generated_source_rules(compile_name, srcs, visibility):
+    """
+    Create rules to extra individual sources out of the directory of thrift
+    sources the compiler generated.
+    """
+
+    out = {}
+
+    for name, src in srcs.items():
+        cmd = " && ".join([
+            "mkdir -p `dirname $OUT`",
+            "cp -R $(location :{})/{} $OUT".format(compile_name, src),
+        ])
+        genrule_name = "{}={}".format(compile_name, src)
+        fb_native.genrule(
+            name = genrule_name,
+            labels = ["generated"],
+            visibility = visibility,
+            out = src,
+            cmd = cmd,
+        )
+        out[name] = ":" + genrule_name
+
+    return out
+
+# TODO: Make private
+def get_languages(names):
+    """
+    Convert the `languages` parameter to a normalized list of languages.
+    """
+
+    languages = {}
+
+    for name in names:
+        lang = NAMES_TO_LANG.get(name)
+        if lang == None:
+            fail("thrift_library() does not support language {}".format(name))
+        if lang in languages:
+            fail("thrift_library() given duplicate language {}".format(lang))
+        languages[lang] = None
+
+    return languages
+
+# TODO: Make private
+def generate_compile_rule(
+        name,
+        compiler,
+        lang,
+        compiler_args,
+        source,
+        postprocess_cmd = None,
+        visibility = None):
+    """
+    Generate a rule which runs the thrift compiler for the given inputs.
+    """
+
+    genrule_name = (
+        "{}-{}-{}".format(name, lang, src_and_dep_helpers.get_source_name(source))
+    )
+    cmds = []
+    converter = CONVERTERS[lang]
+    cmds.append(
+        converter.get_compiler_command(
+            compiler,
+            compiler_args,
+            get_exported_include_tree(":" + name),
+            converter.get_additional_compiler(),
+        ),
+    )
+
+    if postprocess_cmd != None:
+        cmds.append(postprocess_cmd)
+
+    fb_native.genrule(
+        name = genrule_name,
+        labels = ["generated"],
+        visibility = visibility,
+        out = common_paths.CURRENT_DIRECTORY,
+        srcs = [source],
+        cmd = " && ".join(cmds),
+    )
+    return genrule_name
+
+# TODO: Make private
 def filter_language_specific_kwargs(**kwargs):
     """
     Filter out kwargs that aren't actually present
@@ -73,6 +160,7 @@ def filter_language_specific_kwargs(**kwargs):
 
     return {k: v for k, v in kwargs.items() if v != None}
 
+# TODO: Make private
 def get_exported_include_tree(dep):
     """
     Generate the exported thrift source includes target use for the given
