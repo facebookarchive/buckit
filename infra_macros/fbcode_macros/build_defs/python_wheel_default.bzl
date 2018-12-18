@@ -63,7 +63,7 @@ def _error_rules(name, msg, visibility = None):
     genrule_name = "{}-gen".format(name)
     fb_native.cxx_genrule(
         name = genrule_name,
-        visibility = get_visibility(visibility, genrule_name),
+        visibility = visibility,
         out = "out.cpp",
         cmd = "echo {} 1>&2; false".format(shell.quote(msg)),
     )
@@ -77,6 +77,7 @@ def _error_rules(name, msg, visibility = None):
 
 def python_wheel_default(platform_versions, visibility = None):
     name = paths.basename(native.package_name())
+    visibility = get_visibility(visibility, name)
 
     _wheel_override_version_check(name, platform_versions)
 
