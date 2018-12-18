@@ -89,6 +89,9 @@ class NativeRulesTest(tests.utils.TestCase):
               labels = [
                 "is_fully_translated",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             cxx_genrule(
@@ -98,6 +101,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "is_fully_translated",
               ],
               out = "out.h",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             remote_file(
@@ -107,6 +113,9 @@ class NativeRulesTest(tests.utils.TestCase):
               ],
               sha1 = "d8b7ec2e8d5a713858d12bb8a8e22a4dad2abb04",
               url = "http://example.com/foo",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             filegroup(
@@ -117,6 +126,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "python_library.py",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             genrule(
@@ -126,6 +138,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "is_fully_translated",
               ],
               out = "out",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             python_binary(
@@ -137,6 +152,9 @@ class NativeRulesTest(tests.utils.TestCase):
               deps = [
                 ":python_library",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             python_library(
@@ -147,6 +165,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "python_library.py",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             sh_binary(
@@ -155,6 +176,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "is_fully_translated",
               ],
               main = "sh_binary.sh",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             sh_binary(
@@ -163,6 +187,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "is_fully_translated",
               ],
               main = "sh_binary2.sh",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             sh_test(
@@ -171,6 +198,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "is_fully_translated",
               ],
               test = "sh_test.sh",
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             versioned_alias(
@@ -179,6 +209,9 @@ class NativeRulesTest(tests.utils.TestCase):
                 "1.0": ":sh_binary",
                 "1.1": ":sh_binary",
               },
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
         """
@@ -222,6 +255,9 @@ class NativeRulesTest(tests.utils.TestCase):
               deps = [
                 ":python_library",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             python_library(
@@ -231,6 +267,9 @@ class NativeRulesTest(tests.utils.TestCase):
               ],
               srcs = [
                 "python_library.py",
+              ],
+              visibility = [
+                "PUBLIC",
               ],
             )
 
@@ -328,6 +367,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "main.cpp",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             cxx_library(
@@ -338,6 +380,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "lib.cpp",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             cxx_test(
@@ -347,6 +392,9 @@ class NativeRulesTest(tests.utils.TestCase):
               ],
               srcs = [
                 "test.cpp",
+              ],
+              visibility = [
+                "PUBLIC",
               ],
             )
         """
@@ -385,6 +433,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "main.cpp",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             cxx_library(
@@ -395,6 +446,9 @@ class NativeRulesTest(tests.utils.TestCase):
               srcs = [
                 "lib.cpp",
               ],
+              visibility = [
+                "PUBLIC",
+              ],
             )
 
             cxx_test(
@@ -404,6 +458,9 @@ class NativeRulesTest(tests.utils.TestCase):
               ],
               srcs = [
                 "test.cpp",
+              ],
+              visibility = [
+                "PUBLIC",
               ],
             )
         """

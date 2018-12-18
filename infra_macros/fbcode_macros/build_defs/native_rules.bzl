@@ -73,33 +73,63 @@ def _verify_whitelisted_rule(rule_type, package_name, target_name):
                 ),
             )
 
-def buck_command_alias(*args, **kwargs):
+def buck_command_alias(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native command_alias rule """
-    fb_native.command_alias(*args, **kwargs)
+    fb_native.command_alias(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def cxx_genrule(*args, **kwargs):
+def cxx_genrule(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native cxx_genrule rule """
-    fb_native.cxx_genrule(*args, **kwargs)
+    fb_native.cxx_genrule(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_genrule(*args, **kwargs):
+def buck_genrule(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native genrule rule """
-    fb_native.genrule(*args, **kwargs)
+    fb_native.genrule(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_python_binary(*args, **kwargs):
+def buck_python_binary(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native python_binary rule """
-    fb_native.python_binary(*args, **kwargs)
+    fb_native.python_binary(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_python_library(name, *args, **kwargs):
+def buck_python_library(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native python_library rule """
     if get_typing_config_target():
         gen_typing_config(name)
-    fb_native.python_library(name = name, *args, **kwargs)
+    fb_native.python_library(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def remote_file(*args, **kwargs):
+def remote_file(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native remote_file rule """
-    fb_native.remote_file(*args, **kwargs)
+    fb_native.remote_file(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_sh_binary(name, main = None, *args, **kwargs):
+def buck_sh_binary(name, main = None, visibility = None, *args, **kwargs):
     """
     Wrapper to access Buck's native sh_binary rule
 
@@ -110,38 +140,76 @@ def buck_sh_binary(name, main = None, *args, **kwargs):
         **kwargs: Rest of kwargs to pass to sh_binary
     """
     main = main or name
-    fb_native.sh_binary(name = name, main = main, *args, **kwargs)
+    fb_native.sh_binary(
+        name = name,
+        main = main,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_sh_test(*args, **kwargs):
+def buck_sh_test(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native sh_test rule """
-    fb_native.sh_test(*args, **kwargs)
+    fb_native.sh_test(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def versioned_alias(*args, **kwargs):
+def versioned_alias(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native versioned_alias rule """
-    fb_native.versioned_alias(*args, **kwargs)
+    fb_native.versioned_alias(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_cxx_binary(name, **kwargs):
+def buck_cxx_binary(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native cxx_binary rule """
     _verify_whitelisted_rule("cxx_binary", native.package_name(), name)
-    fb_native.cxx_binary(name = name, **kwargs)
+    fb_native.cxx_binary(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_cxx_library(name, **kwargs):
+def buck_cxx_library(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native cxx_library rule """
     _verify_whitelisted_rule("cxx_library", native.package_name(), name)
-    fb_native.cxx_library(name = name, **kwargs)
+    fb_native.cxx_library(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        **kwargs
+    )
 
-def buck_cxx_test(name, **kwargs):
+def buck_cxx_test(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native cxx_test rule """
     _verify_whitelisted_rule("cxx_test", native.package_name(), name)
-    fb_native.cxx_test(name = name, **kwargs)
+    fb_native.cxx_test(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        **kwargs
+    )
 
-def buck_filegroup(*args, **kwargs):
+def buck_filegroup(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """
-    fb_native.filegroup(*args, **kwargs)
+    fb_native.filegroup(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        *args,
+        **kwargs
+    )
 
-def buck_zip_file(**kwargs):
+def buck_zip_file(name, visibility = None, **kwargs):
     """ Wrapper ot access Buck's native zip_file rule """
-    fb_native.zip_file(**kwargs)
+    fb_native.zip_file(
+        name = name,
+        visibility = get_visibility(visibility, name),
+        **kwargs
+    )
 
 def test_suite(name, visibility = None, *args, **kwargs):
     """ Wrapper to access Buck's native test_suite rule """
