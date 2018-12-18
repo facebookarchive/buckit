@@ -66,6 +66,7 @@ load(
     "get_languages",
     "generate_compile_rule",
     "generate_generated_source_rules",
+    "convert_macros",
 )
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_list")
@@ -80,149 +81,6 @@ class ThriftLibraryConverter(base.Converter):
 
     def get_buck_rule_type(self):
         return 'thrift_library'
-
-
-
-    def convert_macros(
-            self,
-            base_path,
-            name,
-            thrift_srcs,
-            thrift_args,
-            deps,
-            languages,
-            visibility,
-            plugins,
-            **kwargs):
-        """
-        Thrift library conversion implemented purely via macros (i.e. no Buck
-        support).
-        """
-
-        # Parse incoming options.
-        # TODO: These are top level attributes, move them to convert() when we get
-        # rid of `kwargs at the top level over convert()`
-        thrift_srcs = fixup_thrift_srcs(thrift_srcs)
-        thrift_args = parse_thrift_args(thrift_args)
-        languages = get_languages(languages)
-        deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
-
-        # Setup the exported include tree to dependents.
-        includes = []
-        includes.extend(thrift_srcs.keys())
-        for lang in languages:
-            converter = CONVERTERS[lang]
-            includes.extend(converter.get_extra_includes(**kwargs))
-
-        merge_tree(
-            base_path,
-            get_exported_include_tree(name),
-            sorted(collections.uniq(includes)),
-            [get_exported_include_tree(dep) for dep in deps],
-            labels=["generated"],
-            visibility=visibility)
-
-        # py3 thrift requires cpp2
-        if 'py3' in languages and 'cpp2' not in languages:
-            languages['cpp2'] = None
-
-        # save cpp2_options for later use by 'py3'
-        if 'cpp2' in languages:
-            cpp2_options = (
-                parse_thrift_options(
-                    kwargs.get('thrift_cpp2_options', ())))
-
-        # Types are generated for all legacy Python Thrift
-        if 'py' in languages:
-            languages['pyi'] = None
-            # Save the options for pyi to use
-            py_options = parse_thrift_options(kwargs.get('thrift_py_options', ()))
-
-        if 'py-asyncio' in languages:
-            languages['pyi-asyncio'] = None
-            # Save the options for pyi to use
-            py_asyncio_options = parse_thrift_options(kwargs.get('thrift_py_asyncio_options', ()))
-
-        # Generate rules for all supported languages.
-        for lang in languages:
-            converter = CONVERTERS[lang]
-            compiler = converter.get_compiler()
-            options = (
-                parse_thrift_options(
-                    kwargs.get('thrift_{}_options'.format(
-                        lang.replace('-', '_')), ())))
-            if lang == "pyi":
-                options.update(py_options)
-            if lang == "pyi-asyncio":
-                options.update(py_asyncio_options)
-            if lang == 'py3':
-                options.update(cpp2_options)
-
-            compiler_args = converter.get_compiler_args(
-                converter.get_compiler_lang(),
-                thrift_args,
-                converter.get_options(base_path, options),
-                **kwargs)
-
-            all_gen_srcs = {}
-            for thrift_src, services in thrift_srcs.items():
-                thrift_name = src_and_dep_helpers.get_source_name(thrift_src)
-
-                # Generate the thrift compile rules.
-                compile_rule_name = (
-                    generate_compile_rule(
-                        name,
-                        compiler,
-                        lang,
-                        compiler_args,
-                        thrift_src,
-                        converter.get_postprocess_command(
-                            base_path,
-                            thrift_name,
-                            '$OUT',
-                            **kwargs),
-                        visibility=visibility))
-
-                # Create wrapper rules to extract individual generated sources
-                # and expose via target refs in the UI.
-                gen_srcs = (
-                    converter.get_generated_sources(
-                        base_path,
-                        name,
-                        thrift_name,
-                        services,
-                        options,
-                        visibility=visibility,
-                        **kwargs))
-                gen_srcs = generate_generated_source_rules(
-                    compile_rule_name,
-                    gen_srcs,
-                    visibility=visibility
-                )
-                all_gen_srcs[thrift_name] = gen_srcs
-
-            # Generate rules from Thrift plugins
-            for plugin in plugins:
-                plugin.generate_rules(
-                    plugin,
-                    base_path,
-                    name,
-                    lang,
-                    thrift_srcs,
-                    compiler_args,
-                    get_exported_include_tree(':' + name),
-                    deps,
-                )
-            # Generate the per-language rules.
-            converter.get_language_rule(
-                base_path,
-                name + '-' + lang,
-                thrift_srcs,
-                options,
-                all_gen_srcs,
-                [dep + '-' + lang for dep in deps],
-                visibility=visibility,
-                **kwargs)
 
     def get_allowed_args(self):
         """
@@ -340,8 +198,6 @@ class ThriftLibraryConverter(base.Converter):
         ):
         visibility = get_visibility(visibility, name)
 
-        thrift_srcs = thrift_srcs or {}
-
         supported_languages = read_list(
             'thrift', 'supported_languages', delimiter=None, required=False,
         )
@@ -350,9 +206,15 @@ class ThriftLibraryConverter(base.Converter):
                 sets.intersection(
                     sets.make(languages), sets.make(supported_languages)))
 
+        # Parse incoming options.
+        thrift_srcs = fixup_thrift_srcs(thrift_srcs or {})
+        thrift_args = parse_thrift_args(thrift_args)
+        languages = get_languages(languages)
+        deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
+
+
         # Convert rules we support via macros.
-        macro_languages = get_languages(languages)
-        if macro_languages:
+        if languages:
             language_kwargs = filter_language_specific_kwargs(
                 cpp2_compiler_flags=cpp2_compiler_flags,
                 cpp2_compiler_specific_flags=cpp2_compiler_specific_flags,
@@ -403,7 +265,7 @@ class ThriftLibraryConverter(base.Converter):
                 thrift_thriftdoc_py_options=thrift_thriftdoc_py_options,
             )
 
-            self.convert_macros(
+            convert_macros(
                 base_path=base_path,
                 name=name,
                 thrift_srcs=thrift_srcs,
@@ -417,7 +279,6 @@ class ThriftLibraryConverter(base.Converter):
 
         # If python is listed in languages, then also generate the py-remote
         # rules.
-        # TODO: Move this logic into convert_macros
         if 'py' in languages or 'python' in languages:
             py_remote_binaries(
                 base_path,
