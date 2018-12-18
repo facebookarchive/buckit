@@ -73,70 +73,63 @@ def _verify_whitelisted_rule(rule_type, package_name, target_name):
                 ),
             )
 
-def buck_command_alias(name, visibility = None, *args, **kwargs):
+def buck_command_alias(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native command_alias rule """
     fb_native.command_alias(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def cxx_genrule(name, visibility = None, *args, **kwargs):
+def cxx_genrule(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native cxx_genrule rule """
     fb_native.cxx_genrule(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_genrule(name, visibility = None, *args, **kwargs):
+def buck_genrule(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native genrule rule """
     fb_native.genrule(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_python_binary(name, visibility = None, *args, **kwargs):
+def buck_python_binary(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native python_binary rule """
     fb_native.python_binary(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_python_library(name, visibility = None, *args, **kwargs):
+def buck_python_library(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native python_library rule """
     if get_typing_config_target():
         gen_typing_config(name)
     fb_native.python_library(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def remote_file(name, visibility = None, *args, **kwargs):
+def remote_file(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native remote_file rule """
     fb_native.remote_file(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_sh_binary(name, main = None, visibility = None, *args, **kwargs):
+def buck_sh_binary(name, main = None, visibility = None, **kwargs):
     """
     Wrapper to access Buck's native sh_binary rule
 
     Args:
         name: The name of the rule
         main: The name of the script. If not provided, `name` will be used
-        *args: Rest of args to pass to sh_binary
         **kwargs: Rest of kwargs to pass to sh_binary
     """
     main = main or name
@@ -144,35 +137,31 @@ def buck_sh_binary(name, main = None, visibility = None, *args, **kwargs):
         name = name,
         main = main,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_sh_test(name, visibility = None, *args, **kwargs):
+def buck_sh_test(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native sh_test rule """
     fb_native.sh_test(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def versioned_alias(name, visibility = None, *args, **kwargs):
+def versioned_alias(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native versioned_alias rule """
     fb_native.versioned_alias(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
-def buck_cxx_binary(name, visibility = None, *args, **kwargs):
+def buck_cxx_binary(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native cxx_binary rule """
     _verify_whitelisted_rule("cxx_binary", native.package_name(), name)
     fb_native.cxx_binary(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
@@ -194,12 +183,11 @@ def buck_cxx_test(name, visibility = None, **kwargs):
         **kwargs
     )
 
-def buck_filegroup(name, visibility = None, *args, **kwargs):
+def buck_filegroup(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native filegroup rule """
     fb_native.filegroup(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
 
@@ -211,11 +199,10 @@ def buck_zip_file(name, visibility = None, **kwargs):
         **kwargs
     )
 
-def test_suite(name, visibility = None, *args, **kwargs):
+def test_suite(name, visibility = None, **kwargs):
     """ Wrapper to access Buck's native test_suite rule """
     fb_native.test_suite(
         name = name,
         visibility = get_visibility(visibility, name),
-        *args,
         **kwargs
     )
