@@ -47,7 +47,6 @@ load(  # noqa F821
     "test_suite",
     "versioned_alias",
 )
-load("@fbcode_macros//build_defs:dewey_artifact.bzl", "dewey_artifact")
 load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
@@ -63,7 +62,6 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_library_external_custom.bzl", "cpp_library_external_custom")
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
 load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
 load("@fbcode_macros//build_defs:d_library.bzl", "d_library")
@@ -102,8 +100,6 @@ load("@fbcode_macros//build_defs:rust_bindgen_library.bzl", "rust_bindgen_librar
 load("@fbcode_macros//build_defs:rust_external_library.bzl", "rust_external_library")
 load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
 load("@fbcode_macros//build_defs:rust_unittest.bzl", "rust_unittest")
-load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
-load("@fbcode_macros//build_defs:scala_library.bzl", "scala_library")
 load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
@@ -119,7 +115,6 @@ def convert(base_path, rule):
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
-        'custom_unittest': custom_unittest,  # noqa F821
         'buck_export_file': buck_export_file,  # noqa F821
         'buck_filegroup': buck_filegroup,  # noqa F821
         'buck_genrule': buck_genrule,  # noqa F821
@@ -129,7 +124,6 @@ def convert(base_path, rule):
         'buck_zip_file': buck_zip_file,  # noqa F821
         'cgo_library': cgo_library,  # noqa F821
         'cython_library': cython_library,  # noqa F821
-        'dewey_artifact': dewey_artifact,
         'cpp_binary_external': discard,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821
@@ -165,12 +159,10 @@ def convert(base_path, rule):
         'rust_external_library': rust_external_library,  # noqa F821
         'rust_library': rust_library,  # noqa F821
         'rust_unittest': rust_unittest,  # noqa F821
-        'scala_library': scala_library,  # noqa F821
         'scala_test': scala_test,  # noqa F821
         'sphinx_manpage': sphinx_manpage,  # noqa F821
         'sphinx_wiki': sphinx_wiki,  # noqa F821
         'swig_library': swig_library,  # noqa F821
-        'thrift_library': thrift_library,  # noqa F821
         'cpp_library_external': cpp_library_external,
         'cpp_benchmark': cpp_benchmark,  # noqa F821
         'cpp_lua_extension': cpp_lua_extension,  # noqa F821
