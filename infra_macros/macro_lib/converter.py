@@ -86,7 +86,7 @@ load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
-def convert(base_path, rule):
+def convert(rule_type, attributes):
     """
     Convert the python representation of a targets file into a python
     representation of a buck file.
@@ -164,10 +164,10 @@ def convert(base_path, rule):
         'python_unittest': python_unittest,  # noqa F821
     }
 
-    converter = converter_map.get(rule.type)
+    converter = converter_map.get(rule_type)
 
     if converter is None:
-        name = '{0}:{1}'.format(base_path, rule.attributes['name'])
-        raise ValueError('unknown rule type %s for %s' % (rule.type, name))
+        name = '{0}:{1}'.format(native.package_name(), attributes['name'])
+        raise ValueError('unknown rule type %s for %s' % (rule_type, name))
 
-    converter(**rule.attributes)
+    converter(**attributes)

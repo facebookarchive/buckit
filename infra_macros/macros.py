@@ -40,7 +40,6 @@ load('@fbcode_macros//build_defs/lib:visibility.bzl', 'get_visibility_for_base_p
 load("@fbcode_macros//build_defs:auto_headers.bzl", "AutoHeaders", "get_auto_headers")
 include_defs('//{}/converter.py'.format(MACRO_LIB_DIR), 'converter')
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
-include_defs('//{}/rule.py'.format(MACRO_LIB_DIR), 'rule_mod')
 
 __all__ = []
 
@@ -61,30 +60,27 @@ def rule_handler(globals, rule_type, **kwargs):
     one or more Buck rules.
     """
 
-    # Wrap the TARGETS rule into a `Rule` object.
-    rule = rule_mod.Rule(type=rule_type, attributes=kwargs)
+    attributes = kwargs
 
     # For full auto-headers support, add in the recursive header glob rule
     # as a dep. This is only used in fbcode for targets that don't fully
     # specify their dependencies, and it will be going away in the future
     if (config.get_add_auto_headers_glob() and
-            rule.type in CXX_RULES and
+            rule_type in CXX_RULES and
             AutoHeaders.RECURSIVE_GLOB == get_auto_headers(
-                rule.attributes.get('auto_headers'))):
-        deps = list(rule.attributes.get('deps', []))
+                attributes.get('auto_headers'))):
+        deps = list(attributes.get('deps', []))
         deps.append(cpp_common.default_headers_library())
-        rule.attributes['deps'] = deps
-
-    # Convert the fbconfig/fbmake rule into one or more Buck rules.
-    base_path = get_base_path()
+        attributes['deps'] = deps
 
     # Set default visibility
-    rule.attributes['visibility'] = get_visibility_for_base_path(
-        rule.attributes.get('visibility'),
-        rule.attributes.get('name'),
-        base_path)
+    attributes['visibility'] = get_visibility_for_base_path(
+        attributes.get('visibility'),
+        attributes.get('name'),
+        get_base_path())
 
-    converter.convert(base_path, rule)
+    # Convert the fbconfig/fbmake rule into one or more Buck rules.
+    converter.convert(rule_type, attributes)
 
 
 # Helper rule to throw an error when accessing raw Buck rules.
