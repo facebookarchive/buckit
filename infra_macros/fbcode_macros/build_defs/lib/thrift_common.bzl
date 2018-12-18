@@ -5,7 +5,6 @@ Common methods to use in various thrift converters
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs:config.bzl", "config")
 
 def _merge_sources_map(sources_map):
     """
@@ -33,11 +32,7 @@ def _get_thrift_dep_target(base_path, rule_name):
     TODO: This can probably actually be removed. This was part of an OSS effort that'll
           end up being re-evaluated
     """
-    if config.get_current_repo_name() == "fbcode":
-        target = target_utils.RootRuleTarget(base_path, rule_name)
-    else:
-        repo = base_path.split("/")[0]
-        target = target_utils.ThirdPartyRuleTarget(repo, base_path, rule_name)
+    target = target_utils.RootRuleTarget(base_path, rule_name)
     return target_utils.target_to_label(target)
 
 # The capitalize method from the string will also make the

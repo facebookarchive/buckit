@@ -132,9 +132,12 @@ def _gen_rule_thrift_types(
     types = {}
 
     for src in thrift_srcs:
-        srcs.update((_generated(sources, namespace, "types.pyx", src),))
-        headers.update((_generated(sources, namespace, "types.pxd", src),))
-        types.update((_generated(sources, namespace, "types.pyi", src),))
+        k, v = _generated(sources, namespace, "types.pyx", src)
+        srcs[k] = v
+        k, v = _generated(sources, namespace, "types.pxd", src)
+        headers[k] = v
+        k, v = _generated(sources, namespace, "types.pyi", src)
+        types[k] = v
 
     cython_library(
         name = name + _TYPES_SUFFIX,
@@ -174,12 +177,18 @@ def _gen_rule_thrift_services(
     for src, services in thrift_srcs.items():
         if not services:
             continue
-        services_srcs.update((_generated(sources, namespace, "services.pyx", src),))
-        services_srcs.update((_generated(sources, namespace, "services_wrapper.cpp", src),))
-        services_headers.update((_generated(sources, namespace, "services.pxd", src),))
-        services_headers.update((_generated(sources, namespace, "services_wrapper.pxd", src),))
-        services_headers.update((_generated(sources, namespace, "services_wrapper.h", src),))
-        services_typing.update((_generated(sources, namespace, "services.pyi", src),))
+        k, v = _generated(sources, namespace, "services.pyx", src)
+        services_srcs[k] = v
+        k, v = _generated(sources, namespace, "services_wrapper.cpp", src)
+        services_srcs[k] = v
+        k, v = _generated(sources, namespace, "services.pxd", src)
+        services_headers[k] = v
+        k, v = _generated(sources, namespace, "services_wrapper.pxd", src)
+        services_headers[k] = v
+        k, v = _generated(sources, namespace, "services_wrapper.h", src)
+        services_headers[k] = v
+        k, v = _generated(sources, namespace, "services.pyi", src)
+        services_typing[k] = v
 
         # Build out a cython_api dict, to place the _api.h files inside
         # the gen-py3/ root so the c++ code can find it
@@ -221,12 +230,18 @@ def _gen_rule_thrift_clients(
     for src, services in thrift_srcs.items():
         if not services:
             continue
-        clients_srcs.update((_generated(sources, namespace, "clients.pyx", src),))
-        clients_srcs.update((_generated(sources, namespace, "clients_wrapper.cpp", src),))
-        clients_headers.update((_generated(sources, namespace, "clients.pxd", src),))
-        clients_headers.update((_generated(sources, namespace, "clients_wrapper.pxd", src),))
-        clients_headers.update((_generated(sources, namespace, "clients_wrapper.h", src),))
-        clients_typing.update((_generated(sources, namespace, "clients.pyi", src),))
+        k, v = _generated(sources, namespace, "clients.pyx", src)
+        clients_srcs[k] = v
+        k, v = _generated(sources, namespace, "clients_wrapper.cpp", src)
+        clients_srcs[k] = v
+        k, v = _generated(sources, namespace, "clients.pxd", src)
+        clients_headers[k] = v
+        k, v = _generated(sources, namespace, "clients_wrapper.pxd", src)
+        clients_headers[k] = v
+        k, v = _generated(sources, namespace, "clients_wrapper.h", src)
+        clients_headers[k] = v
+        k, v = _generated(sources, namespace, "clients.pyi", src)
+        clients_typing[k] = v
 
     cython_library(
         name = name + _CLIENTS_SUFFIX,

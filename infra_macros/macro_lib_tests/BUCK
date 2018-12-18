@@ -10,20 +10,6 @@ python_library(
 )
 
 python_unittest(
-    name = "tests",
-    srcs = [
-        "fbcode_target_tests.py",
-        "thrift_library_py3.py",
-    ],
-    py_version = "<3",
-    deps = [
-        ":utils",
-        "//tools/build/buck/infra_macros/macro_lib:macro_lib",
-    ],
-    external_deps = ["mock"],
-)
-
-python_unittest(
     name = "test_manifest",
     srcs = [
         "test_manifest.py",
