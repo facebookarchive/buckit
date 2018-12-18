@@ -60,6 +60,19 @@ def _instantiate_converters():
 # TODO: Make private
 CONVERTERS, NAMES_TO_LANG = _instantiate_converters()
 
+def filter_language_specific_kwargs(**kwargs):
+    """
+    Filter out kwargs that aren't actually present
+
+    We want to define all of our possible arguments up front for discoverability by
+    users, however some converters would like to specify their own defaults for
+    various functions if the kwarg wasn't provided. (e.g. cpp2_srcs, or
+    javadeprecated_maven_publisher_version_prefix. So, filter out any of the kwargs
+    that are == None (unspecified), and rely on rules to specify their own defaults.
+    """
+
+    return {k: v for k, v in kwargs.items() if v != None}
+
 def get_exported_include_tree(dep):
     """
     Generate the exported thrift source includes target use for the given

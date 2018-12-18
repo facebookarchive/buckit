@@ -62,6 +62,7 @@ load(
     "parse_thrift_options",
     "fixup_thrift_srcs",
     "get_exported_include_tree",
+    "filter_language_specific_kwargs",
 )
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_list")
@@ -166,13 +167,12 @@ class ThriftLibraryConverter(base.Converter):
             self,
             base_path,
             name,
-            thrift_srcs={},
-            thrift_args=(),
-            deps=(),
-            external_deps=(),
-            languages=None,
-            visibility=None,
-            plugins=[],
+            thrift_srcs,
+            thrift_args,
+            deps,
+            languages,
+            visibility,
+            plugins,
             **kwargs):
         """
         Thrift library conversion implemented purely via macros (i.e. no Buck
@@ -216,16 +216,12 @@ class ThriftLibraryConverter(base.Converter):
         if 'py' in languages:
             languages['pyi'] = None
             # Save the options for pyi to use
-            py_options = (parse_thrift_options(
-                kwargs.get('thrift_py_options', ())
-            ))
+            py_options = parse_thrift_options(kwargs.get('thrift_py_options', ()))
 
         if 'py-asyncio' in languages:
             languages['pyi-asyncio'] = None
             # Save the options for pyi to use
-            py_asyncio_options = (parse_thrift_options(
-                kwargs.get('thrift_py_asyncio_options', ())
-            ))
+            py_asyncio_options = parse_thrift_options(kwargs.get('thrift_py_asyncio_options', ()))
 
         # Generate rules for all supported languages.
         for lang in languages:
@@ -362,11 +358,70 @@ class ThriftLibraryConverter(base.Converter):
         ])
         for lang in langs:
             allowed_args.add('thrift_' + lang.replace('-', '_') + '_options')
-
         return allowed_args
 
-    def convert(self, base_path, name=None, languages=None, visibility=None, **kwargs):
+    def convert(self,
+            base_path,
+            name,
+            thrift_srcs,
+            languages=(),
+            plugins=(),
+            visibility=None,
+            thrift_args=(),
+            deps=(),
+
+            # Language specific flags
+            cpp2_compiler_flags=None,
+            cpp2_compiler_specific_flags=None,
+            cpp2_deps=None,
+            cpp2_external_deps=None,
+            cpp2_headers=None,
+            cpp2_srcs=None,
+            d_thrift_namespaces=None,
+            go_pkg_base_path=None,
+            go_thrift_namespaces=None,
+            go_thrift_src_inter_deps=None,
+            hs_includes=None,
+            hs_namespace=None,
+            hs_packages=None,
+            hs_required_symbols=None,
+            hs2_deps=None,
+            java_deps=None,
+            javadeprecated_maven_coords=None,
+            javadeprecated_maven_publisher_enabled=None,
+            javadeprecated_maven_publisher_version_prefix=None,
+            java_swift_maven_coords=None,
+            py_asyncio_base_module=None,
+            py_base_module=None,
+            py_remote_service_router=None,
+            py_twisted_base_module=None,
+            py3_namespace=None,
+            ruby_gem_name=None,
+            ruby_gem_require_paths=None,
+            ruby_gem_version=None,
+            thrift_cpp2_options=None,
+            thrift_d_options=None,
+            thrift_go_options=None,
+            thrift_hs2_options=None,
+            thrift_hs_options=None,
+            thrift_java_swift_options=None,
+            thrift_javadeprecated_apache_options=None,
+            thrift_javadeprecated_options=None,
+            thrift_js_options=None,
+            thrift_ocaml2_options=None,
+            thrift_py3_options=None,
+            thrift_py_asyncio_options=None,
+            thrift_py_options=None,
+            thrift_py_twisted_options=None,
+            thrift_pyi_asyncio_options=None,
+            thrift_pyi_options=None,
+            thrift_ruby_options=None,
+            thrift_rust_options=None,
+            thrift_thriftdoc_py_options=None,
+        ):
         visibility = get_visibility(visibility, name)
+
+        thrift_srcs = thrift_srcs or {}
 
         supported_languages = read_list(
             'thrift', 'supported_languages', delimiter=None, required=False,
@@ -379,7 +434,67 @@ class ThriftLibraryConverter(base.Converter):
         # Convert rules we support via macros.
         macro_languages = self.get_languages(languages)
         if macro_languages:
-            self.convert_macros(base_path, name=name, languages=languages, visibility=visibility, **kwargs)
+            language_kwargs = filter_language_specific_kwargs(
+                cpp2_compiler_flags=cpp2_compiler_flags,
+                cpp2_compiler_specific_flags=cpp2_compiler_specific_flags,
+                cpp2_deps=cpp2_deps,
+                cpp2_external_deps=cpp2_external_deps,
+                cpp2_headers=cpp2_headers,
+                cpp2_srcs=cpp2_srcs,
+                d_thrift_namespaces=d_thrift_namespaces,
+                go_pkg_base_path=go_pkg_base_path,
+                go_thrift_namespaces=go_thrift_namespaces,
+                go_thrift_src_inter_deps=go_thrift_src_inter_deps,
+                hs_includes=hs_includes,
+                hs_namespace=hs_namespace,
+                hs_packages=hs_packages,
+                hs_required_symbols=hs_required_symbols,
+                hs2_deps=hs2_deps,
+                java_deps=java_deps,
+                javadeprecated_maven_coords=javadeprecated_maven_coords,
+                javadeprecated_maven_publisher_enabled=javadeprecated_maven_publisher_enabled,
+                javadeprecated_maven_publisher_version_prefix=javadeprecated_maven_publisher_version_prefix,
+                java_swift_maven_coords=java_swift_maven_coords,
+                py_asyncio_base_module=py_asyncio_base_module,
+                py_base_module=py_base_module,
+                py_remote_service_router=py_remote_service_router,
+                py_twisted_base_module=py_twisted_base_module,
+                py3_namespace=py3_namespace,
+                ruby_gem_name=ruby_gem_name,
+                ruby_gem_require_paths=ruby_gem_require_paths,
+                ruby_gem_version=ruby_gem_version,
+                thrift_cpp2_options=thrift_cpp2_options,
+                thrift_d_options=thrift_d_options,
+                thrift_go_options=thrift_go_options,
+                thrift_hs2_options=thrift_hs2_options,
+                thrift_hs_options=thrift_hs_options,
+                thrift_java_swift_options=thrift_java_swift_options,
+                thrift_javadeprecated_apache_options=thrift_javadeprecated_apache_options,
+                thrift_javadeprecated_options=thrift_javadeprecated_options,
+                thrift_js_options=thrift_js_options,
+                thrift_ocaml2_options=thrift_ocaml2_options,
+                thrift_py3_options=thrift_py3_options,
+                thrift_py_asyncio_options=thrift_py_asyncio_options,
+                thrift_py_options=thrift_py_options,
+                thrift_py_twisted_options=thrift_py_twisted_options,
+                thrift_pyi_asyncio_options=thrift_pyi_asyncio_options,
+                thrift_pyi_options=thrift_pyi_options,
+                thrift_ruby_options=thrift_ruby_options,
+                thrift_rust_options=thrift_rust_options,
+                thrift_thriftdoc_py_options=thrift_thriftdoc_py_options,
+            )
+
+            self.convert_macros(
+                base_path=base_path,
+                name=name,
+                thrift_srcs=thrift_srcs,
+                languages=languages,
+                plugins=plugins,
+                visibility=visibility,
+                thrift_args=thrift_args,
+                deps=deps,
+                **language_kwargs
+            )
 
         # If python is listed in languages, then also generate the py-remote
         # rules.
@@ -388,9 +503,9 @@ class ThriftLibraryConverter(base.Converter):
             py_remote_binaries(
                 base_path,
                 name=name,
-                thrift_srcs=fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
-                base_module=kwargs.get('py_base_module'),
-                include_sr=kwargs.get('py_remote_service_router', False),
+                thrift_srcs=fixup_thrift_srcs(thrift_srcs),
+                base_module=py_base_module,
+                include_sr=py_remote_service_router,
                 visibility=visibility)
 
         return []
