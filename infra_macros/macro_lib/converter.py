@@ -70,71 +70,72 @@ load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
+_CONVERTER_MAP = {
+    'cgo_library': cgo_library,  # noqa F821
+    'cpp_benchmark': cpp_benchmark,  # noqa F821
+    'cpp_binary_external': discard,  # noqa F821
+    'cpp_binary': cpp_binary,  # noqa F821
+    'cpp_java_extension': cpp_java_extension,  # noqa F821
+    'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
+    'cpp_library_external': cpp_library_external,  # noqa F821
+    'cpp_library': cpp_library,  # noqa F821
+    'cpp_lua_extension': cpp_lua_extension,  # noqa F821
+    'cpp_lua_main_module': cpp_lua_main_module,  # noqa F821
+    'cpp_module_external': cpp_module_external,  # noqa F821
+    'cpp_node_extension': cpp_node_extension,  # noqa F821
+    'cpp_precompiled_header': cpp_precompiled_header,  # noqa F821
+    'cpp_python_extension': cpp_python_extension,  # noqa F821
+    'cpp_unittest': cpp_unittest,  # noqa F821
+    'custom_rule': custom_rule,  # noqa F821
+    'cython_library': cython_library,  # noqa F821
+    'd_binary': d_binary,  # noqa F821
+    'd_library_external': d_library_external,  # noqa F821
+    'd_library': d_library,  # noqa F821
+    'd_unittest': d_unittest,  # noqa F821
+    'go_binary': go_binary,  # noqa F821
+    'go_bindgen_library': go_bindgen_library,  # noqa F821
+    'go_library': go_library,  # noqa F821
+    'go_unittest': go_unittest,  # noqa F821
+    'haskell_binary': haskell_binary,  # noqa F821
+    'haskell_external_library': haskell_external_library,  # noqa F821
+    'haskell_ghci': haskell_ghci,  # noqa F821
+    'haskell_haddock': haskell_haddock,  # noqa F821
+    'haskell_library': haskell_library,  # noqa F821
+    'haskell_unittest': haskell_unittest,  # noqa F821
+    'js_executable': js_executable,  # noqa F821
+    'js_node_module_external': js_node_module_external,  # noqa F821
+    'js_npm_module': js_npm_module,  # noqa F821
+    'lua_binary': lua_binary,  # noqa F821
+    'lua_library': lua_library,  # noqa F821
+    'lua_unittest': lua_unittest,  # noqa F821
+    'ocaml_binary': ocaml_binary,  # noqa F821
+    'ocaml_external_library': ocaml_external_library,  # noqa F821
+    'ocaml_library': ocaml_library,  # noqa F821
+    'prebuilt_jar': prebuilt_jar,  # noqa F821
+    'python_binary': python_binary,  # noqa F821
+    'python_library': python_library,  # noqa F821
+    'python_unittest': python_unittest,  # noqa F821
+    'python_wheel_default': python_wheel_default,  # noqa F821
+    'python_wheel': python_wheel,  # noqa F821
+    'rust_binary': rust_binary,  # noqa F821
+    'rust_bindgen_library': rust_bindgen_library,  # noqa F821
+    'rust_external_library': rust_external_library,  # noqa F821
+    'rust_library': rust_library,  # noqa F821
+    'rust_unittest': rust_unittest,  # noqa F821
+    'scala_test': scala_test,  # noqa F821
+    'sphinx_manpage': sphinx_manpage,  # noqa F821
+    'sphinx_wiki': sphinx_wiki,  # noqa F821
+    'swig_library': swig_library,  # noqa F821
+}
+
+
 def convert(rule_type, attributes):
     """
     Convert the python representation of a targets file into a python
     representation of a buck file.
     """
 
-    converter_map = {
-        'cpp_module_external': cpp_module_external,  # noqa F821
-        'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
-        'cgo_library': cgo_library,  # noqa F821
-        'cython_library': cython_library,  # noqa F821
-        'cpp_binary_external': discard,  # noqa F821
-        'custom_rule': custom_rule,  # noqa F821
-        'go_binary': go_binary,  # noqa F821
-        'go_bindgen_library': go_bindgen_library,  # noqa F821
-        'go_library': go_library,  # noqa F821
-        'go_unittest': go_unittest,  # noqa F821
-        'haskell_external_library': haskell_external_library,  # noqa F821
-        'haskell_binary': haskell_binary,  # noqa F821
-        'haskell_haddock': haskell_haddock,  # noqa F821
-        'haskell_ghci': haskell_ghci,  # noqa F821
-        'haskell_library': haskell_library,  # noqa F821
-        'haskell_unittest': haskell_unittest,  # noqa F821
-        'js_executable': js_executable,  # noqa F821
-        'js_node_module_external': js_node_module_external,  # noqa F821
-        'js_npm_module': js_npm_module,  # noqa F821
-        'lua_binary': lua_binary,  # noqa F821
-        'lua_library': lua_library,  # noqa F821
-        'lua_unittest': lua_unittest,  # noqa F821
-        'ocaml_binary': ocaml_binary,  # noqa F821
-        'ocaml_external_library': ocaml_external_library,  # noqa F821
-        'ocaml_library': ocaml_library,  # noqa F821
-        'prebuilt_jar': prebuilt_jar,  # noqa F821
-        'python_wheel': python_wheel,  # noqa F821
-        'python_wheel_default': python_wheel_default,  # noqa F821
-        'rust_binary': rust_binary,  # noqa F821
-        'rust_bindgen_library': rust_bindgen_library,  # noqa F821
-        'rust_external_library': rust_external_library,  # noqa F821
-        'rust_library': rust_library,  # noqa F821
-        'rust_unittest': rust_unittest,  # noqa F821
-        'scala_test': scala_test,  # noqa F821
-        'sphinx_manpage': sphinx_manpage,  # noqa F821
-        'sphinx_wiki': sphinx_wiki,  # noqa F821
-        'swig_library': swig_library,  # noqa F821
-        'cpp_library_external': cpp_library_external,
-        'cpp_benchmark': cpp_benchmark,  # noqa F821
-        'cpp_lua_extension': cpp_lua_extension,  # noqa F821
-        'cpp_java_extension': cpp_java_extension,  # noqa F821
-        'cpp_lua_main_module': cpp_lua_main_module,  # noqa F821
-        'cpp_python_extension': cpp_python_extension,  # noqa F821
-        'cpp_node_extension': cpp_node_extension,  # noqa F821
-        'cpp_precompiled_header': cpp_precompiled_header,  # noqa F821
-        'cpp_unittest': cpp_unittest,
-        'cpp_library': cpp_library,
-        'cpp_binary': cpp_binary,
-        'd_binary': d_binary,
-        'd_library': d_library,
-        'd_library_external': d_library_external,
-        'd_unittest': d_unittest,
-        'python_binary': python_binary,  # noqa F821
-        'python_library': python_library,  # noqa F821
-        'python_unittest': python_unittest,  # noqa F821
-    }
-
-    converter = converter_map.get(rule_type)
+    converter = _CONVERTER_MAP.get(rule_type)
 
     if converter is None:
         name = '{0}:{1}'.format(native.package_name(), attributes['name'])
