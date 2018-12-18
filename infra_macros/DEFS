@@ -10,3 +10,8 @@
 
 load(":macros.py", "install_converted_rules")
 install_converted_rules(globals())
+
+load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
+load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
+load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
+load("@fbcode_macros//build_defs:java_test.bzl", "java_test")

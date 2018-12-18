@@ -80,13 +80,9 @@ load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
 load("@fbcode_macros//build_defs:haskell_library.bzl", "haskell_library")
 load("@fbcode_macros//build_defs:haskell_unittest.bzl", "haskell_unittest")
-load("@fbcode_macros//build_defs:java_binary.bzl", "java_binary")
-load("@fbcode_macros//build_defs:java_library.bzl", "java_library")
-load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
 load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
 load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_external")
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
-load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:lua_binary.bzl", "lua_binary")
 load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
 load("@fbcode_macros//build_defs:lua_unittest.bzl", "lua_unittest")
@@ -152,10 +148,6 @@ def convert(base_path, rule):
         'haskell_ghci': haskell_ghci,  # noqa F821
         'haskell_library': haskell_library,  # noqa F821
         'haskell_unittest': haskell_unittest,  # noqa F821
-        'java_binary': java_binary,  # noqa F821
-        'java_library': java_library,  # noqa F821
-        'java_shaded_jar': java_shaded_jar,  # noqa F821
-        'java_test': java_test,  # noqa F821
         'js_executable': js_executable,  # noqa F821
         'js_node_module_external': js_node_module_external,  # noqa F821
         'js_npm_module': js_npm_module,  # noqa F821
