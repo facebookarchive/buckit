@@ -37,7 +37,6 @@ load(  # noqa F821
     "@fbcode_macros//build_defs:native_rules.bzl",
     "buck_command_alias",
     "cxx_genrule",
-    "buck_cxx_library",
     "buck_cxx_test",
     "buck_filegroup",
     "buck_genrule",
@@ -129,7 +128,6 @@ def convert(base_path, rule):
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
         'custom_unittest': custom_unittest,  # noqa F821
-        'buck_cxx_library': buck_cxx_library,  # noqa F821
         'buck_cxx_test': buck_cxx_test,  # noqa F821
         'buck_export_file': buck_export_file,  # noqa F821
         'buck_filegroup': buck_filegroup,  # noqa F821
