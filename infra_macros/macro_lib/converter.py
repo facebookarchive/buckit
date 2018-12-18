@@ -171,4 +171,3 @@ def convert(base_path, rule):
         raise ValueError('unknown rule type %s for %s' % (rule.type, name))
 
     converter(**rule.attributes)
-    return []

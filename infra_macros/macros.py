@@ -84,10 +84,7 @@ def rule_handler(globals, rule_type, **kwargs):
         rule.attributes.get('name'),
         base_path)
 
-    results = converter.convert(base_path, rule)
-    # Instantiate the Buck rules that got converted successfully.
-    for converted in results:
-        eval("native." + converted.type, globals)(**converted.attributes)
+    converter.convert(base_path, rule)
 
 
 # Helper rule to throw an error when accessing raw Buck rules.
