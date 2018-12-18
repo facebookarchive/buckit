@@ -72,7 +72,6 @@ load("@fbcode_macros//build_defs:d_unittest.bzl", "d_unittest")
 load("@fbcode_macros//build_defs:discard.bzl", "discard")
 load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
 load("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
-load("@fbcode_macros//build_defs:go_external_library.bzl", "go_external_library")
 load("@fbcode_macros//build_defs:go_library.bzl", "go_library")
 load("@fbcode_macros//build_defs:go_unittest.bzl", "go_unittest")
 load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
@@ -146,7 +145,6 @@ def convert(base_path, rule):
         'custom_rule': custom_rule,  # noqa F821
         'go_binary': go_binary,  # noqa F821
         'go_bindgen_library': go_bindgen_library,  # noqa F821
-        'go_external_library': go_external_library,  # noqa F821
         'go_library': go_library,  # noqa F821
         'go_unittest': go_unittest,  # noqa F821
         'haskell_external_library': haskell_external_library,  # noqa F821
