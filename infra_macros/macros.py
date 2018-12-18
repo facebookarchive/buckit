@@ -54,7 +54,7 @@ CXX_RULES = set([
     'cpp_unittest',
 ])
 
-def rule_handler(globals, rule_type, **kwargs):
+def rule_handler(rule_type, **kwargs):
     """
     Callback that fires when a TARGETS rule is evaluated, converting it into
     one or more Buck rules.
@@ -106,8 +106,6 @@ def ignored_buck_rule(rule_type, *args, **kwargs):
 
 __all__.append('install_converted_rules')
 def install_converted_rules(globals):
-    old_globals = globals.copy()
-
     # Prevent direct access to raw BUCK UI, as it doesn't go through our
     # wrappers.
     for rule_type in constants.BUCK_RULES:
@@ -116,8 +114,7 @@ def install_converted_rules(globals):
     all_rule_types = constants.FBCODE_RULES + \
         ['buck_' + r for r in constants.BUCK_RULES]
     for rule_type in all_rule_types:
-        globals[rule_type] = functools.partial(
-            rule_handler, old_globals, rule_type)
+        globals[rule_type] = functools.partial(rule_handler, rule_type)
 
     # If fbcode.enabled_rule_types is specified, then all rule types that aren't
     # whitelisted should be redirected to a handler that's a no-op. For example,
