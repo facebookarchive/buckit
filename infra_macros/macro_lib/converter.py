@@ -13,24 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-ALWAYS_ALLOWED_ARGS = {'visibility'}
-
-
-# Hack to make internal Buck macros flake8-clean until we switch to buildozer.
-def absolute_import(path):
-    global _import_macro_lib__imported
-    include_defs(path, '_import_macro_lib__imported')  # noqa: F821
-    ret = _import_macro_lib__imported
-    del _import_macro_lib__imported  # Keep the global namespace clean
-    return ret
-
-
-def import_macro_lib(path):
-    return absolute_import('{}/{}.py'.format(
-        read_config('fbcode', 'macro_lib', '//macro_lib'), path  # noqa: F821
-    ))
-
-
 load("@fbcode_macros//build_defs:export_files.bzl",  # noqa F821
         "export_file", "export_files", "buck_export_file")
 load(  # noqa F821
@@ -110,8 +92,7 @@ def convert(base_path, rule):
     representation of a buck file.
     """
 
-    converter_map = {}
-    new_converter_map = {
+    converter_map = {
         'cpp_module_external': cpp_module_external,  # noqa F821
         'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
@@ -183,33 +164,11 @@ def convert(base_path, rule):
         'python_unittest': python_unittest,  # noqa F821
     }
 
-    converter = new_converter_map.get(rule.type, converter_map.get(rule.type))
+    converter = converter_map.get(rule.type)
 
     if converter is None:
         name = '{0}:{1}'.format(base_path, rule.attributes['name'])
         raise ValueError('unknown rule type %s for %s' % (rule.type, name))
 
-    # New style rules don't return anything, they instantiate rules
-    # directly. Just return an empty list here so that callers, like
-    # macros.py, will not break for now. Eventually most of this code will
-    # disappear
-    if rule.type in new_converter_map:
-        converter(**rule.attributes)
-        return []
-
-    # Verify arguments for old style rules. Newer rules should blow up
-    # with a more readable message.
-    allowed_args = converter_map[rule.type].get_allowed_args()
-    if allowed_args is not None:
-        for attribute in rule.attributes:
-            if (attribute not in allowed_args and
-                    attribute not in ALWAYS_ALLOWED_ARGS):
-                raise TypeError(
-                    '{}() got an unexpected keyword argument: {!r}'
-                    .format(rule.type, attribute))
-
-    # Potentially convert from a generator
-    return list(converter_map[rule.type].convert(
-        base_path,
-        **rule.attributes
-    ))
+    converter(**rule.attributes)
+    return []
