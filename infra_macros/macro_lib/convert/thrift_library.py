@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import itertools
 import pipes
 
@@ -30,6 +29,7 @@ def import_macro_lib(path):
 base = import_macro_lib('convert/base')
 Rule = import_macro_lib('rule').Rule
 target = import_macro_lib('fbcode_target')
+load("@bazel_skylib//lib:collections.bzl", "collections")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:new_sets.bzl", "sets")
@@ -55,7 +55,7 @@ load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
 load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries", "CONVERTERS", "NAMES_TO_LANG")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
-
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_list")
 
 class ThriftLibraryConverter(base.Converter):
 
@@ -73,22 +73,18 @@ class ThriftLibraryConverter(base.Converter):
         Convert the `languages` parameter to a normalized list of languages.
         """
 
-        languages = set()
+        languages = {}
 
         if names == None:
-            raise TypeError('thrift_library() requires languages argument')
+            fail('thrift_library() requires languages argument')
 
         for name in names:
             lang = NAMES_TO_LANG.get(name)
             if lang == None:
-                raise TypeError(
-                    'thrift_library() does not support language {!r}'
-                    .format(name))
+                fail('thrift_library() does not support language {}'.format(name))
             if lang in languages:
-                raise TypeError(
-                    'thrift_library() given duplicate language {!r}'
-                    .format(lang))
-            languages.add(lang)
+                fail('thrift_library() given duplicate language {}'.format(lang))
+            languages[lang] = None
 
         return languages
 
@@ -97,9 +93,9 @@ class ThriftLibraryConverter(base.Converter):
         Parse the option list or string into a dict.
         """
 
-        parsed = collections.OrderedDict()
+        parsed = {}
 
-        if isinstance(options, basestring):
+        if is_string(options):
             options = options.split(',')
 
         for option in options:
@@ -117,22 +113,22 @@ class ThriftLibraryConverter(base.Converter):
         space-separated string.
         """
 
-        if isinstance(args, basestring):
+        if is_string(args):
             args = args.split()
 
         return args
 
     def get_thrift_options(self, options):
-        if isinstance(options, basestring):
+        if is_string(options):
             options = options.split(',')
         return options
 
     def fixup_thrift_srcs(self, srcs):
-        new_srcs = collections.OrderedDict()
+        new_srcs = {}
         for name, services in sorted(srcs.items()):
             if services == None:
                 services = []
-            elif not isinstance(services, (tuple, list)):
+            elif not is_tuple(services) and not is_list(services):
                 services = [services]
             new_srcs[name] = services
         return new_srcs
@@ -189,7 +185,7 @@ class ThriftLibraryConverter(base.Converter):
         sources the compiler generated.
         """
 
-        out = collections.OrderedDict()
+        out = {}
         rules = []
 
         for name, src in srcs.items():
@@ -233,23 +229,23 @@ class ThriftLibraryConverter(base.Converter):
         deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
 
         # Setup the exported include tree to dependents.
-        includes = set()
-        includes.update(thrift_srcs.keys())
+        includes = []
+        includes.extend(thrift_srcs.keys())
         for lang in languages:
             converter = CONVERTERS[lang]
-            includes.update(converter.get_extra_includes(**kwargs))
+            includes.extend(converter.get_extra_includes(**kwargs))
 
         merge_tree(
             base_path,
             self.get_exported_include_tree(name),
-            sorted(includes),
-            map(self.get_exported_include_tree, deps),
+            sorted(collections.uniq(includes)),
+            [self.get_exported_include_tree(dep) for dep in deps],
             labels=["generated"],
             visibility=visibility)
 
         # py3 thrift requires cpp2
         if 'py3' in languages and 'cpp2' not in languages:
-            languages.add('cpp2')
+            languages['cpp2'] = None
 
         # save cpp2_options for later use by 'py3'
         if 'cpp2' in languages:
@@ -259,14 +255,14 @@ class ThriftLibraryConverter(base.Converter):
 
         # Types are generated for all legacy Python Thrift
         if 'py' in languages:
-            languages.add('pyi')
+            languages['pyi'] = None
             # Save the options for pyi to use
             py_options = (self.parse_thrift_options(
                 kwargs.get('thrift_py_options', ())
             ))
 
         if 'py-asyncio' in languages:
-            languages.add('pyi-asyncio')
+            languages['pyi-asyncio'] = None
             # Save the options for pyi to use
             py_asyncio_options = (self.parse_thrift_options(
                 kwargs.get('thrift_py_asyncio_options', ())
@@ -293,7 +289,7 @@ class ThriftLibraryConverter(base.Converter):
                 converter.get_options(base_path, options),
                 **kwargs)
 
-            all_gen_srcs = collections.OrderedDict()
+            all_gen_srcs = {}
             for thrift_src, services in thrift_srcs.items():
                 thrift_name = src_and_dep_helpers.get_source_name(thrift_src)
 
@@ -417,7 +413,9 @@ class ThriftLibraryConverter(base.Converter):
             'thrift', 'supported_languages', delimiter=None, required=False,
         )
         if supported_languages != None:
-            languages = set(languages) & set(supported_languages)
+            languages = sets.to_list(
+                sets.intersection(
+                    sets.make(languages), sets.make(supported_languages)))
 
         # Convert rules we support via macros.
         macro_languages = self.get_languages(languages)

@@ -59,7 +59,7 @@ class Py3ThriftConverterTest(utils.ConverterTestCase):
                 self.fail('cpp2 thrift language not added for py3 lang target')
 
     def test_cpp2_options_copy_to_py3_options(self):
-        OPTIONS = "BLAHBLAHBLAH"
+        OPTIONS = str("BLAHBLAHBLAH")
         with self._state.parser._with_stacked_build_env(BuildFileContext("base")):
             self._converter.convert(
                 'base',
