@@ -13,20 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-load(  # noqa F821
-    "@fbcode_macros//build_defs:native_rules.bzl",
-    "buck_command_alias",
-    "cxx_genrule",
-    "buck_filegroup",
-    "buck_genrule",
-    "buck_python_library",
-    "buck_sh_binary",
-    "buck_sh_test",
-    "buck_zip_file",
-    "remote_file",
-    "test_suite",
-    "versioned_alias",
-)
 load("@fbcode_macros//build_defs:cgo_library.bzl", "cgo_library")
 load("@fbcode_macros//build_defs:custom_rule.bzl", "custom_rule")
 load("@fbcode_macros//build_defs:cpp_library_external.bzl", "cpp_library_external")
@@ -92,21 +78,10 @@ def convert(rule_type, attributes):
 
     converter_map = {
         'cpp_module_external': cpp_module_external,  # noqa F821
-        'cxx_genrule': cxx_genrule,  # noqa F821
         'cpp_library_external_custom': cpp_library_external_custom,  # noqa F821
-        'buck_filegroup': buck_filegroup,  # noqa F821
-        'buck_genrule': buck_genrule,  # noqa F821
-        'buck_python_library': buck_python_library,  # noqa F821
-        'buck_sh_binary': buck_sh_binary,  # noqa F821
-        'buck_sh_test': buck_sh_test,  # noqa F821
-        'buck_zip_file': buck_zip_file,  # noqa F821
         'cgo_library': cgo_library,  # noqa F821
         'cython_library': cython_library,  # noqa F821
         'cpp_binary_external': discard,  # noqa F821
-        'versioned_alias': versioned_alias,  # noqa F821
-        'remote_file': remote_file,  # noqa F821
-        'test_suite': test_suite,  # noqa F821
-        'buck_command_alias': buck_command_alias,  # noqa F821
         'custom_rule': custom_rule,  # noqa F821
         'go_binary': go_binary,  # noqa F821
         'go_bindgen_library': go_bindgen_library,  # noqa F821
