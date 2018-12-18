@@ -20,6 +20,7 @@ load("@fbcode_macros//build_defs/lib/thrift:swift.bzl", "swift_thrift_converter"
 load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbsource//tools/build_defs:type_defs.bzl", "is_list", "is_string", "is_tuple")
 
 _PY_REMOTES_EXTERNAL_DEPS = (
     "python-future",
@@ -58,6 +59,58 @@ def _instantiate_converters():
 
 # TODO: Make private
 CONVERTERS, NAMES_TO_LANG = _instantiate_converters()
+
+def get_exported_include_tree(dep):
+    """
+    Generate the exported thrift source includes target use for the given
+    thrift library target.
+    """
+    return dep + "-thrift-includes"
+
+# TODO: Make private
+# TODO: Remove the need for this by making this a list everywhere
+def parse_thrift_args(args):
+    """
+    For some reason we accept `thrift_args` as either a list or
+    space-separated string.
+    """
+
+    if is_string(args):
+        args = args.split()
+
+    return args
+
+# TODO: Make private
+def fixup_thrift_srcs(srcs):
+    """ Normalize the format of the thrift_srcs attribute """
+    new_srcs = {}
+    for name, services in sorted(srcs.items()):
+        if services == None:
+            services = []
+        elif not is_tuple(services) and not is_list(services):
+            services = [services]
+        new_srcs[name] = services
+    return new_srcs
+
+# TODO: Make private
+def parse_thrift_options(options):
+    """
+    Parse the option list or string into a dict.
+    """
+
+    parsed = {}
+
+    if is_string(options):
+        options = options.split(",")
+
+    for option in options:
+        if "=" in option:
+            option, val = option.rsplit("=", 1)
+            parsed[option] = val
+        else:
+            parsed[option] = None
+
+    return parsed
 
 # TODO: Make private
 def py_remote_binaries(

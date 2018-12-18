@@ -53,7 +53,16 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
 load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
-load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries", "CONVERTERS", "NAMES_TO_LANG")
+load(
+    "@fbcode_macros//build_defs:thrift_library.bzl",
+    "py_remote_binaries",
+    "CONVERTERS",
+    "NAMES_TO_LANG",
+    "parse_thrift_args",
+    "parse_thrift_options",
+    "fixup_thrift_srcs",
+    "get_exported_include_tree",
+)
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_string", "is_tuple", "is_list")
 
@@ -88,58 +97,6 @@ class ThriftLibraryConverter(base.Converter):
 
         return languages
 
-    def parse_thrift_options(self, options):
-        """
-        Parse the option list or string into a dict.
-        """
-
-        parsed = {}
-
-        if is_string(options):
-            options = options.split(',')
-
-        for option in options:
-            if '=' in option:
-                option, val = option.rsplit('=', 1)
-                parsed[option] = val
-            else:
-                parsed[option] = None
-
-        return parsed
-
-    def parse_thrift_args(self, args):
-        """
-        For some reason we accept `thrift_args` as either a list or
-        space-separated string.
-        """
-
-        if is_string(args):
-            args = args.split()
-
-        return args
-
-    def get_thrift_options(self, options):
-        if is_string(options):
-            options = options.split(',')
-        return options
-
-    def fixup_thrift_srcs(self, srcs):
-        new_srcs = {}
-        for name, services in sorted(srcs.items()):
-            if services == None:
-                services = []
-            elif not is_tuple(services) and not is_list(services):
-                services = [services]
-            new_srcs[name] = services
-        return new_srcs
-
-    def get_exported_include_tree(self, dep):
-        """
-        Generate the exported thrift source includes target use for the given
-        thrift library target.
-        """
-
-        return dep + '-thrift-includes'
 
     def generate_compile_rule(
             self,
@@ -163,7 +120,7 @@ class ThriftLibraryConverter(base.Converter):
             converter.get_compiler_command(
                 compiler,
                 compiler_args,
-                self.get_exported_include_tree(':' + name),
+                get_exported_include_tree(':' + name),
                 converter.get_additional_compiler()))
 
         if postprocess_cmd != None:
@@ -223,8 +180,10 @@ class ThriftLibraryConverter(base.Converter):
         """
 
         # Parse incoming options.
-        thrift_srcs = self.fixup_thrift_srcs(thrift_srcs)
-        thrift_args = self.parse_thrift_args(thrift_args)
+        # TODO: These are top level attributes, move them to convert() when we get
+        # rid of `kwargs at the top level over convert()`
+        thrift_srcs = fixup_thrift_srcs(thrift_srcs)
+        thrift_args = parse_thrift_args(thrift_args)
         languages = self.get_languages(languages)
         deps = [src_and_dep_helpers.convert_build_target(base_path, d) for d in deps]
 
@@ -237,9 +196,9 @@ class ThriftLibraryConverter(base.Converter):
 
         merge_tree(
             base_path,
-            self.get_exported_include_tree(name),
+            get_exported_include_tree(name),
             sorted(collections.uniq(includes)),
-            [self.get_exported_include_tree(dep) for dep in deps],
+            [get_exported_include_tree(dep) for dep in deps],
             labels=["generated"],
             visibility=visibility)
 
@@ -250,21 +209,21 @@ class ThriftLibraryConverter(base.Converter):
         # save cpp2_options for later use by 'py3'
         if 'cpp2' in languages:
             cpp2_options = (
-                self.parse_thrift_options(
+                parse_thrift_options(
                     kwargs.get('thrift_cpp2_options', ())))
 
         # Types are generated for all legacy Python Thrift
         if 'py' in languages:
             languages['pyi'] = None
             # Save the options for pyi to use
-            py_options = (self.parse_thrift_options(
+            py_options = (parse_thrift_options(
                 kwargs.get('thrift_py_options', ())
             ))
 
         if 'py-asyncio' in languages:
             languages['pyi-asyncio'] = None
             # Save the options for pyi to use
-            py_asyncio_options = (self.parse_thrift_options(
+            py_asyncio_options = (parse_thrift_options(
                 kwargs.get('thrift_py_asyncio_options', ())
             ))
 
@@ -273,7 +232,7 @@ class ThriftLibraryConverter(base.Converter):
             converter = CONVERTERS[lang]
             compiler = converter.get_compiler()
             options = (
-                self.parse_thrift_options(
+                parse_thrift_options(
                     kwargs.get('thrift_{}_options'.format(
                         lang.replace('-', '_')), ())))
             if lang == "pyi":
@@ -336,7 +295,7 @@ class ThriftLibraryConverter(base.Converter):
                     lang,
                     thrift_srcs,
                     compiler_args,
-                    self.get_exported_include_tree(':' + name),
+                    get_exported_include_tree(':' + name),
                     deps,
                 )
             # Generate the per-language rules.
@@ -429,7 +388,7 @@ class ThriftLibraryConverter(base.Converter):
             py_remote_binaries(
                 base_path,
                 name=name,
-                thrift_srcs=self.fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
+                thrift_srcs=fixup_thrift_srcs(kwargs.get('thrift_srcs', {})),
                 base_module=kwargs.get('py_base_module'),
                 include_sr=kwargs.get('py_remote_service_router', False),
                 visibility=visibility)
