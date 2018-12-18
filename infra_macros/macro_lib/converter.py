@@ -137,7 +137,6 @@ def convert(base_path, rule):
         'cython_library': cython_library,  # noqa F821
         'dewey_artifact': dewey_artifact,
         'cpp_binary_external': discard,  # noqa F821
-        'haskell_genscript': discard,  # noqa F821
         'export_file': export_file,  # noqa F821
         'export_files': export_files,  # noqa F821
         'versioned_alias': versioned_alias,  # noqa F821

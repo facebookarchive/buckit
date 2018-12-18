@@ -145,7 +145,6 @@ FBCODE_RULES = [
     'go_unittest',
     'haskell_binary',
     'haskell_external_library',
-    'haskell_genscript',
     'haskell_ghci',
     'haskell_haddock',
     'haskell_library',
