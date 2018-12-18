@@ -39,7 +39,6 @@ load(  # noqa F821
     "cxx_genrule",
     "buck_filegroup",
     "buck_genrule",
-    "buck_python_binary",
     "buck_python_library",
     "buck_sh_binary",
     "buck_sh_test",
@@ -130,7 +129,6 @@ def convert(base_path, rule):
         'buck_export_file': buck_export_file,  # noqa F821
         'buck_filegroup': buck_filegroup,  # noqa F821
         'buck_genrule': buck_genrule,  # noqa F821
-        'buck_python_binary': buck_python_binary,  # noqa F821
         'buck_python_library': buck_python_library,  # noqa F821
         'buck_sh_binary': buck_sh_binary,  # noqa F821
         'buck_sh_test': buck_sh_test,  # noqa F821
