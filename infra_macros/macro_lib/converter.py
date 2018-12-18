@@ -117,9 +117,6 @@ load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
-base = import_macro_lib('convert/base')
-
-
 def convert(base_path, rule):
     """
     Convert the python representation of a targets file into a python
