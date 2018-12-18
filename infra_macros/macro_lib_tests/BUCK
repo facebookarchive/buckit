@@ -1,14 +1,3 @@
-python_library(
-    name = "utils",
-    srcs = [
-        "utils.py",
-    ],
-    deps = [
-        "//tools/build/buck:parser",
-        "//tools/build/buck/infra_macros/macro_lib:macro_lib",
-    ],
-)
-
 python_unittest(
     name = "test_manifest",
     srcs = [
