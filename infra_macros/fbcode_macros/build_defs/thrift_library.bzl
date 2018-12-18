@@ -1,4 +1,23 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@fbcode_macros//build_defs/lib/thrift:cpp2.bzl", "cpp2_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:go.bzl", "go_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:haskell.bzl", "haskell_deprecated_thrift_converter", "haskell_hs2_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:java.bzl", "java_deprecated_apache_thrift_converter", "java_deprecated_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:js.bzl", "js_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
+load(
+    "@fbcode_macros//build_defs/lib/thrift:python.bzl",
+    "python_asyncio_thrift_converter",
+    "python_normal_thrift_converter",
+    "python_pyi_asyncio_thrift_converter",
+    "python_pyi_thrift_converter",
+    "python_twisted_thrift_converter",
+)
+load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:swift.bzl", "swift_thrift_converter")
+load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
 load("@fbcode_macros//build_defs/lib:src_and_dep_helpers.bzl", "src_and_dep_helpers")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 
@@ -7,6 +26,40 @@ _PY_REMOTES_EXTERNAL_DEPS = (
     "six",
 )
 
+def _instantiate_converters():
+    all_converters = [
+        cpp2_thrift_converter,
+        d_thrift_converter,
+        go_thrift_converter,
+        haskell_deprecated_thrift_converter,
+        haskell_hs2_thrift_converter,
+        js_thrift_converter,
+        ocaml_thrift_converter,
+        rust_thrift_converter,
+        thriftdoc_python_thrift_converter,
+        python3_thrift_converter,
+        python_normal_thrift_converter,
+        python_twisted_thrift_converter,
+        python_asyncio_thrift_converter,
+        python_pyi_thrift_converter,
+        python_pyi_asyncio_thrift_converter,
+        java_deprecated_thrift_converter,
+        java_deprecated_apache_thrift_converter,
+        swift_thrift_converter,
+    ]
+    converters = {}
+    name_to_lang = {}
+    for converter in all_converters:
+        converters[converter.get_lang()] = converter
+        for name in converter.get_names():
+            name_to_lang[name] = converter.get_lang()
+
+    return converters, name_to_lang
+
+# TODO: Make private
+CONVERTERS, NAMES_TO_LANG = _instantiate_converters()
+
+# TODO: Make private
 def py_remote_binaries(
         base_path,
         name,

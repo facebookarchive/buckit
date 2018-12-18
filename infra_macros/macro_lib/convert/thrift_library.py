@@ -53,28 +53,7 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool", "read_list")
 load("@fbcode_macros//build_defs/lib:thrift_common.bzl", "thrift_common")
 load("@fbcode_macros//build_defs/lib/thrift:thrift_interface.bzl", "thrift_interface")
-load("@fbcode_macros//build_defs/lib/thrift:d.bzl", "d_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:ocaml.bzl", "ocaml_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:rust.bzl", "rust_thrift_converter")
-load(
-    "@fbcode_macros//build_defs/lib/thrift:python.bzl",
-    "python_normal_thrift_converter",
-    "python_twisted_thrift_converter",
-    "python_asyncio_thrift_converter",
-    "python_pyi_thrift_converter",
-    "python_pyi_asyncio_thrift_converter",
-)
-load("@fbcode_macros//build_defs/lib/thrift:swift.bzl", "swift_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:java.bzl", "java_deprecated_thrift_converter", "java_deprecated_apache_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:cpp2.bzl", "cpp2_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:cpp2.bzl", "cpp2_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:haskell.bzl", "haskell_deprecated_thrift_converter", "haskell_hs2_thrift_converter")
-
-load("@fbcode_macros//build_defs/lib/thrift:js.bzl", "js_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:python3.bzl", "python3_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:thriftdoc_python.bzl", "thriftdoc_python_thrift_converter")
-load("@fbcode_macros//build_defs/lib/thrift:go.bzl", "go_thrift_converter")
-load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries")
+load("@fbcode_macros//build_defs:thrift_library.bzl", "py_remote_binaries", "CONVERTERS", "NAMES_TO_LANG")
 load("@fbcode_macros//build_defs/lib:common_paths.bzl", "common_paths")
 
 
@@ -82,34 +61,6 @@ class ThriftLibraryConverter(base.Converter):
 
     def __init__(self):
         super(ThriftLibraryConverter, self).__init__()
-
-        # Setup the macro converters.
-        converters = [
-            cpp2_thrift_converter,
-            d_thrift_converter,
-            go_thrift_converter,
-            haskell_deprecated_thrift_converter,
-            haskell_hs2_thrift_converter,
-            js_thrift_converter,
-            ocaml_thrift_converter,
-            rust_thrift_converter,
-            thriftdoc_python_thrift_converter,
-            python3_thrift_converter,
-            python_normal_thrift_converter,
-            python_twisted_thrift_converter,
-            python_asyncio_thrift_converter,
-            python_pyi_thrift_converter,
-            python_pyi_asyncio_thrift_converter,
-            java_deprecated_thrift_converter,
-            java_deprecated_apache_thrift_converter,
-            swift_thrift_converter,
-        ]
-        self._converters = {}
-        self._name_to_lang = {}
-        for converter in converters:
-            self._converters[converter.get_lang()] = converter
-            for name in converter.get_names():
-                self._name_to_lang[name] = converter.get_lang()
 
     def get_fbconfig_rule_type(self):
         return 'thrift_library'
@@ -128,7 +79,7 @@ class ThriftLibraryConverter(base.Converter):
             raise TypeError('thrift_library() requires languages argument')
 
         for name in names:
-            lang = self._name_to_lang.get(name)
+            lang = NAMES_TO_LANG.get(name)
             if lang == None:
                 raise TypeError(
                     'thrift_library() does not support language {!r}'
@@ -211,7 +162,7 @@ class ThriftLibraryConverter(base.Converter):
         genrule_name = (
             '{}-{}-{}'.format(name, lang, src_and_dep_helpers.get_source_name(source)))
         cmds = []
-        converter = self._converters[lang]
+        converter = CONVERTERS[lang]
         cmds.append(
             converter.get_compiler_command(
                 compiler,
@@ -285,7 +236,7 @@ class ThriftLibraryConverter(base.Converter):
         includes = set()
         includes.update(thrift_srcs.keys())
         for lang in languages:
-            converter = self._converters[lang]
+            converter = CONVERTERS[lang]
             includes.update(converter.get_extra_includes(**kwargs))
 
         merge_tree(
@@ -323,7 +274,7 @@ class ThriftLibraryConverter(base.Converter):
 
         # Generate rules for all supported languages.
         for lang in languages:
-            converter = self._converters[lang]
+            converter = CONVERTERS[lang]
             compiler = converter.get_compiler()
             options = (
                 self.parse_thrift_options(
@@ -447,7 +398,7 @@ class ThriftLibraryConverter(base.Converter):
 
         # Add the default args based on the languages we support
         langs = []
-        langs.extend(self._name_to_lang.values())
+        langs.extend(NAMES_TO_LANG.values())
         langs.extend([
             'py',
             'py-asyncio',
