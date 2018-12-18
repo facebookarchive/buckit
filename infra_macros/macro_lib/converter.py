@@ -86,7 +86,6 @@ load("@fbcode_macros//build_defs:java_test.bzl", "java_test")
 load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
 load("@fbcode_macros//build_defs:js_node_module_external.bzl", "js_node_module_external")
 load("@fbcode_macros//build_defs:js_npm_module.bzl", "js_npm_module")
-load("@fbcode_macros//build_defs:java_protoc_library.bzl", "java_protoc_library")
 load("@fbcode_macros//build_defs:java_shaded_jar.bzl", "java_shaded_jar")
 load("@fbcode_macros//build_defs:lua_binary.bzl", "lua_binary")
 load("@fbcode_macros//build_defs:lua_library.bzl", "lua_library")
@@ -155,7 +154,6 @@ def convert(base_path, rule):
         'haskell_unittest': haskell_unittest,  # noqa F821
         'java_binary': java_binary,  # noqa F821
         'java_library': java_library,  # noqa F821
-        'java_protoc_library': java_protoc_library,  # noqa F821
         'java_shaded_jar': java_shaded_jar,  # noqa F821
         'java_test': java_test,  # noqa F821
         'js_executable': js_executable,  # noqa F821
