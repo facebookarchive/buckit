@@ -38,6 +38,10 @@ fbpkg_builder(
         "file_to_package": ("copy", ":file_to_package"),
         "subdir/generated": ("copy", ":generated_file_to_package"),
     },
+    tags = [
+        "Atag",
+        "Btag",
+    ],
 )
 
 # NB: Sadly, we cannot use `needed_coverage` because our code is in Skylark.

@@ -6,6 +6,7 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 def fbpkg_builder(
         name,
         path_actions = None,
+        tags = None,
         # We have to have a default here because of our call to `fbpkg expire`
         expire_seconds_from_now = 86400,  # Contbuild's current sitevar default
         allow_nonportable_artifacts = False,
@@ -31,12 +32,9 @@ def fbpkg_builder(
     builds its contents (locally), and writes a script that knows how to
     publish a new fbpkg version.  To publish:
 
-    `buck run @mode/opt //path/to:your_fbpkg_name` OR
-    `buck run @mode/opt //path/to:your_fbpkg_name -- --json`
+    `buck run @mode/opt //path/to:your_fbpkg_name`
 
-    This prints to stdout `your_fbpkg_name:uuid` or the `fbpkg build` JSON
-    summary for the built package.
-
+    This prints to stdout `your_fbpkg_name:uuid`.
 
     ## Arguments
 
@@ -53,6 +51,10 @@ def fbpkg_builder(
            'widgets/foo': ('copy', ':foo'),
            'links/foo': ('symlink', 'widgets/foo'),
         }
+
+    `tags`: `['list', 'of', 'tags']` to apply to the built version.  The
+    package will receive the union of these with any `--tags` passed at
+    `buck run` time.
 
     `expire_seconds_from_now`: Try to ensure that the built package expires
     no earlier than this.  This may fail is we race with the deletion of a
@@ -141,6 +143,28 @@ def fbpkg_builder(
         see "Future work" below.
 
 
+    # Implementation details you SHOULD NOT rely on
+
+    Best practice: use the TARGETS file to specify all properties of a
+    package build.  This is the correct policy, because source code
+    is reviewed and versioned.
+
+    That said, `fbpkg_builder` does support a few runtime arguments for the
+    sake of supporting regular contbuild fbpkg semantics via the WWW class
+    `SandcastleFBCodeBuckFbpkgBuilderStep`.  They are passed as follows:
+
+        buck run @mode/opt //path/to:your_fbpkg_name -- --arg1 val --arg2
+
+    The implement arguments are:
+
+        `--json`: Instead of printing `package:uuid` to stdout, print a JSON
+        structure.  You should avoid using this, because identifiers than
+        `package:uuid` are subject to collisions with tags.
+
+        `--tags TAG1,TAG2`: Tags in addition to what was specified by the
+        `tags` keyword argument for this target.
+
+
     ## Future non-work
 
     The following `BuildCommand` arguments will never be supported:
@@ -155,9 +179,9 @@ def fbpkg_builder(
 
     ## Future work
 
-      - (hi-pri) Integrate with contbuild.  We will need to allow passing
-        --tags, and may want to support --no-publish and --verbose.  The
-        --json flag is already supported for easier contbuild compatibility.
+      - (hi-pri) Integrate with contbuild.  We still need to support
+        --no-publish and --verbose.  The --json and --tags flags are already
+        supported.
 
       - (hi-pri) Default to a mode where we don't publish ephemerals from
         unclean trees.  My favorite implementation would be to add an
@@ -319,15 +343,25 @@ def fbpkg_builder(
         bash = '''\
 set -ue -o pipefail
 cat <<'BUILD_FBPKG_EOF' > "$OUT"
-#!/bin/bash -ue
+#!/bin/bash -uex
 set -o pipefail
 {runtime_failure}
 
 # We always use --json internally, but output pkg:uuid by default.
 print_json=0
+comma_tags={quoted_comma_tags}
 while [[ $# -ne 0 ]] ; do
     if [[ "$1" == "--json" ]] ; then
         print_json=1
+    elif [[ "$1" == "--tags" ]] ; then
+        # This argument gets appended to the compile-time tags.  This here
+        # will accept multiple copies of the tags argument, and that's OK.
+        shift
+        if [[ "$comma_tags" == "" ]] ; then
+            comma_tags=$1
+        else
+            comma_tags="$1,$comma_tags"
+        fi
     else
         echo "Unsupported fbpkg option $1" >&2
         exit 1
@@ -381,10 +415,19 @@ cat <<JSON_EOF > "$json_dir/{name}.fbpkg.materialized_JSON"
 }}
 JSON_EOF
 
+if [[ "$comma_tags" == "" ]] ; then
+    tags_args=()
+else
+    tags_args=( "--tags" "$comma_tags" )
+fi
+
 # See the docblock on the rationale for the various options.
 pkg_json=\\$(
-    fbpkg build  --silent-duplicate-error --ephemeral --yes --json \
-        --configerator-path "$fake_cfgr_dir" --expire {expire_sec}s {name}
+    fbpkg build --silent-duplicate-error --ephemeral --yes --json \
+        --configerator-path "$fake_cfgr_dir" \
+        --expire {expire_sec}s \
+        "${{tags_args[@]}}" \
+        {name}
 )
 pkg_and_uuid=\\$(echo "$pkg_json" | python3 -c '
 import json, sys
@@ -406,6 +449,13 @@ for d in json.load(sys.stdin):
 fbpkg expire --extend-only "$pkg_and_uuid" "$expire_date_time" >&2 ||
     echo "Proceeding although 'fbpkg expire' exited with $?"
 
+# Now that the (possibly duplicate) package won't expire, ensure it actually
+# has the right tags.
+if [[ "$comma_tags" != "" ]] ; then
+    IFS=, read -ra array_tags <<< "$comma_tags"
+    fbpkg tag "$pkg_and_uuid" "${{array_tags[@]}}"
+fi
+
 if [[ $print_json -eq 1 ]] ; then
     echo "$pkg_json"
 else
@@ -417,6 +467,7 @@ chmod u+x "$OUT"
             name = name,
             symlink_cmds = "\n".join(symlink_cmds),
             quoted_paths = " ".join(quoted_paths),
+            quoted_comma_tags = shell.quote(",".join(tags or [])),
             quoted_flat_path_mapping = " ".join(quoted_flat_path_mapping),
             runtime_failure = runtime_failure,
             expire_sec = expire_seconds_from_now,
