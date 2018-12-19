@@ -466,7 +466,7 @@ fbpkg expire --extend-only "$pkg_and_uuid" "$expire_date_time" >&2 ||
 # has the right tags.
 if [[ "$comma_tags" != "" ]] ; then
     IFS=, read -ra array_tags <<< "$comma_tags"
-    fbpkg tag "$pkg_and_uuid" "${{array_tags[@]}}"
+    fbpkg tag --yes "$pkg_and_uuid" "${{array_tags[@]}}"
 fi
 
 if [[ $print_json -eq 1 ]] ; then
