@@ -1,0 +1,60 @@
+load("@fbcode//fs_image/buck_macros/facebook:fbpkg.bzl", "fbpkg_builder")
+
+export_file(name = "file_to_package")
+
+# Test target types besides `export_file`, because those have "reference"
+# semantics in fbcode, which leads them to be treated differently than
+# regular build artifacts in the $BUCK_PROJECT_ROOT tree for `sh_binary`:
+# https://fb.workplace.com/groups/askbuck/permalink/2235552209826715/
+buck_genrule(
+    name = "generated_file_to_package",
+    out = "nonsense",  # Tests that we use the output name, not the rule name
+    bash = 'echo hello > "$OUT"',
+)
+
+fbpkg_builder(
+    name = "fbpkg_builder_test_package_with_symlink",
+    # DO NOT COPY THIS LINE INTO YOUR PRODUCTION FBPKGS.  This unit-test
+    # fbpkg does not include any Buck-built binaries, so this is safe.
+    # Using this flag here lets us run `test-fbpkg-builder` in @mode/dev.
+    allow_nonportable_artifacts = True,
+    path_actions = {
+        "a/path/to/link_to_generated": ("symlink", "subdir/generated"),
+        "file_to_package": ("copy", ":file_to_package"),
+        "subdir/generated": ("copy", ":generated_file_to_package"),
+    },
+)
+
+# The presence of a symlink in our current implementation means that the
+# resulting package will be unique on every run (the timestamp of the
+# symlink will vary).  So, for testing "on duplicate" behavior, a
+# symlink-free package build is essential.
+fbpkg_builder(
+    name = "fbpkg_builder_test_package_without_symlink",
+    # DO NOT COPY THIS LINE INTO YOUR PRODUCTION FBPKGS.  See the doc on
+    # this target's `*_with_symlink` sibling for why we have this.
+    allow_nonportable_artifacts = True,
+    path_actions = {
+        "file_to_package": ("copy", ":file_to_package"),
+        "subdir/generated": ("copy", ":generated_file_to_package"),
+    },
+)
+
+# NB: Sadly, we cannot use `needed_coverage` because our code is in Skylark.
+python_unittest(
+    name = "test-fbpkg-builder",
+    srcs = ["test_fbpkg_builder.py"],
+    base_module = "fs_image.facebook",
+    # We cannot use `resources` to embed the `fbpkg_builder`, since its
+    # underlying `sh_binary` is not nestable.  https://fburl.com/e8kl5c4c
+    # Should the lack of nesting become a big problem, we **could** switch
+    # `fbpkg_builder` to emit a `python_binary`, but this would come at a
+    # hefty perf cost of having to build a python archive equivalent to the
+    # fbpkg -- so we'll probably not actually ever want to do this.
+    env = {
+        "build_with_symlink": "$(location :fbpkg_builder_test_package_with_symlink)",
+        "build_without_symlink": "$(location :fbpkg_builder_test_package_without_symlink)",
+    },
+    # We run a few fbpkg builds and fetches, so this can easily take > 1 minute
+    tags = ["slow"],
+)
