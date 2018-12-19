@@ -164,6 +164,8 @@ def fbpkg_builder(
         `--tags TAG1,TAG2`: Tags in addition to what was specified by the
         `tags` keyword argument for this target.
 
+        `--verbose`, `--no-publish`: Passed to `fbpkg build` as-is.
+
 
     ## Future non-work
 
@@ -178,10 +180,6 @@ def fbpkg_builder(
 
 
     ## Future work
-
-      - (hi-pri) Integrate with contbuild.  We still need to support
-        --no-publish and --verbose.  The --json and --tags flags are already
-        supported.
 
       - (hi-pri) Default to a mode where we don't publish ephemerals from
         unclean trees.  My favorite implementation would be to add an
@@ -349,8 +347,13 @@ set -o pipefail
 
 # We always use --json internally, but output pkg:uuid by default.
 print_json=0
+no_publish=0
 comma_tags={quoted_comma_tags}
+maybe_verbose=()
+maybe_no_publish=()
 while [[ $# -ne 0 ]] ; do
+    # PLEASE do NOT add arguments to this list indiscriminately.  Most
+    # remaining fbpkg options do NOT belong here.
     if [[ "$1" == "--json" ]] ; then
         print_json=1
     elif [[ "$1" == "--tags" ]] ; then
@@ -362,6 +365,11 @@ while [[ $# -ne 0 ]] ; do
         else
             comma_tags="$1,$comma_tags"
         fi
+    elif [[ "$1" == "--verbose" ]] ; then
+        maybe_verbose+=( "$1" )
+    elif [[ "$1" == "--no-publish" ]] ; then
+        maybe_no_publish+=( "$1" )
+        no_publish=1
     else
         echo "Unsupported fbpkg option $1" >&2
         exit 1
@@ -423,12 +431,17 @@ fi
 
 # See the docblock on the rationale for the various options.
 pkg_json=\\$(
-    fbpkg build --silent-duplicate-error --ephemeral --yes --json \
+    fbpkg "${{maybe_verbose[@]}}" build \
+        --silent-duplicate-error --ephemeral --yes --json \
         --configerator-path "$fake_cfgr_dir" \
         --expire {expire_sec}s \
         "${{tags_args[@]}}" \
+        "${{maybe_no_publish[@]}}" \
         {name}
 )
+if [[ "$no_publish" -eq 1 ]] ; then
+    exit 0
+fi
 pkg_and_uuid=\\$(echo "$pkg_json" | python3 -c '
 import json, sys
 for d in json.load(sys.stdin):
