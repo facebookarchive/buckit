@@ -16,13 +16,6 @@ from __future__ import print_function
 
 import functools
 
-with allow_unsafe_import():
-    import os
-
-
-macros_py_dir = os.path.dirname(__file__)
-MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
-
 # We're allowed to do absolute paths in add_build_file_dep and include_defs
 # so we do. This helps with problems that arise from relative paths when you
 # have sibling cells. e.g. below, before, macros// would determine that the
@@ -34,6 +27,7 @@ MACRO_LIB_DIR = os.path.join(macros_py_dir, 'macro_lib')
 #  includes = macros//macros.py
 # /macros/.buckconfig
 # /macros/macros.py
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load('@fbcode_macros//build_defs:config.bzl', 'config')
 load('@fbcode_macros//build_defs/lib:cpp_common.bzl', 'cpp_common')
 load('@fbcode_macros//build_defs/lib:visibility.bzl', 'get_visibility_for_base_path')
@@ -93,6 +87,12 @@ load("@fbcode_macros//build_defs:scala_test.bzl", "scala_test")
 load("@fbcode_macros//build_defs:sphinx_manpage.bzl", "sphinx_manpage")
 load("@fbcode_macros//build_defs:sphinx_wiki.bzl", "sphinx_wiki")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
+
+
+macros_py_dir = paths.dirname(__file__)
+MACRO_LIB_DIR = paths.join(macros_py_dir, 'macro_lib')
+
+
 include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 
 __all__ = []
