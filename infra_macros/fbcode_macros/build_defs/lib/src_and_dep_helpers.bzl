@@ -101,7 +101,7 @@ def _convert_source(base_path, src):
     # TODO: This can probably actually support other repos
     if src.startswith(("//", ":")):
         target = target_utils.parse_target(src, default_base_path = base_path)
-        if target.repo != None:
+        if third_party.is_tp2_target(target):
             fail("Expected root repository only for {} got {}".format(src, target))
         return target_utils.target_to_label(target)
     else:
@@ -359,7 +359,7 @@ def _format_source(src, virtual_cells = None):  # type: (Union[str, RuleTarget],
     """
 
     if target_utils.is_rule_target(src):
-        if src.repo != None and virtual_cells == None:
+        if third_party.is_tp2_target(src) and virtual_cells == None:
             fail("Invalid RuleTarget ({}) and platform ({}) provided".format(src, platform))
         return target_utils.target_to_label(src, virtual_cells = virtual_cells)
 

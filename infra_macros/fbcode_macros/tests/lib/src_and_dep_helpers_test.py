@@ -401,11 +401,13 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             'src_and_dep_helpers.format_source("foo/bar.cpp")',
             'src_and_dep_helpers.format_source(target_utils.RootRuleTarget("foo", "bar"))',
             'src_and_dep_helpers.format_source(target_utils.ThirdPartyRuleTarget("foo", "baz"), virtual_cells = fbcode_cxx_platforms.TP2_VIRTUAL_CELLS["gcc5"])',
+            'src_and_dep_helpers.format_source(target_utils.RuleTarget("repo", "bar", "foo"))',
             (
                 "src_and_dep_helpers.format_source_map({\n"
                 '    "foo/foo.c": "foo/bar/foo.c",\n'
                 '    "foo/bar.c": target_utils.RootRuleTarget("foo","bar"),\n'
                 '    "foo/baz.c": target_utils.ThirdPartyRuleTarget("foo","baz"),\n'
+                '    "bar/foo.c": target_utils.RuleTarget("repo", "bar","foo"),\n'
                 "})"
             ),
         ]
@@ -414,8 +416,13 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
             "foo/bar.cpp",
             "//foo:bar",
             "//third-party-buck/gcc5/build/foo:baz",
+            "repo//bar:foo",
             self.struct(
-                value={"foo/foo.c": "foo/bar/foo.c", "foo/bar.c": "//foo:bar"},
+                value={
+                    "foo/foo.c": "foo/bar/foo.c",
+                    "foo/bar.c": "//foo:bar",
+                    "bar/foo.c": "repo//bar:foo",
+                },
                 platform_value=[
                     (
                         "^default-clang$",
