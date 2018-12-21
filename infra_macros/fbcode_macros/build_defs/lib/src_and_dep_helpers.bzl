@@ -10,6 +10,12 @@ _PlatformParam = provider(fields = [
     "platform_value",
 ])
 
+def _is_target(src):
+    """ Return whether the given string refers to a rule target """
+
+    # TODO(agallagher): codemod away `@/...`.
+    return src.startswith((":", "@/")) or "//" in src
+
 def _extract_source_name(src):
     """ Takes a string of the format foo=bar, and returns bar """
     parts = src.split("=")
@@ -45,7 +51,7 @@ def _get_source_name(src):
         src: Either a filename, or, if a target, the bit after `=` from a
              custom rule.
     """
-    if src[0] in "/:":
+    if _is_target(src):
         return _extract_source_name(src)
     else:
         return src
@@ -98,8 +104,7 @@ def _convert_source(base_path, src):
         A fully qualified buck label or a source path as a string
     """
 
-    # TODO: This can probably actually support other repos
-    if src.startswith(("//", ":")):
+    if _is_target(src):
         target = target_utils.parse_target(src, default_base_path = base_path)
         if third_party.is_tp2_target(target):
             fail("Expected root repository only for {} got {}".format(src, target))
@@ -152,7 +157,7 @@ def _parse_source(base_path, src):
         Either a rule target struct (if src was a build target), otherwise the original
         src string
     """
-    if src.startswith(("//", ":", "@/")):
+    if _is_target(src):
         return target_utils.parse_target(src, default_base_path = base_path)
     return src
 

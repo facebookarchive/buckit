@@ -37,11 +37,26 @@ class SrcAndDepHelpersTest(tests.utils.TestCase):
         )
 
     @tests.utils.with_project()
+    def test_parse_target(self, root):
+        self.assertSuccess(
+            root.runUnitTests(
+                self.includes,
+                [
+                    'target_utils.parse_target("fbcode//foo/bar:baz")',
+                    'target_utils.parse_target("//foo/bar:baz")',
+                    'target_utils.parse_target(":baz")',
+                ],
+            ),
+            self.struct(base_path="foo/bar", name="baz", repo="fbcode"),
+            self.struct(base_path="foo/bar", name="baz", repo=None),
+            self.struct(base_path=None, name="baz", repo=None),
+        )
+
+    @tests.utils.with_project()
     def test_get_parsed_source_name_works(self, root):
         self.assertSuccess(
             root.runUnitTests(
-                self.includes
-                + [("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")],
+                self.includes,
                 [
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target("//foo/bar:baz=path/to/baz1.cpp"))',
                     'src_and_dep_helpers.get_parsed_source_name(target_utils.parse_target(":baz=path/to/baz2.cpp"))',
