@@ -20,7 +20,7 @@ load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 def export_files(files, visibility = None, mode = "reference"):
     """ Takes a list of files, and exports each of them """
     for file in files:
-        fb_native.export_file(
+        _export_file(
             name = file,
             visibility = get_visibility(visibility, file),
             mode = mode,
@@ -35,7 +35,7 @@ def buck_export_file(name, visibility = None, *args, **kwargs):
         **kwargs
     )
 
-def export_file(
+def _export_file(
         name,
         visibility = None,
         mode = "reference",
@@ -66,3 +66,5 @@ def export_file(
         *args,
         **kwargs
     )
+
+export_file = _export_file
