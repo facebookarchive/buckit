@@ -5,10 +5,7 @@ files, as described by the specified `format`.
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load(
-    "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
-    "fb_native",
-)
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(":image_utils.bzl", "image_utils")
 
 def _get_fbconfig_rule_type():
@@ -41,7 +38,7 @@ def image_package(
         out = name,
         type = _get_fbconfig_rule_type(),  # For queries
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
-            self_dependency = "//fs_image/buck_macros:image_package",
+            self_dependency = "//fs_image/buck:image_package",
             # We don't need to hold any subvolume lock because we trust
             # that (a) Buck will keep our input JSON alive, and (b) the
             # existence of the JSON will keep the refcount above 1,

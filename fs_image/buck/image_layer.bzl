@@ -85,25 +85,16 @@ The consequences of this information hiding are:
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load(
-    "@fbcode_macros//build_defs/lib:target_utils.bzl",
-    "target_utils",
-)
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load(
-    "@fbcode_macros//build_defs:config.bzl",
-    "config",
-)
+load("@fbcode_macros//build_defs:config.bzl", "config")
 load(
     "@fbcode_macros//build_defs:custom_rule.bzl",
     "get_project_root_from_gen_dir",
 )
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(
-    "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
-    "fb_native",
-)
-load(
-    "//fs_image/buck_macros:image_feature.bzl",
+    "//fs_image/buck:image_feature.bzl",
     "DO_NOT_DEPEND_ON_FEATURES_SUFFIX",
     "image_feature",
 )
@@ -192,7 +183,7 @@ def image_layer(
         # the docs for BuildRule::isCacheable.
         cacheable = False,
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
-            self_dependency = "//fs_image/buck_macros:image_layer",
+            self_dependency = "//fs_image/buck:image_layer",
             bash = '''
             # We want subvolume names to be user-controllable. To permit
             # this, we wrap each subvolume in a temporary subdirectory.

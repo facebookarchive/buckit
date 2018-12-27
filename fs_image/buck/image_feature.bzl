@@ -333,7 +333,7 @@ def image_feature(
                 "$(location {})".format(t)
                 for t in sorted(target_tagger.targets)
                 # Add on a self-dependency (see `fake_macro_library` doc)
-            ]) + "$(location //fs_image/buck_macros:image_feature)",
+            ]) + "$(location //fs_image/buck:image_feature)",
             out = shell.quote(out_dict.to_json()),
         ),
         visibility = get_visibility(visibility, name),
