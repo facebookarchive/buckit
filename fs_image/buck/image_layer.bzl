@@ -128,25 +128,16 @@ def image_layer(
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
 
-    # There are two independent ways to actually populate the resulting
-    # btrfs subvolume.  They live in a single target type for
+    # There are two independent ways to populate the resulting btrfs
+    # subvolume: (i) set `from_sendstream` and nothing else, (ii) set other
+    # arguments as desired.  These modes live in a single target type for
     # memorability, and because much of the implementation is shared.
-    if from_sendstream != None and (
-        image_feature_kwargs or yum_from_repo_snapshot
-    ):
-        fail(
-            "cannot use `from_sendstream` with `image_feature` args or " +
-            "with `yum_from_repo_snapshot`",
-        )
-    elif image_feature_kwargs:
-        make_subvol_cmd = _compile_image_features(
-            base_path = native.package_name(),
-            rule_name = name,
-            parent_layer = parent_layer,
-            image_feature_kwargs = image_feature_kwargs,
-            yum_from_repo_snapshot = yum_from_repo_snapshot,
-        )
-    else:
+    if from_sendstream != None:
+        if image_feature_kwargs or yum_from_repo_snapshot:
+            fail(
+                "cannot use `from_sendstream` with `image_feature` args " +
+                "or with `yum_from_repo_snapshot`",
+            )
         if parent_layer != None:
             # Mechanistically, applying a send-stream on top of an
             # existing layer is just a regular `btrfs receive`.
@@ -173,6 +164,14 @@ def image_layer(
               "$subvolumes_dir" \
               "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
         '''.format(from_sendstream = from_sendstream)
+    else:
+        make_subvol_cmd = _compile_image_features(
+            base_path = native.package_name(),
+            rule_name = name,
+            parent_layer = parent_layer,
+            image_feature_kwargs = image_feature_kwargs,
+            yum_from_repo_snapshot = yum_from_repo_snapshot,
+        )
 
     fb_native.genrule(
         name = name,

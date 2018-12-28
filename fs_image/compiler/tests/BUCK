@@ -168,3 +168,5 @@ image.layer(
 )
 
 image.package(name = op + ".sendstream")
+
+image.layer("empty")  # Just ensure this builds, not checking contents :)
