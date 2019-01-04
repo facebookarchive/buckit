@@ -92,7 +92,7 @@ load(
     "@fbcode_macros//build_defs:custom_rule.bzl",
     "get_project_root_from_gen_dir",
 )
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load(
     "//fs_image/buck:image_feature.bzl",
     "DO_NOT_DEPEND_ON_FEATURES_SUFFIX",
@@ -173,7 +173,7 @@ def image_layer(
             yum_from_repo_snapshot = yum_from_repo_snapshot,
         )
 
-    fb_native.genrule(
+    buck_genrule(
         name = name,
         out = name + ".json",
         type = _get_fbconfig_rule_type(),  # For queries

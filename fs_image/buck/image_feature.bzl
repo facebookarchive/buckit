@@ -42,10 +42,7 @@ load(
     "target_utils",
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load(
-    "@fbsource//tools/build_defs:fb_native_wrapper.bzl",
-    "fb_native",
-)
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_tuple")
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -312,7 +309,7 @@ def image_feature(
     # this will fail (128KB on the Linux system I checked).
     #
     # TODO: Print friendlier error messages on user error.
-    fb_native.genrule(
+    buck_genrule(
         # The constant declaration explains the reason for the name change.
         name = name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX,
         out = name + ".json",

@@ -5,7 +5,7 @@ files, as described by the specified `format`.
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load(":image_utils.bzl", "image_utils")
 
 def _get_fbconfig_rule_type():
@@ -33,7 +33,7 @@ def image_package(
         fail(repr(name))
     if layer == None:
         layer = ":" + local_layer_rule
-    fb_native.genrule(
+    buck_genrule(
         name = name,
         out = name,
         type = _get_fbconfig_rule_type(),  # For queries
