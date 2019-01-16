@@ -37,12 +37,12 @@ Read that target's docblock for more info, but in essence, that will:
 """
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load(
     "@fbcode_macros//build_defs/lib:target_utils.bzl",
     "target_utils",
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_tuple")
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -213,6 +213,22 @@ def _normalize_rpms(rpms):
         normalized.append(dct)
     return normalized
 
+def _normalize_symlinks(symlinks):
+    if symlinks == None:
+        return []
+
+    normalized = []
+    for d in _coerce_dict_to_items(symlinks):
+        if is_tuple(d):
+            if len(d) != 2:
+                fail(
+                    "symlink tuples must have the form: " +
+                    "(symlink_source, symlink_dest)",
+                )
+            d = {"dest": d[1], "source": d[0]}
+        normalized.append(d)
+    return normalized
+
 def _normalize_target(target):
     parsed = target_utils.parse_target(
         target,
@@ -270,6 +286,20 @@ def image_feature(
         # layer includes features both removing and installing the same
         # package, this will cause a build failure.
         rpms = None,
+        # An iterable of symlinks to make in the image.  Directories and files
+        # are supported independently to provide explicit handling of each
+        # source type.  For both `symlinks_to_dirs` and `symlinks_to_files` the
+        # following is true:
+        #  - `source` is the source file/dir of the symlink.  This file must
+        #     exist as we do not support dangling symlinks.
+        #  - `dest` is an image-absolute path.  We follow the `rsync`
+        #     convention -- if `dest` ends with a slash, the copy will be at
+        #     `dest/output filename of source`.  Otherwise, `dest` is a full
+        #     path, including a new filename for the target's output.  The
+        #     directory of `dest` must get created by another
+        #     `image_feature` item.
+        symlinks_to_dirs = None,
+        symlinks_to_files = None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features = None,
@@ -295,6 +325,8 @@ def image_feature(
         # whether the names are valid, and whether they contain a
         # version or release number.  That'll happen later in the build.
         rpms = _normalize_rpms(rpms),
+        symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
+        symlinks_to_files = _normalize_symlinks(symlinks_to_files),
         features = [
             _tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
             for f in features

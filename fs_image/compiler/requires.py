@@ -25,7 +25,12 @@ class PathRequiresPredicate(metaclass=PathObject):
 
 
 IsDirectory = namedtuple('IsDirectory', [])
+IsFile = namedtuple('IsFile', [])
 
 
 def require_directory(path):
     return PathRequiresPredicate(path=path, predicate=IsDirectory())
+
+
+def require_file(path):
+    return PathRequiresPredicate(path=path, predicate=IsFile())

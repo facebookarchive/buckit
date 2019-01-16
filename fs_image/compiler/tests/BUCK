@@ -78,6 +78,27 @@ image.feature(
         ":feature_bad_dir",
         ":feature_dirs",
         ":feature_tar_and_rpms",
+        ":feature_symlinks",
+    ],
+)
+
+# Exercises:
+#   - all forms of specifying symlinks
+image.feature(
+    name = "feature_symlinks",
+    copy_deps = [
+        (":hello_world.tar", "/foo/hello_world.tar"),
+    ],
+    symlinks_to_dirs = [
+        ("/foo/bar", "/foo/fighter"),
+        {
+            "dest": "/foo/face",
+            "source": "/foo/bar",
+        },
+        ("/foo/bar", "/foo/bar/baz/"),  # Rsync style
+    ],
+    symlinks_to_files = [
+        ("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
     ],
 )
 
@@ -104,7 +125,10 @@ image.layer(
             "source": ":hello_world.tar",
         },
     ],
-    features = [":feature_dirs"],
+    features = [
+        ":feature_dirs",
+        ":feature_symlinks",
+    ],
     parent_layer = ":hello_world_base",
     rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
     yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",

@@ -3,7 +3,7 @@ import os
 
 from ..items import (
     CopyFileItem, FilesystemRootItem, MakeDirsItem, MultiRpmAction,
-    RpmActionType, TarballItem,
+    RpmActionType, SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
 
@@ -12,6 +12,7 @@ T_BASE = '//fs_image/compiler/tests'
 # since that's what we are testing.
 T_DIRS = f'{T_BASE}:feature_dirs'
 T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
+T_SYMLINKS = f'{T_BASE}:feature_symlinks'
 T_TAR = f'{T_BASE}:feature_tar_and_rpms'
 T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar_and_rpms'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
@@ -51,6 +52,31 @@ ID_TO_ITEM = {
         user='uuu',
         group='ggg',
         mode='mmm',
+    ),
+    'foo/fighter': SymlinkToDirItem(
+        from_target=T_SYMLINKS,
+        dest='/foo/fighter',
+        source='/foo/bar',
+    ),
+    'foo/face': SymlinkToDirItem(
+        from_target=T_SYMLINKS,
+        dest='/foo/face',
+        source='/foo/bar',
+    ),
+    'foo/bar/baz/bar': SymlinkToDirItem(  # Rsync style
+        from_target=T_SYMLINKS,
+        dest='/foo/bar/baz/',
+        source='/foo/bar',
+    ),
+    'foo/hello_world.tar': CopyFileItem(
+        from_target=T_SYMLINKS,
+        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        dest='/foo/hello_world.tar',
+    ),
+    'foo/symlink_to_hello_world.tar': SymlinkToFileItem(
+        from_target=T_SYMLINKS,
+        dest='/foo/symlink_to_hello_world.tar',
+        source='/foo/hello_world.tar',
     ),
     'foo/bar/hello_world.tar': CopyFileItem(
         from_target=T_COPY_DIRS_TAR,

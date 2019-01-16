@@ -16,9 +16,10 @@ from tests.temp_subvolumes import TempSubvolumes
 from ..items import (
     TarballItem, CopyFileItem, FilesystemRootItem, gen_parent_layer_items,
     MakeDirsItem, MultiRpmAction, ParentLayerItem, RpmActionType,
+    SymlinkToDirItem, SymlinkToFileItem
 )
 from ..provides import ProvidesDirectory, ProvidesFile
-from ..requires import require_directory
+from ..requires import require_directory, require_file
 
 from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
@@ -150,6 +151,46 @@ class ItemsTestCase(unittest.TestCase):
                     'a': ['(Dir o4:0)', {}],
                 }],
             }], _render_subvol(subvol))
+
+    def test_symlink(self):
+        self._check_item(
+            SymlinkToDirItem(from_target='t', source='x', dest='y'),
+            {ProvidesDirectory(path='y')},
+            {require_directory('/'), require_directory('/x')},
+        )
+
+        self._check_item(
+            SymlinkToFileItem(
+                from_target='t', source='source_file', dest='dest_symlink'
+            ),
+            {ProvidesFile(path='dest_symlink')},
+            {require_directory('/'), require_file('/source_file')},
+        )
+
+    def test_symlink_command(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('tar-sv')
+            subvol.run_as_root(['mkdir', subvol.path('dir')])
+
+            # We need a source file to validate a SymlinkToFileItem
+            CopyFileItem(
+                # `dest` has a rsync-convention trailing /
+                from_target='t', source='/dev/null', dest='/file',
+            ).build(subvol)
+            SymlinkToDirItem(
+                from_target='t', source='/dir', dest='/dir_symlink'
+            ).build(subvol)
+            SymlinkToFileItem(
+                from_target='t', source='file', dest='/file_symlink'
+            ).build(subvol)
+
+            self.assertEqual(['(Dir)', {
+                'dir': ['(Dir)', {}],
+                'dir_symlink': ['(Symlink /dir)'],
+                'file': ['(File m755)'],
+                'file_symlink': ['(Symlink /file)'],
+            }], _render_subvol(subvol))
+
 
     @contextmanager
     def _temp_filesystem(self):

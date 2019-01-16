@@ -6,6 +6,7 @@ from typing import Iterable, Mapping, Optional
 
 from .items import (
     CopyFileItem, MakeDirsItem, MultiRpmAction, TarballItem, RpmActionType,
+    SymlinkToDirItem, SymlinkToFileItem
 )
 
 
@@ -47,6 +48,8 @@ def gen_items_for_features(
         'make_dirs': MakeDirsItem,
         'tarballs': TarballItem,
         'copy_files': CopyFileItem,
+        'symlinks_to_dirs': SymlinkToDirItem,
+        'symlinks_to_files': SymlinkToFileItem,
     }
     action_to_rpms = {action: set() for action in RpmActionType}
     for feature_path in feature_paths:

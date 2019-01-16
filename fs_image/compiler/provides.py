@@ -56,5 +56,5 @@ class ProvidesDirectory(ProvidesPathObject, metaclass=PathObject):
 
 class ProvidesFile(ProvidesPathObject, metaclass=PathObject):
     'Does not have to be a regular file, just any leaf in the FS tree'
-    def matches_IsDirectory(self, _path_to_reqs_provs, predicate):
-        return False
+    def matches_IsFile(self, _path_to_reqs_provs, predicate):
+        return True

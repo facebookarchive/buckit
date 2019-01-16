@@ -18,7 +18,7 @@ from .enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField,
 )
 from .provides import ProvidesDirectory, ProvidesFile
-from .requires import require_directory
+from .requires import require_directory, require_file
 from .subvolume_on_disk import SubvolumeOnDisk
 
 from subvol_utils import Subvol
@@ -105,6 +105,21 @@ def _coerce_path_field_normal_relative(kwargs, field: str):
     d = kwargs.get(field)
     if d is not None:
         kwargs[field] = _make_path_normal_relative(d)
+
+
+def _make_rsync_style_dest_path(dest: str, source: str) -> str:
+    '''
+    rsync convention for a destination: "ends/in/slash/" means "copy
+    into this directory", "does/not/end/with/slash" means "copy with
+    the specified filename".
+    '''
+
+    # Normalize after applying the rsync convention, since this would
+    # remove any trailing / in 'dest'.
+    return _make_path_normal_relative(
+        os.path.join(dest,
+            os.path.basename(source)) if dest.endswith('/') else dest
+    )
 
 
 class TarballItem(metaclass=ImageItem):
@@ -226,15 +241,9 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
     fields = ['source', 'dest']
 
     def customize_fields(kwargs):  # noqa: B902
-        # rsync convention for the destination: "ends/in/slash/" means "copy
-        # into this directory", "does/not/end/with/slash" means "copy with
-        # the specified filename".
-        kwargs['dest'] = os.path.join(
-            kwargs['dest'], os.path.basename(kwargs['source']),
-        ) if kwargs['dest'].endswith('/') else kwargs['dest']
-        # Normalize after applying the rsync convention, since this would
-        # remove any trailing / in 'dest'.
-        _coerce_path_field_normal_relative(kwargs, 'dest')
+        kwargs['dest'] = _make_rsync_style_dest_path(
+            kwargs['dest'], kwargs['source']
+        )
 
     def provides(self):
         yield ProvidesFile(path=self.dest)
@@ -246,6 +255,47 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
         dest = subvol.path(self.dest)
         subvol.run_as_root(['cp', self.source, dest])
         self.build_stat_options(subvol, dest)
+
+
+class SymlinkItem(HasStatOptions):
+    fields = ['source', 'dest']
+
+    def _customize_fields_impl(kwargs):  # noqa: B902
+        _coerce_path_field_normal_relative(kwargs, 'source')
+
+        kwargs['dest'] = _make_rsync_style_dest_path(
+            kwargs['dest'], kwargs['source']
+        )
+
+    def build(self, subvol: Subvol):
+        dest = subvol.path(self.dest)
+        # Source is always absolute inside the image subvolume
+        source = os.path.join('/', self.source)
+        subvol.run_as_root(
+            ['ln', '--symbolic', '--no-dereference', source, dest]
+        )
+
+
+class SymlinkToDirItem(SymlinkItem, metaclass=ImageItem):
+    customize_fields = SymlinkItem._customize_fields_impl
+
+    def provides(self):
+        yield ProvidesDirectory(path=self.dest)
+
+    def requires(self):
+        yield require_directory(self.source)
+        yield require_directory(os.path.dirname(self.dest))
+
+
+class SymlinkToFileItem(SymlinkItem, metaclass=ImageItem):
+    customize_fields = SymlinkItem._customize_fields_impl
+
+    def provides(self):
+        yield ProvidesFile(path=self.dest)
+
+    def requires(self):
+        yield require_file(self.source)
+        yield require_directory(os.path.dirname(self.dest))
 
 
 class MakeDirsItem(HasStatOptions, metaclass=ImageItem):

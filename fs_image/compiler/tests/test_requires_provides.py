@@ -6,7 +6,7 @@ Directly tests `requires.py` and `provides.py`, indirectly tests
 import unittest
 
 from ..provides import ProvidesDirectory, ProvidesFile
-from ..requires import require_directory
+from ..requires import require_directory, require_file
 
 
 class RequiresProvidesTestCase(unittest.TestCase):
@@ -17,21 +17,27 @@ class RequiresProvidesTestCase(unittest.TestCase):
         self.assertEqual('/x/y', ProvidesFile(path='///x/./y/').path)
 
     def test_provides_requires(self):
-        pf1 = ProvidesFile(path='a')
-        pf2 = ProvidesFile(path='a/b')
-        pf3 = ProvidesFile(path='a/b/c')
+        pf1 = ProvidesFile(path='f')
+        pf2 = ProvidesFile(path='f/b')
+        pf3 = ProvidesFile(path='f/b/c')
         pd1 = ProvidesDirectory(path='a')
         pd2 = ProvidesDirectory(path='a/b')
         pd3 = ProvidesDirectory(path='a/b/c')
         provides = [pf1, pf2, pf3, pd1, pd2, pd3]
 
+        rf1 = require_file('f')
+        rf2 = require_file('f/b')
+        rf3 = require_file('f/b/c')
         rd1 = require_directory('a')
         rd2 = require_directory('a/b')
         rd3 = require_directory('a/b/c')
-        requires = [rd1, rd2, rd3]
+        requires = [rf1, rf2, rf3, rd1, rd2, rd3]
 
         # Only these will match, everything else cannot.
         provides_matches_requires = {
+            (pf1, rf1),
+            (pf2, rf2),
+            (pf3, rf3),
             (pd1, rd1),
             (pd1, rd2),
             (pd1, rd3),
