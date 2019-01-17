@@ -34,12 +34,6 @@ def make_target_path_map(targets_followed_by_paths):
         )
     it = iter(targets_followed_by_paths)
     d = dict(zip(it, it))
-    # A hacky check to ensures that the target corresponds to the path.  We
-    # can remove this if we absolutely trust the Buck output.
-    if not all(
-        t.replace('//', '/').replace(':', '/') in f for t, f in d.items()
-    ):
-        raise RuntimeError(f'Not every target matches its output: {d}')
     return d
 
 

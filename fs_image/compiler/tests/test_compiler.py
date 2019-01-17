@@ -83,11 +83,6 @@ class CompilerTestCase(unittest.TestCase):
         ):
             self._compile(['--child-dependencies', 'foo'])
 
-        with self.assertRaisesRegex(
-            RuntimeError, 'Not every target matches its output: '
-        ):
-            self._compile(['--child-dependencies', '//a:b', '/repo/b/a'])
-
         # Our T_COPY_DIRS_TAR feature does have dependencies
         with self.assertRaisesRegex(
             RuntimeError, f'{si.T_BASE}:[^ ]* not in {{}}',
