@@ -37,13 +37,13 @@ Read that target's docblock for more info, but in essence, that will:
 """
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load(
     "@fbcode_macros//build_defs/lib:target_utils.bzl",
     "target_utils",
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load("@fbsource//tools/build_defs:type_defs.bzl", "is_dict", "is_string", "is_tuple")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -134,7 +134,7 @@ def _tag_required_target_key(tagger, d, target_key):
 
 def _coerce_dict_to_items(maybe_dct):
     "Any collection that takes a list of pairs also takes a dict."
-    return maybe_dct.items() if is_dict(maybe_dct) else maybe_dct
+    return maybe_dct.items() if types.is_dict(maybe_dct) else maybe_dct
 
 def _normalize_make_dirs(make_dirs):
     if make_dirs == None:
@@ -142,9 +142,9 @@ def _normalize_make_dirs(make_dirs):
 
     normalized = []
     for d in _coerce_dict_to_items(make_dirs):
-        if is_string(d):
+        if types.is_string(d):
             d = {"into_dir": "/", "path_to_make": d}
-        elif is_tuple(d):
+        elif types.is_tuple(d):
             if len(d) != 2:
                 fail(
                     "make_dirs tuples must have the form: " +
@@ -160,7 +160,7 @@ def _normalize_copy_deps(target_tagger, copy_deps):
 
     normalized = []
     for d in _coerce_dict_to_items(copy_deps):
-        if is_tuple(d):
+        if types.is_tuple(d):
             if len(d) != 2:
                 fail(
                     "copy_deps tuples must have the form: " +
@@ -177,7 +177,7 @@ def _normalize_tarballs(target_tagger, tarballs):
 
     normalized = []
     for t in _coerce_dict_to_items(tarballs):
-        if is_tuple(t):
+        if types.is_tuple(t):
             if len(t) != 2:
                 fail(
                     "tarballs tuples must have the form: " +
@@ -196,16 +196,16 @@ def _normalize_rpms(rpms):
     required_keys = sorted(["name", "action"])
     valid_actions = ("install", "remove_if_exists")
     for rpm in _coerce_dict_to_items(rpms):
-        if is_dict(rpm):
+        if types.is_dict(rpm):
             if required_keys != sorted(rpm.keys()):
                 fail("Rpm {} must have keys {}".format(rpm, required_keys))
             dct = rpm
-        elif is_tuple(rpm):  # Handles `rpms` being a dict, too
+        elif types.is_tuple(rpm):  # Handles `rpms` being a dict, too
             if len(rpm) != 2:
                 fail("Rpm entry {} must be (name, action)".format(rpm))
             dct = {"name": rpm[0], "action": rpm[1]}
         else:
-            if not is_string(rpm):
+            if not types.is_string(rpm):
                 fail("Bad rpms item {}".format(rpm))
             dct = {"name": rpm, "action": "install"}
         if dct["action"] not in valid_actions:
@@ -219,7 +219,7 @@ def _normalize_symlinks(symlinks):
 
     normalized = []
     for d in _coerce_dict_to_items(symlinks):
-        if is_tuple(d):
+        if types.is_tuple(d):
             if len(d) != 2:
                 fail(
                     "symlink tuples must have the form: " +
