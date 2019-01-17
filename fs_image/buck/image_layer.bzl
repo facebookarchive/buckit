@@ -85,14 +85,14 @@ The consequences of this information hiding are:
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load(
     "@fbcode_macros//build_defs:custom_rule.bzl",
     "get_project_root_from_gen_dir",
 )
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(
     "//fs_image/buck:image_feature.bzl",
     "DO_NOT_DEPEND_ON_FEATURES_SUFFIX",
@@ -125,6 +125,8 @@ def image_layer(
         # Path to a target outputting a btrfs send-stream of a subvolume;
         # mutually exclusive with using any of the image_feature fields.
         from_sendstream = None,
+        # The name of the btrfs subvolume to create.
+        subvol_name = "volume",
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
 
@@ -171,6 +173,7 @@ def image_layer(
             parent_layer = parent_layer,
             image_feature_kwargs = image_feature_kwargs,
             yum_from_repo_snapshot = yum_from_repo_snapshot,
+            subvol_name = subvol_name,
         )
 
     buck_genrule(
@@ -246,7 +249,8 @@ def _compile_image_features(
         rule_name,
         parent_layer,
         image_feature_kwargs,
-        yum_from_repo_snapshot):
+        yum_from_repo_snapshot,
+        subvol_name):
     # For ease of use, a layer takes all the arguments of a feature, so
     # just make an implicit feature target to implement this.
     feature_name = rule_name + "-feature"
@@ -282,7 +286,7 @@ def _compile_image_features(
         $(exe //fs_image:compiler) \
           --subvolumes-dir "$subvolumes_dir" \
           --subvolume-rel-path \
-            "$subvolume_wrapper_dir/"{rule_name_quoted} \
+            "$subvolume_wrapper_dir/"{subvol_name_quoted} \
           --parent-layer-json {parent_layer_json_quoted} \
           {maybe_quoted_yum_from_repo_snapshot_args} \
           --child-layer-target {current_target_quoted} \
@@ -291,7 +295,7 @@ def _compile_image_features(
             $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
               > "$OUT"
     '''.format(
-        rule_name_quoted = shell.quote(rule_name),
+        subvol_name_quoted = shell.quote(subvol_name),
         parent_layer_json_quoted = "$(location {})".format(parent_layer) if parent_layer else "''",
         current_target_quoted = shell.quote(target_utils.to_label(
             config.get_current_repo_name(),
