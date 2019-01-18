@@ -98,17 +98,6 @@ include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
 __all__ = []
 
 
-CXX_RULES = set([
-    'cpp_benchmark',
-    'cpp_binary',
-    'cpp_java_extension',
-    'cpp_library',
-    'cpp_lua_extension',
-    'cpp_python_extension',
-    'cpp_unittest',
-])
-
-
 _CONVERTER_MAP = {
     'cgo_library': cgo_library,  # noqa F821
     'cpp_benchmark': cpp_benchmark,  # noqa F821
@@ -175,17 +164,6 @@ def rule_handler(rule_type, **kwargs):
     """
 
     attributes = kwargs
-
-    # For full auto-headers support, add in the recursive header glob rule
-    # as a dep. This is only used in fbcode for targets that don't fully
-    # specify their dependencies, and it will be going away in the future
-    if (config.get_add_auto_headers_glob() and
-            rule_type in CXX_RULES and
-            AutoHeaders.RECURSIVE_GLOB == get_auto_headers(
-                attributes.get('auto_headers'))):
-        deps = list(attributes.get('deps', []))
-        deps.append(cpp_common.default_headers_library())
-        attributes['deps'] = deps
 
     base_path = get_base_path()
 
