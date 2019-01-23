@@ -1,3 +1,5 @@
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
 TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 
 def READ_MY_DOC_image_feature_target(name):

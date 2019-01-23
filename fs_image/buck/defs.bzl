@@ -1,3 +1,5 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+
 def fake_macro_library(name, srcs, deps = None):
     """
     This rule does not build anything useful! Its only job is to inform
