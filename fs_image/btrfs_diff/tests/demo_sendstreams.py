@@ -54,7 +54,6 @@ import subprocess
 import sys
 import time
 
-from functools import partial
 from typing import Tuple
 
 from subvol_utils import Subvol
@@ -64,50 +63,59 @@ from tests.temp_subvolumes import TempSubvolumes
 def _make_create_ops_subvolume(subvols: TempSubvolumes, path: bytes) -> Subvol:
     'Exercise all the send-stream ops that can occur on a new subvolume.'
     subvol = subvols.create(path)
-    run = partial(subvol.run_as_root, cwd=subvol.path())
+    run = subvol.run_as_root
+
+    # `cwd` is intentionally prohibited with `run_as_root`
+    def p(sv_path):
+        return subvol.path(sv_path).decode()
 
     # Due to an odd `btrfs send` implementation detail, creating a file or
     # directory emits a rename from a temporary name to the final one.
-    run(['mkdir', 'hello'])                         # mkdir,rename
-    run(['mkdir', 'dir_to_remove'])
-    run(['touch', 'hello/world'])                   # mkfile,utimes,chmod,chown
+    run(['mkdir', p('hello')])                      # mkdir,rename
+    run(['mkdir', p('dir_to_remove')])
+    run(['touch', p('hello/world')])                # mkfile,utimes,chmod,chown
     run([                                           # set_xattr
-        'setfattr', '-n', 'user.test_attr', '-v', 'chickens', 'hello/',
+        'setfattr', '-n', 'user.test_attr', '-v', 'chickens', p('hello/'),
     ])
-    run(['mknod', 'buffered', 'b', '1337', '31415'])  # mknod
-    run(['chmod', 'og-r', 'buffered'])              # chmod a device
-    run(['mknod', 'unbuffered', 'c', '1337', '31415'])
-    run(['mkfifo', 'fifo'])                         # mkfifo
+    run(['mknod', p('buffered'), 'b', '1337', '31415'])  # mknod
+    run(['chmod', 'og-r', p('buffered')])           # chmod a device
+    run(['mknod', p('unbuffered'), 'c', '1337', '31415'])
+    run(['mkfifo', p('fifo')])                      # mkfifo
     run(['python3', '-c', (
-        'import socket as s\n'
+        'import os, sys, socket as s\n'
+        'dir, base = os.path.split(sys.argv[1])\n'
+        # Otherwise, we can easily get "AF_UNIX path too long"
+        'os.chdir(os.path.join(".", dir))\n'
         'with s.socket(s.AF_UNIX, s.SOCK_STREAM) as sock:\n'
-        '    sock.bind("unix_sock")\n'              # mksock
-    )])
-    run(['ln', 'hello/world', 'goodbye'])           # link
-    run(['ln', '-s', 'hello/world', 'bye_symlink'])  # symlink
+        '    sock.bind(base)\n'                     # mksock
+    ), p('unix_sock')])
+    run(['ln', p('hello/world'), p('goodbye')])     # link
+    run(['ln', '-s', 'hello/world', p('bye_symlink')])  # symlink
     run([                                           # update_extent
         # 56KB was chosen so that `btrfs send` emits more than 1 write,
         # specifically 48KB + 8KB.
-        'dd', 'if=/dev/zero', 'of=56KB_nuls', 'bs=1024', 'count=56',
+        'dd', 'if=/dev/zero', 'of=' + p('56KB_nuls'), 'bs=1024', 'count=56',
     ])
     run([                                           # clone
-        'cp', '--reflink=always', '56KB_nuls', '56KB_nuls_clone',
+        'cp', '--reflink=always', p('56KB_nuls'), p('56KB_nuls_clone'),
     ])
 
     # Make a file with a 16KB hole in the middle.
-    run(['dd', 'if=/dev/zero', 'of=zeros_hole_zeros', 'bs=1024', 'count=16'])
-    run(['truncate', '-s', str(32 * 1024), 'zeros_hole_zeros'])
     run([
-        'dd', 'if=/dev/zero', 'of=zeros_hole_zeros',
+        'dd', 'if=/dev/zero', 'of=' + p('zeros_hole_zeros'),
+        'bs=1024', 'count=16',
+    ])
+    run(['truncate', '-s', str(32 * 1024), p('zeros_hole_zeros')])
+    run([
+        'dd', 'if=/dev/zero', 'of=' + p('zeros_hole_zeros'),
         'oflag=append', 'conv=notrunc', 'bs=1024', 'count=16',
     ])
 
     # This just serves to show that `btrfs send` ignores nested subvolumes.
     # There is no mention of `nested_subvol` in the send-stream.
-    nested_subvol = subvols.create(subvol.path(b'nested_subvol'))
-    run2 = partial(nested_subvol.run_as_root, cwd=nested_subvol.path())
-    run2(['touch', 'borf'])
-    run2(['mkdir', 'beep'])
+    nested_subvol = subvols.create(p('nested_subvol'))
+    nested_subvol.run_as_root(['touch', nested_subvol.path('borf')])
+    nested_subvol.run_as_root(['mkdir', nested_subvol.path('beep')])
 
     return subvol
 
@@ -117,26 +125,30 @@ def _make_mutate_ops_subvolume(
 ) -> Subvol:
     'Exercise the send-stream ops that are unique to snapshots.'
     subvol = subvols.snapshot(create_ops, path)       # snapshot
-    run = partial(subvol.run_as_root, cwd=subvol.path())
+    run = subvol.run_as_root
 
-    run(['rm', 'hello/world'])                        # unlink
-    run(['rmdir', 'dir_to_remove/'])                  # rmdir
+    # `cwd` is intentionally prohibited with `run_as_root`
+    def p(sv_path):
+        return subvol.path(sv_path).decode()
+
+    run(['rm', p('hello/world')])                     # unlink
+    run(['rmdir', p('dir_to_remove/')])               # rmdir
     run([                                             # remove_xattr
-        'setfattr', '--remove=user.test_attr', 'hello/',
+        'setfattr', '--remove=user.test_attr', p('hello/'),
     ])
     # You would think this would emit a `rename`, but for files, the
     # sendstream instead `link`s to the new location, and unlinks the old.
-    run(['mv', 'goodbye', 'farewell'])                # NOT a rename, {,un}link
-    run(['mv', 'hello/', 'hello_renamed/'])           # yes, a rename!
+    run(['mv', p('goodbye'), p('farewell')])          # NOT a rename, {,un}link
+    run(['mv', p('hello/'), p('hello_renamed/')])     # yes, a rename!
     run(                                              # write
-        ['dd', 'of=hello_renamed/een'], input=b'push\n',
+        ['dd', 'of=' + p('hello_renamed/een')], input=b'push\n',
     )
     # This is a no-op because `btfs send` does not support `chattr` at
     # present.  However, it's good to have a canary so that our tests start
     # failing the moment it is supported -- that will remind us to update
     # the mock VFS.  NB: The absolute path to `chattr` is a clowny hack to
     # work around a clowny hack, to work around clowny hacks.  Don't ask.
-    run(['/usr/bin/chattr', '+a', 'hello_renamed/een'])
+    run(['/usr/bin/chattr', '+a', p('hello_renamed/een')])
 
     return subvol
 

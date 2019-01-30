@@ -79,18 +79,56 @@ class Subvol:
         if self._exists and not _path_is_btrfs_subvol(self._path):
             raise AssertionError(f'No btrfs subvol at {self._path}')
 
-    def path(self, path_in_subvol: AnyStr=b'.') -> bytes:
-        p = os.path.normpath(byteme(path_in_subvol))  # before testing for '..'
-        if p.startswith(b'../') or p == b'..':
-            raise AssertionError(f'{path_in_subvol} is outside the subvol')
+    def path(
+        self, path_in_subvol: AnyStr=b'.', *, no_dereference_leaf=False,
+    ) -> bytes:
+        '''
+        The only safe way to access paths inside the subvolume.  Do NOT
+        `os.path.join(subvol.path('a/path'), 'more/path')`, since that skips
+        crucial safety checks.  Instead: `subvol.path(os.path.join(...))`.
+
+        This code has checks to mitigate two risks:
+          - `path_in_subvol` is relative, and exits the subvolume via '..'
+          - Some component of the path is a symlink, and this symlink, when
+            interpreted by a non-chrooted tool, will attempt to access
+            something outside of the subvolume.
+
+        At present, the above check fail on attempting to traverse an
+        in-subvolume symlink that is an absolute path to another directory
+        within the subvolume, but support could easily be added.  It is not
+        supported now because at present, I believe that the right idiom is
+        to encourage image authors to manipulate the "real" locations of
+        files, and not to manipulate paths through symlinks.
+
+        In the rare case that you need to manipulate a symlink itself (e.g.
+        remove or rename), you will want to pass `no_dereference_leaf`.
+
+        Future: consider using a file descriptor to refer to the subvolume
+        root directory to better mitigate races due to renames in its path.
+        '''
         # The `btrfs` CLI is not very flexible, so it will try to name a
         # subvol '.' if we do not normalize `/subvol/.`.
-        return os.path.normpath(os.path.join(self._path, (
-            path_in_subvol.encode() if isinstance(path_in_subvol, str)
-                else path_in_subvol
-            # Without the lstrip, we would lose the subvolume prefix
-            # if the supplied path is absolute.
-        ).lstrip(b'/')))
+        result_path = os.path.normpath(os.path.join(
+            self._path,
+            # Without the lstrip, we would lose the subvolume prefix if the
+            # supplied path is absolute.
+            byteme(path_in_subvol).lstrip(b'/'),
+        ))
+        # Paranoia: Make sure that, despite any symlinks in the path, the
+        # resulting path is not outside of the subvolume root.
+        #
+        # NB: This will prevent us from even accessing symlinks created
+        # inside the subvolume.  To fix this, we should add an OPTION not to
+        # follow the LAST component of the path.
+        root_relative = os.path.relpath((
+            os.path.join(
+                os.path.realpath(os.path.dirname(result_path)),
+                os.path.basename(result_path),
+            ) if no_dereference_leaf else os.path.realpath(result_path)
+        ), os.path.realpath(self._path))
+        if root_relative.startswith(b'../') or root_relative == b'..':
+            raise AssertionError(f'{path_in_subvol} is outside the subvol')
+        return result_path
 
     @contextmanager
     def _popen_as_root(self, args, *, stdout=None, **kwargs):
@@ -107,9 +145,16 @@ class Subvol:
     # new subvolumes, and not just touch existing ones.
     def run_as_root(
         self, args, *, _subvol_exists=True,
-        stdout=None, timeout=None, input=None,
-        **kwargs,
+        stdout=None, timeout=None, input=None, **kwargs,
     ):
+        if 'cwd' in kwargs:
+            raise AssertionError(
+                'cwd= is not permitted as an argument to run_as_root, '
+                'because that makes it too easy to accidentally traverse '
+                'a symlink from inside the container and touch the host '
+                'filesystem. Best practice: wrap your path with '
+                'Subvol.path() as close as possible to its site of use.'
+            )
         if _subvol_exists != self._exists:
             raise AssertionError(
                 f'{self.path()} exists is {self._exists}, not {_subvol_exists}'
@@ -179,6 +224,7 @@ class Subvol:
         #   platform.uname().release.startswith('4.11.')
         if platform.uname().release.startswith('4.6.'):  # pragma: no cover
             self.run_as_root([
+                # Symlinks can point outside of the subvol, don't follow them
                 'getfattr', '--no-dereference', '--recursive', self.path()
             ])
 

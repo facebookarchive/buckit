@@ -436,8 +436,12 @@ class ItemsTestCase(unittest.TestCase):
                 subvol.path('var/log/yum.log'),
             ])
             subvol.run_as_root([
-                'rmdir', 'var/cache', 'var/lib', 'var/log', 'var',
-            ], cwd=subvol.path())
+                'rmdir',
+                subvol.path('var/cache'),
+                subvol.path('var/lib'),
+                subvol.path('var/log'),
+                subvol.path('var'),
+            ])
             self.assertEqual(['(Dir)', {
                 'usr': ['(Dir)', {
                     'share': ['(Dir)', {

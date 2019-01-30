@@ -152,6 +152,10 @@ class DependencyGraph:
             # mutated subvolume.  This isn't too scary since the rest of
             # this function is guaranteed to evaluate the parent's
             # `provides()` before any `ImageItem.build()`.
+            #
+            # NB: By passing it a raw path to the subvolume root, we trust
+            # ParentLayerItem to appropriately handle any symlinks inside
+            # (i.e. not to mistakenly follow them outside of the subvol).
             ParentLayerItem(from_target='fake', path=sv_path),
         )
 
@@ -185,6 +189,10 @@ class DependencyGraph:
         return ns
 
     def gen_dependency_order_items(self, sv_path: str) -> Iterator[ImageItem]:
+        '''
+        IMPORTANT: See the docblock of Subvol.path before using `sv_path`,
+        and consider passing a `Subvol` in here if appropriate.
+        '''
         ns = self._prep_item_predecessors(sv_path)
         yield_idx = 0
         while ns.items_without_predecessors:

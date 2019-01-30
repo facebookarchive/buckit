@@ -163,6 +163,13 @@ class TarballItem(metaclass=ImageItem):
     def build(self, subvol: Subvol):
         subvol.run_as_root([
             'tar',
+            # Future: Bug: `tar` unfortunately FOLLOWS existing symlinks
+            # when unpacking.  This isn't dire because the compiler's
+            # conflict prevention SHOULD prevent us from going out of the
+            # subvolume since this TarballItem's provides would collide with
+            # whatever is already present.  However, it's hard to state that
+            # with complete confidence, especially if we start adding
+            # support for following directory symlinks.
             '-C', subvol.path(self.into_dir),
             '-x',
             # The next option is an extra safeguard that is redundant with
@@ -347,6 +354,10 @@ class ParentLayerItem(metaclass=ImageItem):
             provided_root = provided_root or dir.path == '/'
             yield dir
             for filename in filenames:
+                # Future: This provides all symlinks as files, while we
+                # should probably provide symlinks to valid directories
+                # inside the image as directories to be consistent with
+                # SymlinkToDirItem.
                 yield ProvidesFile(path=os.path.join(dirpath, filename))
         assert provided_root, 'parent layer {} lacks /'.format(self.path)
 

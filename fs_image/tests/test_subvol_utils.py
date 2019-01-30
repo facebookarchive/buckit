@@ -53,6 +53,22 @@ class SubvolTestCase(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, 'exists is False'):
                 sv.run_as_root(['true'])
 
+    def test_out_of_subvol_symlink(self):
+        with tempfile.TemporaryDirectory() as td:
+            os.symlink('/dev/null', os.path.join(td, 'my_null'))
+            self.assertEqual(
+                os.path.join(td, 'my_null').encode(),
+                Subvol(td).path('my_null', no_dereference_leaf=True),
+            )
+            with self.assertRaisesRegex(AssertionError, 'outside the subvol'):
+                Subvol(td).path('my_null')
+
+    def test_run_as_root_no_cwd(self):
+        sv = Subvol('/dev/null/no-such-dir')
+        sv.run_as_root(['true'], _subvol_exists=False)
+        with self.assertRaisesRegex(AssertionError, 'cwd= is not permitte'):
+            sv.run_as_root(['true'], _subvol_exists=False, cwd='.')
+
     def test_path(self):
         # We are only going to do path manipulations in this test.
         sv = Subvol('/subvol/need/not/exist')

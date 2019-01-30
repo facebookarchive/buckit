@@ -117,6 +117,8 @@ def build_image(args):
 
     try:
         return SubvolumeOnDisk.from_subvolume_path(
+            # Converting to a path here does not seem too risky since this
+            # class shouldn't have a reason to follow symlinks in the subvol.
             subvol.path().decode(),
             args.subvolumes_dir,
         )
