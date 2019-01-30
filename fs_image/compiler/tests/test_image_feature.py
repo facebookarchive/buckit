@@ -3,7 +3,7 @@ import tempfile
 import unittest
 
 from ..dep_graph import DependencyGraph
-from ..items import FilesystemRootItem, RpmActionItem
+from ..items import FilesystemRootItem, RemovePathItem, RpmActionItem
 from ..items_for_features import gen_items_for_features
 
 from . import sample_items as si
@@ -50,6 +50,16 @@ class ImageFeatureTestCase(unittest.TestCase):
             (
                 RpmActionItem.get_phase_builder,
                 (si.ID_TO_ITEM['.rpms/install/rpm-test-mice'],),
+            ),
+            (
+                RemovePathItem.get_phase_builder,
+                (
+                    si.ID_TO_ITEM['.remove_if_exists/path/to/remove'],
+                    si.ID_TO_ITEM['.remove_assert_exists/path/to/remove'],
+                    si.ID_TO_ITEM[
+                        '.remove_assert_exists/another/path/to/remove'
+                    ],
+                ),
             ),
         ], builders_and_phases)
         phase_items = [i for _, items in builders_and_phases for i in items]

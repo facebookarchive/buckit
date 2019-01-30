@@ -231,3 +231,32 @@ python_unittest(
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )
+
+# This isn't explicitly covering any single library, so no coverage claims.
+python_unittest(
+    name = "test-add-remove-conflict",
+    srcs = ["tests/test_add_remove_conflict.py"],
+    base_module = "compiler",
+    par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
+    resources = {
+        TEST_TARGET_PREFIX + READ_MY_DOC_image_feature_target(
+            "feature_addremove_conflict_add",
+        ): "tests/data/feature_add",
+        TEST_TARGET_PREFIX + READ_MY_DOC_image_feature_target(
+            "feature_addremove_conflict_remove",
+        ): "tests/data/feature_remove",
+        TEST_TARGET_PREFIX + READ_MY_DOC_image_feature_target(
+            "feature_addremove_conflict_both",
+        ): "tests/data/feature_both",
+        "//fs_image/compiler/tests:addremove_conflict_child": "tests/data/child",
+        "//fs_image/compiler/tests:addremove_conflict_parent": "tests/data/parent",
+    },
+    deps = [
+        ":compiler",
+        ":subvolume_on_disk",
+        "//fs_image:artifacts_dir",
+        "//fs_image:subvol_utils",
+        "//fs_image:volume_for_repo",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
+    ],
+)

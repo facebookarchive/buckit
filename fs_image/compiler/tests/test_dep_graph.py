@@ -203,19 +203,19 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
 
     def test_phase_order(self):
 
-        class FakeFileRemove:
+        class FakeRemovePaths:
             get_phase_builder = 'kittycat'
 
             def phase_order(self):
-                return PhaseOrder.FILE_REMOVE
+                return PhaseOrder.REMOVE_PATHS
 
         first = FilesystemRootItem(from_target='')
-        second = FakeFileRemove()
+        second = FakeRemovePaths()
         third = MakeDirsItem(from_target='', into_dir='/', path_to_make='a/b')
         dg = DependencyGraph([second, first, third])
         self.assertEqual(
             _fs_root_phases(first) + [
-                (FakeFileRemove.get_phase_builder, (second,)),
+                (FakeRemovePaths.get_phase_builder, (second,)),
             ],
             list(dg.ordered_phases()),
         )

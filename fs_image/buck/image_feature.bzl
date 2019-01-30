@@ -188,6 +188,38 @@ def _normalize_tarballs(target_tagger, tarballs):
         normalized.append(t)
     return normalized
 
+def _normalize_remove_paths(remove_paths):
+    if remove_paths == None:
+        return []
+
+    normalized = []
+    required_keys = sorted(["action", "path"])
+    valid_actions = ("assert_exists", "if_exists")
+    for path in _coerce_dict_to_items(remove_paths):
+        if types.is_dict(path):
+            if required_keys != sorted(path.keys()):
+                fail("remove_paths {} must have keys {}".format(
+                    path,
+                    required_keys,
+                ))
+            dct = path
+        elif types.is_tuple(path):
+            if len(path) != 2:
+                fail("remove_paths item {} must be (path, action)".format(path))
+            dct = {"action": path[1], "path": path[0]}
+        else:
+            if not types.is_string(path):
+                fail("`remove_paths` item must be string, not {}".format(path))
+            dct = {"action": "assert_exists", "path": path}
+        if dct["action"] not in valid_actions:
+            fail("Action for remove_paths {} must be in {}".format(
+                path,
+                valid_actions,
+            ))
+        normalized.append(dct)
+
+    return normalized
+
 def _normalize_rpms(rpms):
     if rpms == None:
         return []
@@ -279,6 +311,19 @@ def image_feature(
         #  - tuple: ('//target/tarball/to_extract', 'image_absolute/dir')
         #  - dict: {'tarball': '//toextract', 'into_dir': 'image_absolute/dir'}
         tarballs = None,
+        # An iterable of paths to files or directories to (recursively)
+        # remove from the layer.  These are allowed to remove paths
+        # inherited from the parent layer, or those installed by RPMs even
+        # in this layer.  However, removing other items explicitly added by
+        # the current layer is currently not supported since that seems like
+        # a design smell -- you should probably refactor the constituent
+        # `image.feature`s not to conflict with each other.
+        #
+        # By default, it is an error if the specified paths are missing from
+        # the image.  This form is also supported:
+        #     [('/path/to/remove', 'assert_exists|if_exists')],
+        # which allows you to explicitly ignore missing paths.
+        remove_paths = None,
         # An iterable of RPM package names to install, **without** version
         # or release numbers.  Order is not significant.  Also supported:
         # {'package-name': 'install|remove_if_exists'}.  Note that removals
@@ -320,6 +365,7 @@ def image_feature(
         copy_files =
             _normalize_copy_deps(target_tagger, copy_deps),
         tarballs = _normalize_tarballs(target_tagger, tarballs),
+        remove_paths = _normalize_remove_paths(remove_paths),
         # It'd be a bit expensive to do any kind of validation of RPM
         # names right here, since we'd need the repo snapshot to decide
         # whether the names are valid, and whether they contain a

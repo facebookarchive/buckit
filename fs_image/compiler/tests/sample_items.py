@@ -2,8 +2,9 @@
 import os
 
 from ..items import (
-    CopyFileItem, FilesystemRootItem, MakeDirsItem, RpmActionItem,
-    RpmAction, SymlinkToDirItem, SymlinkToFileItem, TarballItem,
+    CopyFileItem, FilesystemRootItem, MakeDirsItem, RemovePathAction,
+    RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
+    SymlinkToFileItem, TarballItem,
 )
 
 
@@ -99,6 +100,21 @@ ID_TO_ITEM = {
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
     ),
+    '.remove_if_exists/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/path/to/remove',
+        action=RemovePathAction.if_exists,
+    ),
+    '.remove_assert_exists/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/path/to/remove',
+        action=RemovePathAction.assert_exists,
+    ),
+    '.remove_assert_exists/another/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/another/path/to/remove',
+        action=RemovePathAction.assert_exists,
+    ),
     '.rpms/install/rpm-test-mice': RpmActionItem(
         from_target=T_TAR,
         name='rpm-test-mice',
@@ -124,5 +140,10 @@ ORDERED_PHASES = (
     (RpmActionItem.get_phase_builder, [
         '.rpms/remove_if_exists/rpm-test-carrot',
         '.rpms/remove_if_exists/rpm-test-milk',
+    ]),
+    (RemovePathItem.get_phase_builder, [
+        '.remove_if_exists/path/to/remove',
+        '.remove_assert_exists/path/to/remove',
+        '.remove_assert_exists/another/path/to/remove',
     ]),
 )

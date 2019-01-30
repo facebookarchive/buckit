@@ -30,39 +30,48 @@ class PhaseOrder(enum.Enum):
     With respect to ordering, there are two types of operations that the
     image compiler performs against images.
 
-    (1) Most additive operations are naturally ordered with respect to one
-        another by filesystem dependencies.  For example: we must create
+    (1) Regular additive operations are naturally ordered with respect to
+        one another by filesystem dependencies.  For example: we must create
         /usr/bin **BEFORE** copying `:your-tool` there.
 
     (2) Everything else, including:
-         - Removals, which commute with each other, and can be ordered
-           somewhat arbitrarily with regards to everything else if there are
-           no add-remove conflicts,
          - RPM installation, which has a complex internal ordering, but
            simply needs needs a definitive placement as a block of `yum`
            operations -- due to `yum`'s complexity & various scripts, it's
            not desirable to treat installs as regular additive operations.
+         - Path removals.  It is simplest to perform them in bulk, without
+           interleaving with other operations.  Removals have a natural
+           ordering with respect to each other -- child before parent, to
+           avoid tripping "assert_exists" unnecessarily.
 
-    For the latter types of operations, this class sets a justifiable
-    deteriminstic ordering for black-box blocks of operations, and assumes
-    that each individual block's implementation will order its internals
-    sensibly.
+    For the operations in (2), this class sets a justifiable deteriminstic
+    ordering for black-box blocks of operations, and assumes that each
+    individual block's implementation will order its internals sensibly.
 
     Phases will be executed in the order listed here.
+
+    The operations in (1) are validated, dependency-sorted, and built after
+    all of the phases have built.
     '''
     # This actually creates the subvolume, so it must preced all others.
     PARENT_LAYER = enum.auto()
-    # Precedes FILE_REMOVE because RPM removes **might** be conditional on
+    # Precedes REMOVE_PATHS because RPM removes **might** be conditional on
     # the presence or absence of files, and we don't want that extra entropy
     # -- whereas file removes fail or succeed predictably.  Precedes
     # RPM_INSTALL somewhat arbitrarily, since _gen_multi_rpm_actions
     # prevents install-remove conflicts between features.
     RPM_REMOVE = enum.auto()
     RPM_INSTALL = enum.auto()
-    # We allow removing files added by RPM_INSTALL. The downside is that
-    # this is a footgun.  The upside is that e.g. cleaning up yum log &
-    # caches can be done as an `image_feature` instead of being code.
-    FILE_REMOVE = enum.auto()
+    # This MUST be a separate phase that comes after all the regular items
+    # because the dependency sorter has no provisions for eliminating
+    # something that another item `provides()`.
+    #
+    # By having this phase be last, we also allow removing files added by
+    # RPM_INSTALL.  The downside is that this is a footgun.  The upside is
+    # that e.g.  cleaning up yum log & caches can be done as an
+    # `image_feature` instead of being code.  We might also use this to
+    # remove e.g.  unnecessary parts of excessively monolithic RPMs.
+    REMOVE_PATHS = enum.auto()
 
 
 class LayerOpts(NamedTuple):
@@ -413,6 +422,79 @@ def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
                 path=SubvolumeOnDisk.from_json_file(infile, subvolumes_dir)
                     .subvolume_path(),
             )
+
+
+class RemovePathAction(enum.Enum):
+    assert_exists = 'assert_exists'
+    if_exists = 'if_exists'
+
+
+class RemovePathItem(HasStatOptions, metaclass=ImageItem):
+    fields = ['path', 'action']
+
+    def customize_fields(kwargs):  # noqa: B902
+        _coerce_path_field_normal_relative(kwargs, 'path')
+        kwargs['action'] = RemovePathAction(kwargs['action'])
+
+    def phase_order(self):
+        return PhaseOrder.REMOVE_PATHS
+
+    def __sort_key(self):
+        return (self.path, {action: idx for idx, action in enumerate([
+            # We sort in reverse order, so by putting "if" first we allow
+            # conflicts between "if_exists" and "assert_exists" items to be
+            # resolved naturally.
+            RemovePathAction.if_exists,
+            RemovePathAction.assert_exists,
+        ])}[self.action])
+
+    @classmethod
+    def get_phase_builder(
+        cls, items: Iterable['RemovePathItem'], layer_opts: LayerOpts,
+    ):
+        # NB: We want `remove_paths` not to be able to remove additions by
+        # regular (non-phase) items in the same layer -- that indicates
+        # poorly designed `image.feature`s, which should be refactored.  At
+        # present, this is only enforced implicitly, because all removes are
+        # done before regular items are even validated or sorted.  Enforcing
+        # it explicitly is possible by peeking at `DependencyGraph.items`,
+        # but the extra complexity doesn't seem worth the faster failure.
+
+        # NB: We could detect collisions between two `assert_exists` removes
+        # early, but again, it doesn't seem worth the complexity.
+
+        def builder(subvol: Subvol):
+            # Reverse-lexicographic order deletes inner paths before
+            # deleting the outer paths, thus minimizing conflicts between
+            # `remove_paths` items.
+            for item in sorted(
+                items, reverse=True, key=lambda i: i.__sort_key(),
+            ):
+                # This ensures that there are no symlinks in item.path that
+                # might take us outside of the subvolume.  Since recursive
+                # `rm` does not follow symlinks, it is OK if the inode at
+                # `item.path` is a symlink (or one of its sub-paths).
+                path = subvol.path(item.path, no_dereference_leaf=True)
+                if not os.path.lexists(path):
+                    if item.action == RemovePathAction.assert_exists:
+                        raise AssertionError(f'Path does not exist: {item}')
+                    elif item.action == RemovePathAction.if_exists:
+                        continue
+                    else:  # pragma: no cover
+                        raise AssertionError(f'Unknown {item.action}')
+                subvol.run_as_root([
+                    'rm', '-r',
+                    # This prevents us from making removes outside of the
+                    # per-repo loopback, which is an important safeguard.
+                    # It does not stop us from reaching into other subvols,
+                    # but since those have random IDs in the path, this is
+                    # nearly impossible to do by accident.
+                    '--one-file-system',
+                    path,
+                ])
+            pass
+
+        return builder
 
 
 class RpmAction(enum.Enum):

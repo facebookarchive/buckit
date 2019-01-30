@@ -18,7 +18,7 @@ from .mock_subvolume_from_json_file import (
 orig_os_walk = os.walk
 
 
-def _subvol_mock_is_btrfs_and_run_as_root(fn):
+def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
     '''
     The purpose of these mocks is to run the compiler while recording
     what commands we WOULD HAVE run on the subvolume.  This is possible
@@ -26,6 +26,7 @@ def _subvol_mock_is_btrfs_and_run_as_root(fn):
     `Subvol.run_as_root`.  This lets our tests assert that the
     expected operations would have been executed.
     '''
+    fn = unittest.mock.patch.object(os.path, 'lexists')(fn)
     fn = unittest.mock.patch.object(subvol_utils, '_path_is_btrfs_subvol')(fn)
     fn = unittest.mock.patch.object(subvol_utils.Subvol, 'run_as_root')(fn)
     return fn
@@ -42,6 +43,16 @@ def _os_walk(path, **kwargs):
         yield from orig_os_walk(path, **kwargs)
 
 
+def _os_path_lexists(path):
+    '''
+    This ugly mock exists because I don't want to set up a fake subvolume,
+    from which the `sample_items` `RemovePathItem`s can remove their files.
+    '''
+    if path.endswith(b'/to/remove'):
+        return True
+    assert 'AFAIK, os.path.lexists is only used by the `RemovePathItem` tests'
+
+
 class CompilerTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -55,11 +66,13 @@ class CompilerTestCase(unittest.TestCase):
         )
 
     @unittest.mock.patch('os.walk')
-    @_subvol_mock_is_btrfs_and_run_as_root
+    @_subvol_mock_lexists_is_btrfs_and_run_as_root
     @unittest.mock.patch.object(svod, '_btrfs_get_volume_props')
     def _compile(
-        self, args, btrfs_get_volume_props, is_btrfs, run_as_root, os_walk,
+        self, args, btrfs_get_volume_props, lexists, is_btrfs, run_as_root,
+        os_walk,
     ):
+        lexists.side_effect = _os_path_lexists
         os_walk.side_effect = _os_walk
         # We don't have an actual btrfs subvolume, so make up a UUID.
         btrfs_get_volume_props.return_value = {
@@ -127,9 +140,10 @@ class CompilerTestCase(unittest.TestCase):
         }), res._replace(**{svod._HOSTNAME: 'fake host'}))
         return run_as_root_calls
 
-    @_subvol_mock_is_btrfs_and_run_as_root  # Mocks from _compile()
-    def _expected_run_as_root_calls(self, is_btrfs, run_as_root):
+    @_subvol_mock_lexists_is_btrfs_and_run_as_root  # Mocks from _compile()
+    def _expected_run_as_root_calls(self, lexists, is_btrfs, run_as_root):
         'Get the commands that each of the *expected* sample items would run'
+        lexists.side_effect = _os_path_lexists
         is_btrfs.return_value = True
         subvol = subvol_utils.Subvol(
             f'{FAKE_SUBVOLS_DIR}/SUBVOL',

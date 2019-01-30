@@ -41,6 +41,26 @@ image.feature(
 )
 
 # Exercises:
+#   - all forms of specifying symlinks
+image.feature(
+    name = "feature_symlinks",
+    copy_deps = [
+        (":hello_world.tar", "/foo/hello_world.tar"),
+    ],
+    symlinks_to_dirs = [
+        ("/foo/bar", "/foo/fighter"),
+        {
+            "dest": "/foo/face",
+            "source": "/foo/bar",
+        },
+        ("/foo/bar", "/foo/bar/baz/"),  # Rsync style
+    ],
+    symlinks_to_files = [
+        ("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
+    ],
+)
+
+# Exercises:
 #  - all forms of specifying a tarball to extract
 #  - installing and removing RPMs
 image.feature(
@@ -60,7 +80,8 @@ image.feature(
     ],
 )
 
-# Omnibus feature for test-compiler and test-image-feature.
+# Omnibus feature for test-compiler and test-image-feature.  It currently
+# cannot be materialized as an `image.layer` because of `feature_bad_dir`.
 #
 # Exercises:
 #  - all forms of specifying target outputs to copy, including the rsync
@@ -69,6 +90,9 @@ image.feature(
 #  - making directories & symlinks
 #  - extracting tarballs
 #  - composition of subsidiary features
+#  - removing paths (NB: much of this logic is at build-time, so this is an
+#    incomplete test, see also `test-items` and `test-add-remove-conflict`)
+#    something installed by an RPM, add T_REMOVE_PATHS to sample_items, etc
 image.feature(
     name = "feature_kitchen_sink",
     copy_deps = [
@@ -79,6 +103,14 @@ image.feature(
             "source": ":hello_world.tar",
         },
     ],
+    remove_paths = [
+        "/path/to/remove",
+        ("/path/to/remove", "if_exists"),
+        {
+            "action": "assert_exists",
+            "path": "/another/path/to/remove",
+        },
+    ],
     features = [
         ":feature_bad_dir",
         ":feature_dirs",
@@ -87,24 +119,42 @@ image.feature(
     ],
 )
 
-# Exercises:
-#   - all forms of specifying symlinks
+##
+## The next few targets test the interaction of adding regular,
+## dependency-sorted items with `remove_paths`.  This
+## `test-add-remove-conflict` shows that:
+##     - Removing from a parent layer is OK (`child` layer).
+##     - Removing something added in the same layer is not (`both` feature).
+##
+
 image.feature(
-    name = "feature_symlinks",
-    copy_deps = [
-        (":hello_world.tar", "/foo/hello_world.tar"),
+    name = "feature_addremove_conflict_add",
+    make_dirs = [("/", "a/b")],
+)
+
+image.feature(
+    name = "feature_addremove_conflict_remove",
+    remove_paths = ["/a"],
+)
+
+# `test-add-remove-conflict` compiles this feature to produce a failure
+image.feature(
+    name = "feature_addremove_conflict_both",
+    features = [
+        ":feature_addremove_conflict_add",
+        ":feature_addremove_conflict_remove",
     ],
-    symlinks_to_dirs = [
-        ("/foo/bar", "/foo/fighter"),
-        {
-            "dest": "/foo/face",
-            "source": "/foo/bar",
-        },
-        ("/foo/bar", "/foo/bar/baz/"),  # Rsync style
-    ],
-    symlinks_to_files = [
-        ("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
-    ],
+)
+
+image.layer(
+    name = "addremove_conflict_parent",
+    features = [":feature_addremove_conflict_add"],
+)
+
+image.layer(
+    name = "addremove_conflict_child",
+    parent_layer = ":addremove_conflict_parent",
+    features = [":feature_addremove_conflict_remove"],
 )
 
 ##

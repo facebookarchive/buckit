@@ -15,8 +15,9 @@ from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
     CopyFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
-    MakeDirsItem, ParentLayerItem, PhaseOrder, RpmActionItem, RpmAction,
-    SymlinkToDirItem, SymlinkToFileItem, TarballItem,
+    MakeDirsItem, ParentLayerItem, PhaseOrder, RemovePathAction,
+    RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
+    SymlinkToFileItem, TarballItem,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory, require_file
@@ -390,6 +391,115 @@ class ItemsTestCase(unittest.TestCase):
                 [ParentLayerItem(from_target='T', path='potato')],
                 list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
             )
+
+    def test_remove_item(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('remove_action')
+            self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
+
+            MakeDirsItem(
+                from_target='t', path_to_make='/a/b/c', into_dir='/',
+            ).build(subvol)
+            for d in ['d', 'e']:
+                CopyFileItem(
+                    from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
+                ).build(subvol)
+            MakeDirsItem(
+                from_target='t', path_to_make='/f/g', into_dir='/',
+            ).build(subvol)
+            # Checks that `rm` won't follow symlinks
+            SymlinkToDirItem(
+                from_target='t', source='/f', dest='/a/b/f_sym',
+            ).build(subvol)
+            for d in ['h', 'i']:
+                CopyFileItem(
+                    from_target='t', source='/dev/null', dest=f'/f/{d}',
+                ).build(subvol)
+            SymlinkToDirItem(
+                from_target='t', source='/f/i', dest='/f/i_sym',
+            ).build(subvol)
+            intact_subvol = ['(Dir)', {
+                'a': ['(Dir)', {
+                    'b': ['(Dir)', {
+                        'c': ['(Dir)', {
+                            'd': ['(File m755)'],
+                            'e': ['(File m755)'],
+                        }],
+                        'f_sym': ['(Symlink /f)'],
+                    }],
+                }],
+                'f': ['(Dir)', {
+                    'g': ['(Dir)', {}],
+                    'h': ['(File m755)'],
+                    'i': ['(File m755)'],
+                    'i_sym': ['(Symlink /f/i)'],
+                }],
+            }]
+            self.assertEqual(intact_subvol, _render_subvol(subvol))
+
+            # Check handling of non-existent paths without removing anything
+            remove = RemovePathItem(
+                from_target='t',
+                action=RemovePathAction.if_exists,
+                path='/does/not/exist',
+            )
+            self.assertEqual(PhaseOrder.REMOVE_PATHS, remove.phase_order())
+            RemovePathItem.get_phase_builder([remove], DUMMY_LAYER_OPTS)(subvol)
+            with self.assertRaisesRegex(AssertionError, 'does not exist'):
+                RemovePathItem.get_phase_builder([
+                    RemovePathItem(
+                        from_target='t',
+                        action=RemovePathAction.assert_exists,
+                        path='/does/not/exist',
+                    ),
+                ], DUMMY_LAYER_OPTS)(subvol)
+            self.assertEqual(intact_subvol, _render_subvol(subvol))
+
+            # Now remove most of the subvolume.
+            RemovePathItem.get_phase_builder([
+                # These 3 removes are not covered by a recursive remove.
+                # And we leave behind /f/i, which lets us know that neither
+                # `f_sym` nor `i_sym` were followed during their deletion.
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.assert_exists,
+                    path='/f/i_sym',
+                ),
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.assert_exists,
+                    path='/f/h',
+                ),
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.assert_exists,
+                    path='/f/g',
+                ),
+
+                # The next 3 items are intentionally sequenced so that if
+                # they were applied in the given order, they would fail.
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.if_exists,
+                    path='/a/b/c/e',
+                ),
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.assert_exists,
+                    # The surrounding items don't delete /a/b/c/d, e.g. so
+                    # this recursive remove is still tested.
+                    path='/a/b/',
+                ),
+                RemovePathItem(
+                    from_target='t',
+                    action=RemovePathAction.assert_exists,
+                    path='/a/b/c/e',
+                ),
+            ], DUMMY_LAYER_OPTS)(subvol)
+            self.assertEqual(['(Dir)', {
+                'a': ['(Dir)', {}],
+                'f': ['(Dir)', {'i': ['(File m755)']}],
+            }], _render_subvol(subvol))
 
     def test_rpm_action_item(self):
         layer_opts = LayerOpts(
