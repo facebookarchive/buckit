@@ -1,0 +1,13 @@
+# This file is intended to become a collection of utility features commonly
+# used in constructing images.
+load("//fs_image/buck:image.bzl", "image")
+
+# To remove a path in this feature it should match these criteria:
+#  - its absence should makes the running image operate no less correctly
+#    than before,
+#  - the image does not become less human-understandable once it's gone, or
+#    the considerable space savings justifies the loss of debuggability.
+image.feature(
+    name = "rpm_cleanup",
+    remove_paths = ["/var/cache/yum"],
+)
