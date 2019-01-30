@@ -261,19 +261,14 @@ def _compile_image_features(
         **image_feature_kwargs
     )
 
-    parent_layer_feature_query = """
-        attrfilter(type, image_feature, deps({}))
-    """.format(parent_layer)
-
-    # We will ask Buck to ensure that the outputs of the direct
-    # dependencies of our `image_feature`s are available on local disk.
-    # See `Implementation notes: Dependency resolution` in `__doc__`.
-    this_layer_feature_query = """
-        attrfilter(type, image_feature, deps({my_feature}))
-            {minus_parent_features}
-    """.format(
-        my_feature = feature_target,
-        minus_parent_features = (" - " + parent_layer_feature_query) if parent_layer else "",
+    # We will ask Buck to ensure that the outputs of the direct dependencies
+    # of our `image_feature`s are available on local disk.
+    #
+    # See `Implementation notes: Dependency resolution` in `__doc__` -- note
+    # that we need no special logic to exclude parent-layer features, since
+    # this query does not traverse them anyhow.
+    dep_features_query = "attrfilter(type, image_feature, deps({}))".format(
+        feature_target,
     )
 
     return '''
@@ -292,7 +287,7 @@ def _compile_image_features(
           --child-layer-target {current_target_quoted} \
           --child-feature-json $(location {my_feature_target}) \
           --child-dependencies \
-            $(query_targets_and_outputs 'deps({my_deps_query}, 1)') \
+            $(query_targets_and_outputs 'deps({dep_features_query}, 1)') \
               > "$OUT"
     '''.format(
         subvol_name_quoted = shell.quote(subvol_name),
@@ -303,7 +298,7 @@ def _compile_image_features(
             rule_name,
         )),
         my_feature_target = feature_target,
-        my_deps_query = this_layer_feature_query,
+        dep_features_query = dep_features_query,
         maybe_quoted_yum_from_repo_snapshot_args = "" if not yum_from_repo_snapshot else
         # In terms of **dependency** structure, we want this
         # to be `exe` (see `image_package.py` for why).

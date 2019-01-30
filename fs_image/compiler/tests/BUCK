@@ -137,6 +137,20 @@ image.feature(
     remove_paths = ["/a"],
 )
 
+image.feature(
+    name = "feature_remove_nonexistent",
+    remove_paths = [("/does/not/exist", "if_exists")],
+)
+
+# This feature is added to both layers, which validates that `image.layer`
+# can handle an idempotent feature being installed twice.  The layers do not
+# directly repeat `feature_remove_nonexistent` because that would not
+# reproduce a now-fixed bug with repeated features.
+image.feature(
+    name = "feature_repeated_removal",
+    features = [":feature_remove_nonexistent"],
+)
+
 # `test-add-remove-conflict` compiles this feature to produce a failure
 image.feature(
     name = "feature_addremove_conflict_both",
@@ -148,13 +162,19 @@ image.feature(
 
 image.layer(
     name = "addremove_conflict_parent",
-    features = [":feature_addremove_conflict_add"],
+    features = [
+        ":feature_addremove_conflict_add",
+        ":feature_repeated_removal",
+    ],
 )
 
 image.layer(
     name = "addremove_conflict_child",
     parent_layer = ":addremove_conflict_parent",
-    features = [":feature_addremove_conflict_remove"],
+    features = [
+        ":feature_addremove_conflict_remove",
+        ":feature_repeated_removal",
+    ],
 )
 
 ##
