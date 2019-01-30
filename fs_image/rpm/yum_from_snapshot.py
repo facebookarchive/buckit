@@ -219,7 +219,9 @@ def _temp_fifo() -> str:
         yield path
 
 
-def _isolate_yum_and_wait_until_ready(netns_fifo, ready_fifo):
+def _isolate_yum_and_wait_until_ready(
+    install_root, dummy_dev, netns_fifo, ready_fifo,
+):
     '''
     Isolate yum from the host filesystem. Also, now that we have a network
     namespace, we must wait for the parent to set up a socket inside.
@@ -278,6 +280,19 @@ def _isolate_yum_and_wait_until_ready(netns_fifo, ready_fifo):
     # `down` by default in a new network namespace.
     ifconfig lo up
 
+    # The image needs to have a valid `/dev` so that e.g.  RPM post-install
+    # scripts can work correctly (true bug: a script writing a regular file
+    # at `/dev/null`).  Unfortunately, the way we are invoking `yum` now,
+    # it's not feasible to use `systemd-nspawn`, so we hack it like so:
+    install_root={quoted_install_root}
+    mkdir -p "$install_root"/dev/
+    chown root:root "$install_root"/dev/
+    chmod 0755 "$install_root"/dev/
+    # The mount must be read-write in case a package like `filesystem` is
+    # installed and wants to mutate `/dev/`.  Those changes will be
+    # gleefully discarded.
+    mount {quoted_dummy_dev} "$install_root"/dev/ -o bind
+
     # Isolate potentially non-hermetic files and directories, details above.
     for bad_file in \
             /etc/yum.conf \
@@ -326,6 +341,8 @@ def _isolate_yum_and_wait_until_ready(netns_fifo, ready_fifo):
     # child, but that's not a problem.
     exec "$@"
     ''').format(
+        quoted_dummy_dev=dummy_dev,
+        quoted_install_root=shlex.quote(install_root.decode()),
         quoted_netns_fifo=shlex.quote(netns_fifo),
         quoted_ready_fifo=shlex.quote(ready_fifo),
     )]
@@ -361,6 +378,26 @@ def _make_socket_and_send_via(*, unix_sock_fd):
     ''')]
 
 
+@contextmanager
+def _dummy_dev() -> str:
+    'A whitelist of devices is safer than the entire host /dev'
+    dummy_dev = tempfile.mkdtemp()
+    try:
+        subprocess.check_call(['sudo', 'chown', 'root:root', dummy_dev])
+        subprocess.check_call(['sudo', 'chmod', '0755', dummy_dev])
+        subprocess.check_call([
+            'sudo', 'mknod', '-m', '0666', os.path.join(dummy_dev, 'null'),
+            'c', '1', '3',
+        ])
+        yield dummy_dev
+    finally:
+        # We cannot use `TemporaryDirectory` for cleanup since the directory
+        # and contents are owned by root.  Remove recursively since RPMs
+        # like `filesystem` can touch this dummy directory.  We will discard
+        # their writes, which do not, anyhow, belong in a container image.
+        subprocess.run(['sudo', 'rm', '-r', dummy_dev])
+
+
 def yum_from_snapshot(
     *, storage_cfg: str, snapshot_dir: Path, install_root: Path,
     yum_args: 'List[str]',
@@ -377,13 +414,16 @@ def yum_from_snapshot(
                 # robust on some network filesystems, so let's use a pipe.
             ) as ready_fifo, \
             tempfile.NamedTemporaryFile('w', suffix='yum') as out_yum_conf, \
+            _dummy_dev() as dummy_dev, \
             subprocess.Popen([
                 'sudo',
                 # Cannot do --pid or --cgroup without extra work (nspawn).
                 # Note that `--mount` implies `mount --make-rprivate /` for
                 # all recent `util-linux` releases (since 2.27 circa 2015).
                 'unshare', '--mount', '--uts', '--ipc', '--net',
-                *_isolate_yum_and_wait_until_ready(netns_fifo, ready_fifo),
+                *_isolate_yum_and_wait_until_ready(
+                    install_root, dummy_dev, netns_fifo, ready_fifo,
+                ),
                 'yum-from-snapshot',  # argv[0]
                 'yum',
                 # Most `yum` options are isolated by our `YumConfIsolator`.

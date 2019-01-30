@@ -50,7 +50,9 @@ class YumFromSnapshotTestCase(unittest.TestCase):
                 'usr/share/rpm_test', 'usr/share', 'usr',
                 'var/lib', 'var/cache', 'var/log', 'var',
             ], check=True, cwd=install_root)
-            self.assertEqual([], os.listdir(install_root))
+            # Fixme: /dev is an artifact of our RPM install process :/
+            self.assertEqual([b'dev'], os.listdir(install_root))
+            self.assertEqual([], os.listdir(install_root / 'dev'))
         finally:
             assert install_root != '/'
             # Courtesy of `yum`, the `install_root` is now owned by root.

@@ -537,6 +537,8 @@ class ItemsTestCase(unittest.TestCase):
                 layer_opts,
             )(subvol)
             # Clean up the `yum` & `rpm` litter before checking the packages.
+            # Maybe fixme: As a result, we end up not asserting ownership /
+            # permissions / etc on directories like /var and /dev.
             subvol.run_as_root([
                 'rm', '-rf',
                 # Annotate all paths since `sudo rm -rf` is scary.
@@ -551,6 +553,7 @@ class ItemsTestCase(unittest.TestCase):
                 subvol.path('var/lib'),
                 subvol.path('var/log'),
                 subvol.path('var'),
+                subvol.path('dev'),  # made by yum_from_snapshot.py
             ])
             self.assertEqual(['(Dir)', {
                 'usr': ['(Dir)', {
