@@ -18,7 +18,7 @@ import sys
 from subvol_utils import Subvol
 
 from .dep_graph import DependencyGraph
-from .items import gen_parent_layer_items
+from .items import gen_parent_layer_items, LayerOpts
 from .items_for_features import gen_items_for_features
 from .subvolume_on_disk import SubvolumeOnDisk
 
@@ -96,11 +96,18 @@ def build_image(args):
         gen_items_for_features(
             feature_paths=[args.child_feature_json],
             target_to_path=make_target_path_map(args.child_dependencies),
-            yum_from_repo_snapshot=args.yum_from_repo_snapshot,
         ),
     ))
-    for phase in dep_graph.ordered_phases():
-        phase.build(subvol)
+    layer_opts = LayerOpts(
+        layer_target=args.child_layer_target,
+        yum_from_snapshot=args.yum_from_repo_snapshot,
+    )
+    # Creating all the builders up-front lets the phases validate their input
+    for builder in [
+        builder_maker(items, layer_opts)
+            for builder_maker, items in dep_graph.ordered_phases()
+    ]:
+        builder(subvol)
     # We cannot validate or sort `ImageItem`s until the phases are
     # materialized since the items may depend on the output of the phases.
     for item in dep_graph.gen_dependency_order_items(subvol.path().decode()):

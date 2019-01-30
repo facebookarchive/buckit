@@ -12,7 +12,7 @@ top of `provides.py`.
 import enum
 import os
 
-from typing import NamedTuple, Optional, FrozenSet
+from typing import Iterable, NamedTuple
 
 from .enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField,
@@ -65,6 +65,11 @@ class PhaseOrder(enum.Enum):
     FILE_REMOVE = enum.auto()
 
 
+class LayerOpts(NamedTuple):
+    layer_target: str
+    yum_from_snapshot: str
+
+
 class ImageItem(type):
     'A metaclass for the types of items that can be installed into images.'
     def __new__(metacls, classname, bases, dct):
@@ -74,16 +79,21 @@ class ImageItem(type):
             fn = dct.get('customize_fields')
             if fn:
                 fn(kwargs)
-            # A little hacky: a few "items", like RPM installs, aren't
-            # sorted by dependencies, but get a fixed installation order.
-            if kwargs['phase_order'] is NonConstructibleField:
-                kwargs['phase_order'] = None
             return kwargs
+
+        # Some items, like RPM actions, are not sorted by dependencies, but
+        # get a fixed installation order.  The absence of a phase means the
+        # item is ordered via the topo-sort in `dep_graph.py`.
+        class PhaseOrderBase:
+            __slots__ = ()
+
+            def phase_order(self):
+                return None
 
         return metaclass_new_enriched_namedtuple(
             __class__,
-            ['from_target', ('phase_order', NonConstructibleField)],
-            metacls, classname, bases, dct,
+            ['from_target'],
+            metacls, classname, (PhaseOrderBase,) + bases, dct,
             customize_fields
         )
 
@@ -326,8 +336,8 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
 class ParentLayerItem(metaclass=ImageItem):
     fields = ['path']
 
-    def customize_fields(kwargs):  # noqa: B902
-        kwargs['phase_order'] = PhaseOrder.PARENT_LAYER
+    def phase_order(self):
+        return PhaseOrder.PARENT_LAYER
 
     def provides(self):
         provided_root = False
@@ -343,16 +353,21 @@ class ParentLayerItem(metaclass=ImageItem):
     def requires(self):
         return ()
 
-    def build(self, subvol: Subvol):
-        subvol.snapshot(Subvol(self.path, already_exists=True))
+    @classmethod
+    def get_phase_builder(
+        cls, items: Iterable['ParentLayerItem'], layer_opts: LayerOpts,
+    ):
+        parent, = items
+        assert isinstance(parent, ParentLayerItem), parent
+        return lambda sv: sv.snapshot(Subvol(parent.path, already_exists=True))
 
 
 class FilesystemRootItem(metaclass=ImageItem):
     'A simple item to endow parent-less layers with a standard-permissions /'
     fields = []
 
-    def customize_fields(kwargs):  # noqa: B902
-        kwargs['phase_order'] = PhaseOrder.PARENT_LAYER
+    def phase_order(self):
+        return PhaseOrder.PARENT_LAYER
 
     def provides(self):
         yield ProvidesDirectory(path='/')
@@ -360,12 +375,21 @@ class FilesystemRootItem(metaclass=ImageItem):
     def requires(self):
         return ()
 
-    def build(self, subvol: Subvol):
-        subvol.create()
-        # Guarantee standard permissions. This could be made configurable,
-        # but in practice, probably any other choice would be wrong.
-        subvol.run_as_root(['chmod', '0755', subvol.path()])
-        subvol.run_as_root(['chown', 'root:root', subvol.path()])
+    @classmethod
+    def get_phase_builder(
+        cls, items: Iterable['FilesystemRootItem'], layer_opts: LayerOpts,
+    ):
+        parent, = items
+        assert isinstance(parent, FilesystemRootItem), parent
+
+        def builder(subvol: Subvol):
+            subvol.create()
+            # Guarantee standard permissions. This could be made configurable,
+            # but in practice, probably any other choice would be wrong.
+            subvol.run_as_root(['chmod', '0755', subvol.path()])
+            subvol.run_as_root(['chown', 'root:root', subvol.path()])
+
+        return builder
 
 
 def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
@@ -380,7 +404,7 @@ def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
             )
 
 
-class RpmActionType(enum.Enum):
+class RpmAction(enum.Enum):
     install = 'install'
     # It would be sensible to have a 'remove' that fails if the package is
     # not already installed, but `yum` doesn't seem to support that, and
@@ -388,69 +412,80 @@ class RpmActionType(enum.Enum):
     remove_if_exists = 'remove_if_exists'
 
 
-RPM_ACTION_TYPE_TO_PHASE_ORDER = {
-    RpmActionType.install: PhaseOrder.RPM_INSTALL,
-    RpmActionType.remove_if_exists: PhaseOrder.RPM_REMOVE,
-}
-
-
 RPM_ACTION_TYPE_TO_YUM_CMD = {
     # We do NOT want people specifying package versions, releases, or
     # architectures via `image_feature`s.  That would be a sure-fire way to
     # get version conflicts.  For the cases where we need version pinning,
     # we'll add a per-layer "version picker" concept.
-    RpmActionType.install: 'install-n',
+    RpmAction.install: 'install-n',
     # The way `yum` works, this is a no-op if the package is missing.
-    RpmActionType.remove_if_exists: 'remove-n',
+    RpmAction.remove_if_exists: 'remove-n',
 }
 
 
-# This quacks like an ImageItem, with one exception: it lacks `from_target`.
-# We don't have a good story for attributing RPMs to a build target, since
-# multiple build targets may request the same RPM (though it could be done).
-# Future: consider a refactor to make explicit the bifurcation in image item
-# interfaces between "phased" and "dependency-sorted".
-class MultiRpmAction(NamedTuple):
-    rpms: FrozenSet[str]
-    action: RpmActionType
-    yum_from_snapshot: Optional[str]  # Can be None if there are no rpms.
-    phase_order: PhaseOrder  # Derived from `action`
+# These items are part of a phase, so they don't get dependency-sorted, so
+# there is no `requires()` or `provides()` or `build()` method.
+class RpmActionItem(metaclass=ImageItem):
+    fields = ['name', 'action']
+
+    def customize_fields(kwargs):  # noqa: B902
+        kwargs['action'] = RpmAction(kwargs['action'])
+
+    def phase_order(self):
+        return {
+            RpmAction.install: PhaseOrder.RPM_INSTALL,
+            RpmAction.remove_if_exists: PhaseOrder.RPM_REMOVE,
+        }[self.action]
 
     @classmethod
-    def new(cls, rpms, action, yum_from_snapshot):
-        return cls(
-            rpms=rpms,
-            action=action,
-            yum_from_snapshot=yum_from_snapshot,
-            phase_order=RPM_ACTION_TYPE_TO_PHASE_ORDER[action],
+    def get_phase_builder(
+        cls, items: Iterable['RpmActionItem'], layer_opts: LayerOpts,
+    ):
+        # Do as much validation as possible outside of the builder to give
+        # fast feedback to the user.
+        assert layer_opts.yum_from_snapshot is not None, (
+            f'`image_layer` {layer_opts.layer_target} must set '
+            '`yum_from_repo_snapshot`'
         )
 
-    def union(self, other):
-        self_metadata = self._replace(rpms={'omitted'})
-        other_metadata = other._replace(rpms={'omitted'})
-        assert self_metadata == other_metadata, (self_metadata, other_metadata)
-        return self._replace(rpms=self.rpms | other.rpms)
+        action_to_rpms = {action: set() for action in RpmAction}
+        rpm_to_actions = {}
+        for item in items:
+            assert isinstance(item, RpmActionItem), item
+            action_to_rpms[item.action].add(item.name)
+            actions = rpm_to_actions.setdefault(item.name, [])
+            actions.append((item.action, item.from_target))
+            # Raise when a layer has multiple actions for one RPM -- even
+            # when all actions are the same.  This can be relaxed if needed.
+            if len(actions) != 1:
+                raise RuntimeError(
+                    f'RPM action conflict for {item.name}: {actions}'
+                )
 
-    def build(self, subvol: Subvol):
-        if not self.rpms:
-            return
-        assert RPM_ACTION_TYPE_TO_PHASE_ORDER[self.action] is self.phase_order
-        assert self.yum_from_snapshot is not None, \
-            f'{self} -- your `image_layer` must set `yum_from_repo_snapshot`'
-        subvol.run_as_root([
-            # Since `yum-from-snapshot` variants are generally Python
-            # binaries built from this very repo, in @mode/dev, we would run
-            # a symlink-PAR from the buck-out tree as `root`.  This would
-            # leave behind root-owned `__pycache__` directories, which would
-            # break Buck's fragile cleanup, and cause us to leak old build
-            # artifacts.  This eventually runs the host out of disk space,
-            # and can also interfere with e.g.  `test-image-layer`, since
-            # that test relies on there being just one `create_ops`
-            # subvolume in `buck-image-out` with the "received UUID" that
-            # was committed to VCS as part of the test sendstream.
-            'env', 'PYTHONDONTWRITEBYTECODE=1',
-            self.yum_from_snapshot, '--install-root', subvol.path(), '--',
-            RPM_ACTION_TYPE_TO_YUM_CMD[self.action],
-            # Sort in case `yum` behavior depends on order (for determinism).
-            '--assumeyes', '--', *sorted(self.rpms),
-        ])
+        def builder(subvol: Subvol):
+            for action, rpms in action_to_rpms.items():
+                if not rpms:
+                    continue
+                subvol.run_as_root([
+                    # Since `yum-from-snapshot` variants are generally
+                    # Python binaries built from this very repo, in
+                    # @mode/dev, we would run a symlink-PAR from the
+                    # buck-out tree as `root`.  This would leave behind
+                    # root-owned `__pycache__` directories, which would
+                    # break Buck's fragile cleanup, and cause us to leak old
+                    # build artifacts.  This eventually runs the host out of
+                    # disk space.  Un-deletable *.pyc files can also
+                    # interfere with e.g.  `test-image-layer`, since that
+                    # test relies on there being just one `create_ops`
+                    # subvolume in `buck-image-out` with the "received UUID"
+                    # that was committed to VCS as part of the test
+                    # sendstream.
+                    'env', 'PYTHONDONTWRITEBYTECODE=1',
+                    layer_opts.yum_from_snapshot,
+                    '--install-root', subvol.path(), '--',
+                    RPM_ACTION_TYPE_TO_YUM_CMD[action],
+                    # Sort ensures determinism even if `yum` is order-dependent
+                    '--assumeyes', '--', *sorted(rpms),
+                ])
+
+        return builder

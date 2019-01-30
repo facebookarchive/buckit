@@ -5,8 +5,8 @@ import json
 from typing import Iterable, Mapping, Optional
 
 from .items import (
-    CopyFileItem, MakeDirsItem, MultiRpmAction, TarballItem, RpmActionType,
-    SymlinkToDirItem, SymlinkToFileItem
+    CopyFileItem, MakeDirsItem, RpmActionItem, SymlinkToDirItem,
+    SymlinkToFileItem, TarballItem,
 )
 
 
@@ -42,16 +42,16 @@ def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
 def gen_items_for_features(
     feature_paths: Iterable[str],
     target_to_path: Mapping[str, str],
-    yum_from_repo_snapshot: Optional[str],
 ):
     key_to_item_class = {
         'make_dirs': MakeDirsItem,
         'tarballs': TarballItem,
         'copy_files': CopyFileItem,
+        'rpms': RpmActionItem,
         'symlinks_to_dirs': SymlinkToDirItem,
         'symlinks_to_files': SymlinkToFileItem,
     }
-    action_to_rpms = {action: set() for action in RpmActionType}
+
     for feature_path in feature_paths:
         with open(feature_path) as f:
             items = replace_targets_by_paths(json.load(f), target_to_path)
@@ -59,7 +59,6 @@ def gen_items_for_features(
             yield from gen_items_for_features(
                 feature_paths=items.pop('features', []),
                 target_to_path=target_to_path,
-                yum_from_repo_snapshot=yum_from_repo_snapshot,
             )
 
             target = items.pop('target')
@@ -73,16 +72,4 @@ def gen_items_for_features(
                             f'{target}, please read the exception above.'
                         ) from ex
 
-            # Note that at present, we don't attempt to attribute RPMs to
-            # the build target(s) that requested them.
-            for dct in items.pop('rpms', []):
-                action_to_rpms[RpmActionType(dct['action'])].add(dct['name'])
-
             assert not items, f'Unsupported items: {items}'
-    for action, rpms in action_to_rpms.items():
-        if rpms:
-            yield MultiRpmAction.new(
-                action=action,
-                rpms=frozenset(rpms),
-                yum_from_snapshot=yum_from_repo_snapshot,
-            )

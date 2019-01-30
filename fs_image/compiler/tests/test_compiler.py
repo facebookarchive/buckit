@@ -7,7 +7,7 @@ import unittest.mock
 
 import subvol_utils
 
-from ..compiler import parse_args, build_image
+from ..compiler import parse_args, build_image, LayerOpts
 from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
@@ -135,11 +135,19 @@ class CompilerTestCase(unittest.TestCase):
             f'{FAKE_SUBVOLS_DIR}/SUBVOL',
             already_exists=True,
         )
-        for item in si.ID_TO_ITEM.values():
-            if hasattr(item, 'yum_from_snapshot'):
-                # sample_items has `/fake/yum` here, but we need the real one
-                item._replace(yum_from_snapshot=self.yum_path).build(subvol)
-            else:
+        phase_item_ids = set()
+        for builder_maker, item_ids in si.ORDERED_PHASES:
+            phase_item_ids.update(item_ids)
+            builder_maker(
+                [si.ID_TO_ITEM[i] for i in item_ids],
+                LayerOpts(
+                    layer_target='fake-target',
+                    yum_from_snapshot=self.yum_path,
+                )
+            )(subvol)
+
+        for item_id, item in si.ID_TO_ITEM.items():
+            if item_id not in phase_item_ids:
                 item.build(subvol)
         return run_as_root.call_args_list + [
             (

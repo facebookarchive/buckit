@@ -8,9 +8,9 @@ already been installed.  This is known as dependency order or topological
 sort.
 '''
 from collections import namedtuple
-from typing import Iterable, Iterator
+from typing import Iterator
 
-from .items import ImageItem, MultiRpmAction, ParentLayerItem, PhaseOrder
+from .items import ImageItem, ParentLayerItem, PhaseOrder
 
 
 # To build the item-to-item dependency graph, we need to first build up a
@@ -105,17 +105,6 @@ class ValidatedReqsProvs:
         )
 
 
-def detect_rpm_action_conflicts(mras: Iterable[MultiRpmAction]):
-    'Raises when a layer attempts to perform multiple actions on one RPM'
-    rpm_to_actions = {}
-    for mra in mras:
-        for rpm in mra.rpms:
-            rpm_to_actions.setdefault(rpm, []).append(mra.action)
-    for rpm, actions in rpm_to_actions.items():
-        if len(actions) != 1:
-            raise RuntimeError(f'RPM action conflict for {rpm}: {actions}')
-
-
 class DependencyGraph:
     '''
     Given an iterable of ImageItems, validates their requires / provides
@@ -123,43 +112,41 @@ class DependencyGraph:
     The indexes make it easy to topologically sort the items.
     '''
 
-    # NB: The items this consumes are a mix of `ImageItem`s and phases, see
-    # the comment on `MultiRpmAction`.
-    def __init__(self, iter_items: 'Iterator[ImageItems]'):
+    # Consumes a mix of dependency-ordered and `PhaseOrder`ed `ImageItem`s.
+    def __init__(self, iter_items: {'Iterator of ImageItems'}):
         # Without deduping, dependency diamonds would cause a lot of
         # redundant work below.  Below, we also rely on mutating this set.
         self.items = set()
         # While deduplicating `ImageItem`s, let's also split out the phases.
-        self.order_to_phase = {}
+        self.order_to_phase_items = {}
         for item in iter_items:
-            if item.phase_order is None:
+            if item.phase_order() is None:
                 self.items.add(item)
             else:
-                prev = self.order_to_phase.get(item.phase_order)
-                # NB: This would fail if we had more than one PARENT_LAYER
-                # phase, since none of those classes have `union()`.
-                self.order_to_phase[item.phase_order] = item \
-                    if prev is None else prev.union(item)
-        detect_rpm_action_conflicts(
-            item for item in self.order_to_phase.values()
-                if isinstance(item, MultiRpmAction)
-        )
+                self.order_to_phase_items.setdefault(
+                    item.phase_order(), [],
+                ).append(item)
 
     # Like ImageItems, the generated phases have a build(s: Subvol) operation.
     def ordered_phases(self):
-        return sorted(
-            self.order_to_phase.values(), key=lambda s: s.phase_order.value,
-        )
+        for _, items in sorted(
+            self.order_to_phase_items.items(),
+            key=lambda kv: kv[0].value,
+        ):
+            # We assume that all items in one phase share a builder factory
+            all_builder_makers = {i.get_phase_builder for i in items}
+            assert len(all_builder_makers) == 1, all_builder_makers
+            yield all_builder_makers.pop(), tuple(items)
 
     # Separated so that unit tests can check the internal state.
     def _prep_item_predecessors(self, sv_path: str):
         # The `ImageItem` part of the build needs a PARENT_LAYER to know
         # what is provided by the parent layer, and any subsequent phases.
-        parent_layer = self.order_to_phase[PhaseOrder.PARENT_LAYER]
+        parent_layer, = self.order_to_phase_items[PhaseOrder.PARENT_LAYER]
         self.items.add(
             # If there are no other phases, `ImageItem`s would only have
             # access to what is provided by the existing PARENT_LAYER.
-            parent_layer if len(self.order_to_phase) == 1 else
+            parent_layer if len(self.order_to_phase_items) == 1 else
             # Hack: Phases may change the original parent layer, so we'll
             # compute `provides()` for dependency resolution using the
             # mutated subvolume.  This isn't too scary since the rest of
@@ -204,8 +191,8 @@ class DependencyGraph:
             # "Install" an item that has no unsatisfied dependencies.
             item = ns.items_without_predecessors.pop()
             # The parent layer is built as part of `ordered_phases()`, it is
-            # only added to `items` its `provides()` fulfill requirements.
-            if item.phase_order is PhaseOrder.PARENT_LAYER:
+            # only added to `items` so its `provides()` fulfills requirements.
+            if item.phase_order() is PhaseOrder.PARENT_LAYER:
                 assert yield_idx == 0, f'{item}: the parent layer must be 1st'
             else:
                 yield item

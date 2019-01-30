@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from ..dep_graph import DependencyGraph
+from ..items import FilesystemRootItem, RpmActionItem
 from ..items_for_features import gen_items_for_features
 
 from . import sample_items as si
@@ -22,7 +23,6 @@ class ImageFeatureTestCase(unittest.TestCase):
             set(gen_items_for_features(
                 [si.TARGET_TO_PATH[root_feature_target]],
                 si.TARGET_TO_PATH,
-                yum_from_repo_snapshot='/fake/yum',
             )),
         )
         # Fail if some target fails to resolve to a path
@@ -30,29 +30,41 @@ class ImageFeatureTestCase(unittest.TestCase):
             list(gen_items_for_features(
                 [si.TARGET_TO_PATH[root_feature_target]],
                 target_to_path={},
-                yum_from_repo_snapshot='/fake/yum',
             ))
 
     def test_install_order(self):
         dg = DependencyGraph(si.ID_TO_ITEM.values())
-        phases = dg.ordered_phases()
+        builders_and_phases = list(dg.ordered_phases())
         self.assertEqual([
-            si.ID_TO_ITEM['/'],
-            si.ID_TO_ITEM['.rpms/remove_if_exists/rpm-test-{carrot,milk}'],
-            si.ID_TO_ITEM['.rpms/install/rpm-test-mice'],
-        ], phases)
+            (
+                FilesystemRootItem.get_phase_builder,
+                (si.ID_TO_ITEM['/'],),
+            ),
+            (
+                RpmActionItem.get_phase_builder,
+                (
+                    si.ID_TO_ITEM['.rpms/remove_if_exists/rpm-test-carrot'],
+                    si.ID_TO_ITEM['.rpms/remove_if_exists/rpm-test-milk'],
+                ),
+            ),
+            (
+                RpmActionItem.get_phase_builder,
+                (si.ID_TO_ITEM['.rpms/install/rpm-test-mice'],),
+            ),
+        ], builders_and_phases)
+        phase_items = [i for _, items in builders_and_phases for i in items]
         with tempfile.TemporaryDirectory() as td:
             doi = list(dg.gen_dependency_order_items(td))
-        self.assertEqual(set(si.ID_TO_ITEM.values()), set(doi + phases))
+        self.assertEqual(set(si.ID_TO_ITEM.values()), set(doi + phase_items))
         self.assertEqual(
             len(si.ID_TO_ITEM),
-            len(doi) + len(phases),
+            len(doi) + len(phase_items),
             msg='Duplicate items?',
         )
         id_to_idx = {
             k: doi.index(v)
                 for k, v in si.ID_TO_ITEM.items()
-                    if v not in phases
+                    if v not in phase_items
         }
         self.assertEqual(0, id_to_idx['foo/bar'])
         self.assertLess(

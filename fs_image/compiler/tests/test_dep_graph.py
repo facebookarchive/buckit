@@ -6,8 +6,7 @@ from ..dep_graph import (
     DependencyGraph, ItemProv, ItemReq, ItemReqsProvs, ValidatedReqsProvs,
 )
 from ..items import (
-    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem,
-    MultiRpmAction, PhaseOrder, RpmActionType,
+    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory
@@ -20,6 +19,10 @@ PATH_TO_ITEM = {
     '/a/b/c/F': CopyFileItem(from_target='', source='x', dest='a/b/c/F'),
     '/a/d/e/G': CopyFileItem(from_target='', source='G', dest='a/d/e/'),
 }
+
+
+def _fs_root_phases(item):
+    return [(FilesystemRootItem.get_phase_builder, (item,))]
 
 
 class ValidateReqsProvsTestCase(unittest.TestCase):
@@ -122,7 +125,9 @@ class DependencyGraphTestCase(unittest.TestCase):
 
     def test_item_predecessors(self):
         dg = DependencyGraph(PATH_TO_ITEM.values())
-        self.assertEqual([PATH_TO_ITEM['/']], dg.ordered_phases())
+        self.assertEqual(
+            _fs_root_phases(PATH_TO_ITEM['/']), list(dg.ordered_phases()),
+        )
         ns = dg._prep_item_predecessors('fake_subvol_path')
         self.assertEqual(ns.item_to_predecessors, {
             PATH_TO_ITEM[k]: {PATH_TO_ITEM[v] for v in vs} for k, vs in {
@@ -148,7 +153,9 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
 
     def test_gen_dependency_graph(self):
         dg = DependencyGraph(PATH_TO_ITEM.values())
-        self.assertEqual([PATH_TO_ITEM['/']], dg.ordered_phases())
+        self.assertEqual(
+            _fs_root_phases(PATH_TO_ITEM['/']), list(dg.ordered_phases()),
+        )
         self.assertIn(
             tuple(dg.gen_dependency_order_items('fake_subvol_path')),
             {
@@ -179,7 +186,7 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
         second = requires_provides_directory_class('/', 'a')(from_target='')
         third = MakeDirsItem(from_target='', into_dir='a', path_to_make='b/c')
         dg = DependencyGraph([second, first, third])
-        self.assertEqual([first], dg.ordered_phases())
+        self.assertEqual(_fs_root_phases(first), list(dg.ordered_phases()))
         self.assertEqual(
             [second, third],
             list(dg.gen_dependency_order_items('fake_subvol_path')),
@@ -190,39 +197,32 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
             requires_provides_directory_class('a/b', 'a')(from_target=''),
             first, third,
         ])
-        self.assertEqual([first], dg.ordered_phases())
+        self.assertEqual(_fs_root_phases(first), list(dg.ordered_phases()))
         with self.assertRaisesRegex(AssertionError, '^Cycle in '):
             list(dg.gen_dependency_order_items('fake_subvol_path'))
 
     def test_phase_order(self):
 
         class FakeFileRemove:
-            def __init__(self):
-                self.phase_order = PhaseOrder.FILE_REMOVE
+            get_phase_builder = 'kittycat'
+
+            def phase_order(self):
+                return PhaseOrder.FILE_REMOVE
 
         first = FilesystemRootItem(from_target='')
         second = FakeFileRemove()
         third = MakeDirsItem(from_target='', into_dir='/', path_to_make='a/b')
         dg = DependencyGraph([second, first, third])
-        self.assertEqual([first, second], dg.ordered_phases())
+        self.assertEqual(
+            _fs_root_phases(first) + [
+                (FakeFileRemove.get_phase_builder, (second,)),
+            ],
+            list(dg.ordered_phases()),
+        )
         # We had a phase other than PARENT_LAYER, so the dependency sorting
         # will need to inspect the resulting subvolume -- let it be empty.
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual([third], list(dg.gen_dependency_order_items(td)))
-
-    def test_rpm_action_conflict_detection(self):
-        install = MultiRpmAction.new(
-            action=RpmActionType.install,
-            rpms={'cat', 'dog'},
-            yum_from_snapshot='/fake/yum',
-        )
-        remove = MultiRpmAction.new(
-            action=RpmActionType.remove_if_exists,
-            rpms={'sheep', 'dog'},
-            yum_from_snapshot='/fake/yum',
-        )
-        with self.assertRaisesRegex(RuntimeError, 'RPM action conflict for d'):
-            DependencyGraph([install, remove])
 
 
 if __name__ == '__main__':

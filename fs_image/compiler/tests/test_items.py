@@ -14,9 +14,9 @@ from btrfs_diff.tests.render_subvols import render_sendstream
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
-    TarballItem, CopyFileItem, FilesystemRootItem, gen_parent_layer_items,
-    MakeDirsItem, MultiRpmAction, ParentLayerItem, RpmActionType,
-    SymlinkToDirItem, SymlinkToFileItem
+    CopyFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
+    MakeDirsItem, ParentLayerItem, PhaseOrder, RpmActionItem, RpmAction,
+    SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 from ..provides import ProvidesDirectory, ProvidesFile
 from ..requires import require_directory, require_file
@@ -26,9 +26,10 @@ from .mock_subvolume_from_json_file import (
 )
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
+DUMMY_LAYER_OPTS = LayerOpts(layer_target='t', yum_from_snapshot='y')
 
 
-def _render_subvol(subvol: 'Subvol'):
+def _render_subvol(subvol: {'Subvol'}):
     rendered = render_sendstream(subvol.mark_readonly_and_get_sendstream())
     subvol.set_readonly(False)  # YES, all our subvolumes are read-write.
     return rendered
@@ -44,6 +45,26 @@ class ItemsTestCase(unittest.TestCase):
         self.assertEqual(provides, set(i.provides()))
         self.assertEqual(requires, set(i.requires()))
 
+    def test_phase_orders(self):
+        self.assertIs(
+            None,
+            CopyFileItem(from_target='t', source='a', dest='b').phase_order(),
+        )
+        self.assertEqual(
+            PhaseOrder.PARENT_LAYER,
+            FilesystemRootItem(from_target='t').phase_order(),
+        )
+        self.assertEqual(
+            PhaseOrder.PARENT_LAYER,
+            ParentLayerItem(from_target='t', path='unused').phase_order(),
+        )
+        self.assertEqual(PhaseOrder.RPM_INSTALL, RpmActionItem(
+            from_target='t', name='n', action=RpmAction.install,
+        ).phase_order())
+        self.assertEqual(PhaseOrder.RPM_REMOVE, RpmActionItem(
+            from_target='t', name='n', action=RpmAction.remove_if_exists,
+        ).phase_order())
+
     def test_filesystem_root(self):
         self._check_item(
             FilesystemRootItem(from_target='t'),
@@ -52,7 +73,9 @@ class ItemsTestCase(unittest.TestCase):
         )
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.caller_will_create('fs-root')
-            FilesystemRootItem(from_target='t').build(subvol)
+            FilesystemRootItem.get_phase_builder(
+                [FilesystemRootItem(from_target='t')], DUMMY_LAYER_OPTS,
+            )(subvol)
             self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
 
     def test_copy_file(self):
@@ -327,7 +350,10 @@ class ItemsTestCase(unittest.TestCase):
 
             # Take a snapshot and add one more directory.
             child = temp_subvolumes.caller_will_create('child')
-            ParentLayerItem(from_target='t', path=parent.path()).build(child)
+            ParentLayerItem.get_phase_builder(
+                [ParentLayerItem(from_target='t', path=parent.path(),)],
+                DUMMY_LAYER_OPTS,
+            )(child)
             MakeDirsItem(
                 from_target='t', into_dir='a', path_to_make='c',
             ).build(child)
@@ -365,40 +391,41 @@ class ItemsTestCase(unittest.TestCase):
                 list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
             )
 
-    def test_multi_rpm_action(self):
-        # This works in @mode/opt since this binary is baked into the XAR
-        yum = os.path.join(os.path.dirname(__file__), 'yum-from-test-snapshot')
-
-        mice = MultiRpmAction.new(
-            frozenset(['rpm-test-mice']), RpmActionType.install, yum,
+    def test_rpm_action_item(self):
+        layer_opts = LayerOpts(
+            layer_target='fake-target',
+            # This works in @mode/opt since this binary is baked into the XAR
+            yum_from_snapshot=os.path.join(
+                os.path.dirname(__file__), 'yum-from-test-snapshot',
+            ),
         )
-        carrot = MultiRpmAction.new(
-            frozenset(['rpm-test-carrot']), RpmActionType.install, yum,
-        )
-        buggy_mice = mice._replace(yum_from_snapshot='bug')
-        with self.assertRaises(AssertionError):
-            buggy_mice.union(carrot)
-        action = mice.union(carrot)
-        self.assertEqual({'rpm-test-mice', 'rpm-test-carrot'}, action.rpms)
-        self.assertEqual(carrot, action._replace(rpms={'rpm-test-carrot'}))
-
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('rpm_action')
             self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
 
             # The empty action is a no-op
-            MultiRpmAction.new(
-                frozenset(), RpmActionType.install, None,
-            ).build(subvol)
+            RpmActionItem.get_phase_builder([], layer_opts)(subvol)
             self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
 
             # Specifying RPM versions is prohibited
             with self.assertRaises(subprocess.CalledProcessError):
-                MultiRpmAction.new(
-                    frozenset(['rpm-test-mice-2']), RpmActionType.install, yum,
-                ).build(subvol)
+                RpmActionItem.get_phase_builder(
+                    [RpmActionItem(
+                        from_target='m',
+                        name='rpm-test-mice-2',
+                        action=RpmAction.install,
+                    )],
+                    layer_opts,
+                )(subvol)
 
-            action.build(subvol)
+            RpmActionItem.get_phase_builder(
+                [
+                    RpmActionItem(
+                        from_target='t', name=n, action=RpmAction.install,
+                    ) for n in ['rpm-test-mice', 'rpm-test-carrot']
+                ],
+                layer_opts,
+            )(subvol)
             # Clean up the `yum` & `rpm` litter before checking the packages.
             subvol.run_as_root([
                 'rm', '-rf',
@@ -421,6 +448,25 @@ class ItemsTestCase(unittest.TestCase):
                     }],
                 }],
             }], _render_subvol(subvol))
+
+    def test_rpm_action_conflict(self):
+        # Test both install-install and install-remove conflicts.
+        for rpm_actions in (
+            (('cat', RpmAction.install), ('cat', RpmAction.install)),
+            (
+                ('dog', RpmAction.remove_if_exists),
+                ('dog', RpmAction.install),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, 'RPM action conflict '):
+                # Note that we don't need to run the builder to hit the error
+                RpmActionItem.get_phase_builder(
+                    [
+                        RpmActionItem(from_target='t', name=r, action=a)
+                            for r, a in rpm_actions
+                    ],
+                    DUMMY_LAYER_OPTS,
+                )
 
 
 if __name__ == '__main__':

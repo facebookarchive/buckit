@@ -2,8 +2,8 @@
 import os
 
 from ..items import (
-    CopyFileItem, FilesystemRootItem, MakeDirsItem, MultiRpmAction,
-    RpmActionType, SymlinkToDirItem, SymlinkToFileItem, TarballItem,
+    CopyFileItem, FilesystemRootItem, MakeDirsItem, RpmActionItem,
+    RpmAction, SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
 
@@ -99,14 +99,30 @@ ID_TO_ITEM = {
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
     ),
-    '.rpms/install/rpm-test-mice': MultiRpmAction.new(
-        rpms=frozenset({'rpm-test-mice'}),
-        action=RpmActionType.install,
-        yum_from_snapshot='/fake/yum',
+    '.rpms/install/rpm-test-mice': RpmActionItem(
+        from_target=T_TAR,
+        name='rpm-test-mice',
+        action=RpmAction.install,
     ),
-    '.rpms/remove_if_exists/rpm-test-{carrot,milk}': MultiRpmAction.new(
-        rpms=frozenset({'rpm-test-milk', 'rpm-test-carrot'}),
-        action=RpmActionType.remove_if_exists,
-        yum_from_snapshot='/fake/yum',
+    '.rpms/remove_if_exists/rpm-test-carrot': RpmActionItem(
+        from_target=T_TAR,
+        name='rpm-test-carrot',
+        action=RpmAction.remove_if_exists,
+    ),
+    '.rpms/remove_if_exists/rpm-test-milk': RpmActionItem(
+        from_target=T_TAR,
+        name='rpm-test-milk',
+        action=RpmAction.remove_if_exists,
     ),
 }
+
+
+# Imitates the output of `DependencyGraph.ordered_phases` for `test-compiler`
+ORDERED_PHASES = (
+    (FilesystemRootItem.get_phase_builder, ['/']),
+    (RpmActionItem.get_phase_builder, ['.rpms/install/rpm-test-mice']),
+    (RpmActionItem.get_phase_builder, [
+        '.rpms/remove_if_exists/rpm-test-carrot',
+        '.rpms/remove_if_exists/rpm-test-milk',
+    ]),
+)
