@@ -74,7 +74,7 @@ class CompilerTestCase(unittest.TestCase):
             '--yum-from-repo-snapshot', self.yum_path,
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
-                si.TARGET_TO_PATH[si.mangle(si.T_COPY_DIRS_TAR)],
+                si.TARGET_TO_PATH[si.mangle(si.T_KITCHEN_SINK)],
         ] + args)), run_as_root.call_args_list
 
     def test_child_dependency_errors(self):
@@ -83,7 +83,7 @@ class CompilerTestCase(unittest.TestCase):
         ):
             self._compile(['--child-dependencies', 'foo'])
 
-        # Our T_COPY_DIRS_TAR feature does have dependencies
+        # Our T_KITCHEN_SINK feature does have dependencies
         with self.assertRaisesRegex(
             RuntimeError, f'{si.T_BASE}:[^ ]* not in {{}}',
         ):

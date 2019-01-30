@@ -16,7 +16,7 @@ class ImageFeatureTestCase(unittest.TestCase):
     '''
 
     def test_serialize_deserialize(self):
-        root_feature_target = si.mangle(si.T_COPY_DIRS_TAR)
+        root_feature_target = si.mangle(si.T_KITCHEN_SINK)
         self.assertIn(root_feature_target, si.TARGET_TO_PATH)
         self.assertEqual(
             {v for k, v in si.ID_TO_ITEM.items() if k != '/'},

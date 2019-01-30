@@ -60,12 +60,17 @@ image.feature(
     ],
 )
 
+# Omnibus feature for test-compiler and test-image-feature.
+#
 # Exercises:
-#  - all forms of specifying files to copy, including the rsync trailing-slash
-#  - dependent features
-#  - `copy_deps` also supports stat options
+#  - all forms of specifying target outputs to copy, including the rsync
+#    trailing-slash
+#  - copying other targets' outputs into the image, including stat options
+#  - making directories & symlinks
+#  - extracting tarballs
+#  - composition of subsidiary features
 image.feature(
-    name = "feature_copy_dirs_tar_and_rpms",
+    name = "feature_kitchen_sink",
     copy_deps = [
         (":hello_world.tar", "/foo/bar/"),
         {

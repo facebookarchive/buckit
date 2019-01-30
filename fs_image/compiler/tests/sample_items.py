@@ -14,7 +14,7 @@ T_DIRS = f'{T_BASE}:feature_dirs'
 T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
 T_SYMLINKS = f'{T_BASE}:feature_symlinks'
 T_TAR = f'{T_BASE}:feature_tar_and_rpms'
-T_COPY_DIRS_TAR = f'{T_BASE}:feature_copy_dirs_tar_and_rpms'
+T_KITCHEN_SINK = f'{T_BASE}:feature_kitchen_sink'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
 
 TARGET_ENV_VAR_PREFIX = 'test_image_feature_path_to_'
@@ -79,12 +79,12 @@ ID_TO_ITEM = {
         source='/foo/hello_world.tar',
     ),
     'foo/bar/hello_world.tar': CopyFileItem(
-        from_target=T_COPY_DIRS_TAR,
+        from_target=T_KITCHEN_SINK,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/bar/',
     ),
     'foo/bar/hello_world_again.tar': CopyFileItem(
-        from_target=T_COPY_DIRS_TAR,
+        from_target=T_KITCHEN_SINK,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/bar/hello_world_again.tar',
         group='nobody',
