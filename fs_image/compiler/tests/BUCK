@@ -4,6 +4,8 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("//fs_image/buck:image.bzl", "image")
 
 buck_genrule(

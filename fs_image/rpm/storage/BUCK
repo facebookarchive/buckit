@@ -1,3 +1,6 @@
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
 # NB: For anything that runs at Facebook, depend on `facebook:storage`, but
 # import the outer `rpm.storage` module.
 python_library(
