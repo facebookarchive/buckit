@@ -34,7 +34,7 @@ class PackageImageTestCase(unittest.TestCase):
     @contextmanager
     def _package_image(self, json_path: str, format: str) -> Iterator[str]:
         with tempfile.TemporaryDirectory() as td:
-            out_path = os.path.join(td, 'sendstream')
+            out_path = os.path.join(td, format)
             package_image([
                 '--subvolumes-dir', self.subvolumes_dir,
                 '--subvolume-json', json_path,
@@ -50,7 +50,14 @@ class PackageImageTestCase(unittest.TestCase):
         renders = []
         for path in [path1, path2]:
             with open(path, 'rb') as infile:
-                renders.append(render_sendstream(infile.read()))
+                if path.endswith('.zst'):
+                    data = subprocess.check_output(
+                        ['zstd', '--decompress', '--stdout', path]
+                    )
+                else:
+                    data = infile.read()
+                renders.append(render_sendstream(data))
+
         self.assertEqual(*renders)
 
     # This tests `image_package.bzl` by consuming its output.
@@ -61,13 +68,14 @@ class PackageImageTestCase(unittest.TestCase):
         )
 
     def test_package_image_as_sendstream(self):
-        with self._package_image(
-            self._sibling_path('create_ops.json'), 'sendstream',
-        ) as out_path:
-            self._assert_sendstream_files_equal(
-                self._sibling_path('create_ops-original.sendstream'),
-                out_path,
-            )
+        for packaging_type in ['sendstream', 'sendstream.zst']:
+            with self._package_image(
+                    self._sibling_path('create_ops.json'), packaging_type,
+            ) as out_path:
+                self._assert_sendstream_files_equal(
+                    self._sibling_path('create_ops-original.sendstream'),
+                    out_path,
+                )
 
     def test_package_image_as_btrfs_loopback(self):
         with self._package_image(

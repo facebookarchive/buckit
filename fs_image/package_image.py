@@ -213,10 +213,12 @@ base images. Specific advantages to this include:
 import argparse
 import os
 import stat
+import subprocess
 
+from contextlib import contextmanager
 from typing import Mapping
 
-from common import init_logging
+from common import init_logging, check_popen_returncode
 from compiler.subvolume_on_disk import SubvolumeOnDisk
 from subvol_utils import Subvol
 
@@ -251,6 +253,31 @@ class Sendstream(Format, format_name='sendstream'):
         with open(output_path, 'wb') as outfile, Subvol(
             svod.subvolume_path(), already_exists=True,
         ).mark_readonly_and_write_sendstream_to_file(outfile):
+            pass
+
+
+class SendstreamZst(Format, format_name='sendstream.zst'):
+    '''
+    Packages the subvolume as a stand-alone (non-incremental) zstd-compressed
+    send-stream. See the script-level docs for details on supporting incremental
+    ones.
+    Future: add general compression support instead of adding `TarballGz`,
+    `TarballZst`, `SendstreamGz`, etc.
+    '''
+
+    @contextmanager
+    def _popen_check_returncode(self, args, **kwargs):
+        with subprocess.Popen([*args], **kwargs) as pr:
+            yield pr
+        check_popen_returncode(pr)
+
+    def package_full(self, svod: SubvolumeOnDisk, output_path: str):
+        assert not os.path.exists(output_path)
+        with open(output_path, 'wb') as outfile, self._popen_check_returncode(
+                ['zstd', '--stdout'], stdin=subprocess.PIPE, stdout=outfile
+        ) as zstd, Subvol(
+            svod.subvolume_path(), already_exists=True,
+        ).mark_readonly_and_write_sendstream_to_file(zstd.stdin):
             pass
 
 

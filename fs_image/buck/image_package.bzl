@@ -4,8 +4,8 @@ files, as described by the specified `format`.
 """
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":image_utils.bzl", "image_utils")
 
 def _get_fbconfig_rule_type():
@@ -25,7 +25,12 @@ def image_package(
         layer = None,
         visibility = None):
     visibility = get_visibility(visibility, name)
-    local_layer_rule, format = paths.split_extension(name)
+    sendstream_zst = ".sendstream.zst"
+    if name.endswith(sendstream_zst):
+        local_layer_rule = name[:-len(sendstream_zst)]
+        format = sendstream_zst
+    else:
+        local_layer_rule, format = paths.split_extension(name)
     if not format.startswith("."):
         fail(name)
     format = format[1:]
