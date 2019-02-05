@@ -49,14 +49,14 @@ class PackageImageTestCase(unittest.TestCase):
     def _assert_sendstream_files_equal(self, path1: str, path2: str):
         renders = []
         for path in [path1, path2]:
-            with open(path, 'rb') as infile:
-                if path.endswith('.zst'):
-                    data = subprocess.check_output(
-                        ['zstd', '--decompress', '--stdout', path]
-                    )
-                else:
+            if path.endswith('.zst'):
+                data = subprocess.check_output(
+                    ['zstd', '--decompress', '--stdout', path]
+                )
+            else:
+                with open(path, 'rb') as infile:
                     data = infile.read()
-                renders.append(render_sendstream(data))
+            renders.append(render_sendstream(data))
 
         self.assertEqual(*renders)
 
@@ -68,9 +68,9 @@ class PackageImageTestCase(unittest.TestCase):
         )
 
     def test_package_image_as_sendstream(self):
-        for packaging_type in ['sendstream', 'sendstream.zst']:
+        for format in ['sendstream', 'sendstream.zst']:
             with self._package_image(
-                    self._sibling_path('create_ops.json'), packaging_type,
+                    self._sibling_path('create_ops.json'), format,
             ) as out_path:
                 self._assert_sendstream_files_equal(
                     self._sibling_path('create_ops-original.sendstream'),
