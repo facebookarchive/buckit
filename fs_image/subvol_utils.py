@@ -5,7 +5,7 @@ import subprocess
 import time
 
 from contextlib import contextmanager
-from typing import AnyStr, Iterator
+from typing import AnyStr, BinaryIO, Iterator
 
 from btrfs_loopback import LoopbackVolume, run_stdout_to_err
 from common import byteme, check_popen_returncode, get_file_logger, pipe
@@ -130,22 +130,13 @@ class Subvol:
             raise AssertionError(f'{path_in_subvol} is outside the subvol')
         return result_path
 
-    @contextmanager
-    def _popen_as_root(self, args, *, stdout=None, **kwargs):
-        # Ban our subcommands from writing to stdout, since many of our
-        # tools (e.g. make-demo-sendstream, compiler) write structured
-        # data to stdout to be usable in pipelines.
-        if stdout is None:
-            stdout = 2
-        with subprocess.Popen(['sudo', *args], stdout=stdout, **kwargs) as pr:
-            yield pr
-        check_popen_returncode(pr)
-
+    # NB: It's fine to make this public, once needed.
+    #
     # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
     # new subvolumes, and not just touch existing ones.
-    def run_as_root(
-        self, args, *, _subvol_exists=True,
-        stdout=None, timeout=None, input=None, **kwargs,
+    @contextmanager
+    def _popen_as_root(
+        self, args, *, _subvol_exists=True, stdout=None, **kwargs,
     ):
         if 'cwd' in kwargs:
             raise AssertionError(
@@ -159,11 +150,41 @@ class Subvol:
             raise AssertionError(
                 f'{self.path()} exists is {self._exists}, not {_subvol_exists}'
             )
+        # Ban our subcommands from writing to stdout, since many of our
+        # tools (e.g. make-demo-sendstream, compiler) write structured
+        # data to stdout to be usable in pipelines.
+        if stdout is None:
+            stdout = 2
+        with subprocess.Popen(['sudo', *args], stdout=stdout, **kwargs) as pr:
+            yield pr
+        check_popen_returncode(pr)
+
+    def run_as_root(
+        self, args, timeout=None, input=None, _subvol_exists=True, **kwargs,
+    ):
+        '''
+        Run a command against an image.  IMPORTANT: You MUST wrap all image
+        paths with `Subvol.path`, see that function's docblock.
+
+        Mostly API-compatible with subprocess.run, except that:
+            - `check` is hardcoded to True (may be optionalized later),
+            - `stdout` is redirected to stderr by default,
+            - `cwd` is prohibited.
+        '''
+        # IMPORTANT: Any logic that CAN go in _popen_as_root, MUST go there.
         if input:
             assert 'stdin' not in kwargs
             kwargs['stdin'] = subprocess.PIPE
-        with self._popen_as_root(args, stdout=stdout, **kwargs) as proc:
-            proc.communicate(timeout=timeout, input=input)
+        with self._popen_as_root(
+            args, _subvol_exists=_subvol_exists, **kwargs,
+        ) as proc:
+            stdout, stderr = proc.communicate(timeout=timeout, input=input)
+        return subprocess.CompletedProcess(
+            args=proc.args,
+            returncode=proc.returncode,  # always 0 until we support `check`
+            stdout=stdout,
+            stderr=stderr,
+        )
 
     # Future: run_in_image()
 
@@ -244,7 +265,7 @@ class Subvol:
 
     @contextmanager
     def mark_readonly_and_write_sendstream_to_file(
-        self, outfile: 'BytesIO', **kwargs,
+        self, outfile: BinaryIO, **kwargs,
     ) -> Iterator[None]:
         with self._mark_readonly_and_send(stdout=outfile, **kwargs):
             yield

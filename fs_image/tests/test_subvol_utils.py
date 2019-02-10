@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import functools
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -68,6 +69,18 @@ class SubvolTestCase(unittest.TestCase):
         sv.run_as_root(['true'], _subvol_exists=False)
         with self.assertRaisesRegex(AssertionError, 'cwd= is not permitte'):
             sv.run_as_root(['true'], _subvol_exists=False, cwd='.')
+
+    def test_run_as_root_return(self):
+        args = ['bash', '-c', 'echo -n my out; echo -n my err >&2']
+        r = Subvol('/dev/null/no-such-dir').run_as_root(
+            args,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            _subvol_exists=False,
+        )
+        self.assertEqual(['sudo'] + args, r.args)
+        self.assertEqual(0, r.returncode)
+        self.assertEqual(b'my out', r.stdout)
+        self.assertEqual(b'my err', r.stderr)
 
     def test_path(self):
         # We are only going to do path manipulations in this test.
