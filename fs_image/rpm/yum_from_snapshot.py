@@ -119,6 +119,7 @@ import time
 
 from contextlib import contextmanager
 from urllib.parse import urlparse, urlunparse
+from typing import Iterator, List, TextIO
 
 from .common import get_file_logger, check_popen_returncode, Path
 from .yum_conf import YumConfParser
@@ -438,7 +439,11 @@ def yum_from_snapshot(
                 # before `proc.__exit__` calls `wait`, or we'll deadlock.
                 ready_fifo, 'w'
             ) as ready_out, \
-            tempfile.TemporaryDirectory() as unix_sock_td:
+            tempfile.TemporaryDirectory(
+                # This is ugly as sin, but Buck sets $TMP to fairly long
+                # paths, which would cause `AF_UNIX path too long`.
+                dir='/tmp',
+            ) as unix_sock_td:
 
         # To start the repo server we must obtain a socket that belongs to
         # the network namespace of the `yum` container, and we must bring up
