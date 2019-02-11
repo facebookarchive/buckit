@@ -123,7 +123,10 @@ python_unittest(
         100,
         ":dep_graph",
     )],
-    deps = [":dep_graph"],
+    deps = [
+        ":dep_graph",
+        "//fs_image:testlib_temp_subvolumes",
+    ],
 )
 
 python_library(
@@ -165,6 +168,7 @@ image_feature_python_unittest(
     deps = [
         ":dep_graph",
         ":items_for_features",
+        "//fs_image:testlib_temp_subvolumes",
     ],
 )
 

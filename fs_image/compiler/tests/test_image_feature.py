@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import tempfile
+import sys
 import unittest
+
+from tests.temp_subvolumes import TempSubvolumes
 
 from ..dep_graph import DependencyGraph
 from ..items import FilesystemRootItem, RemovePathItem, RpmActionItem
@@ -63,8 +65,9 @@ class ImageFeatureTestCase(unittest.TestCase):
             ),
         ], builders_and_phases)
         phase_items = [i for _, items in builders_and_phases for i in items]
-        with tempfile.TemporaryDirectory() as td:
-            doi = list(dg.gen_dependency_order_items(td))
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('subvol')
+            doi = list(dg.gen_dependency_order_items(subvol.path().decode()))
         self.assertEqual(set(si.ID_TO_ITEM.values()), set(doi + phase_items))
         self.assertEqual(
             len(si.ID_TO_ITEM),

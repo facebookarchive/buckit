@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import tempfile
+import sys
 import unittest
+
+from tests.temp_subvolumes import TempSubvolumes
 
 from ..dep_graph import (
     DependencyGraph, ItemProv, ItemReq, ItemReqsProvs, ValidatedReqsProvs,
@@ -8,7 +10,7 @@ from ..dep_graph import (
 from ..items import (
     CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
 )
-from ..provides import ProvidesDirectory, ProvidesFile
+from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory
 
 
@@ -61,13 +63,19 @@ class ValidateReqsProvsTestCase(unittest.TestCase):
         self.assertEqual(
             ValidatedReqsProvs(PATH_TO_ITEM.values()).path_to_reqs_provs,
             {
+                '/meta': ItemReqsProvs(
+                    item_provs={ItemProv(
+                        ProvidesDoNotAccess(path='/meta'), PATH_TO_ITEM['/']
+                    )},
+                    item_reqs=set(),
+                ),
                 '/': ItemReqsProvs(
                     item_provs={ItemProv(
                         ProvidesDirectory(path='/'), PATH_TO_ITEM['/']
                     )},
                     item_reqs={ItemReq(
                         require_directory('/'), PATH_TO_ITEM['/a/b/c']
-                    )}
+                    )},
                 ),
                 '/a': ItemReqsProvs(
                     item_provs={ItemProv(
@@ -221,8 +229,11 @@ class DependencyOrderItemsTestCase(unittest.TestCase):
         )
         # We had a phase other than PARENT_LAYER, so the dependency sorting
         # will need to inspect the resulting subvolume -- let it be empty.
-        with tempfile.TemporaryDirectory() as td:
-            self.assertEqual([third], list(dg.gen_dependency_order_items(td)))
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('subvol')
+            self.assertEqual([third], list(dg.gen_dependency_order_items(
+                subvol.path().decode(),
+            )))
 
 
 if __name__ == '__main__':

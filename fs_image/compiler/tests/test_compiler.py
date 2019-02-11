@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import itertools
 import os
+import subprocess
 import tempfile
 import unittest
 import unittest.mock
@@ -14,8 +15,6 @@ from . import sample_items as si
 from .mock_subvolume_from_json_file import (
     FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
-
-orig_os_walk = os.walk
 
 
 def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
@@ -32,15 +31,21 @@ def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
     return fn
 
 
-def _os_walk(path, **kwargs):
+_FIND_ARGS = [
+    'find', '-P', '/fake subvolumes dir/SUBVOL', '-printf', '%y %p\\0',
+]
+
+
+def _run_as_root(args, **kwargs):
     '''
     DependencyGraph adds a ParentLayerItem to traverse the subvolume, as
     modified by the phases. This ensures the traversal produces a subvol /
     '''
-    if path == os.path.join(FAKE_SUBVOLS_DIR, 'SUBVOL'):
-        yield (path, [], [])
-    else:
-        yield from orig_os_walk(path, **kwargs)
+    if args[0] == 'find':
+        assert args == _FIND_ARGS, args
+        ret = unittest.mock.Mock()
+        ret.stdout = b'd /fake subvolumes dir/SUBVOL\0'
+        return ret
 
 
 def _os_path_lexists(path):
@@ -65,15 +70,13 @@ class CompilerTestCase(unittest.TestCase):
             os.path.dirname(__file__), 'yum-from-test-snapshot',
         )
 
-    @unittest.mock.patch('os.walk')
     @_subvol_mock_lexists_is_btrfs_and_run_as_root
     @unittest.mock.patch.object(svod, '_btrfs_get_volume_props')
     def _compile(
         self, args, btrfs_get_volume_props, lexists, is_btrfs, run_as_root,
-        os_walk,
     ):
         lexists.side_effect = _os_path_lexists
-        os_walk.side_effect = _os_walk
+        run_as_root.side_effect = _run_as_root
         # We don't have an actual btrfs subvolume, so make up a UUID.
         btrfs_get_volume_props.return_value = {
             'UUID': 'fake uuid', 'Parent UUID': None,
@@ -170,6 +173,7 @@ class CompilerTestCase(unittest.TestCase):
                     b'/fake subvolumes dir/SUBVOL', 'ro', 'true',
                 ],),
             ),
+            ((_FIND_ARGS,), {'stdout': subprocess.PIPE}),
         ]
 
     def _assert_equal_call_sets(self, expected, actual):

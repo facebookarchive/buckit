@@ -119,7 +119,7 @@ import time
 
 from contextlib import contextmanager
 from urllib.parse import urlparse, urlunparse
-from typing import Iterator, List, TextIO
+from typing import Iterator, List, Mapping, TextIO
 
 from .common import get_file_logger, check_popen_returncode, Path
 from .yum_conf import YumConfParser
@@ -128,7 +128,7 @@ log = get_file_logger(__file__)
 
 
 @contextmanager
-def _listen_unix_socket(path: str) -> 'Iterator[socket.socket]':
+def _listen_unix_socket(path: str) -> Iterator[socket.socket]:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lsock:
         lsock.bind(path)
         lsock.listen()
@@ -159,7 +159,7 @@ def _recv_fds(sock, msglen, maxfds, inheritable=False):
 
 @contextmanager
 def _prepare_isolated_yum_conf(
-    inp: 'TextIO', out: tempfile.NamedTemporaryFile,
+    inp: TextIO, out: tempfile.NamedTemporaryFile,
     install_root: Path, host: str, port: int,
 ):
     '''
@@ -221,7 +221,7 @@ def _temp_fifo() -> str:
 
 
 def _isolate_yum_and_wait_until_ready(
-    install_root, dummy_dev, netns_fifo, ready_fifo,
+    install_root, dummy_dev, protected_dir_to_dummy, netns_fifo, ready_fifo,
 ):
     '''
     Isolate yum from the host filesystem. Also, now that we have a network
@@ -294,7 +294,9 @@ def _isolate_yum_and_wait_until_ready(
     # gleefully discarded.
     mount {quoted_dummy_dev} "$install_root"/dev/ -o bind
 
-    # Isolate potentially non-hermetic files and directories, details above.
+    {quoted_protected_dirs}
+
+    # Also protect potentially non-hermetic files.
     for bad_file in \
             /etc/yum.conf \
             /var/log/yum.log \
@@ -309,20 +311,6 @@ def _isolate_yum_and_wait_until_ready(
             echo "Not isolating $bad_file -- does not exist" 1>&2
         fi
     done
-    canary_dir=$(mktemp -d --suffix=_isolated_yum_canary)
-    chmod a-rwx "$canary_dir"
-    for bad_dir in \
-            /etc/yum.repos.d/ \
-            /etc/yum/ \
-            /var/cache/yum/ \
-            /var/lib/yum/ \
-            /etc/pki/rpm-gpg/ \
-            /etc/rpm/ \
-            /var/lib/rpm/ \
-            ; do
-        # No existence check, since I think all of these exist?
-        mount "$canary_dir" "$bad_dir" -o bind
-    done
 
     # Yum also uses the host's /var/tmp, and since I don't trust it to
     # always isolate itself, let's also relocate that.
@@ -331,7 +319,7 @@ def _isolate_yum_and_wait_until_ready(
 
     # Clean up the isolation directories. Since we're running as `root`,
     # `rmdir` feels a lot safer, and also asserts that `yum` did not litter.
-    trap 'rmdir "$canary_dir" "$var_tmp"' EXIT
+    trap 'rmdir "$var_tmp"' EXIT
 
     # Wait for the repo server to be up.
     if [[ "$(cat <&3)" != ready ]] ; then
@@ -346,6 +334,15 @@ def _isolate_yum_and_wait_until_ready(
         quoted_install_root=shlex.quote(install_root.decode()),
         quoted_netns_fifo=shlex.quote(netns_fifo),
         quoted_ready_fifo=shlex.quote(ready_fifo),
+        quoted_protected_dirs='\n'.join(
+            'mount {} {} -o bind,ro'.format(
+                shlex.quote(dummy),
+                (
+                    # Convention: relative for image, or absolute for host.
+                    '' if pd.startswith('/') else '"$install_root"/'
+                ) + shlex.quote(pd),
+            ) for pd, dummy in protected_dir_to_dummy.items()
+        ),
     )]
 
 
@@ -399,10 +396,42 @@ def _dummy_dev() -> str:
         subprocess.run(['sudo', 'rm', '-r', dummy_dev])
 
 
+@contextmanager
+def _dummies_for_protected_dirs(protected_dirs) -> Mapping[str, str]:
+    '''
+    Some locations (e.g.  /meta and mountpoints) should be off-limits to
+    writes by RPMs.  We enforce that by bind-mounting an empty directory on
+    top of each one of them.
+    '''
+    with tempfile.TemporaryDirectory() as td:
+        # NB: There may be duplicates in protected_dirs, so we normalize.
+        yield {os.path.normpath(d): td for d in protected_dirs}
+        # NB: The bind mount is read-only, so this is just paranoia.  If it
+        # were left RW, we'd need to check its owner / permissions too.
+        assert [] == os.listdir(td), f'Some RPM wrote to {protected_dirs}'
+
+
 def yum_from_snapshot(
     *, storage_cfg: str, snapshot_dir: Path, install_root: Path,
-    yum_args: 'List[str]',
+    protected_dirs: List[str], yum_args: List[str],
 ):
+    protected_dirs.extend([
+        # See the `_isolate_yum_and_wait_until_ready` docblock for how (and
+        # why) this list was produced.  All are assumed to exist on the host
+        # -- otherwise, we'd be in the awkard situation of either leaving
+        # them unprotected, or creating them on the host to protect them.
+        '/etc/yum.repos.d/',
+        '/etc/yum/',
+        '/var/cache/yum/',
+        '/var/lib/yum/',
+        '/etc/pki/rpm-gpg/',
+        '/etc/rpm/',
+        '/var/lib/rpm/',
+        # Harcode `IMAGE/meta` because it should ALWAYS be off-limits --
+        # even though the compiler will redundantly tell us to protect it.
+        'meta',
+    ])
+
     # These user-specified arguments could really mess up hermeticity.
     for bad_arg in ['--installroot', '--config', '--setopt', '--downloaddir']:
         for arg in yum_args:
@@ -416,6 +445,9 @@ def yum_from_snapshot(
             ) as ready_fifo, \
             tempfile.NamedTemporaryFile('w', suffix='yum') as out_yum_conf, \
             _dummy_dev() as dummy_dev, \
+            _dummies_for_protected_dirs(
+                protected_dirs,
+            ) as protected_dir_to_dummy, \
             subprocess.Popen([
                 'sudo',
                 # Cannot do --pid or --cgroup without extra work (nspawn).
@@ -423,7 +455,8 @@ def yum_from_snapshot(
                 # all recent `util-linux` releases (since 2.27 circa 2015).
                 'unshare', '--mount', '--uts', '--ipc', '--net',
                 *_isolate_yum_and_wait_until_ready(
-                    install_root, dummy_dev, netns_fifo, ready_fifo,
+                    install_root, dummy_dev, protected_dir_to_dummy,
+                    netns_fifo, ready_fifo,
                 ),
                 'yum-from-snapshot',  # argv[0]
                 'yum',
@@ -460,8 +493,9 @@ def yum_from_snapshot(
             *_make_socket_and_send_via(unix_sock_fd=1),
         ], stdout=lsock.fileno()) as sock_proc, \
                 socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as unix_sock:
-            # Future: add timeout to connect & _recv_fds so that if the
-            # `send_fds` helper crashes, we don't wait forever.
+            # Don't wait forever if the `send_fds` helper crashes.  This is
+            # 3 minutes so we still make progress on overloaded hosts.
+            unix_sock.settimeout(180)
             unix_sock.connect(unix_sock_path)
             _msg, (repo_server_sock_fd,) = _recv_fds(unix_sock, 128, 1)
             repo_server_sock = socket.socket(fileno=repo_server_sock_fd)
@@ -508,6 +542,14 @@ def add_common_yum_args(parser: 'argparse.ArgumentParser'):  # pragma: no cover
             'most users of `yum-from-snapshot` should not install to /.',
     )
     parser.add_argument(
+        '--protected-dir', action='append', default=[],
+        help='When `yum` runs, this directory will have an empty directory '
+            'read-only bind-mounted on top. If the path is absolute, this '
+            'is a host directory. Otherwise, it is relative to '
+            '--install-root. The directory must already exist. This has some '
+            'internal defaults that cannot be un-protected. May be repeated.',
+    )
+    parser.add_argument(
         'yum_args', nargs='+',
         help='Pass these through to `yum`. You will want to use -- before '
             'any argument for `yum` to prevent `yum-from-snapshot` from '
@@ -548,5 +590,6 @@ if __name__ == '__main__':  # pragma: no cover
         storage_cfg=args.storage,
         snapshot_dir=args.snapshot_dir,
         install_root=args.install_root,
+        protected_dirs=args.protected_dir,
         yum_args=args.yum_args,
     )

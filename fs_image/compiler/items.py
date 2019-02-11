@@ -11,17 +11,25 @@ top of `provides.py`.
 '''
 import enum
 import os
+import subprocess
 
-from typing import Iterable, NamedTuple
+from typing import Iterable, NamedTuple, Optional, Set
 
 from .enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField,
 )
-from .provides import ProvidesDirectory, ProvidesFile
+from .provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from .requires import require_directory, require_file
 from .subvolume_on_disk import SubvolumeOnDisk
 
 from subvol_utils import Subvol
+
+# This path is off-limits to regular image operations, it exists only to
+# record image metadata and configuration.  This is at the root, instead of
+# in `etc` because that means that `FilesystemRoot` does not have to provide
+# `etc` and determine its permissions.  In other words, a top-level "meta"
+# directory makes the compiler less opinionated about other image content.
+META_DIR = 'meta'
 
 
 @enum.unique
@@ -52,6 +60,19 @@ class PhaseOrder(enum.Enum):
 
     The operations in (1) are validated, dependency-sorted, and built after
     all of the phases have built.
+
+    IMPORTANT: A new phase implementation MUST:
+      - handle pre-existing protected directories via `_protected_dir_set`
+      - emit `ProvidesDoNotAccess` if it provides new protected directories
+      - ensure that `_protected_dir_set` in future phases knows how to
+        discover these protected directories by inspecting the filesystem.
+    See `ParentLayerItem`, `RemovePathsItem`, and `MountItem` for examples.
+
+    Future: the complexity around protected directories is a symptom of a
+    lack of a strong runtime abstraction.  Specifically, if
+    `Subvol.run_as_root` used mount namespaces and read-only bind mounts to
+    enforce protected directories (as is done today in `yum-from-snapshot`),
+    then it would not be necessary for the compiler to know about them.
     '''
     # This actually creates the subvolume, so it must preced all others.
     PARENT_LAYER = enum.auto()
@@ -117,6 +138,12 @@ def _make_path_normal_relative(orig_d: str) -> str:
     d = os.path.normpath(orig_d).lstrip('/')
     if d == '..' or d.startswith('../'):
         raise AssertionError(f'path {orig_d} cannot start with ../')
+    # This is a directory reserved for image build metadata, so we prevent
+    # regular items from writing to it. `d` is never absolute here.
+    # NB: This check is redundant with `ProvidesDoNotAccess(path=META_DIR)`,
+    # this is just here as a fail-fast backup.
+    if (d + '/').startswith(META_DIR + '/'):
+        raise AssertionError(f'path {orig_d} cannot start with {META_DIR}/')
     return d
 
 
@@ -251,15 +278,20 @@ class HasStatOptions:
         )
 
     def build_stat_options(self, subvol: Subvol, full_target_path: str):
+        # `chmod` lacks a --no-dereference flag to protect us from following
+        # `full_target_path` if it's a symlink.  As far as I know, this
+        # should never occur, so just let the exception fly.
+        subvol.run_as_root(['test', '!', '-L', full_target_path])
         # -R is not a problem since it cannot be the case that we are
-        # creating a directory that already has something inside it.  On the
-        # plus side, it helps with nested directory creation.
+        # creating a directory that already has something inside it.  On
+        # the plus side, it helps with nested directory creation.
         subvol.run_as_root([
             'chmod', '-R', self._mode_impl(),
             full_target_path
         ])
         subvol.run_as_root([
-            'chown', '-R', f'{self.user}:{self.group}', full_target_path,
+            'chown', '--no-dereference', '-R', f'{self.user}:{self.group}',
+            full_target_path,
         ])
 
 
@@ -349,6 +381,32 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
         )
 
 
+def _protected_dir_set(subvol: Optional[Subvol]) -> Set[str]:
+    '''
+    All directories must be relative to the image root, no leading /.
+    `subvol=None` if the subvolume doesn't yet exist (for FilesystemRoot).
+    '''
+    # In the future, this will also return known mountpoints for the subvol.
+    dirs = {META_DIR}
+    # Never absolute: yum-from-snapshot interprets absolute paths as host paths
+    assert not any(d.startswith('/') for d in dirs)
+    return dirs
+
+
+def _path_in_protected_dirs(path: str, protected_dirs: Set[str]) -> bool:
+    # NB: The O-complexity could obviously be lots better, if needed.
+    for prot_dir in protected_dirs:
+        if (path + '/').startswith(prot_dir + '/'):
+            return True
+    return False
+
+
+def _ensure_meta_dir_exists(subvol: Subvol):
+    subvol.run_as_root([
+        'mkdir', '--mode=0755', '--parents', subvol.path(META_DIR),
+    ])
+
+
 class ParentLayerItem(metaclass=ImageItem):
     fields = ['path']
 
@@ -356,18 +414,42 @@ class ParentLayerItem(metaclass=ImageItem):
         return PhaseOrder.PARENT_LAYER
 
     def provides(self):
+        parent_subvol = Subvol(self.path, already_exists=True)
+
+        protected_dirs = _protected_dir_set(parent_subvol)
+        for dirpath in protected_dirs:
+            yield ProvidesDoNotAccess(path=dirpath)
+
         provided_root = False
-        for dirpath, _, filenames in os.walk(self.path):
-            dirpath = os.path.relpath(dirpath, self.path)
-            dir = ProvidesDirectory(path=dirpath)
-            provided_root = provided_root or dir.path == '/'
-            yield dir
-            for filename in filenames:
-                # Future: This provides all symlinks as files, while we
-                # should probably provide symlinks to valid directories
-                # inside the image as directories to be consistent with
-                # SymlinkToDirItem.
-                yield ProvidesFile(path=os.path.join(dirpath, filename))
+        # We need to traverse the parent image as root, so that we have
+        # permission to access everything.
+        for type_and_path in parent_subvol.run_as_root([
+            # -P is the analog of --no-dereference in GNU tools
+            'find', '-P', self.path, '-printf', '%y %p\\0',
+        ], stdout=subprocess.PIPE).stdout.split(b'\0'):
+            if not type_and_path:  # after the trailing \0
+                continue
+            filetype, abspath = type_and_path.decode().split(' ', 1)
+            relpath = os.path.relpath(abspath, self.path)
+
+            # We already "provided" the parent directory above.  Also hide
+            # all its children.
+            if _path_in_protected_dirs(relpath, protected_dirs):
+                continue
+
+            # Future: This provides all symlinks as files, while we should
+            # probably provide symlinks to valid directories inside the
+            # image as directories to be consistent with SymlinkToDirItem.
+            if filetype in ['b', 'c', 'p', 'f', 'l', 's']:
+                yield ProvidesFile(path=relpath)
+            elif filetype == 'd':
+                yield ProvidesDirectory(path=relpath)
+            else:  # pragma: no cover
+                raise AssertionError(f'Unknown {filetype} for {abspath}')
+            if relpath == '.':
+                assert filetype == 'd'
+                provided_root = True
+
         assert provided_root, 'parent layer {} lacks /'.format(self.path)
 
     def requires(self):
@@ -379,7 +461,12 @@ class ParentLayerItem(metaclass=ImageItem):
     ):
         parent, = items
         assert isinstance(parent, ParentLayerItem), parent
-        return lambda sv: sv.snapshot(Subvol(parent.path, already_exists=True))
+
+        def builder(subvol: Subvol):
+            subvol.snapshot(Subvol(parent.path, already_exists=True))
+            _ensure_meta_dir_exists(subvol)
+
+        return builder
 
 
 class FilesystemRootItem(metaclass=ImageItem):
@@ -391,6 +478,8 @@ class FilesystemRootItem(metaclass=ImageItem):
 
     def provides(self):
         yield ProvidesDirectory(path='/')
+        for p in _protected_dir_set(subvol=None):
+            yield ProvidesDoNotAccess(path=p)
 
     def requires(self):
         return ()
@@ -404,10 +493,11 @@ class FilesystemRootItem(metaclass=ImageItem):
 
         def builder(subvol: Subvol):
             subvol.create()
-            # Guarantee standard permissions. This could be made configurable,
+            # Guarantee standard / permissions.  This could be a setting,
             # but in practice, probably any other choice would be wrong.
             subvol.run_as_root(['chmod', '0755', subvol.path()])
             subvol.run_as_root(['chown', 'root:root', subvol.path()])
+            _ensure_meta_dir_exists(subvol)
 
         return builder
 
@@ -429,7 +519,7 @@ class RemovePathAction(enum.Enum):
     if_exists = 'if_exists'
 
 
-class RemovePathItem(HasStatOptions, metaclass=ImageItem):
+class RemovePathItem(metaclass=ImageItem):
     fields = ['path', 'action']
 
     def customize_fields(kwargs):  # noqa: B902
@@ -464,12 +554,20 @@ class RemovePathItem(HasStatOptions, metaclass=ImageItem):
         # early, but again, it doesn't seem worth the complexity.
 
         def builder(subvol: Subvol):
+            protected_dirs = _protected_dir_set(subvol)
             # Reverse-lexicographic order deletes inner paths before
             # deleting the outer paths, thus minimizing conflicts between
             # `remove_paths` items.
             for item in sorted(
                 items, reverse=True, key=lambda i: i.__sort_key(),
             ):
+                if _path_in_protected_dirs(item.path, protected_dirs):
+                    # For META_DIR, this is never reached because of
+                    # _make_path_normal_relative's check, but for other
+                    # protected directories, this is required.
+                    raise AssertionError(
+                        f'Cannot remove protected {item}: {protected_dirs}'
+                    )
                 # This ensures that there are no symlinks in item.path that
                 # might take us outside of the subvolume.  Since recursive
                 # `rm` does not follow symlinks, it is OK if the inode at
@@ -559,6 +657,8 @@ class RpmActionItem(metaclass=ImageItem):
             for action, rpms in action_to_rpms.items():
                 if not rpms:
                     continue
+                # Future: `yum-from-snapshot` is actually designed to run
+                # unprivileged (but we have no nice abstraction for this).
                 subvol.run_as_root([
                     # Since `yum-from-snapshot` variants are generally
                     # Python binaries built from this very repo, in
@@ -575,6 +675,10 @@ class RpmActionItem(metaclass=ImageItem):
                     # sendstream.
                     'env', 'PYTHONDONTWRITEBYTECODE=1',
                     layer_opts.yum_from_snapshot,
+                    *sum((
+                        ['--protected-dir', d]
+                            for d in _protected_dir_set(subvol)
+                    ), []),
                     '--install-root', subvol.path(), '--',
                     RPM_ACTION_TYPE_TO_YUM_CMD[action],
                     # Sort ensures determinism even if `yum` is order-dependent

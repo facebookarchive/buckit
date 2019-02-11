@@ -58,3 +58,9 @@ class ProvidesFile(ProvidesPathObject, metaclass=PathObject):
     'Does not have to be a regular file, just any leaf in the FS tree'
     def matches_IsFile(self, _path_to_reqs_provs, predicate):
         return True
+
+
+class ProvidesDoNotAccess(ProvidesPathObject, metaclass=PathObject):
+    # Deliberately matches no predicates -- this used to mark paths as "off
+    # limits" to further writes.
+    pass

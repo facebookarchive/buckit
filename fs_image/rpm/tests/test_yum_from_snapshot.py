@@ -4,22 +4,38 @@ import tempfile
 import subprocess
 import unittest
 
+from contextlib import contextmanager
+
 from ..common import init_logging, Path
 from .yum_from_test_snapshot import yum_from_test_snapshot
 
+_INSTALL_ARGS = ['install', '--assumeyes', 'rpm-test-carrot', 'rpm-test-mice']
 
 init_logging()
 
 
 class YumFromSnapshotTestCase(unittest.TestCase):
 
-    def test_verify_contents_of_install_from_snapshot(self):
+    @contextmanager
+    def _yum_install(self, *, protected_dirs):
         install_root = Path(tempfile.mkdtemp())
         try:
-            yum_from_test_snapshot(install_root, [
-                'install', '--assumeyes', 'rpm-test-carrot', 'rpm-test-mice',
-            ])
+            # IMAGE_ROOT/meta is always required since it's always protected
+            for pd in set(protected_dirs) | {'meta'}:
+                os.makedirs(install_root / pd)
+            yum_from_test_snapshot(
+                install_root,
+                protected_dirs=protected_dirs,
+                yum_args=_INSTALL_ARGS,
+            )
+            yield install_root
+        finally:
+            assert install_root != '/'
+            # Courtesy of `yum`, the `install_root` is now owned by root.
+            subprocess.run(['sudo', 'rm', '-rf', install_root], check=True)
 
+    def test_verify_contents_of_install_from_snapshot(self):
+        with self._yum_install(protected_dirs=['meta']) as install_root:
             # Remove known content so we can check there is nothing else.
             remove = []
 
@@ -50,10 +66,18 @@ class YumFromSnapshotTestCase(unittest.TestCase):
                 'usr/share/rpm_test', 'usr/share', 'usr',
                 'var/lib', 'var/cache', 'var/log', 'var',
             ], check=True, cwd=install_root)
-            # Fixme: /dev is an artifact of our RPM install process :/
-            self.assertEqual([b'dev'], os.listdir(install_root))
-            self.assertEqual([], os.listdir(install_root / 'dev'))
-        finally:
-            assert install_root != '/'
-            # Courtesy of `yum`, the `install_root` is now owned by root.
-            subprocess.run(['sudo', 'rm', '-rf', install_root], check=True)
+            required_dirs = sorted([b'dev', b'meta'])
+            self.assertEqual(required_dirs, sorted(os.listdir(install_root)))
+            for d in required_dirs:
+                self.assertEqual([], os.listdir(install_root / d))
+
+    def test_fail_to_write_to_protected_dir(self):
+        # Nothing fails with no specified protection, or with /meta:
+        for pd in [[], ['meta']]:
+            with self._yum_install(protected_dirs=pd):
+                pass
+        with self.assertRaises(subprocess.CalledProcessError) as ctx:
+            with self._yum_install(protected_dirs=['usr/share/rpm_test']):
+                pass
+        # It was none other than `yum install` that failed.
+        self.assertEqual(_INSTALL_ARGS, ctx.exception.cmd[-len(_INSTALL_ARGS):])

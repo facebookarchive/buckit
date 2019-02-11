@@ -6,11 +6,17 @@ built by `tests/build_repos.py`.  Used in the image compiler unit tests.
 import json
 import os
 
+from typing import AnyStr, List
+
 from ..common import init_logging, Path
 from ..yum_from_snapshot import add_common_yum_args, yum_from_snapshot
 
 
-def yum_from_test_snapshot(install_root: 'AnyStr', yum_args: 'List[AnyStr]'):
+def yum_from_test_snapshot(
+    install_root: AnyStr,
+    protected_dirs: List[AnyStr],
+    yum_args: List[AnyStr],
+):
     # This works in @mode/opt since the snapshot is baked into the XAR
     snapshot_dir = Path(os.path.dirname(__file__)) / 'snapshot'
     yum_from_snapshot(
@@ -21,6 +27,7 @@ def yum_from_test_snapshot(install_root: 'AnyStr', yum_args: 'List[AnyStr]'):
         }),
         snapshot_dir=snapshot_dir / 'repos',
         install_root=Path(install_root),
+        protected_dirs=protected_dirs,
         yum_args=yum_args,
     )
 
@@ -38,4 +45,4 @@ if __name__ == '__main__':  # pragma: no cover
 
     init_logging()
 
-    yum_from_test_snapshot(args.install_root, args.yum_args)
+    yum_from_test_snapshot(args.install_root, args.protected_dir, args.yum_args)

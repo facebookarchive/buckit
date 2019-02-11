@@ -47,15 +47,18 @@ class AddRemoveConflictTestCase(unittest.TestCase):
     def test_check_layers(self):
         # The parent has a couple of directories.
         self.assertEqual(
-            ['(Dir)', {'a': ['(Dir)', {'b': ['(Dir)', {}]}]}],
+            ['(Dir)', {
+                'a': ['(Dir)', {'b': ['(Dir)', {}]}],
+                'meta': ['(Dir)', {}],
+            }],
             render_sendstream(Subvol(
                 self._resource_subvol('parent').subvolume_path(),
                 already_exists=True
             ).mark_readonly_and_get_sendstream()),
         )
-        # The child is empty because the `remove_paths` cleaned it up.
+        # The child is near-empty because the `remove_paths` cleaned it up.
         self.assertEqual(
-            ['(Dir)', {}],
+            ['(Dir)', {'meta': ['(Dir)', {}]}],
             render_sendstream(Subvol(
                 self._resource_subvol('child').subvolume_path(),
                 already_exists=True
