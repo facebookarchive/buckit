@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 import unittest
@@ -38,7 +39,15 @@ class ImageLayerTestCase(unittest.TestCase):
     @contextmanager
     def target_subvol(self, target):
         with self.subTest(target):
-            with open(TARGET_TO_PATH[target]) as infile:
+            # The mount configuration is very uniform, so we can check it here.
+            with open(TARGET_TO_PATH[target] + '/mountconfig.json') as infile:
+                self.assertEqual({
+                    'build_source': {
+                        'type': 'layer',
+                        'target': '//fs_image/compiler/tests:' + target,
+                    },
+                }, json.load(infile))
+            with open(TARGET_TO_PATH[target] + '/layer.json') as infile:
                 yield SubvolumeOnDisk.from_json_file(
                     infile, self.subvolumes_dir,
                 )

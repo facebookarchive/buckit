@@ -70,7 +70,7 @@ class PackageImageTestCase(unittest.TestCase):
     def test_package_image_as_sendstream(self):
         for format in ['sendstream', 'sendstream.zst']:
             with self._package_image(
-                    self._sibling_path('create_ops.json'), format,
+                self._sibling_path('create_ops.layer/layer.json'), format,
             ) as out_path:
                 self._assert_sendstream_files_equal(
                     self._sibling_path('create_ops-original.sendstream'),
@@ -79,7 +79,7 @@ class PackageImageTestCase(unittest.TestCase):
 
     def test_package_image_as_btrfs_loopback(self):
         with self._package_image(
-            self._sibling_path('create_ops.json'), 'btrfs',
+            self._sibling_path('create_ops.layer/layer.json'), 'btrfs',
         ) as out_path, \
                 Unshare([Namespace.MOUNT, Namespace.PID]) as unshare, \
                 tempfile.TemporaryDirectory() as mount_dir, \

@@ -129,6 +129,11 @@ def image_layer(
         subvol_name = "volume",
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
+    current_target = target_utils.to_label(
+        config.get_current_repo_name(),
+        native.package_name(),
+        name,
+    )
 
     # There are two independent ways to populate the resulting btrfs
     # subvolume: (i) set `from_sendstream` and nothing else, (ii) set other
@@ -164,12 +169,12 @@ def image_layer(
             # `exe` vs `location` is explained in `image_package.py`
             $(exe //fs_image/compiler:subvolume-on-disk) \
               "$subvolumes_dir" \
-              "$subvolume_wrapper_dir/$subvol_name" > "$OUT"
+              "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
         '''.format(from_sendstream = from_sendstream)
     else:
         make_subvol_cmd = _compile_image_features(
-            base_path = native.package_name(),
             rule_name = name,
+            current_target = current_target,
             parent_layer = parent_layer,
             image_feature_kwargs = image_feature_kwargs,
             yum_from_repo_snapshot = yum_from_repo_snapshot,
@@ -178,7 +183,7 @@ def image_layer(
 
     buck_genrule(
         name = name,
-        out = name + ".json",
+        out = "layer",
         type = _get_fbconfig_rule_type(),  # For queries
         # Layers are only usable on the same host that built them, so
         # keep our output JSON out of the distributed Buck cache.  See
@@ -205,27 +210,36 @@ def image_layer(
             subvolume_ver=\\$( "${{binary_path[@]}}" )
             subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
 
+            # Do not touch $OUT until the very end so that if we
+            # accidentally exit early with code 0, the rule still fails.
+            mkdir "$TMP/out"
+            echo {quoted_mountconfig_json} > "$TMP/out/mountconfig.json"
+            # "layer.json" points at the subvolume inside `buck-image-out`.
+            layer_json="$TMP/out/layer.json"
+
             # IMPORTANT: This invalidates and/or deletes any existing
             # subvolume that was produced by the same target.  This is the
             # point of no return.
             #
             # This creates the wrapper directory for the subvolume, and
-            # pre-initializes "$OUT" in a special way to support a form of
-            # refcounting that distinguishes between subvolumes that are
-            # referenced from the Buck cache ("live"), and ones that are
-            # no longer referenced ("dead").  We want to create the
-            # refcount file before starting the build to guarantee that we
-            # have refcount files for partially built images -- this makes
+            # pre-initializes "$layer_json" in a special way to support a
+            # form of refcounting that distinguishes between subvolumes that
+            # are referenced from the Buck cache ("live"), and ones that are
+            # no longer referenced ("dead").  We want to create the refcount
+            # file before starting the build to guarantee that we have
+            # refcount files for partially built images -- this makes
             # debugging failed builds a bit more predictable.
             refcounts_dir=\\$( readlink -f {refcounts_dir_quoted} )
             # `exe` vs `location` is explained in `image_package.py`
             $(exe //fs_image:subvolume-garbage-collector) \
-              --refcounts-dir "$refcounts_dir" \
-              --subvolumes-dir "$subvolumes_dir" \
-              --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
-              --new-subvolume-json "$OUT"
+                --refcounts-dir "$refcounts_dir" \
+                --subvolumes-dir "$subvolumes_dir" \
+                --new-subvolume-wrapper-dir "$subvolume_wrapper_dir" \
+                --new-subvolume-json "$layer_json"
 
             {make_subvol_cmd}
+
+            mv "$TMP/out" "$OUT"  # Allow the rule to succeed.
             '''.format(
                 rule_name_quoted = shell.quote(name),
                 refcounts_dir_quoted = paths.join(
@@ -234,6 +248,17 @@ def image_layer(
                     "buck-out/.volume-refcount-hardlinks/",
                 ),
                 make_subvol_cmd = make_subvol_cmd,
+                # To make layers "image-mountable", provide `mountconfig.json`.
+                quoted_mountconfig_json = shell.quote(struct(
+                    build_source = {
+                        "target": current_target,
+                        # The compiler knows how to resolve layer locations.
+                        # For now, we don't support mounting a subdirectory
+                        # of a layer because that might make packaging more
+                        # complicated, but it could be done.
+                        "type": "layer",
+                    },
+                ).to_json()),
             ),
             volume_min_free_bytes = layer_size_bytes,
             log_description = "{}(name={})".format(
@@ -245,8 +270,8 @@ def image_layer(
     )
 
 def _compile_image_features(
-        base_path,
         rule_name,
+        current_target,
         parent_layer,
         image_feature_kwargs,
         yum_from_repo_snapshot,
@@ -288,28 +313,32 @@ def _compile_image_features(
           --child-feature-json $(location {my_feature_target}) \
           --child-dependencies \
             $(query_targets_and_outputs 'deps({dep_features_query}, 1)') \
-              > "$OUT"
+              > "$layer_json"
     '''.format(
         subvol_name_quoted = shell.quote(subvol_name),
-        parent_layer_json_quoted = "$(location {})".format(parent_layer) if parent_layer else "''",
-        current_target_quoted = shell.quote(target_utils.to_label(
-            config.get_current_repo_name(),
-            base_path,
-            rule_name,
-        )),
+        parent_layer_json_quoted = "$(location {})/layer.json".format(
+            parent_layer,
+        ) if parent_layer else "''",
+        current_target_quoted = shell.quote(current_target),
         my_feature_target = feature_target,
         dep_features_query = dep_features_query,
-        maybe_quoted_yum_from_repo_snapshot_args = "" if not yum_from_repo_snapshot else
-        # In terms of **dependency** structure, we want this
-        # to be `exe` (see `image_package.py` for why).
-        # However the string output of the `exe` macro may
-        # actually be a shell snippet, which would break
-        # here.  To work around this, we add a no-op $(exe)
-        # dependency via `maybe_yum_from_repo_snapshot_dep`.
-        "--yum-from-repo-snapshot $(location {})".format(
-            yum_from_repo_snapshot,
+        maybe_quoted_yum_from_repo_snapshot_args = (
+            "" if not yum_from_repo_snapshot else
+            # In terms of **dependency** structure, we want this
+            # to be `exe` (see `image_package.py` for why).
+            # However the string output of the `exe` macro may
+            # actually be a shell snippet, which would break
+            # here.  To work around this, we add a no-op $(exe)
+            # dependency via `maybe_yum_from_repo_snapshot_dep`.
+            "--yum-from-repo-snapshot $(location {})".format(
+                yum_from_repo_snapshot,
+            )
         ),
-        maybe_yum_from_repo_snapshot_dep = "" if not yum_from_repo_snapshot else "echo $(exe {}) > /dev/null".format(
-            yum_from_repo_snapshot,
+        maybe_yum_from_repo_snapshot_dep = (
+            "" if not yum_from_repo_snapshot else
+            # Ensure that the layer directly depends on the yum target.
+            "echo $(exe {}) > /dev/null".format(
+                yum_from_repo_snapshot,
+            )
         ),
     )

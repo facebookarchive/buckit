@@ -22,7 +22,7 @@ def _wrap_bash_build_in_common_boilerplate(
     # `image_package.bzl`.  We need `binary_path` because the `exe` macro
     # won't get expanded inside a \\$( ...  ) context.
     binary_path=( $(exe //fs_image:artifacts-dir) )
-    artifacts_dir=\\$( "${{binary_path[@]}}"  )
+    artifacts_dir=\\$( "${{binary_path[@]}}" )
 
     # Future-proofing: keep all Buck target subvolumes under
     # "targets/" in the per-repo volume, so that we can easily

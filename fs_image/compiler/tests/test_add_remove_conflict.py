@@ -39,7 +39,7 @@ class AddRemoveConflictTestCase(unittest.TestCase):
         )
 
     def _resource_subvol(self, name: str):
-        with open(self._resource_path(name)) as infile:
+        with open(self._resource_path(name + '/layer.json')) as infile:
             return SubvolumeOnDisk.from_json_file(
                 infile, os.path.join(self.volume_dir, 'targets'),
             )

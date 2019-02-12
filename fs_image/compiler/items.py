@@ -502,11 +502,11 @@ class FilesystemRootItem(metaclass=ImageItem):
         return builder
 
 
-def gen_parent_layer_items(target, parent_layer_path, subvolumes_dir):
-    if not parent_layer_path:
+def gen_parent_layer_items(target, parent_layer_json, subvolumes_dir):
+    if not parent_layer_json:
         yield FilesystemRootItem(from_target=target)  # just provides /
     else:
-        with open(parent_layer_path) as infile:
+        with open(parent_layer_json) as infile:
             yield ParentLayerItem(
                 from_target=target,
                 path=SubvolumeOnDisk.from_json_file(infile, subvolumes_dir)
