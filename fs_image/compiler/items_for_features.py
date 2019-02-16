@@ -58,20 +58,20 @@ def gen_items_for_features(
         with open(feature_path) as f:
             items = replace_targets_by_paths(json.load(f), target_to_path)
 
-            yield from gen_items_for_features(
-                feature_paths=items.pop('features', []),
-                target_to_path=target_to_path,
-            )
+        yield from gen_items_for_features(
+            feature_paths=items.pop('features', []),
+            target_to_path=target_to_path,
+        )
 
-            target = items.pop('target')
-            for key, item_class in key_to_item_class.items():
-                for dct in items.pop(key, []):
-                    try:
-                        yield item_class(from_target=target, **dct)
-                    except Exception as ex:  # pragma: no cover
-                        raise RuntimeError(
-                            f'Failed to process {key}: {dct} from target '
-                            f'{target}, please read the exception above.'
-                        ) from ex
+        target = items.pop('target')
+        for key, item_class in key_to_item_class.items():
+            for dct in items.pop(key, []):
+                try:
+                    yield item_class(from_target=target, **dct)
+                except Exception as ex:  # pragma: no cover
+                    raise RuntimeError(
+                        f'Failed to process {key}: {dct} from target '
+                        f'{target}, please read the exception above.'
+                    ) from ex
 
-            assert not items, f'Unsupported items: {items}'
+        assert not items, f'Unsupported items: {items}'
