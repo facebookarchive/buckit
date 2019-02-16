@@ -512,7 +512,11 @@ class MountItem(metaclass=ImageItem):
         )
         # This is supposed to be the run-time equivalent of `build_source`,
         # but for us it's just an opaque JSON blob that the runtime wants.
-        kwargs['runtime_source'] = cfg.pop('runtime_source', None)
+        # Hack: We serialize this back to JSON since the compiler expects
+        # items to be hashable, and the source WILL contain dicts.
+        kwargs['runtime_source'] = json.dumps(
+            cfg.pop('runtime_source', None), sort_keys=True,
+        )
         kwargs['source'] = None  # Must be set to appease enriched_namedtuple
 
     def provides(self):
@@ -537,7 +541,7 @@ class MountItem(metaclass=ImageItem):
         for name, data in (
             # NB: Not exporting self.mountpoint since it's implicit in the path.
             ('build_source', self.build_source._asdict()),
-            ('runtime_source', self.runtime_source),
+            ('runtime_source', json.loads(self.runtime_source)),
         ):
             procfs_serde.serialize(data, subvol, os.path.join(mount_dir, name))
         subvol.run_as_root(['mkdir', subvol.path(self.mountpoint)])

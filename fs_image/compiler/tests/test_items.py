@@ -300,7 +300,9 @@ class ItemsTestCase(unittest.TestCase):
             mount_meow = MountItem(
                 from_target='t', mountpoint='meow', source=source_dir,
             )
-            self.assertEqual(runtime_source, mount_meow.runtime_source)
+            self.assertEqual(
+                runtime_source, json.loads(mount_meow.runtime_source),
+            )
             with self.assertRaisesRegex(AssertionError, ' could not resolve '):
                 mount_meow.build_source.to_path(
                     target_to_path={}, subvolumes_dir=subvolumes_dir,

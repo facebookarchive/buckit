@@ -220,6 +220,10 @@ image.layer(
             "into_dir": "//",  # Double-slash tests path normalization
         },
     ],
+    # This tells our hypothetical runtime that in order to mount this layer,
+    # it must invoke the "chicken" mount source (which might just download
+    # and unpack a serialized versions of this layer).
+    mount_config = {"runtime_source": {"type": "chicken"}},
 )
 
 image.layer(

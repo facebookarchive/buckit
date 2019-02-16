@@ -37,16 +37,19 @@ class ImageLayerTestCase(unittest.TestCase):
         self.maxDiff = 12345
 
     @contextmanager
-    def target_subvol(self, target):
+    def target_subvol(self, target, mount_config=None):
         with self.subTest(target):
             # The mount configuration is very uniform, so we can check it here.
+            expected_config = {
+                'build_source': {
+                    'type': 'layer',
+                    'target': '//fs_image/compiler/tests:' + target,
+                },
+            }
+            if mount_config:
+                expected_config.update(mount_config)
             with open(TARGET_TO_PATH[target] + '/mountconfig.json') as infile:
-                self.assertEqual({
-                    'build_source': {
-                        'type': 'layer',
-                        'target': '//fs_image/compiler/tests:' + target,
-                    },
-                }, json.load(infile))
+                self.assertEqual(expected_config, json.load(infile))
             with open(TARGET_TO_PATH[target] + '/layer.json') as infile:
                 yield SubvolumeOnDisk.from_json_file(
                     infile, self.subvolumes_dir,
@@ -120,7 +123,10 @@ class ImageLayerTestCase(unittest.TestCase):
     def test_image_layer_targets(self):
         # Future: replace these checks by a more comprehensive test of the
         # image's data & metadata using our `btrfs_diff` library.
-        with self.target_subvol('hello_world_base') as sod:
+        with self.target_subvol(
+            'hello_world_base',
+            mount_config={'runtime_source': {'type': 'chicken'}},
+        ) as sod:
             self._check_hello(sod.subvolume_path())
         with self.target_subvol('parent_layer') as sod:
             self._check_parent(sod.subvolume_path())

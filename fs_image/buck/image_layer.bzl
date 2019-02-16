@@ -127,6 +127,21 @@ def image_layer(
         from_sendstream = None,
         # The name of the btrfs subvolume to create.
         subvol_name = "volume",
+        # Layers can be used in the `mounts` field of an `image.feature`.
+        # This setting affects how **this** layer may be mounted inside
+        # others.
+        #
+        # The default mount config for a layer only provides a
+        # `build_source`, specifying how the layer should be mounted at
+        # development time inside the in-repo `buck-image-out` subtree.
+        #
+        # This argument can set `runtime_source` and `default_mountpoint`.
+        # The former is essential -- to get a layer from `mounts` to be
+        # mounted at container run-time, we have to tell the container agent
+        # how to obtain the layer-to-be-mounted.  This can be done in a
+        # variety of ways, so it's not part of `image.layer` itself, and
+        # must be set from outside.
+        mount_config = None,
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
     current_target = target_utils.to_label(
@@ -180,6 +195,19 @@ def image_layer(
             yum_from_repo_snapshot = yum_from_repo_snapshot,
             subvol_name = subvol_name,
         )
+
+    if mount_config == None:
+        mount_config = {}
+    if "build_source" in mount_config:
+        fail("`build_source` cannot be customized", "mount_config")
+    mount_config["build_source"] = {
+        "target": current_target,
+        # The compiler knows how to resolve layer locations.
+        # For now, we don't support mounting a subdirectory
+        # of a layer because that might make packaging more
+        # complicated, but it could be done.
+        "type": "layer",
+    }
 
     buck_genrule(
         name = name,
@@ -249,16 +277,9 @@ def image_layer(
                 ),
                 make_subvol_cmd = make_subvol_cmd,
                 # To make layers "image-mountable", provide `mountconfig.json`.
-                quoted_mountconfig_json = shell.quote(struct(
-                    build_source = {
-                        "target": current_target,
-                        # The compiler knows how to resolve layer locations.
-                        # For now, we don't support mounting a subdirectory
-                        # of a layer because that might make packaging more
-                        # complicated, but it could be done.
-                        "type": "layer",
-                    },
-                ).to_json()),
+                quoted_mountconfig_json = shell.quote(
+                    struct(**mount_config).to_json(),
+                ),
             ),
             volume_min_free_bytes = layer_size_bytes,
             log_description = "{}(name={})".format(
@@ -292,9 +313,15 @@ def _compile_image_features(
     # See `Implementation notes: Dependency resolution` in `__doc__` -- note
     # that we need no special logic to exclude parent-layer features, since
     # this query does not traverse them anyhow.
-    dep_features_query = "attrfilter(type, image_feature, deps({}))".format(
-        feature_target,
-    )
+    dep_features_query_macro = (
+        # We have two layers of quoting here.  The outer '' groups the query
+        # into a single argument for `query_targets_and_outputs`.  The inner
+        # "" allows = and a few other special characters to be used in layer
+        # target names.
+        """$(query_targets_and_outputs 'deps(""" +
+        """attrfilter(type, image_feature, deps("{}"))""" +
+        """, 1)')"""
+    ).format(feature_target)
 
     return '''
         {maybe_yum_from_repo_snapshot_dep}
@@ -311,8 +338,7 @@ def _compile_image_features(
           {maybe_quoted_yum_from_repo_snapshot_args} \
           --child-layer-target {current_target_quoted} \
           --child-feature-json $(location {my_feature_target}) \
-          --child-dependencies \
-            $(query_targets_and_outputs 'deps({dep_features_query}, 1)') \
+          --child-dependencies {dep_features_query_macro} \
               > "$layer_json"
     '''.format(
         subvol_name_quoted = shell.quote(subvol_name),
@@ -321,7 +347,7 @@ def _compile_image_features(
         ) if parent_layer else "''",
         current_target_quoted = shell.quote(current_target),
         my_feature_target = feature_target,
-        dep_features_query = dep_features_query,
+        dep_features_query_macro = dep_features_query_macro,
         maybe_quoted_yum_from_repo_snapshot_args = (
             "" if not yum_from_repo_snapshot else
             # In terms of **dependency** structure, we want this
