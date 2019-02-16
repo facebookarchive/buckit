@@ -122,7 +122,9 @@ def build_image(args):
             subvol.path().decode(),
             args.subvolumes_dir,
         )
-    except Exception as ex:
+    # The complexity of covering this is high, but the only thing that can
+    # go wrong is a typo in the f-string.
+    except Exception as ex:  # pragma: no cover
         raise RuntimeError(f'Serializing subvolume {subvol.path()}') from ex
 
 

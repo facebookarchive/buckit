@@ -13,9 +13,11 @@ from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
 from .mock_subvolume_from_json_file import (
-    FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
+    TEST_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
+_orig_btrfs_get_volume_props = svod._btrfs_get_volume_props
+FAKE_SUBVOL = 'FAKE_SUBVOL'
 
 def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
     '''
@@ -32,7 +34,7 @@ def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
 
 
 _FIND_ARGS = [
-    'find', '-P', '/fake subvolumes dir/SUBVOL', '-printf', '%y %p\\0',
+    'find', '-P', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}', '-printf', '%y %p\\0',
 ]
 
 
@@ -44,7 +46,7 @@ def _run_as_root(args, **kwargs):
     if args[0] == 'find':
         assert args == _FIND_ARGS, args
         ret = unittest.mock.Mock()
-        ret.stdout = b'd /fake subvolumes dir/SUBVOL\0'
+        ret.stdout = f'd {TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}\0'.encode()
         return ret
 
 
@@ -56,6 +58,13 @@ def _os_path_lexists(path):
     if path.endswith(b'/to/remove'):
         return True
     assert 'AFAIK, os.path.lexists is only used by the `RemovePathItem` tests'
+
+
+def _btrfs_get_volume_props(subvol_path):
+    if subvol_path == os.path.join(TEST_SUBVOLS_DIR, FAKE_SUBVOL):
+        # We don't have an actual btrfs subvolume, so make up a UUID.
+        return {'UUID': 'fake uuid', 'Parent UUID': None}
+    return _orig_btrfs_get_volume_props(subvol_path)
 
 
 class CompilerTestCase(unittest.TestCase):
@@ -77,16 +86,13 @@ class CompilerTestCase(unittest.TestCase):
     ):
         lexists.side_effect = _os_path_lexists
         run_as_root.side_effect = _run_as_root
-        # We don't have an actual btrfs subvolume, so make up a UUID.
-        btrfs_get_volume_props.return_value = {
-            'UUID': 'fake uuid', 'Parent UUID': None,
-        }
+        btrfs_get_volume_props.side_effect = _btrfs_get_volume_props
         # Since we're not making subvolumes, we need this so that
         # `Subvolume(..., already_exists=True)` will work.
         is_btrfs.return_value = True
         return build_image(parse_args([
-            '--subvolumes-dir', FAKE_SUBVOLS_DIR,
-            '--subvolume-rel-path', 'SUBVOL',
+            '--subvolumes-dir', TEST_SUBVOLS_DIR,
+            '--subvolume-rel-path', FAKE_SUBVOL,
             '--yum-from-repo-snapshot', self.yum_path,
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
@@ -104,17 +110,6 @@ class CompilerTestCase(unittest.TestCase):
             RuntimeError, f'{si.T_BASE}:[^ ]* not in {{}}',
         ):
             self._compile([])
-
-    def test_subvol_serialization_error(self):
-        with unittest.mock.patch('socket.getfqdn') as getfqdn:
-            getfqdn.side_effect = Exception('NOPE')
-            with self.assertRaisesRegex(RuntimeError, 'Serializing subvolume'):
-                self._compile([
-                    '--child-dependencies',
-                    *itertools.chain.from_iterable(
-                        si.TARGET_TO_PATH.items()
-                    ),
-                ])
 
     def _compiler_run_as_root_calls(self, *, parent_args):
         '''
@@ -138,8 +133,8 @@ class CompilerTestCase(unittest.TestCase):
             svod._BTRFS_UUID: 'fake uuid',
             svod._BTRFS_PARENT_UUID: None,
             svod._HOSTNAME: 'fake host',
-            svod._SUBVOLUMES_BASE_DIR: FAKE_SUBVOLS_DIR,
-            svod._SUBVOLUME_REL_PATH: 'SUBVOL',
+            svod._SUBVOLUMES_BASE_DIR: TEST_SUBVOLS_DIR,
+            svod._SUBVOLUME_REL_PATH: FAKE_SUBVOL,
         }), res._replace(**{svod._HOSTNAME: 'fake host'}))
         return run_as_root_calls
 
@@ -149,7 +144,7 @@ class CompilerTestCase(unittest.TestCase):
         lexists.side_effect = _os_path_lexists
         is_btrfs.return_value = True
         subvol = subvol_utils.Subvol(
-            f'{FAKE_SUBVOLS_DIR}/SUBVOL',
+            f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}',
             already_exists=True,
         )
         phase_item_ids = set()
@@ -170,7 +165,7 @@ class CompilerTestCase(unittest.TestCase):
             (
                 ([
                     'btrfs', 'property', 'set', '-ts',
-                    b'/fake subvolumes dir/SUBVOL', 'ro', 'true',
+                    f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}'.encode(), 'ro', 'true',
                 ],),
             ),
             ((_FIND_ARGS,), {'stdout': subprocess.PIPE}),
@@ -181,7 +176,17 @@ class CompilerTestCase(unittest.TestCase):
         Check that the expected & actual sets of commands are identical.
         Mock `call` objects are unhashable, so we sort.
         '''
-        for e, a in zip(sorted(expected), sorted(actual)):
+
+        # Compare unittest.mock call lists (which are tuple subclasses) with
+        # tuples.  We need to compare `repr` because direct comparisons
+        # would end up comparing `str` and `bytes` and fail.
+        def tuple_repr(a):
+            return repr(tuple(a))
+
+        for e, a in zip(
+            sorted(expected, key=tuple_repr),
+            sorted(actual, key=tuple_repr),
+        ):
             self.assertEqual(e, a)
 
     def test_compile(self):
@@ -199,7 +204,7 @@ class CompilerTestCase(unittest.TestCase):
              mock_subvolume_from_json_file(self, path=parent) as parent_json:
             # Manually add/remove some commands from the "expected" set to
             # accommodate the fact that we have a parent subvolume.
-            subvol_path = f'{FAKE_SUBVOLS_DIR}/SUBVOL'.encode()
+            subvol_path = f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}'.encode()
             # Our unittest.mock.call objects are (args, kwargs) pairs.
             expected_calls_with_parent = [
                 c for c in expected_calls if c not in [

@@ -93,7 +93,11 @@ python_library(
     name = "mock_subvolume_from_json_file",
     srcs = ["tests/mock_subvolume_from_json_file.py"],
     base_module = "compiler",
-    deps = [":subvolume_on_disk"],
+    deps = [
+        ":subvolume_on_disk",
+        "//fs_image:artifacts_dir",
+        "//fs_image:volume_for_repo",
+    ],
 )
 
 python_library(

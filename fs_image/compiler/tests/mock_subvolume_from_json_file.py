@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
 import os
+import sys
 import tempfile
 import unittest.mock
 
 from contextlib import contextmanager
 
+from artifacts_dir import ensure_per_repo_artifacts_dir_exists
+from volume_for_repo import get_volume_for_current_repo
+
 from ..subvolume_on_disk import SubvolumeOnDisk
 
-FAKE_SUBVOLS_DIR = '/fake subvolumes dir'
+# We need the actual subvolume directory for this mock because the
+# `MountItem` build process in `test_compiler.py` loads a real subvolume
+# through this path (`:hello_world_base`).
+_LOTS_OF_BYTES = 1e8  # Our loopback is sparse, so just make it huge.
+TEST_SUBVOLS_DIR = os.path.join(get_volume_for_current_repo(
+    _LOTS_OF_BYTES, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
+), 'targets')
 
 
 @contextmanager
-def mock_subvolume_from_json_file(test_case, path):
+def mock_subvolume_from_json_file(test_case, path, basename='fake_parent.json'):
     '''
+    This mock only kicks in when `from_json_file` is called on a file with
+    a path with the given `basename`.
+
     This is useful for getting `gen_parent_layer_items` to produce a mock
     subvolume_path() without actually having a JSON file on disk.
 
     A path of `None` means that `from_json_file` is not called.
     '''
+    orig_from_json_file = SubvolumeOnDisk.from_json_file
     with unittest.mock.patch.object(
         SubvolumeOnDisk, 'from_json_file'
     ) as from_json_file:
@@ -27,13 +41,16 @@ def mock_subvolume_from_json_file(test_case, path):
             return
 
         with tempfile.TemporaryDirectory() as tmp:
-            parent_layer_file = os.path.join(tmp, 'parent.json')
+            parent_layer_file = os.path.join(tmp, basename)
             with open(parent_layer_file, 'w') as f:
                 f.write('surprise!')
 
             def check_call(infile, subvolumes_dir):
+                if os.path.basename(infile.name) != basename:
+                    return orig_from_json_file(infile, subvolumes_dir)
+
                 test_case.assertEqual(parent_layer_file, infile.name)
-                test_case.assertEqual(FAKE_SUBVOLS_DIR, subvolumes_dir)
+                test_case.assertEqual(TEST_SUBVOLS_DIR, subvolumes_dir)
 
                 class FakeSubvol:
                     def subvolume_path(self):

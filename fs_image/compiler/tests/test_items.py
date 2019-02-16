@@ -23,7 +23,7 @@ from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory, require_file
 
 from .mock_subvolume_from_json_file import (
-    FAKE_SUBVOLS_DIR, mock_subvolume_from_json_file,
+    TEST_SUBVOLS_DIR, mock_subvolume_from_json_file,
 )
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
@@ -407,13 +407,13 @@ class ItemsTestCase(unittest.TestCase):
         with mock_subvolume_from_json_file(self, path=None):
             self.assertEqual(
                 [FilesystemRootItem(from_target='tgt')],
-                list(gen_parent_layer_items('tgt', None, FAKE_SUBVOLS_DIR)),
+                list(gen_parent_layer_items('tgt', None, TEST_SUBVOLS_DIR)),
             )
 
         with mock_subvolume_from_json_file(self, path='potato') as json_file:
             self.assertEqual(
                 [ParentLayerItem(from_target='T', path='potato')],
-                list(gen_parent_layer_items('T', json_file, FAKE_SUBVOLS_DIR)),
+                list(gen_parent_layer_items('T', json_file, TEST_SUBVOLS_DIR)),
             )
 
     def test_remove_item(self):
