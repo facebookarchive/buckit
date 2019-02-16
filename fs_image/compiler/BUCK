@@ -47,6 +47,27 @@ python_unittest(
 )
 
 python_library(
+    name = "procfs_serde",
+    srcs = ["procfs_serde.py"],
+    base_module = "compiler",
+)
+
+python_unittest(
+    name = "test-procfs-serde",
+    srcs = ["tests/test_procfs_serde.py"],
+    base_module = "compiler",
+    needed_coverage = [(
+        100,
+        ":procfs_serde",
+    )],
+    deps = [
+        ":procfs_serde",
+        "//fs_image:testlib_temp_subvolumes",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
+    ],
+)
+
+python_library(
     name = "requires_provides",
     srcs = [
         "path_object.py",

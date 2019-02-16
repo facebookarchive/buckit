@@ -1,35 +1,13 @@
 #!/usr/bin/env python3
-import functools
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 import unittest.mock
 
 from subvol_utils import Subvol
 
-from .temp_subvolumes import TempSubvolumes
-
-
-def with_temp_subvols(method):
-    '''
-    Any test that needs `self.temp_subvols` muse use this decorator.
-    This is a cleaner alternative to doing this in setUp:
-
-        self.temp_subvols.__enter__()
-        self.addCleanup(self.temp_subvols.__exit__, None, None, None)
-
-    The primary reason this is bad is explained in the TempSubvolumes
-    docblock. It also fails to pass exception info to the __exit__.
-    '''
-
-    @functools.wraps(method)
-    def decorated(self, *args, **kwargs):
-        with TempSubvolumes(sys.argv[0]) as temp_subvols:
-            return method(self, temp_subvols, *args, **kwargs)
-
-    return decorated
+from .temp_subvolumes import with_temp_subvols
 
 
 class SubvolTestCase(unittest.TestCase):

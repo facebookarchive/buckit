@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import contextlib
+import functools
 import os
+import sys
 import tempfile
 
 from typing import AnyStr
@@ -8,6 +10,26 @@ from typing import AnyStr
 from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from subvol_utils import byteme, Subvol
 from volume_for_repo import get_volume_for_current_repo
+
+
+def with_temp_subvols(method):
+    '''
+    A test that needs a TempSubvolumes instance should use this decorator.
+    This is a cleaner alternative to doing this in setUp:
+
+        self.temp_subvols.__enter__()
+        self.addCleanup(self.temp_subvols.__exit__, None, None, None)
+
+    The primary reason this is bad is explained in the TempSubvolumes
+    docblock. It also fails to pass exception info to the __exit__.
+    '''
+
+    @functools.wraps(method)
+    def decorated(self, *args, **kwargs):
+        with TempSubvolumes(sys.argv[0]) as temp_subvols:
+            return method(self, temp_subvols, *args, **kwargs)
+
+    return decorated
 
 
 class TempSubvolumes(contextlib.AbstractContextManager):
