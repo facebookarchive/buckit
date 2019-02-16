@@ -8,7 +8,7 @@ import unittest.mock
 
 import subvol_utils
 
-from ..compiler import parse_args, build_image, LayerOpts
+from ..compiler import build_item, build_image, parse_args, LayerOpts
 from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
@@ -160,7 +160,12 @@ class CompilerTestCase(unittest.TestCase):
 
         for item_id, item in si.ID_TO_ITEM.items():
             if item_id not in phase_item_ids:
-                item.build(subvol)
+                build_item(
+                    item,
+                    subvol=subvol,
+                    target_to_path=si.TARGET_TO_PATH,
+                    subvolumes_dir=TEST_SUBVOLS_DIR,
+                )
         return run_as_root.call_args_list + [
             (
                 ([

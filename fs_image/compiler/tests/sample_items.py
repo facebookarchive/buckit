@@ -2,9 +2,9 @@
 import os
 
 from ..items import (
-    CopyFileItem, FilesystemRootItem, MakeDirsItem, RemovePathAction,
-    RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
-    SymlinkToFileItem, TarballItem,
+    CopyFileItem, FilesystemRootItem, MakeDirsItem, MountItem,
+    RemovePathAction, RemovePathItem, RpmActionItem, RpmAction,
+    SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
 
@@ -13,9 +13,11 @@ T_BASE = '//fs_image/compiler/tests'
 # since that's what we are testing.
 T_DIRS = f'{T_BASE}:feature_dirs'
 T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
+T_MOUNT = f'{T_BASE}:feature_mount'
 T_SYMLINKS = f'{T_BASE}:feature_symlinks'
 T_TAR = f'{T_BASE}:feature_tar_and_rpms'
 T_KITCHEN_SINK = f'{T_BASE}:feature_kitchen_sink'
+T_HELLO_WORLD_BASE = f'{T_BASE}:hello_world_base'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
 
 TARGET_ENV_VAR_PREFIX = 'test_image_feature_path_to_'
@@ -99,6 +101,11 @@ ID_TO_ITEM = {
         from_target=T_TAR,
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
+    ),
+    'meownt': MountItem(
+        from_target=T_MOUNT,
+        mountpoint='meownt',
+        source=TARGET_TO_PATH[T_HELLO_WORLD_BASE],
     ),
     '.remove_if_exists/path/to/remove': RemovePathItem(
         from_target=T_KITCHEN_SINK,

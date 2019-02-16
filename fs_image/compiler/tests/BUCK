@@ -82,6 +82,11 @@ image.feature(
     ],
 )
 
+image.feature(
+    name = "feature_mount",
+    mounts = {"/meownt": ":hello_world_base"},
+)
+
 # Omnibus feature for test-compiler and test-image-feature.  It currently
 # cannot be materialized as an `image.layer` because of `feature_bad_dir`.
 #
@@ -116,6 +121,7 @@ image.feature(
     features = [
         ":feature_bad_dir",
         ":feature_dirs",
+        ":feature_mount",
         ":feature_tar_and_rpms",
         ":feature_symlinks",
     ],
@@ -206,6 +212,7 @@ image.layer(
         ":feature_dirs",
         ":feature_symlinks",
     ],
+    mounts = {"/mounted_hello": ":hello_world_base"},
     parent_layer = ":hello_world_base",
     rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
     yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",

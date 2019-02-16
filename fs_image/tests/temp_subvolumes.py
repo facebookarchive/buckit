@@ -74,7 +74,7 @@ class TempSubvolumes(contextlib.AbstractContextManager):
         self._temp_dir = self._temp_dir_ctx.__enter__().encode()
         return self
 
-    def _rel_path(self, rel_path: AnyStr):
+    def _prep_rel_path(self, rel_path: AnyStr):
         '''
         Ensures subvolumes live under our temporary directory, which
         improves safety, since its permissions ought to be u+rwx to avoid
@@ -93,22 +93,27 @@ class TempSubvolumes(contextlib.AbstractContextManager):
             raise AssertionError(
                 f'{rel_path} must be a subdirectory of {self._temp_dir}'
             )
-        return os.path.join(self._temp_dir, rel_path)
+        abs_path = os.path.join(self._temp_dir, rel_path)
+        try:
+            os.makedirs(os.path.dirname(abs_path))
+        except FileExistsError:
+            pass
+        return abs_path
 
     def create(self, rel_path: AnyStr) -> Subvol:
-        subvol = Subvol(self._rel_path(rel_path))
+        subvol = Subvol(self._prep_rel_path(rel_path))
         subvol.create()
         self.subvols.append(subvol)
         return subvol
 
     def snapshot(self, source: Subvol, dest_rel_path: AnyStr) -> Subvol:
-        dest = Subvol(self._rel_path(dest_rel_path))
+        dest = Subvol(self._prep_rel_path(dest_rel_path))
         dest.snapshot(source)
         self.subvols.append(dest)
         return dest
 
     def caller_will_create(self, rel_path: AnyStr) -> Subvol:
-        subvol = Subvol(self._rel_path(rel_path))
+        subvol = Subvol(self._prep_rel_path(rel_path))
         # If the caller fails to create it, our __exit__ is robust enough
         # to ignore this subvolume.
         self.subvols.append(subvol)

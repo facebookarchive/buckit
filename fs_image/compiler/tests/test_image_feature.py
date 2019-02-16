@@ -79,7 +79,10 @@ class ImageFeatureTestCase(unittest.TestCase):
                 for k, v in si.ID_TO_ITEM.items()
                     if v not in phase_items
         }
-        self.assertEqual(0, id_to_idx['foo/bar'])
+        # `meownt` is not ordered in any way with respect to the `foo/bar` tree
+        self.assertEqual(
+            (1 if id_to_idx['meownt'] == 0 else 0), id_to_idx['foo/bar'],
+        )
         self.assertLess(
             id_to_idx['foo/borf/beep'], id_to_idx['foo/borf/hello_world']
         )

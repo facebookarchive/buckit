@@ -5,7 +5,7 @@ import json
 from typing import Iterable, Mapping, Optional
 
 from .items import (
-    CopyFileItem, MakeDirsItem, RemovePathItem, RpmActionItem,
+    CopyFileItem, MakeDirsItem, MountItem, RemovePathItem, RpmActionItem,
     SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
@@ -44,8 +44,9 @@ def gen_items_for_features(
     target_to_path: Mapping[str, str],
 ):
     key_to_item_class = {
-        'make_dirs': MakeDirsItem,
         'copy_files': CopyFileItem,
+        'make_dirs': MakeDirsItem,
+        'mounts': MountItem,
         'rpms': RpmActionItem,
         'remove_paths': RemovePathItem,
         'symlinks_to_dirs': SymlinkToDirItem,

@@ -102,9 +102,13 @@ python_library(
 
 python_library(
     name = "items",
-    srcs = ["items.py"],
+    srcs = [
+        "items.py",
+        "mount_item.py",
+    ],
     base_module = "compiler",
     deps = [
+        ":procfs_serde",
         ":requires_provides",
         ":subvolume_on_disk",
         "//fs_image:subvol_utils",
@@ -173,9 +177,11 @@ python_library(
 TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_dirs"),
     READ_MY_DOC_image_feature_target("feature_bad_dir"),
-    READ_MY_DOC_image_feature_target("feature_tar_and_rpms"),
+    READ_MY_DOC_image_feature_target("feature_mount"),
     READ_MY_DOC_image_feature_target("feature_symlinks"),
+    READ_MY_DOC_image_feature_target("feature_tar_and_rpms"),
     READ_MY_DOC_image_feature_target("feature_kitchen_sink"),
+    "hello_world_base",
     "hello_world.tar",
 ]
 

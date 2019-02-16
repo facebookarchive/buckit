@@ -71,6 +71,10 @@ class ImageLayerTestCase(unittest.TestCase):
         self.assertTrue(
             os.path.isdir(os.path.join(subvol_path, 'foo/bar/baz')),
         )
+        # :hello_world_base was mounted here
+        self.assertTrue(os.path.exists(
+            os.path.join(subvol_path, 'mounted_hello/hello_world')
+        ))
 
         # :feature_symlinks
         for source, dest in [

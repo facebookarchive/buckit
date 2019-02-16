@@ -154,6 +154,41 @@ def _normalize_make_dirs(make_dirs):
         normalized.append(d)
     return normalized
 
+# Future: We will probably eventually want to accept a dict wherever we
+# currently expect a mount source target path, with the purpose of
+# overriding mount options.  For v0, this is out of scope.  Keep in mind the
+# "inline source spec" concept when implementing this, since inline specs
+# should be readily distinguishable from overrides.
+#
+# Future: for some mount types, we could make this accept "inline" source
+# specs like so:
+#
+#     mounts = {
+#         "/path/to": image.host_mount(  # Note the absence of `name =`
+#             source = "/home/banana/rama",
+#         ),
+#         ...
+#     }
+def _normalize_mounts(target_tagger, mounts):
+    if mounts == None:
+        return []
+
+    normalized = []
+    for mnt in _coerce_dict_to_items(mounts):
+        if types.is_tuple(mnt):
+            if len(mnt) != 2:
+                fail("`mounts` item {} must be (mountpoint, target)".format(mnt))
+            dct = {"mountpoint": mnt[0], "source": mnt[1]}
+        else:
+            if not types.is_string(mnt):
+                fail("`mounts` item must be string, not {}".format(mnt))
+            dct = {"source": mnt}
+        _tag_required_target_key(target_tagger, dct, "source")
+        dct.setdefault("mountpoint")
+        normalized.append(dct)
+
+    return normalized
+
 def _normalize_copy_deps(target_tagger, copy_deps):
     if copy_deps == None:
         return []
@@ -288,6 +323,61 @@ def image_feature(
         #  - tuple: ('into/image_absolute/dir', 'path/to/make')
         #  - dict: {'into_dir': '...', 'path_to_make': '...'}
         make_dirs = None,
+        # An iterable or dictionary of targets that provide in-container
+        # mounts.  Two syntax variants are allowed:
+        #
+        #    # Implies the target-specified "conventional" mount-point.
+        #    mounts = [
+        #        "//path/to:name_of_mount",
+        #        "//path/to:another_mount_name",
+        #    ],
+        #
+        #    # Explicit mount-points, overriding whatever the target
+        #    # recommends as the default.
+        #    mounts = {
+        #        "/mount/point": "//path/to:name_of_mount",
+        #        "/mount/point": "//path/to:name_of_mount",
+        #    }
+        #
+        # Shadowing mountpoints will never be allowed. Additionally, for now:
+        #
+        #   - The mountpoint directory must not exist, and is automatically
+        #     created as empty with root:root u+rwx,og+rx permissions.  If
+        #     needed, we may add a flag to accept pre-existing empty
+        #     mountpoint directories (`remove_paths` is a workaround).
+        #     The motivation for auto-creating the mountpoint is two-fold:
+        #       * This reduces `make_dirs` boilerplate in features with
+        #         `mounts` -- the properties of the mountpoint don't matter.
+        #       * This guarantees the mounpoint is empty.
+        #
+        #   - Nesting mountpoints is forbidden. If support is ever added,
+        #     we should make the intent to nest very explicit (syntax TBD).
+        #
+        #   - All mounts are read-only.
+        #
+        # A mount target, roughly, is a JSON blob with a "type" string, a
+        # "source" location interpretable by that type, and a
+        # "default_mountpoint".  We use targets as mount sources because:
+        #
+        #   - This allows mounts to be materialized, flexibly, at build-time,
+        #     and allows us to provide a cheap "development time" proxy for
+        #     mounts that might be distributed in a more costly way at
+        #     deployment time.
+        #
+        #   - This allows us Buck to cleanly cache mounts fetched from
+        #     package distribution systems -- i.e.  we can use the local
+        #     Buck cache the same way that Docker caches downloaded images.
+        #
+        # Adding a mount has two side effects on the `image.layer`:
+        #   - The mount will be materialized in the `buck-image-out` cache
+        #     of the local repo, so your filesystem acts WYSIWIG.
+        #   - The mount will be recorded in `/meta/private/mount`.  PLEASE,
+        #     do not rely on this serializaation format for now, it will
+        #     change.  That's why it's "private".
+        #
+        # Future: we may need another feature for removing mounts provided
+        # by parent layers.
+        mounts = None,
         # An iterable of targets to copy into the image --
         #  - `source` is the Buck target to copy,
         #  - `dest` is an image-absolute path. We follow the `rsync`
@@ -364,6 +454,7 @@ def image_feature(
         make_dirs = _normalize_make_dirs(make_dirs),
         copy_files =
             _normalize_copy_deps(target_tagger, copy_deps),
+        mounts = _normalize_mounts(target_tagger, mounts),
         tarballs = _normalize_tarballs(target_tagger, tarballs),
         remove_paths = _normalize_remove_paths(remove_paths),
         # It'd be a bit expensive to do any kind of validation of RPM

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import copy
+import json
 import os
 import subprocess
 import sys
@@ -15,12 +16,13 @@ from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
     CopyFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
-    MakeDirsItem, ParentLayerItem, PhaseOrder, RemovePathAction,
+    MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
     RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
     SymlinkToFileItem, TarballItem, _protected_dir_set,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory, require_file
+from ..subvolume_on_disk import SubvolumeOnDisk
 
 from .mock_subvolume_from_json_file import (
     TEST_SUBVOLS_DIR, mock_subvolume_from_json_file,
@@ -183,6 +185,124 @@ class ItemsTestCase(unittest.TestCase):
                     'a': ['(Dir o4:0)', {}],
                 }],
             }], _render_subvol(subvol))
+
+    def test_mount_item_default_mountpoint(self):
+        with tempfile.TemporaryDirectory() as build_source:
+            mount_config = {
+                'build_source': {'type': 'layer', 'target': '//fake:path'},
+            }
+            with open(os.path.join(build_source, 'mountconfig.json'), 'w') as f:
+                json.dump(mount_config, f)
+            # Since our initial mountconfig lacks `default_mountpoint`, the
+            # item requires its `mountpoint` to be set.
+            with self.assertRaisesRegex(AssertionError, 'lacks mountpoint'):
+                MountItem(from_target='t', mountpoint=None, source=build_source)
+
+            # Now, check that the default gets used.
+            mount_config['default_mountpoint'] = 'potato'
+            with open(os.path.join(build_source, 'mountconfig.json'), 'w') as f:
+                json.dump(mount_config, f)
+            self.assertEqual('potato', MountItem(
+                from_target='t', mountpoint=None, source=build_source,
+            ).mountpoint)
+
+    def _check_subvol_mounts_meow(self, subvol):
+        self.assertEqual(['(Dir)', {
+            'meow': ['(Dir)', {}],
+            'meta': ['(Dir)', {'private': ['(Dir)', {'mount': ['(Dir)', {
+                'meow': ['(Dir)', {'MOUNT': ['(Dir)', {
+                    'build_source': ['(Dir)', {
+                        'type': ['(File d6)'],
+                        'target': [f'(File d{len("//fake:path") + 1})'],
+                    }],
+                    'runtime_source': ['(Dir)', {
+                        'so': ['(File d3)'],
+                        'arbitrary': ['(Dir)', {'j': ['(File d4)']}],
+                    }],
+                }]}],
+            }]}]}],
+        }], _render_subvol(subvol))
+        for filename, contents in (
+            ('build_source/type', 'layer\n'),
+            ('build_source/target', '//fake:path\n'),
+            ('runtime_source/so', 'me\n'),
+            ('runtime_source/arbitrary/j', 'son\n'),
+        ):
+            with open(subvol.path(os.path.join(
+                'meta/private/mount/meow/MOUNT', filename,
+            ))) as f:
+                self.assertEqual(contents, f.read())
+
+    def test_mount_item(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes, \
+                tempfile.TemporaryDirectory() as source_dir:
+            runtime_source = {'so': 'me', 'arbitrary': {'j': 'son'}}
+            with open(os.path.join(source_dir, 'mountconfig.json'), 'w') as f:
+                json.dump({
+                    'build_source': {'type': 'layer', 'target': '//fake:path'},
+                    'runtime_source': runtime_source,
+                }, f)
+            self._check_item(
+                MountItem(
+                    from_target='t', mountpoint='can/haz', source=source_dir,
+                ),
+                {ProvidesDoNotAccess(path='can/haz')},
+                {require_directory('can')},
+            )
+
+            # Make a subvolume that we will mount inside `mounter`
+            mountee = temp_subvolumes.create('moun:tee/volume')
+            mountee.run_as_root(['tee', mountee.path('kitteh')], input=b'cheez')
+
+            # Make the JSON file normally in "buck-out" that refers to `mountee`
+            mountee_path = mountee.path().decode()
+            subvolumes_dir = os.path.dirname(os.path.dirname(mountee_path))
+            with open(os.path.join(source_dir, 'layer.json'), 'w') as f:
+                SubvolumeOnDisk.from_subvolume_path(
+                    mountee_path, subvolumes_dir,
+                ).to_json_file(f)
+
+            # Mount <mountee> at <mounter>/meow
+            mounter = temp_subvolumes.create('moun:ter/volume')
+            mount_meow = MountItem(
+                from_target='t', mountpoint='meow', source=source_dir,
+            )
+            self.assertEqual(runtime_source, mount_meow.runtime_source)
+            with self.assertRaisesRegex(AssertionError, ' could not resolve '):
+                mount_meow.build_source.to_path(
+                    target_to_path={}, subvolumes_dir=subvolumes_dir,
+                )
+            mount_meow.build_resolves_targets(
+                subvol=mounter,
+                target_to_path={'//fake:path': source_dir},
+                subvolumes_dir=subvolumes_dir,
+            )
+
+            # The build created the mountpoint, and populated metadata
+            self._check_subvol_mounts_meow(mounter)
+
+            # `mountee` was also mounted at `/meow`
+            with open(mounter.path('meow/kitteh')) as f:
+                self.assertEqual('cheez', f.read())
+
+            # Check that we read back the `mounter` metadata, mark `/meow`
+            # inaccessible, and do not emit a `ProvidesFile` for `kitteh`.
+            pi = ParentLayerItem(from_target='t', path=mounter.path().decode())
+            self._check_item(
+                pi,
+                {
+                    ProvidesDirectory(path='/'),
+                    ProvidesDoNotAccess(path='/meta'),
+                    ProvidesDoNotAccess(path='/meow'),
+                },
+                set(),
+            )
+            # Check that we successfully clone mounts from the parent layer.
+            mounter_child = temp_subvolumes.caller_will_create('child/volume')
+            pi.get_phase_builder([pi], DUMMY_LAYER_OPTS)(mounter_child)
+
+            # The child has the same mount, and the same metadata
+            self._check_subvol_mounts_meow(mounter_child)
 
     def test_symlink(self):
         self._check_item(

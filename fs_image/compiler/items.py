@@ -10,10 +10,14 @@ dependency resolution / installation order, start with the docblock at the
 top of `provides.py`.
 '''
 import enum
+import json
 import os
 import subprocess
 
-from typing import Iterable, NamedTuple, Optional, Set
+from typing import Iterable, Mapping, NamedTuple, Optional, Set
+
+from . import mount_item
+from . import procfs_serde
 
 from .enriched_namedtuple import (
     metaclass_new_enriched_namedtuple, NonConstructibleField,
@@ -381,6 +385,70 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
         )
 
 
+# NB: When we split `items.py`, this can just be merged with `mount_item.py`.
+class MountItem(metaclass=ImageItem):
+    fields = [
+        'mountpoint',
+        ('build_source', NonConstructibleField),
+        ('runtime_source', NonConstructibleField),
+        'source',  # always None, its content moves into NonConstructibleFields
+    ]
+
+    def customize_fields(kwargs):  # noqa: B902
+        with open(os.path.join(kwargs.pop('source'), 'mountconfig.json')) as f:
+            cfg = json.load(f)
+
+        if kwargs.get('mountpoint') is None:  # Missing or None => use default
+            kwargs['mountpoint'] = cfg.get('default_mountpoint')
+            if kwargs['mountpoint'] is None:
+                raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
+        cfg.pop('default_mountpoint', None)  # No longer needed
+        _coerce_path_field_normal_relative(kwargs, 'mountpoint')
+
+        kwargs['build_source'] = mount_item.BuildSource(
+            **cfg.pop('build_source')
+        )
+        # This is supposed to be the run-time equivalent of `build_source`,
+        # but for us it's just an opaque JSON blob that the runtime wants.
+        kwargs['runtime_source'] = cfg.pop('runtime_source', None)
+        kwargs['source'] = None  # Must be set to appease enriched_namedtuple
+
+    def provides(self):
+        # For now, nesting of mounts is not supported, and we certainly
+        # cannot allow regular items to write inside a mount.
+        yield ProvidesDoNotAccess(path=self.mountpoint)
+
+    def requires(self):
+        # We don't require the mountpoint itself since it will be shadowed,
+        # so this item just makes it with default permissions.
+        yield require_directory(os.path.dirname(self.mountpoint))
+
+    def build_resolves_targets(
+        self, *,
+        subvol: Subvol,
+        target_to_path: Mapping[str, str],
+        subvolumes_dir: str,
+    ):
+        mount_dir = os.path.join(
+            mount_item.META_MOUNTS_DIR, self.mountpoint, mount_item.MOUNT_MARKER
+        )
+        for name, data in (
+            # NB: Not exporting self.mountpoint since it's implicit in the path.
+            ('build_source', self.build_source._asdict()),
+            ('runtime_source', self.runtime_source),
+        ):
+            procfs_serde.serialize(data, subvol, os.path.join(mount_dir, name))
+        subvol.run_as_root(['mkdir', subvol.path(self.mountpoint)])
+        subvol.run_as_root([
+            'mount', '-o', 'ro,bind',
+            self.build_source.to_path(
+                target_to_path=target_to_path,
+                subvolumes_dir=subvolumes_dir,
+            ),
+            subvol.path(self.mountpoint),
+        ])
+
+
 def _protected_dir_set(subvol: Optional[Subvol]) -> Set[str]:
     '''
     All directories must be relative to the image root, no leading /.
@@ -388,8 +456,11 @@ def _protected_dir_set(subvol: Optional[Subvol]) -> Set[str]:
     '''
     # In the future, this will also return known mountpoints for the subvol.
     dirs = {META_DIR}
+    if subvol is not None:
+        for mountpoint in mount_item.mountpoints_from_subvol_meta(subvol):
+            dirs.add(mountpoint.lstrip('/'))
     # Never absolute: yum-from-snapshot interprets absolute paths as host paths
-    assert not any(d.startswith('/') for d in dirs)
+    assert not any(d.startswith('/') for d in dirs), dirs
     return dirs
 
 
@@ -463,7 +534,10 @@ class ParentLayerItem(metaclass=ImageItem):
         assert isinstance(parent, ParentLayerItem), parent
 
         def builder(subvol: Subvol):
-            subvol.snapshot(Subvol(parent.path, already_exists=True))
+            parent_subvol = Subvol(parent.path, already_exists=True)
+            subvol.snapshot(parent_subvol)
+            # This assumes that the parent has everything mounted already.
+            mount_item.clone_mounts(parent_subvol, subvol)
             _ensure_meta_dir_exists(subvol)
 
         return builder

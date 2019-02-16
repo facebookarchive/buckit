@@ -84,8 +84,26 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
+def build_item(item, *, subvol, target_to_path, subvolumes_dir):
+    '''
+    Hack to avoid updating ALL items' build() to take unused args.
+    Future: hide all these args inside a BuildContext struct instead,
+    pass it to `Item.build`, and remove this function.
+    '''
+    if hasattr(item, 'build_resolves_targets'):
+        assert not hasattr(item, 'build'), item
+        item.build_resolves_targets(
+            subvol=subvol,
+            target_to_path=target_to_path,
+            subvolumes_dir=subvolumes_dir,
+        )
+    else:
+        item.build(subvol)
+
+
 def build_image(args):
     subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
+    target_to_path = make_target_path_map(args.child_dependencies)
 
     dep_graph = DependencyGraph(itertools.chain(
         gen_parent_layer_items(
@@ -95,7 +113,7 @@ def build_image(args):
         ),
         gen_items_for_features(
             feature_paths=[args.child_feature_json],
-            target_to_path=make_target_path_map(args.child_dependencies),
+            target_to_path=target_to_path,
         ),
     ))
     layer_opts = LayerOpts(
@@ -111,7 +129,12 @@ def build_image(args):
     # We cannot validate or sort `ImageItem`s until the phases are
     # materialized since the items may depend on the output of the phases.
     for item in dep_graph.gen_dependency_order_items(subvol.path().decode()):
-        item.build(subvol)
+        build_item(
+            item,
+            subvol=subvol,
+            target_to_path=target_to_path,
+            subvolumes_dir=args.subvolumes_dir,
+        )
     # Build artifacts should never change.
     subvol.set_readonly(True)
 
