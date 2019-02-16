@@ -4,16 +4,26 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule", "buck_sh_binary")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("//fs_image/buck:image.bzl", "image")
+
+# The rule `hello_world.tar` must be deterministic to be used in images.
+hello_tar_hash = (
+    "sha256:" +
+    "dd83365abc69fe39990096a9396d9d2d6fbf75f849ab1640a10fdf9614d8d03d"
+)
+
+buck_sh_binary(
+    name = "hello_world_tar_generator.sh",
+    main = "hello_world_tar_generator.sh",
+)
 
 buck_genrule(
     name = "hello_world.tar",
     out = "hello_world.tar",
-    bash = """d=`mktemp -d`; trap 'rm -rf "$d"' EXIT; """ +
-           "touch \"$d\"/hello_world; " +
-           "tar --owner=root --group=root -C \"$d\" -cf \"$OUT\" .",
+    bash = '$(exe :hello_world_tar_generator.sh) "\$(basename $OUT)" ' +
+           "\$(dirname $OUT)",
 )
 
 # The next two targets exercise:
@@ -74,8 +84,13 @@ image.feature(
         "rpm-test-milk": "remove_if_exists",
     },
     tarballs = [
-        (":hello_world.tar", "foo/borf"),
         {
+            "hash": hello_tar_hash,
+            "into_dir": "foo/borf",
+            "tarball": ":hello_world.tar",
+        },
+        {
+            "hash": hello_tar_hash,
             "into_dir": "foo",
             "tarball": ":hello_world.tar",
         },
@@ -194,7 +209,17 @@ image.layer(
 
 image.layer(
     name = "hello_world_base",
-    tarballs = [(":hello_world.tar", "//")],
+    tarballs = [
+        {
+            "generator": ":hello_world_tar_generator.sh",
+            # Most generators would not have this API wart of externally
+            # specifying the output filename.  This mis-feature only exists
+            # to exercise `generator_args`.
+            "generator_args": ["hello_world.tar"],
+            "hash": hello_tar_hash,
+            "into_dir": "//",  # Double-slash tests path normalization
+        },
+    ],
 )
 
 image.layer(
@@ -234,8 +259,13 @@ image.layer(
     ],
     parent_layer = ":parent_layer",
     tarballs = [
-        (":hello_world.tar", "/foo/extracted_hello"),
         {
+            "hash": hello_tar_hash,
+            "into_dir": "/foo/extracted_hello",
+            "tarball": ":hello_world.tar",
+        },
+        {
+            "hash": hello_tar_hash,
             "into_dir": "/foo/more_extracted_hello",
             "tarball": ":hello_world.tar",
         },

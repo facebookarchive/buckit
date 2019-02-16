@@ -6,7 +6,7 @@ from typing import Iterable, Mapping, Optional
 
 from .items import (
     CopyFileItem, MakeDirsItem, MountItem, RemovePathItem, RpmActionItem,
-    SymlinkToDirItem, SymlinkToFileItem, TarballItem,
+    SymlinkToDirItem, SymlinkToFileItem, tarball_item_factory,
 )
 
 
@@ -34,16 +34,16 @@ def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
         }
     elif type(x) is list:
         return [replace_targets_by_paths(v, target_to_path) for v in x]
-    elif type(x) in [int, float, str]:
+    elif type(x) in [int, float, str, bool]:
         return x
-    assert False, 'Unknown {type(x)} for {x}'  # pragma: no cover
+    assert False, f'Unknown {type(x)} for {x}'  # pragma: no cover
 
 
 def gen_items_for_features(
-    feature_paths: Iterable[str],
+    *, exit_stack, feature_paths: Iterable[str],
     target_to_path: Mapping[str, str],
 ):
-    key_to_item_class = {
+    key_to_item_factory = {
         'copy_files': CopyFileItem,
         'make_dirs': MakeDirsItem,
         'mounts': MountItem,
@@ -51,7 +51,7 @@ def gen_items_for_features(
         'remove_paths': RemovePathItem,
         'symlinks_to_dirs': SymlinkToDirItem,
         'symlinks_to_files': SymlinkToFileItem,
-        'tarballs': TarballItem,
+        'tarballs': lambda **kwargs: tarball_item_factory(exit_stack, **kwargs),
     }
 
     for feature_path in feature_paths:
@@ -59,15 +59,16 @@ def gen_items_for_features(
             items = replace_targets_by_paths(json.load(f), target_to_path)
 
         yield from gen_items_for_features(
+            exit_stack=exit_stack,
             feature_paths=items.pop('features', []),
             target_to_path=target_to_path,
         )
 
         target = items.pop('target')
-        for key, item_class in key_to_item_class.items():
+        for key, item_factory in key_to_item_factory.items():
             for dct in items.pop(key, []):
                 try:
-                    yield item_class(from_target=target, **dct)
+                    yield item_factory(from_target=target, **dct)
                 except Exception as ex:  # pragma: no cover
                     raise RuntimeError(
                         f'Failed to process {key}: {dct} from target '

@@ -5,7 +5,7 @@ import os
 import subprocess
 
 from typing import AnyStr, Iterable
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 
 
 # Bite me, Python3.
@@ -23,6 +23,20 @@ def init_logging(*, debug: bool=False):
         format='%(levelname)s %(name)s %(asctime)s %(message)s',
         level=logging.DEBUG if debug else logging.INFO,
     )
+
+
+# contextlib.nullcontext is 3.7+ but we are on 3.6 for now. This has to be a
+# class since it should be multi-use.
+class nullcontext(AbstractContextManager):
+
+    def __init__(self, val=None):
+        self._val = val
+
+    def __enter__(self):
+        return self._val
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return None  # Do not suppress exceptions
 
 
 def check_popen_returncode(proc: subprocess.Popen):

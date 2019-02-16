@@ -44,6 +44,7 @@ load(
     "target_utils",
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":crc32.bzl", "hex_crc32")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -211,16 +212,112 @@ def _normalize_tarballs(target_tagger, tarballs):
         return []
 
     normalized = []
-    for t in _coerce_dict_to_items(tarballs):
-        if types.is_tuple(t):
-            if len(t) != 2:
-                fail(
-                    "tarballs tuples must have the form: " +
-                    "(tarball_target, destination_dir)",
-                )
-            t = {"into_dir": t[1], "tarball": t[0]}
-        _tag_required_target_key(target_tagger, t, "tarball")
-        normalized.append(t)
+    for d in _coerce_dict_to_items(tarballs):
+        if not types.is_dict(d):
+            fail("`tarballs` must contain only dicts")
+
+        # Skylark linters crash on seeing the XOR operator :/
+        if (("generator" in d) + ("tarball" in d)) != 1:
+            fail("Exactly one of `generator`, `tarball` must be set")
+        if "generator_args" in d and "generator" not in d:
+            fail("Got `generator_args` without `generator`")
+
+        if "tarball" in d:
+            _tag_required_target_key(target_tagger, d, "tarball")
+        else:
+            # We have to wrap the target specified by `generator` to convert
+            # its run-time dependencies to build-time dependencies.
+            #
+            # Specifically, to build `image.layer` we must run `generator`.
+            # Due to Buck limitations, `image.layer` cannot directly take on
+            # runtime dependencies (more on that below), so the wrapper does
+            # that for us.
+            #
+            # Here is what would go wrong if we just passed `generator`
+            # directly to `image.layer`.
+            #
+            #  - `image.layer` will use $(query_targets_and_outputs) to find
+            #    the output path for the `generator` target.
+            #
+            #  - Suppose that the generator's source code CHANGED since the
+            #    last time our layer was built.
+            #
+            #  - Furthermore, suppose that the output of the generator
+            #    is a thin wrapper, such as what happens with in-place
+            #    Python executables in @mode/dev.  Even though the
+            #    FUNCTIONALITY of the Python executable has changed, the
+            #    actual build output will remain the same.
+            #
+            #  - At this point, the output path that's included in the bash
+            #    command of the layer's genrule has NOT changed.  The file
+            #    referred to by that output path has NOT changed.  Only its
+            #    run-time dependencies (the in-place symlinks to the actual
+            #    `.py` files) have changed.  Therefore, as far as build-time
+            #    dependencies of the layer are concerned, the layer does not
+            #    need to re-build: the inputs of the layer genrule are
+            #    bitwise-identical to the inputs before any changes to the
+            #    generator source code.
+            #
+            #    In other words, although the generator WOULD get rebuilt
+            #    due to source code changes, the layer that depends on the
+            #    generator WOULD NOT get rebuilt, because it does not
+            #    consider the `.py` files inside the in-place Python
+            #    link-tree to be build-time inputs.  Those are runtime
+            #    dependencies.  Peruse the docs here for a Buck perspective:
+            #    https://github.com/facebook/buck/blob/master/src/com/facebook/
+            #    buck/core/rules/attr/HasRuntimeDeps.java
+            #
+            # We could avoid the wrapper if we could add the generator as a
+            # **runtime dependency** to the `image.layer` genrule.  However,
+            # Buck does not make this possible.  It is possible to add
+            # runtime dependencies on targets that are KNOWN to the
+            # `image.layer` macro at parse time, since one could then use
+            # `$(exe)` -- which says "rebuild me if the mentioned target's
+            # runtime dependencies have changed".  But because we want to
+            # support composition of layers via features, `$(exe)` does not
+            # help -- the layer has to discover its features' dependencies
+            # via a query.  Unfortunately, Buck's query facilities of today
+            # only allow making build-time dependencies (not runtime
+            # dependencies).  So supporting the right API would require a
+            # change in Buck.  Either of these would do:
+            #
+            #   - Support adding query-determined runtime dependencies to
+            #     genrules -- via a special-purpose macro, a macro modifier,
+            #     or a rule attribute.
+            #
+            #   - Support Bazel-style providers, which would let the layer
+            #     implementation directly access the data collated by its
+            #     features.  Then, the layer could just issue $(exe) macros
+            #     for all generator targets.  NB: This would bring a build
+            #     speed win, too.
+            generator = target_tagger.normalize_target(d.pop("generator"))
+            wrap_generator = "tarball_wrap_generator_" + hex_crc32(generator)
+            buck_genrule(
+                name = wrap_generator,
+                cacheable = False,
+                bash = '''
+cat >> "$TMP/out" <<'EOF'
+#!/bin/bash
+exec $(exe {generator}) "$@"
+EOF
+echo "# New output each build: \\$(date) $$ $PID $RANDOM $RANDOM" >> "$TMP/out"
+chmod a+rx "$TMP/out"
+mv "$TMP/out" "$OUT"
+                '''.format(generator = generator),
+                out = "wrapper.sh",
+            )
+            d["generator"] = _tag_target(target_tagger, ":" + wrap_generator)
+
+        if "hash" not in d:
+            fail(
+                "To ensure that tarballs are repo-hermetic, you must pass " +
+                '`hash = "algorithm:hexdigest"` (checked via Python hashlib)',
+            )
+
+        d.setdefault("generator_args", [])
+        d.setdefault("force_root_ownership", False)
+
+        normalized.append(d)
     return normalized
 
 def _normalize_remove_paths(remove_paths):
@@ -391,15 +488,50 @@ def image_feature(
         #  - tuple: ('//target/to/copy', 'image_absolute/dir')
         #  - dict: {'source': '//target/to/copy', 'dest': 'image_absolute/dir'}
         copy_deps = None,
-        # An iterable of tarballs to extract inside the image --
-        #  - `tarball` is a Buck target that outputs a tarball. You may
-        #    want to look at `export_file`, `buck_genrule`, or `custom_rule`.
-        #  - `dest` is an image-absolute path to a directory that gets
-        #    created by another `image_feature` item.
-        # Order is not signficant, the image compiler will sort the actions
-        # automatically.  Supported item formats:
-        #  - tuple: ('//target/tarball/to_extract', 'image_absolute/dir')
-        #  - dict: {'tarball': '//toextract', 'into_dir': 'image_absolute/dir'}
+        # An iterable of tarballs to extract inside the image.
+        #
+        # Each item must specify EXACTLY ONE of `tarball`, `generator`:
+        #
+        #   - EITHER: `tarball`, a Buck target that outputs a tarball.  You
+        #     might consider `export_file` or `genrule`.
+        #
+        #   - OR: `generator`, a path to an executable target, which
+        #     will run every time the layer is built.  It is supposed to
+        #     generate a deterministic tarball.  The script's contract is:
+        #       * Its arguments are the strings from `generator_args`,
+        #         followed by one last argument that is a path to an
+        #         `image.layer`-provided temporary directory, into which the
+        #         generator must write its tarball.
+        #       * The generator must print the filename of the tarball,
+        #         followed by a single newline, to stdout.  The filename
+        #         MUST be relative to the provided temporary directory.
+        #
+        # In deciding between `tarball` and `generator*`, you are trading
+        # off disk space in the Buck cache for the resources (e.g. latency,
+        # CPU usage, or network usage) needed to re-generate the tarball.
+        # For example, using `generator*` is a good choice when it simply
+        # performs a download from a fast immutable blob store.
+        #
+        # Note that a single script can potentially be used both as a
+        # generator, and to produce cached artifacts, see how the compiler
+        # test `TARGETS` uses `hello_world_tar_generator.sh` in a genrule.
+        #
+        # Additionally, every item must contain these keys:
+        #   - `hash`, of the format `<python hashlib algo>:<hex digest>`,
+        #     which is the hash of the content of the tarball before any
+        #     decompression or unpacking.
+        #   - `into_dir`, the destination of the unpacked tarball in the
+        #     image.  This is an image-absolute path to a directory that
+        #     must be created by another `image_feature` item.
+        #
+        # As with other `image.feature` items, order is not signficant, the
+        # image compiler will sort the items automatically.  Tarball items
+        # must be dicts -- example:
+        #     {
+        #         'hash': 'sha256:deadbeef...',
+        #         'into_dir': 'image_absolute/dir',
+        #         'tarball': '//target/to:extract',
+        #     }
         tarballs = None,
         # An iterable of paths to files or directories to (recursively)
         # remove from the layer.  These are allowed to remove paths

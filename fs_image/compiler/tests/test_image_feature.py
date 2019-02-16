@@ -23,14 +23,16 @@ class ImageFeatureTestCase(unittest.TestCase):
         self.assertEqual(
             {v for k, v in si.ID_TO_ITEM.items() if k != '/'},
             set(gen_items_for_features(
-                [si.TARGET_TO_PATH[root_feature_target]],
-                si.TARGET_TO_PATH,
+                exit_stack=None,  # unused, no `generator` TarballItems
+                feature_paths=[si.TARGET_TO_PATH[root_feature_target]],
+                target_to_path=si.TARGET_TO_PATH,
             )),
         )
         # Fail if some target fails to resolve to a path
         with self.assertRaisesRegex(RuntimeError, f'{si.T_BASE}:[^ ]* not in'):
             list(gen_items_for_features(
-                [si.TARGET_TO_PATH[root_feature_target]],
+                exit_stack=None,  # unused, no `generator` TarballItems
+                feature_paths=[si.TARGET_TO_PATH[root_feature_target]],
                 target_to_path={},
             ))
 

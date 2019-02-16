@@ -7,6 +7,8 @@ from ..items import (
     SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
+HELLO_TAR_HASH = 'sha256:' \
+    'dd83365abc69fe39990096a9396d9d2d6fbf75f849ab1640a10fdf9614d8d03d'
 
 T_BASE = '//fs_image/compiler/tests'
 # Use the "debug", human-readable forms of the image_feature targets here,
@@ -96,11 +98,15 @@ ID_TO_ITEM = {
         from_target=T_TAR,
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo/borf',
+        hash=HELLO_TAR_HASH,
+        force_root_ownership=False,
     ),
     'foo/hello_world': TarballItem(
         from_target=T_TAR,
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         into_dir='foo',
+        hash=HELLO_TAR_HASH,
+        force_root_ownership=False,
     ),
     'meownt': MountItem(
         from_target=T_MOUNT,

@@ -15,6 +15,8 @@ import itertools
 import os
 import sys
 
+from contextlib import ExitStack
+
 from subvol_utils import Subvol
 
 from .dep_graph import DependencyGraph
@@ -105,38 +107,44 @@ def build_image(args):
     subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
     target_to_path = make_target_path_map(args.child_dependencies)
 
-    dep_graph = DependencyGraph(itertools.chain(
-        gen_parent_layer_items(
-            args.child_layer_target,
-            args.parent_layer_json,
-            args.subvolumes_dir,
-        ),
-        gen_items_for_features(
-            feature_paths=[args.child_feature_json],
-            target_to_path=target_to_path,
-        ),
-    ))
-    layer_opts = LayerOpts(
-        layer_target=args.child_layer_target,
-        yum_from_snapshot=args.yum_from_repo_snapshot,
-    )
-    # Creating all the builders up-front lets the phases validate their input
-    for builder in [
-        builder_maker(items, layer_opts)
-            for builder_maker, items in dep_graph.ordered_phases()
-    ]:
-        builder(subvol)
-    # We cannot validate or sort `ImageItem`s until the phases are
-    # materialized since the items may depend on the output of the phases.
-    for item in dep_graph.gen_dependency_order_items(subvol.path().decode()):
-        build_item(
-            item,
-            subvol=subvol,
-            target_to_path=target_to_path,
-            subvolumes_dir=args.subvolumes_dir,
+    # This stack allows build items to hold temporary state on disk.
+    with ExitStack() as exit_stack:
+        dep_graph = DependencyGraph(itertools.chain(
+            gen_parent_layer_items(
+                args.child_layer_target,
+                args.parent_layer_json,
+                args.subvolumes_dir,
+            ),
+            gen_items_for_features(
+                exit_stack=exit_stack,
+                feature_paths=[args.child_feature_json],
+                target_to_path=target_to_path,
+            ),
+        ))
+        layer_opts = LayerOpts(
+            layer_target=args.child_layer_target,
+            yum_from_snapshot=args.yum_from_repo_snapshot,
         )
-    # Build artifacts should never change.
-    subvol.set_readonly(True)
+        # Creating all the builders up-front lets phases validate their input
+        for builder in [
+            builder_maker(items, layer_opts)
+                for builder_maker, items in dep_graph.ordered_phases()
+        ]:
+            builder(subvol)
+        # We cannot validate or sort `ImageItem`s until the phases are
+        # materialized since the items may depend on the output of the phases.
+        for item in dep_graph.gen_dependency_order_items(
+            subvol.path().decode()
+        ):
+            build_item(
+                item,
+                subvol=subvol,
+                target_to_path=target_to_path,
+                subvolumes_dir=args.subvolumes_dir,
+            )
+        # Build artifacts should never change. Run this BEFORE the exit_stack
+        # cleanup to enforce that the cleanup does not touch the image.
+        subvol.set_readonly(True)
 
     try:
         return SubvolumeOnDisk.from_subvolume_path(
