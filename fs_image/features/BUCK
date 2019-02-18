@@ -9,5 +9,19 @@ load("//fs_image/buck:image.bzl", "image")
 #    the considerable space savings justifies the loss of debuggability.
 image.feature(
     name = "rpm_cleanup",
-    remove_paths = ["/var/cache/yum"],
+    remove_paths = {"/var/cache/yum": "if_exists"},
+)
+
+# Remove filesystem items that should ONLY be created at runtime, but might
+# have leaked into an image at build-time due to bugs.  If an image is
+# constructed only using supported `image.feature` and `image.layer`
+# operations, this clean-up should not be be necessary.  However, this can
+# be useful for assimilating foreign-built images.
+image.feature(
+    name = "build_artifact_cleanup",
+    # Since we generally build images for containers, we should make sure
+    # that they do NOT contain a machine-id.  The concern is that the fixed
+    # machine ID would leak into other filesystem artifacts, which would
+    # then break when the machine-id inevitably gets changed at run-time.
+    remove_paths = {"/etc/machine-id": "if_exists"},
 )
