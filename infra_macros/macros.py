@@ -89,11 +89,7 @@ load("@fbcode_macros//build_defs:sphinx_wiki.bzl", "sphinx_wiki")
 load("@fbcode_macros//build_defs:swig_library.bzl", "swig_library")
 
 
-macros_py_dir = paths.dirname(__file__)
-MACRO_LIB_DIR = paths.join(macros_py_dir, 'macro_lib')
-
-
-include_defs('//{}/constants.py'.format(MACRO_LIB_DIR), 'constants')
+include_defs('//tools/build/buck/infra_macros/macro_lib/constants.py', 'constants')
 
 __all__ = []
 
