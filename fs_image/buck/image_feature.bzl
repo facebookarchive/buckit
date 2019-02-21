@@ -45,6 +45,7 @@ load(
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
+load(":wrap_runtime_deps.bzl", "wrap_runtime_deps_as_build_time_deps")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -207,7 +208,7 @@ def _normalize_copy_deps(target_tagger, copy_deps):
         normalized.append(d)
     return normalized
 
-def _normalize_tarballs(target_tagger, tarballs):
+def _normalize_tarballs(target_tagger, tarballs, visibility):
     if tarballs == None:
         return []
 
@@ -225,88 +226,18 @@ def _normalize_tarballs(target_tagger, tarballs):
         if "tarball" in d:
             _tag_required_target_key(target_tagger, d, "tarball")
         else:
-            # We have to wrap the target specified by `generator` to convert
-            # its run-time dependencies to build-time dependencies.
-            #
-            # Specifically, to build `image.layer` we must run `generator`.
-            # Due to Buck limitations, `image.layer` cannot directly take on
-            # runtime dependencies (more on that below), so the wrapper does
-            # that for us.
-            #
-            # Here is what would go wrong if we just passed `generator`
-            # directly to `image.layer`.
-            #
-            #  - `image.layer` will use $(query_targets_and_outputs) to find
-            #    the output path for the `generator` target.
-            #
-            #  - Suppose that the generator's source code CHANGED since the
-            #    last time our layer was built.
-            #
-            #  - Furthermore, suppose that the output of the generator
-            #    is a thin wrapper, such as what happens with in-place
-            #    Python executables in @mode/dev.  Even though the
-            #    FUNCTIONALITY of the Python executable has changed, the
-            #    actual build output will remain the same.
-            #
-            #  - At this point, the output path that's included in the bash
-            #    command of the layer's genrule has NOT changed.  The file
-            #    referred to by that output path has NOT changed.  Only its
-            #    run-time dependencies (the in-place symlinks to the actual
-            #    `.py` files) have changed.  Therefore, as far as build-time
-            #    dependencies of the layer are concerned, the layer does not
-            #    need to re-build: the inputs of the layer genrule are
-            #    bitwise-identical to the inputs before any changes to the
-            #    generator source code.
-            #
-            #    In other words, although the generator WOULD get rebuilt
-            #    due to source code changes, the layer that depends on the
-            #    generator WOULD NOT get rebuilt, because it does not
-            #    consider the `.py` files inside the in-place Python
-            #    link-tree to be build-time inputs.  Those are runtime
-            #    dependencies.  Peruse the docs here for a Buck perspective:
-            #    https://github.com/facebook/buck/blob/master/src/com/facebook/
-            #    buck/core/rules/attr/HasRuntimeDeps.java
-            #
-            # We could avoid the wrapper if we could add the generator as a
-            # **runtime dependency** to the `image.layer` genrule.  However,
-            # Buck does not make this possible.  It is possible to add
-            # runtime dependencies on targets that are KNOWN to the
-            # `image.layer` macro at parse time, since one could then use
-            # `$(exe)` -- which says "rebuild me if the mentioned target's
-            # runtime dependencies have changed".  But because we want to
-            # support composition of layers via features, `$(exe)` does not
-            # help -- the layer has to discover its features' dependencies
-            # via a query.  Unfortunately, Buck's query facilities of today
-            # only allow making build-time dependencies (not runtime
-            # dependencies).  So supporting the right API would require a
-            # change in Buck.  Either of these would do:
-            #
-            #   - Support adding query-determined runtime dependencies to
-            #     genrules -- via a special-purpose macro, a macro modifier,
-            #     or a rule attribute.
-            #
-            #   - Support Bazel-style providers, which would let the layer
-            #     implementation directly access the data collated by its
-            #     features.  Then, the layer could just issue $(exe) macros
-            #     for all generator targets.  NB: This would bring a build
-            #     speed win, too.
+            # The generator may be in a different directory, so make the
+            # target path normal to ensure the hashing is deterministic.
             generator = target_tagger.normalize_target(d.pop("generator"))
-            wrap_generator = "tarball_wrap_generator_" + hex_crc32(generator)
-            buck_genrule(
-                name = wrap_generator,
-                cacheable = False,
-                bash = '''
-cat >> "$TMP/out" <<'EOF'
-#!/bin/bash
-exec $(exe {generator}) "$@"
-EOF
-echo "# New output each build: \\$(date) $$ $PID $RANDOM $RANDOM" >> "$TMP/out"
-chmod a+rx "$TMP/out"
-mv "$TMP/out" "$OUT"
-                '''.format(generator = generator),
-                out = "wrapper.sh",
+            wrapped_generator = "tarball_wrap_generator_" + hex_crc32(generator)
+
+            # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
+            wrap_runtime_deps_as_build_time_deps(
+                name = wrapped_generator,
+                target = generator,
+                visibility = visibility,
             )
-            d["generator"] = _tag_target(target_tagger, ":" + wrap_generator)
+            d["generator"] = _tag_target(target_tagger, ":" + wrapped_generator)
 
         if "hash" not in d:
             fail(
@@ -587,7 +518,7 @@ def image_feature(
         copy_files =
             _normalize_copy_deps(target_tagger, copy_deps),
         mounts = _normalize_mounts(target_tagger, mounts),
-        tarballs = _normalize_tarballs(target_tagger, tarballs),
+        tarballs = _normalize_tarballs(target_tagger, tarballs, visibility),
         remove_paths = _normalize_remove_paths(remove_paths),
         # It'd be a bit expensive to do any kind of validation of RPM
         # names right here, since we'd need the repo snapshot to decide

@@ -1,13 +1,29 @@
 load(":defs.bzl", "fake_macro_library")
 
+# IMPORTANT: If you add new `.bzl` files or dependencies in `fs_image/`,
+# make sure their dependency structure is reflected below.  Just run `grep
+# 'load(":'` from `fs_image/`, and visually compare with the below.  Future:
+# this could easily be automated in the style of Bistro's
+# `targets_to_cmake_lists.py`.
+
 # The following rules are "fake" in the sense that their build artifacts are
 # actually discarded.  However, they are required to trigger automatic
 # builds and tests on changes to the macro library, so we do need to keep
 # them up-to-date (each rule type implicitly depends on one of these).
 
 fake_macro_library(
+    name = "crc32",
+    srcs = ["crc32.bzl"],
+)
+
+fake_macro_library(
     name = "image_utils",
     srcs = ["image_utils.bzl"],
+)
+
+fake_macro_library(
+    name = "wrap_runtime_deps",
+    srcs = ["wrap_runtime_deps.bzl"],
 )
 
 fake_macro_library(
@@ -19,6 +35,10 @@ fake_macro_library(
 fake_macro_library(
     name = "image_feature",
     srcs = ["image_feature.bzl"],
+    deps = [
+        ":crc32",
+        ":wrap_runtime_deps",
+    ],
 )
 
 fake_macro_library(
