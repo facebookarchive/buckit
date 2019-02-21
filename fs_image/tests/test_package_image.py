@@ -8,11 +8,10 @@ import unittest
 from contextlib import contextmanager
 from typing import Iterator
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from btrfs_diff.tests.render_subvols import render_sendstream
+from find_built_subvol import subvolumes_dir
 from package_image import package_image, Format
 from unshare import Namespace, nsenter_as_root, Unshare
-from volume_for_repo import get_volume_for_current_repo
 
 
 class PackageImageTestCase(unittest.TestCase):
@@ -22,12 +21,7 @@ class PackageImageTestCase(unittest.TestCase):
         unittest.util._MAX_LENGTH = 12345
         self.maxDiff = 12345
 
-        self.subvolumes_dir = os.path.join(
-            get_volume_for_current_repo(
-                1e8, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
-            ),
-            'targets',
-        )
+        self.subvolumes_dir = subvolumes_dir(sys.argv[0])
         # Works in @mode/opt since the files of interest are baked into the XAR
         self.my_dir = os.path.dirname(__file__)
 

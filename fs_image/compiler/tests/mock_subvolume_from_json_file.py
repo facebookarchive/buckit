@@ -6,18 +6,14 @@ import unittest.mock
 
 from contextlib import contextmanager
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
-from volume_for_repo import get_volume_for_current_repo
+from find_built_subvol import subvolumes_dir
 
 from ..subvolume_on_disk import SubvolumeOnDisk
 
 # We need the actual subvolume directory for this mock because the
 # `MountItem` build process in `test_compiler.py` loads a real subvolume
 # through this path (`:hello_world_base`).
-_LOTS_OF_BYTES = 1e8  # Our loopback is sparse, so just make it huge.
-TEST_SUBVOLS_DIR = os.path.join(get_volume_for_current_repo(
-    _LOTS_OF_BYTES, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
-), 'targets')
+TEST_SUBVOLS_DIR = subvolumes_dir()
 
 
 @contextmanager

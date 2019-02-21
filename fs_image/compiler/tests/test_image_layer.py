@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 import json
 import os
-import sys
 import unittest
 
 from contextlib import contextmanager
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from btrfs_diff.tests.render_subvols import render_sendstream
 from btrfs_diff.tests.demo_sendstreams_expected import render_demo_subvols
-from subvol_utils import Subvol
-from volume_for_repo import get_volume_for_current_repo
-
-from ..subvolume_on_disk import SubvolumeOnDisk
+from find_built_subvol import find_built_subvol
 
 
 TARGET_ENV_VAR_PREFIX = 'test_image_layer_path_to_'
@@ -26,12 +21,6 @@ TARGET_TO_PATH = {
 class ImageLayerTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.subvolumes_dir = os.path.join(
-            get_volume_for_current_repo(
-                1e8, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
-            ),
-            'targets',
-        )
         # More output for easier debugging
         unittest.util._MAX_LENGTH = 12345
         self.maxDiff = 12345
@@ -50,10 +39,7 @@ class ImageLayerTestCase(unittest.TestCase):
                 expected_config.update(mount_config)
             with open(TARGET_TO_PATH[target] + '/mountconfig.json') as infile:
                 self.assertEqual(expected_config, json.load(infile))
-            with open(TARGET_TO_PATH[target] + '/layer.json') as infile:
-                yield SubvolumeOnDisk.from_json_file(
-                    infile, self.subvolumes_dir,
-                )
+            yield find_built_subvol(TARGET_TO_PATH[target])
 
     def _check_hello(self, subvol_path):
         with open(os.path.join(subvol_path, 'hello_world')) as hello:
@@ -126,17 +112,17 @@ class ImageLayerTestCase(unittest.TestCase):
         with self.target_subvol(
             'hello_world_base',
             mount_config={'runtime_source': {'type': 'chicken'}},
-        ) as sod:
-            self._check_hello(sod.subvolume_path())
-        with self.target_subvol('parent_layer') as sod:
-            self._check_parent(sod.subvolume_path())
+        ) as subvol:
+            self._check_hello(subvol.path().decode())
+        with self.target_subvol('parent_layer') as subvol:
+            self._check_parent(subvol.path().decode())
             # Cannot check this in `_check_parent`, since that gets called
             # by `_check_child`, but the RPM gets removed in the child.
             self.assertTrue(os.path.isfile(os.path.join(
-                sod.subvolume_path(), 'usr/share/rpm_test/carrot.txt',
+                subvol.path().decode(), 'usr/share/rpm_test/carrot.txt',
             )))
-        with self.target_subvol('child_layer') as sod:
-            self._check_child(sod.subvolume_path())
+        with self.target_subvol('child_layer') as subvol:
+            self._check_child(subvol.path().decode())
 
     def test_layer_from_demo_sendstreams(self):
         # `btrfs_diff.demo_sendstream` produces a subvolume send-stream with
@@ -153,11 +139,8 @@ class ImageLayerTestCase(unittest.TestCase):
         #  - Currently, `mutate_ops` also uses `--no-data`, which would
         #    break this test of idempotence.
         for op in ['create_ops']:
-            with self.target_subvol(op) as sod:
+            with self.target_subvol(op) as sv:
                 self.assertEqual(
                     render_demo_subvols(**{op: True}),
-                    render_sendstream(
-                        Subvol(sod.subvolume_path(), already_exists=True)
-                            .mark_readonly_and_get_sendstream(),
-                    ),
+                    render_sendstream(sv.mark_readonly_and_get_sendstream()),
                 )

@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from btrfs_diff.tests.render_subvols import render_sendstream
+from find_built_subvol import find_built_subvol, volume_dir
 from subvol_utils import Subvol
-from volume_for_repo import get_volume_for_current_repo
 
 from ..compiler import parse_args, build_image
 from ..subvolume_on_disk import SubvolumeOnDisk
@@ -24,10 +22,6 @@ def _test_feature_target(feature_target):
 class AddRemoveConflictTestCase(unittest.TestCase):
 
     def setUp(self):
-        lots_of_bytes = 1e8  # Our loopback is sparse, so just make it huge.
-        self.volume_dir = get_volume_for_current_repo(
-            lots_of_bytes, ensure_per_repo_artifacts_dir_exists(sys.argv[0]),
-        )
         # More output for easier debugging
         unittest.util._MAX_LENGTH = 12345
         self.maxDiff = 12345
@@ -38,12 +32,6 @@ class AddRemoveConflictTestCase(unittest.TestCase):
             os.path.dirname(__file__), 'data/' + name,
         )
 
-    def _resource_subvol(self, name: str):
-        with open(self._resource_path(name + '/layer.json')) as infile:
-            return SubvolumeOnDisk.from_json_file(
-                infile, os.path.join(self.volume_dir, 'targets'),
-            )
-
     def test_check_layers(self):
         # The parent has a couple of directories.
         self.assertEqual(
@@ -51,23 +39,21 @@ class AddRemoveConflictTestCase(unittest.TestCase):
                 'a': ['(Dir)', {'b': ['(Dir)', {}]}],
                 'meta': ['(Dir)', {}],
             }],
-            render_sendstream(Subvol(
-                self._resource_subvol('parent').subvolume_path(),
-                already_exists=True
+            render_sendstream(find_built_subvol(
+                self._resource_path('parent')
             ).mark_readonly_and_get_sendstream()),
         )
         # The child is near-empty because the `remove_paths` cleaned it up.
         self.assertEqual(
             ['(Dir)', {'meta': ['(Dir)', {}]}],
-            render_sendstream(Subvol(
-                self._resource_subvol('child').subvolume_path(),
-                already_exists=True
+            render_sendstream(find_built_subvol(
+                self._resource_path('child')
             ).mark_readonly_and_get_sendstream()),
         )
 
     def test_conflict(self):
         # Future: de-duplicate this with TempSubvolumes, perhaps?
-        tmp_parent = os.path.join(self.volume_dir, 'tmp')
+        tmp_parent = os.path.join(volume_dir(), 'tmp')
         try:
             os.mkdir(tmp_parent)
         except FileExistsError:

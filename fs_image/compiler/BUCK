@@ -95,8 +95,7 @@ python_library(
     base_module = "compiler",
     deps = [
         ":subvolume_on_disk",
-        "//fs_image:artifacts_dir",
-        "//fs_image:volume_for_repo",
+        "//fs_image:find_built_subvol",
     ],
 )
 
@@ -262,9 +261,7 @@ python_unittest(
     par_style = "zip",  # "fastzip" would break :volume_for_repo in @mode/opt
     # As with `test-image-feature`, we cannot get `image_layer.py` coverage.
     deps = [
-        ":subvolume_on_disk",
-        "//fs_image:artifacts_dir",
-        "//fs_image:volume_for_repo",
+        "//fs_image:find_built_subvol",
         "//fs_image/btrfs_diff:testlib_demo_sendstreams",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
@@ -291,10 +288,7 @@ python_unittest(
     },
     deps = [
         ":compiler",
-        ":subvolume_on_disk",
-        "//fs_image:artifacts_dir",
-        "//fs_image:subvol_utils",
-        "//fs_image:volume_for_repo",
+        "//fs_image:find_built_subvol",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )

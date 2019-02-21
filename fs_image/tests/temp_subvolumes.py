@@ -7,9 +7,8 @@ import tempfile
 
 from typing import AnyStr
 
-from artifacts_dir import ensure_per_repo_artifacts_dir_exists
+from find_built_subvol import volume_dir
 from subvol_utils import byteme, Subvol
-from volume_for_repo import get_volume_for_current_repo
 
 
 def with_temp_subvols(method):
@@ -56,9 +55,7 @@ class TempSubvolumes(contextlib.AbstractContextManager):
     def __init__(self, path_in_repo):
         self.subvols = []
         # The 'tmp' subdirectory simplifies cleanup of leaked temp subvolumes
-        volume_tmp_dir = os.path.join(get_volume_for_current_repo(
-            1e8, ensure_per_repo_artifacts_dir_exists(path_in_repo),
-        ), 'tmp')
+        volume_tmp_dir = os.path.join(volume_dir(path_in_repo), 'tmp')
         try:
             os.mkdir(volume_tmp_dir)
         except FileExistsError:

@@ -15,9 +15,8 @@ python_library(
     ],
     base_module = "",
     deps = [
-        ":artifacts_dir",
+        ":find_built_subvol",
         ":subvol_utils",
-        ":volume_for_repo",
     ],
 )
 
@@ -103,6 +102,39 @@ python_library(
     name = "subvolume_garbage_collector",
     srcs = ["subvolume_garbage_collector.py"],
     base_module = "",
+)
+
+python_library(
+    name = "find_built_subvol",
+    srcs = ["find_built_subvol.py"],
+    base_module = "",
+    deps = [
+        ":artifacts_dir",
+        ":subvol_utils",
+        ":volume_for_repo",
+        "//fs_image/compiler:subvolume_on_disk",
+    ],
+)
+
+python_binary(
+    name = "find-built-subvol",
+    main_module = "find_built_subvol",
+    deps = [":find_built_subvol"],
+)
+
+python_unittest(
+    name = "test-find-built-subvol",
+    srcs = ["tests/test_find_built_subvol.py"],
+    base_module = "",
+    needed_coverage = [(
+        100,
+        ":find_built_subvol",
+    )],
+    par_style = "xar",  # "fastzip" won't work because of `set_up_volume.sh`
+    resources = {
+        "//fs_image/compiler/tests:hello_world_base": "tests/hello_world_base",
+    },
+    deps = [":find_built_subvol"],
 )
 
 export_file(
@@ -202,10 +234,9 @@ python_unittest(
         TEST_TARGET_PREFIX + "create_ops": "tests/create_ops.layer",
     },
     deps = [
-        ":artifacts_dir",
+        ":find_built_subvol",
         ":package-image-library",
         ":unshare",
-        ":volume_for_repo",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )
