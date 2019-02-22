@@ -19,6 +19,10 @@ python_library(
 # A similar dummy rule used by the Java tests.
 java_library(
     name = "infra_macros_java",
+    java_versions = [
+        "11",
+        "8",
+    ],
     resources = (
         glob([
             "macro_lib/**/*.py",
