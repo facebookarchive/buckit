@@ -30,9 +30,10 @@ class ImageLayerTestCase(unittest.TestCase):
         with self.subTest(target):
             # The mount configuration is very uniform, so we can check it here.
             expected_config = {
+                'is_directory': True,
                 'build_source': {
                     'type': 'layer',
-                    'target': '//fs_image/compiler/tests:' + target,
+                    'source': '//fs_image/compiler/tests:' + target,
                 },
             }
             if mount_config:

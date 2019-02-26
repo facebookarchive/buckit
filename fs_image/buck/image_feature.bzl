@@ -156,37 +156,51 @@ def _normalize_make_dirs(make_dirs):
         normalized.append(d)
     return normalized
 
-# Future: We will probably eventually want to accept a dict wherever we
-# currently expect a mount source target path, with the purpose of
-# overriding mount options.  For v0, this is out of scope.  Keep in mind the
-# "inline source spec" concept when implementing this, since inline specs
-# should be readily distinguishable from overrides.
-#
-# Future: for some mount types, we could make this accept "inline" source
-# specs like so:
-#
-#     mounts = {
-#         "/path/to": image.host_mount(  # Note the absence of `name =`
-#             source = "/home/banana/rama",
-#         ),
-#         ...
-#     }
 def _normalize_mounts(target_tagger, mounts):
     if mounts == None:
         return []
 
     normalized = []
     for mnt in _coerce_dict_to_items(mounts):
+        dct = {"mount_config": None, "mountpoint": None, "target": None}
+        source = None
         if types.is_tuple(mnt):
             if len(mnt) != 2:
-                fail("`mounts` item {} must be (mountpoint, target)".format(mnt))
-            dct = {"mountpoint": mnt[0], "source": mnt[1]}
+                fail((
+                    "`mounts` item {} must be " +
+                    "(mountpoint, target OR dict)"
+                ).format(mnt))
+            dct["mountpoint"] = mnt[0]
+            source = mnt[1]
         else:
-            if not types.is_string(mnt):
-                fail("`mounts` item must be string, not {}".format(mnt))
-            dct = {"source": mnt}
-        _tag_required_target_key(target_tagger, dct, "source")
-        dct.setdefault("mountpoint")
+            source = mnt
+
+        if types.is_string(source):
+            dct["target"] = source
+            _tag_required_target_key(target_tagger, dct, "target")
+        elif types.is_dict(source):
+            # At present, we only accept dicts that carry an inline mount
+            # config (identical to the `mountconfig.json` of a mountable
+            # target, but without the overhead of having an on-disk target
+            # output). These two equivalent examples illustrate the usage:
+            #
+            #     mounts = {"/path/to": image.host_dir_mount(
+            #         source = "/home/banana/rama",
+            #     )}
+            #
+            #     mounts = [image.host_dir_mount(
+            #         mountpoint = "/path/to",
+            #         source = "/home/banana/rama",
+            #     )]
+            #
+            # In the future, we might accept other keys here, e.g. to
+            # override mount options or similar.
+            if sorted(list(source.keys())) != ["mount_config"]:
+                fail("bad keys in `mounts` item {}".format(mnt))
+            dct["mount_config"] = source["mount_config"]
+        else:
+            fail("`mounts` item {} lacks a mount source".format(mnt))
+
         normalized.append(dct)
 
     return normalized
@@ -352,7 +366,7 @@ def image_feature(
         #  - dict: {'into_dir': '...', 'path_to_make': '...'}
         make_dirs = None,
         # An iterable or dictionary of targets that provide in-container
-        # mounts.  Two syntax variants are allowed:
+        # mounts of subtrees or files.  Two* syntax variants are allowed:
         #
         #    # Implies the target-specified "conventional" mount-point.
         #    mounts = [
@@ -369,13 +383,13 @@ def image_feature(
         #
         # Shadowing mountpoints will never be allowed. Additionally, for now:
         #
-        #   - The mountpoint directory must not exist, and is automatically
-        #     created as empty with root:root u+rwx,og+rx permissions.  If
+        #   - The mountpoint must not exist, and is automatically created as
+        #     an empty directory or file with root:root ownership.  If
         #     needed, we may add a flag to accept pre-existing empty
-        #     mountpoint directories (`remove_paths` is a workaround).
-        #     The motivation for auto-creating the mountpoint is two-fold:
-        #       * This reduces `make_dirs` boilerplate in features with
-        #         `mounts` -- the properties of the mountpoint don't matter.
+        #     mountpoints (`remove_paths` is a workaround).  The motivation
+        #     for auto-creating the mountpoint is two-fold:
+        #       * This reduces boilerplate in features with `mounts` -- the
+        #         properties of the mountpoint don't matter.
         #       * This guarantees the mounpoint is empty.
         #
         #   - Nesting mountpoints is forbidden. If support is ever added,
@@ -398,10 +412,14 @@ def image_feature(
         #
         # Adding a mount has two side effects on the `image.layer`:
         #   - The mount will be materialized in the `buck-image-out` cache
-        #     of the local repo, so your filesystem acts WYSIWIG.
+        #     of the local repo, so your filesystem acts as WYSIWIG.
         #   - The mount will be recorded in `/meta/private/mount`.  PLEASE,
         #     do not rely on this serializaation format for now, it will
         #     change.  That's why it's "private".
+        #
+        # * There is actually a third syntax that is accepted in order to
+        #   support helper functions for declaring mounts -- see
+        #   `_image_host_mount` for an example.
         #
         # Future: we may need another feature for removing mounts provided
         # by parent layers.

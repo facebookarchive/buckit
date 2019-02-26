@@ -11,6 +11,7 @@ top of `provides.py`.
 '''
 import enum
 import hashlib
+import itertools
 import json
 import os
 import subprocess
@@ -36,8 +37,10 @@ from subvol_utils import Subvol
 # in `etc` because that means that `FilesystemRoot` does not have to provide
 # `etc` and determine its permissions.  In other words, a top-level "meta"
 # directory makes the compiler less opinionated about other image content.
-META_DIR = 'meta'
-
+#
+# NB: The trailing slash is significant, making this a protected directory,
+# not a protected file.
+META_DIR = 'meta/'
 
 @enum.unique
 class PhaseOrder(enum.Enum):
@@ -69,17 +72,17 @@ class PhaseOrder(enum.Enum):
     all of the phases have built.
 
     IMPORTANT: A new phase implementation MUST:
-      - handle pre-existing protected directories via `_protected_dir_set`
-      - emit `ProvidesDoNotAccess` if it provides new protected directories
-      - ensure that `_protected_dir_set` in future phases knows how to
-        discover these protected directories by inspecting the filesystem.
+      - handle pre-existing protected paths via `_protected_path_set`
+      - emit `ProvidesDoNotAccess` if it provides new protected paths
+      - ensure that `_protected_path_set` in future phases knows how to
+        discover these protected paths by inspecting the filesystem.
     See `ParentLayerItem`, `RemovePathsItem`, and `MountItem` for examples.
 
-    Future: the complexity around protected directories is a symptom of a
-    lack of a strong runtime abstraction.  Specifically, if
-    `Subvol.run_as_root` used mount namespaces and read-only bind mounts to
-    enforce protected directories (as is done today in `yum-from-snapshot`),
-    then it would not be necessary for the compiler to know about them.
+    Future: the complexity around protected paths is a symptom of a lack of
+    a strong runtime abstraction.  Specifically, if `Subvol.run_as_root`
+    used mount namespaces and read-only bind mounts to enforce protected
+    paths (as is done today in `yum-from-snapshot`), then it would not be
+    necessary for the compiler to know about them.
     '''
     # This actually creates the subvolume, so it must preced all others.
     PARENT_LAYER = enum.auto()
@@ -149,8 +152,8 @@ def _make_path_normal_relative(orig_d: str) -> str:
     # regular items from writing to it. `d` is never absolute here.
     # NB: This check is redundant with `ProvidesDoNotAccess(path=META_DIR)`,
     # this is just here as a fail-fast backup.
-    if (d + '/').startswith(META_DIR + '/'):
-        raise AssertionError(f'path {orig_d} cannot start with {META_DIR}/')
+    if (d + '/').startswith(META_DIR):
+        raise AssertionError(f'path {orig_d} cannot start with {META_DIR}')
     return d
 
 
@@ -493,31 +496,62 @@ class MountItem(metaclass=ImageItem):
         'mountpoint',
         ('build_source', NonConstructibleField),
         ('runtime_source', NonConstructibleField),
-        'source',  # always None, its content moves into NonConstructibleFields
+        ('is_directory', NonConstructibleField),
+        # The next two are always None, their content moves into the above
+        # `NonConstructibleField`s
+        'target',
+        'mount_config',
     ]
 
     def customize_fields(kwargs):  # noqa: B902
-        with open(os.path.join(kwargs.pop('source'), 'mountconfig.json')) as f:
-            cfg = json.load(f)
+        target = kwargs.pop('target')
+        cfg = kwargs.pop('mount_config')
+        assert (target is None) ^ (cfg is None), \
+            f'Exactly one of `target` or `mount_config` must be set in {kwargs}'
+        if cfg is not None:
+            cfg = cfg.copy()  # We must not mutate our input!
+        else:
+            with open(os.path.join(target, 'mountconfig.json')) as f:
+                cfg = json.load(f)
 
+        default_mountpoint = cfg.pop('default_mountpoint', None)
         if kwargs.get('mountpoint') is None:  # Missing or None => use default
-            kwargs['mountpoint'] = cfg.get('default_mountpoint')
+            kwargs['mountpoint'] = default_mountpoint
             if kwargs['mountpoint'] is None:
                 raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
-        cfg.pop('default_mountpoint', None)  # No longer needed
         _coerce_path_field_normal_relative(kwargs, 'mountpoint')
+
+        kwargs['is_directory'] = cfg.pop('is_directory')
 
         kwargs['build_source'] = mount_item.BuildSource(
             **cfg.pop('build_source')
         )
+        if kwargs['build_source'].type == 'host' and not (
+            kwargs['from_target'].startswith('//fs_image/features/host_mounts')
+            or kwargs['from_target'].startswith('//fs_image/compiler/test')
+        ):
+            raise AssertionError(
+                'Host mounts cause containers to be non-hermetic and fragile, '
+                'so they must be located under `fs_image/features/host_mounts` '
+                'to enable close review by the owners of `fs_image`.'
+            )
+
         # This is supposed to be the run-time equivalent of `build_source`,
         # but for us it's just an opaque JSON blob that the runtime wants.
         # Hack: We serialize this back to JSON since the compiler expects
         # items to be hashable, and the source WILL contain dicts.
-        kwargs['runtime_source'] = json.dumps(
-            cfg.pop('runtime_source', None), sort_keys=True,
-        )
-        kwargs['source'] = None  # Must be set to appease enriched_namedtuple
+        runtime_source = cfg.pop('runtime_source', None)
+        # Future: once runtime_source grows a schema, use it here?
+        if (runtime_source and runtime_source.get('type') == 'host'):
+            raise AssertionError(
+                f'Only `build_source` may specify host mounts: {kwargs}'
+            )
+        kwargs['runtime_source'] = json.dumps(runtime_source, sort_keys=True)
+
+        assert cfg == {}, f'Unparsed fields in {kwargs} mount_config: {cfg}'
+        # These must be set to appease enriched_namedtuple
+        kwargs['target'] = None
+        kwargs['mount_config'] = None
 
     def provides(self):
         # For now, nesting of mounts is not supported, and we certainly
@@ -540,40 +574,63 @@ class MountItem(metaclass=ImageItem):
         )
         for name, data in (
             # NB: Not exporting self.mountpoint since it's implicit in the path.
+            ('is_directory', self.is_directory),
             ('build_source', self.build_source._asdict()),
             ('runtime_source', json.loads(self.runtime_source)),
         ):
             procfs_serde.serialize(data, subvol, os.path.join(mount_dir, name))
-        subvol.run_as_root(['mkdir', subvol.path(self.mountpoint)])
-        subvol.run_as_root([
-            'mount', '-o', 'ro,bind',
-            self.build_source.to_path(
-                target_to_path=target_to_path,
-                subvolumes_dir=subvolumes_dir,
-            ),
-            subvol.path(self.mountpoint),
-        ])
+        source_path = self.build_source.to_path(
+            target_to_path=target_to_path,
+            subvolumes_dir=subvolumes_dir,
+        )
+        # Support mounting directories and non-directories...  This check
+        # follows symlinks for the mount source, which seems correct.
+        is_dir = os.path.isdir(source_path)
+        assert is_dir == self.is_directory, self
+        if is_dir:
+            subvol.run_as_root([
+                'mkdir', '--mode=0755', subvol.path(self.mountpoint)
+            ])
+        else:  # Regular files, device nodes, FIFOs, you name it.
+            # `touch` lacks a `--mode` argument, but the mode of this
+            # mountpoint will be shadowed anyway, so let it be whatever.
+            subvol.run_as_root(['touch', subvol.path(self.mountpoint)])
+        mount_item.ro_rbind_mount(source_path, subvol, self.mountpoint)
 
 
-def _protected_dir_set(subvol: Optional[Subvol]) -> Set[str]:
+def _protected_path_set(subvol: Optional[Subvol]) -> Set[str]:
     '''
-    All directories must be relative to the image root, no leading /.
-    `subvol=None` if the subvolume doesn't yet exist (for FilesystemRoot).
+    Identifies the protected paths in a subvolume.  Pass `subvol=None` if
+    the subvolume doesn't yet exist (for FilesystemRoot).
+
+    All paths will be relative to the image root, no leading /.  If a path
+    has a trailing /, it is a protected directory, otherwise it is a
+    protected file.
+
+    Future: The trailing / convention could be eliminated, since any place
+    actually manipulating these paths can inspect what's on disk, and act
+    appropriately.  If the convention proves burdensome, this is an easy
+    change -- mostly affecting this file, and `yum_from_snapshot.py`.
     '''
-    # In the future, this will also return known mountpoints for the subvol.
-    dirs = {META_DIR}
+    paths = {META_DIR}
     if subvol is not None:
+        # NB: The returned paths here already follow the trailing / rule.
         for mountpoint in mount_item.mountpoints_from_subvol_meta(subvol):
-            dirs.add(mountpoint.lstrip('/'))
+            paths.add(mountpoint.lstrip('/'))
     # Never absolute: yum-from-snapshot interprets absolute paths as host paths
-    assert not any(d.startswith('/') for d in dirs), dirs
-    return dirs
+    assert not any(p.startswith('/') for p in paths), paths
+    return paths
 
 
-def _path_in_protected_dirs(path: str, protected_dirs: Set[str]) -> bool:
+def _is_path_protected(path: str, protected_paths: Set[str]) -> bool:
     # NB: The O-complexity could obviously be lots better, if needed.
-    for prot_dir in protected_dirs:
-        if (path + '/').startswith(prot_dir + '/'):
+    for prot_path in protected_paths:
+        # Handle both protected files and directories.  This test is written
+        # to return True even if `prot_path` is `/path/to/file` while `path`
+        # is `/path/to/file/oops`.
+        if (path + '/').startswith(
+            prot_path + ('' if prot_path.endswith('/') else '/')
+        ):
             return True
     return False
 
@@ -593,26 +650,37 @@ class ParentLayerItem(metaclass=ImageItem):
     def provides(self):
         parent_subvol = Subvol(self.path, already_exists=True)
 
-        protected_dirs = _protected_dir_set(parent_subvol)
-        for dirpath in protected_dirs:
-            yield ProvidesDoNotAccess(path=dirpath)
+        protected_paths = _protected_path_set(parent_subvol)
+        for prot_path in protected_paths:
+            yield ProvidesDoNotAccess(path=prot_path)
 
         provided_root = False
         # We need to traverse the parent image as root, so that we have
         # permission to access everything.
         for type_and_path in parent_subvol.run_as_root([
             # -P is the analog of --no-dereference in GNU tools
-            'find', '-P', self.path, '-printf', '%y %p\\0',
+            #
+            # Filter out the protected paths at traversal time.  If one of
+            # the paths has a very large or very slow mount, traversing it
+            # would have a devastating effect on build times, so let's avoid
+            # looking inside protected paths entirely.  An alternative would
+            # be to `send` and to parse the sendstream, but this is ok too.
+            'find', '-P', self.path, '(', *itertools.dropwhile(
+                lambda x: x == '-o',  # Drop the initial `-o`
+                itertools.chain.from_iterable([
+                    # `normpath` removes the trailing / for protected dirs
+                    '-o', '-path', os.path.join(self.path, os.path.normpath(p))
+                ] for p in protected_paths),
+            ), ')', '-prune', '-o', '-printf', '%y %p\\0',
         ], stdout=subprocess.PIPE).stdout.split(b'\0'):
             if not type_and_path:  # after the trailing \0
                 continue
             filetype, abspath = type_and_path.decode().split(' ', 1)
             relpath = os.path.relpath(abspath, self.path)
 
-            # We already "provided" the parent directory above.  Also hide
-            # all its children.
-            if _path_in_protected_dirs(relpath, protected_dirs):
-                continue
+            # We already "provided" this path above, and it should have been
+            # filtered out by `find`.
+            assert not _is_path_protected(relpath, protected_paths), relpath
 
             # Future: This provides all symlinks as files, while we should
             # probably provide symlinks to valid directories inside the
@@ -658,7 +726,7 @@ class FilesystemRootItem(metaclass=ImageItem):
 
     def provides(self):
         yield ProvidesDirectory(path='/')
-        for p in _protected_dir_set(subvol=None):
+        for p in _protected_path_set(subvol=None):
             yield ProvidesDoNotAccess(path=p)
 
     def requires(self):
@@ -734,19 +802,19 @@ class RemovePathItem(metaclass=ImageItem):
         # early, but again, it doesn't seem worth the complexity.
 
         def builder(subvol: Subvol):
-            protected_dirs = _protected_dir_set(subvol)
+            protected_paths = _protected_path_set(subvol)
             # Reverse-lexicographic order deletes inner paths before
             # deleting the outer paths, thus minimizing conflicts between
             # `remove_paths` items.
             for item in sorted(
                 items, reverse=True, key=lambda i: i.__sort_key(),
             ):
-                if _path_in_protected_dirs(item.path, protected_dirs):
+                if _is_path_protected(item.path, protected_paths):
                     # For META_DIR, this is never reached because of
                     # _make_path_normal_relative's check, but for other
-                    # protected directories, this is required.
+                    # protected paths, this is required.
                     raise AssertionError(
-                        f'Cannot remove protected {item}: {protected_dirs}'
+                        f'Cannot remove protected {item}: {protected_paths}'
                     )
                 # This ensures that there are no symlinks in item.path that
                 # might take us outside of the subvolume.  Since recursive
@@ -856,8 +924,8 @@ class RpmActionItem(metaclass=ImageItem):
                     'env', 'PYTHONDONTWRITEBYTECODE=1',
                     layer_opts.yum_from_snapshot,
                     *sum((
-                        ['--protected-dir', d]
-                            for d in _protected_dir_set(subvol)
+                        ['--protected-path', d]
+                            for d in _protected_path_set(subvol)
                     ), []),
                     '--install-root', subvol.path(), '--',
                     RPM_ACTION_TYPE_TO_YUM_CMD[action],

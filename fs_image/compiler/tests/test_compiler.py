@@ -34,7 +34,9 @@ def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
 
 
 _FIND_ARGS = [
-    'find', '-P', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}', '-printf', '%y %p\\0',
+    'find', '-P', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}', '(',
+    '-path', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}/meta',
+    ')', '-prune', '-o', '-printf', '%y %p\\0',
 ]
 
 

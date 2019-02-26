@@ -14,7 +14,7 @@ from ..yum_from_snapshot import add_common_yum_args, yum_from_snapshot
 
 def yum_from_test_snapshot(
     install_root: AnyStr,
-    protected_dirs: List[AnyStr],
+    protected_paths: List[AnyStr],
     yum_args: List[AnyStr],
 ):
     # This works in @mode/opt since the snapshot is baked into the XAR
@@ -27,7 +27,7 @@ def yum_from_test_snapshot(
         }),
         snapshot_dir=snapshot_dir / 'repos',
         install_root=Path(install_root),
-        protected_dirs=protected_dirs,
+        protected_paths=protected_paths,
         yum_args=yum_args,
     )
 
@@ -45,4 +45,6 @@ if __name__ == '__main__':  # pragma: no cover
 
     init_logging()
 
-    yum_from_test_snapshot(args.install_root, args.protected_dir, args.yum_args)
+    yum_from_test_snapshot(
+        args.install_root, args.protected_path, args.yum_args,
+    )

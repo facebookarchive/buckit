@@ -221,7 +221,7 @@ def _temp_fifo() -> str:
 
 
 def _isolate_yum_and_wait_until_ready(
-    install_root, dummy_dev, protected_dir_to_dummy, netns_fifo, ready_fifo,
+    install_root, dummy_dev, protected_path_to_dummy, netns_fifo, ready_fifo,
 ):
     '''
     Isolate yum from the host filesystem. Also, now that we have a network
@@ -294,12 +294,16 @@ def _isolate_yum_and_wait_until_ready(
     # gleefully discarded.
     mount {quoted_dummy_dev} "$install_root"/dev/ -o bind
 
-    {quoted_protected_dirs}
+    # Ensure the log exists, so we can guarantee our yum doesn't write to it.
+    touch /var/log/yum.log
 
-    # Also protect potentially non-hermetic files.
+    {quoted_protected_paths}
+
+    # Also protect potentially non-hermetic files that are not required to
+    # exist on the host.  We don't expect these to be written, only read, so
+    # failing to protect the non-existent ones is OK.
     for bad_file in \
             /etc/yum.conf \
-            /var/log/yum.log \
             ~/.rpmrc \
             /etc/rpmrc \
             ~/.rpmmacros \
@@ -334,14 +338,14 @@ def _isolate_yum_and_wait_until_ready(
         quoted_install_root=shlex.quote(install_root.decode()),
         quoted_netns_fifo=shlex.quote(netns_fifo),
         quoted_ready_fifo=shlex.quote(ready_fifo),
-        quoted_protected_dirs='\n'.join(
+        quoted_protected_paths='\n'.join(
             'mount {} {} -o bind,ro'.format(
                 shlex.quote(dummy),
                 (
                     # Convention: relative for image, or absolute for host.
-                    '' if pd.startswith('/') else '"$install_root"/'
-                ) + shlex.quote(pd),
-            ) for pd, dummy in protected_dir_to_dummy.items()
+                    '' if prot_path.startswith('/') else '"$install_root"/'
+                ) + shlex.quote(prot_path),
+            ) for prot_path, dummy in protected_path_to_dummy.items()
         ),
     )]
 
@@ -397,25 +401,40 @@ def _dummy_dev() -> str:
 
 
 @contextmanager
-def _dummies_for_protected_dirs(protected_dirs) -> Mapping[str, str]:
+def _dummies_for_protected_paths(protected_paths) -> Mapping[str, str]:
     '''
-    Some locations (e.g.  /meta and mountpoints) should be off-limits to
-    writes by RPMs.  We enforce that by bind-mounting an empty directory on
-    top of each one of them.
+    Some locations (e.g. /meta/ and mountpoints) should be off-limits to
+    writes by RPMs.  We enforce that by bind-mounting an empty file or
+    directory on top of each one of them.
     '''
-    with tempfile.TemporaryDirectory() as td:
-        # NB: There may be duplicates in protected_dirs, so we normalize.
-        yield {os.path.normpath(d): td for d in protected_dirs}
+    with tempfile.TemporaryDirectory() as td_name, \
+            tempfile.NamedTemporaryFile() as tf:
+        # NB: There may be duplicates in protected_paths, so we normalize.
+        # If the duplicates include both a file and a directory, this picks
+        # one arbitrarily, and if the type on disk is different, we will
+        # fail at mount time.  This doesn't seem worth an explicit check.
+        yield {
+            os.path.normpath(p): (td_name if p.endswith('/') else tf.name)
+                for p in protected_paths
+        }
         # NB: The bind mount is read-only, so this is just paranoia.  If it
         # were left RW, we'd need to check its owner / permissions too.
-        assert [] == os.listdir(td), f'Some RPM wrote to {protected_dirs}'
-
+        for expected, actual in (
+            ([], os.listdir(td_name)),
+            (b'', tf.read()),
+        ):
+            assert expected == actual, \
+                f'Some RPM wrote {actual} to {protected_paths}'
 
 def yum_from_snapshot(
     *, storage_cfg: str, snapshot_dir: Path, install_root: Path,
-    protected_dirs: List[str], yum_args: List[str],
+    protected_paths: List[str], yum_args: List[str],
 ):
-    protected_dirs.extend([
+    # The paths that have trailing slashes are directories, others are
+    # files.  There's a separate code path for protecting some files above.
+    # The rationale is that those files are not guaranteed to exist.
+    protected_paths.extend([
+        '/var/log/yum.log',  # Created above if it doesn't exist
         # See the `_isolate_yum_and_wait_until_ready` docblock for how (and
         # why) this list was produced.  All are assumed to exist on the host
         # -- otherwise, we'd be in the awkard situation of either leaving
@@ -429,7 +448,7 @@ def yum_from_snapshot(
         '/var/lib/rpm/',
         # Harcode `IMAGE/meta` because it should ALWAYS be off-limits --
         # even though the compiler will redundantly tell us to protect it.
-        'meta',
+        'meta/',
     ])
 
     # These user-specified arguments could really mess up hermeticity.
@@ -445,9 +464,9 @@ def yum_from_snapshot(
             ) as ready_fifo, \
             tempfile.NamedTemporaryFile('w', suffix='yum') as out_yum_conf, \
             _dummy_dev() as dummy_dev, \
-            _dummies_for_protected_dirs(
-                protected_dirs,
-            ) as protected_dir_to_dummy, \
+            _dummies_for_protected_paths(
+                protected_paths,
+            ) as protected_path_to_dummy, \
             subprocess.Popen([
                 'sudo',
                 # Cannot do --pid or --cgroup without extra work (nspawn).
@@ -455,7 +474,7 @@ def yum_from_snapshot(
                 # all recent `util-linux` releases (since 2.27 circa 2015).
                 'unshare', '--mount', '--uts', '--ipc', '--net',
                 *_isolate_yum_and_wait_until_ready(
-                    install_root, dummy_dev, protected_dir_to_dummy,
+                    install_root, dummy_dev, protected_path_to_dummy,
                     netns_fifo, ready_fifo,
                 ),
                 'yum-from-snapshot',  # argv[0]
@@ -542,12 +561,16 @@ def add_common_yum_args(parser: 'argparse.ArgumentParser'):  # pragma: no cover
             'most users of `yum-from-snapshot` should not install to /.',
     )
     parser.add_argument(
-        '--protected-dir', action='append', default=[],
-        help='When `yum` runs, this directory will have an empty directory '
-            'read-only bind-mounted on top. If the path is absolute, this '
-            'is a host directory. Otherwise, it is relative to '
-            '--install-root. The directory must already exist. This has some '
-            'internal defaults that cannot be un-protected. May be repeated.',
+        '--protected-path', action='append', default=[],
+        # Future: if desired, the trailing / convention could be relaxed,
+        # see `_protected_path_set`.  If so, this program would just need to
+        # run `os.path.isdir` against each of the paths.
+        help='When `yum` runs, this path will have an empty file or directory '
+            'read-only bind-mounted on top. If the path has a trailing /, it '
+            'is a directory, otherwise -- a file. If the path is absolute, it '
+            'is a host path. Otherwise, it is relative to --install-root. '
+            'The path must already exist. There are some internal defaults '
+            'that cannot be un-protected. May be repeated.',
     )
     parser.add_argument(
         'yum_args', nargs='+',
@@ -590,6 +613,6 @@ if __name__ == '__main__':  # pragma: no cover
         storage_cfg=args.storage,
         snapshot_dir=args.snapshot_dir,
         install_root=args.install_root,
-        protected_dirs=args.protected_dir,
+        protected_paths=args.protected_path,
         yum_args=args.yum_args,
     )

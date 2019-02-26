@@ -111,7 +111,17 @@ ID_TO_ITEM = {
     'meownt': MountItem(
         from_target=T_MOUNT,
         mountpoint='meownt',
-        source=TARGET_TO_PATH[T_HELLO_WORLD_BASE],
+        target=TARGET_TO_PATH[T_HELLO_WORLD_BASE],
+        mount_config=None,
+    ),
+    'host_etc': MountItem(
+        from_target=T_MOUNT,
+        mountpoint='host_etc',
+        target=None,
+        mount_config={
+            'is_directory': True,
+            'build_source': {'type': 'host', 'source': '/etc'},
+        },
     ),
     '.remove_if_exists/path/to/remove': RemovePathItem(
         from_target=T_KITCHEN_SINK,

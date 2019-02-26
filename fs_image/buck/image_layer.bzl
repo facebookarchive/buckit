@@ -198,14 +198,15 @@ def image_layer(
 
     if mount_config == None:
         mount_config = {}
-    if "build_source" in mount_config:
-        fail("`build_source` cannot be customized", "mount_config")
+    for key in ("build_source", "is_directory"):
+        if key in mount_config:
+            fail("`{}` cannot be customized".format(key), "mount_config")
+    mount_config["is_directory"] = True
     mount_config["build_source"] = {
-        "target": current_target,
-        # The compiler knows how to resolve layer locations.
-        # For now, we don't support mounting a subdirectory
-        # of a layer because that might make packaging more
-        # complicated, but it could be done.
+        "source": current_target,
+        # The compiler knows how to resolve layer locations.  For now, we
+        # don't support mounting a subdirectory of a layer because that
+        # might make packaging more complicated, but it could be done.
         "type": "layer",
     }
 

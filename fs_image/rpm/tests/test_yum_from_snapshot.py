@@ -17,15 +17,21 @@ init_logging()
 class YumFromSnapshotTestCase(unittest.TestCase):
 
     @contextmanager
-    def _yum_install(self, *, protected_dirs):
+    def _yum_install(self, *, protected_paths):
         install_root = Path(tempfile.mkdtemp())
         try:
-            # IMAGE_ROOT/meta is always required since it's always protected
-            for pd in set(protected_dirs) | {'meta'}:
-                os.makedirs(install_root / pd)
+            # IMAGE_ROOT/meta/ is always required since it's always protected
+            for p in set(protected_paths) | {'meta/'}:
+                if p.endswith('/'):
+                    os.makedirs(install_root / p)
+                else:
+                    os.makedirs(os.path.dirname(install_root / p))
+                    with open(install_root / p, 'wb'):
+                        pass
+
             yum_from_test_snapshot(
                 install_root,
-                protected_dirs=protected_dirs,
+                protected_paths=protected_paths,
                 yum_args=_INSTALL_ARGS,
             )
             yield install_root
@@ -35,7 +41,7 @@ class YumFromSnapshotTestCase(unittest.TestCase):
             subprocess.run(['sudo', 'rm', '-rf', install_root], check=True)
 
     def test_verify_contents_of_install_from_snapshot(self):
-        with self._yum_install(protected_dirs=['meta']) as install_root:
+        with self._yum_install(protected_paths=['meta/']) as install_root:
             # Remove known content so we can check there is nothing else.
             remove = []
 
@@ -71,13 +77,18 @@ class YumFromSnapshotTestCase(unittest.TestCase):
             for d in required_dirs:
                 self.assertEqual([], os.listdir(install_root / d))
 
-    def test_fail_to_write_to_protected_dir(self):
+    def test_fail_to_write_to_protected_path(self):
         # Nothing fails with no specified protection, or with /meta:
-        for pd in [[], ['meta']]:
-            with self._yum_install(protected_dirs=pd):
+        for p in [[], ['meta/']]:
+            with self._yum_install(protected_paths=p):
                 pass
         with self.assertRaises(subprocess.CalledProcessError) as ctx:
-            with self._yum_install(protected_dirs=['usr/share/rpm_test']):
+            with self._yum_install(protected_paths=['usr/share/rpm_test/']):
+                pass
+        with self.assertRaises(subprocess.CalledProcessError) as ctx:
+            with self._yum_install(protected_paths=[
+                'usr/share/rpm_test/mice.txt'
+            ]):
                 pass
         # It was none other than `yum install` that failed.
         self.assertEqual(_INSTALL_ARGS, ctx.exception.cmd[-len(_INSTALL_ARGS):])

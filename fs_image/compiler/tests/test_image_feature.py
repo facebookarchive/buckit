@@ -81,10 +81,15 @@ class ImageFeatureTestCase(unittest.TestCase):
                 for k, v in si.ID_TO_ITEM.items()
                     if v not in phase_items
         }
-        # `meownt` is not ordered in any way with respect to the `foo/bar` tree
-        self.assertEqual(
-            (1 if id_to_idx['meownt'] == 0 else 0), id_to_idx['foo/bar'],
-        )
+        # The 2 mounts are not ordered in any way with respect to the
+        # `foo/bar` tree, so any of these 3 can be the first.
+        mount_idxs = sorted([id_to_idx['host_etc'], id_to_idx['meownt']])
+        if mount_idxs == [0, 1]:
+            self.assertEqual(2, id_to_idx['foo/bar'])
+        elif 0 in mount_idxs:
+            self.assertEqual(1, id_to_idx['foo/bar'])
+        else:
+            self.assertEqual(0, id_to_idx['foo/bar'])
         self.assertLess(
             id_to_idx['foo/borf/beep'], id_to_idx['foo/borf/hello_world']
         )

@@ -99,7 +99,10 @@ image.feature(
 
 image.feature(
     name = "feature_mount",
-    mounts = {"/meownt": ":hello_world_base"},
+    mounts = {
+        "/host_etc": image.host_dir_mount("/etc"),
+        "/meownt": ":hello_world_base",
+    },
 )
 
 # Omnibus feature for test-compiler and test-image-feature.  It currently
@@ -241,7 +244,11 @@ image.layer(
         ":feature_dirs",
         ":feature_symlinks",
     ],
-    mounts = {"/mounted_hello": ":hello_world_base"},
+    mounts = {
+        # NB: `host_dir_mount` is exercised above.
+        "/dev_null": image.host_file_mount(source = "/dev/null"),
+        "/mounted_hello": ":hello_world_base",
+    },
     parent_layer = ":hello_world_base",
     rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
     yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",

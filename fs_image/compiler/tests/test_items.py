@@ -18,7 +18,7 @@ from ..items import (
     CopyFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
     MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
     RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
-    SymlinkToFileItem, TarballItem, _hash_tarball, _protected_dir_set,
+    SymlinkToFileItem, TarballItem, _hash_tarball, _protected_path_set,
     tarball_item_factory,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
@@ -130,7 +130,7 @@ class ItemsTestCase(unittest.TestCase):
         # NB: We don't need to get coverage for this check on ALL the items
         # because the presence of the ProvidesDoNotAccess items it the real
         # safeguard -- e.g. that's what prevents TarballItem from writing
-        # to /meta or other protected directories.
+        # to /meta/ or other protected paths.
         with self.assertRaisesRegex(AssertionError, 'cannot start with meta/'):
             CopyFileItem(from_target='t', source='a/b/c', dest='/meta/foo')
 
@@ -219,34 +219,118 @@ class ItemsTestCase(unittest.TestCase):
                 }],
             }], _render_subvol(subvol))
 
+    def test_mount_item_file_from_host(self):
+        mount_config = {
+            'is_directory': False,
+            'build_source': {'type': 'host', 'source': '/dev/null'},
+        }
+
+        def _mount_item(from_target):
+            return MountItem(
+                from_target=from_target,
+                mountpoint='/lala',
+                target=None,
+                mount_config=mount_config,
+            )
+
+        with self.assertRaisesRegex(AssertionError, 'must be located under'):
+            _mount_item('t')
+
+        mount_item = _mount_item('//fs_image/features/host_mounts:t')
+
+        bad_mount_config = mount_config.copy()
+        bad_mount_config['runtime_source'] = bad_mount_config['build_source']
+        with self.assertRaisesRegex(AssertionError, 'Only `build_source` may '):
+            MountItem(
+                from_target='//fs_image/features/host_mounts:t',
+                mountpoint='/lala',
+                target=None,
+                mount_config=bad_mount_config,
+            )
+
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            subvol = temp_subvolumes.create('mounter')
+            mount_item.build_resolves_targets(
+                subvol=subvol,
+                target_to_path={},
+                subvolumes_dir='unused',
+            )
+
+            self.assertEqual(['(Dir)', {
+                'lala': ['(File)'],  # An empty mountpoint for /dev/null
+                'meta': ['(Dir)', {'private': ['(Dir)', {'mount': ['(Dir)', {
+                    'lala': ['(Dir)', {'MOUNT': ['(Dir)', {
+                        'is_directory': ['(File d2)'],
+                        'build_source': ['(Dir)', {
+                            'type': ['(File d5)'],
+                            'source': [f'(File d{len("/dev/null") + 1})'],
+                        }],
+                    }]}],
+                }]}]}],
+            }], _render_subvol(subvol))
+            for filename, contents in (
+                ('is_directory', '0\n'),
+                ('build_source/type', 'host\n'),
+                ('build_source/source', '/dev/null\n'),
+            ):
+                with open(subvol.path(os.path.join(
+                    'meta/private/mount/lala/MOUNT', filename,
+                ))) as f:
+                    self.assertEqual(contents, f.read())
+
+    def _make_mount_item(self, *, mountpoint, target, mount_config):
+        'Ensures that `target` and `mount_config` make the same item.'
+        item_from_file = MountItem(
+            from_target='t',
+            mountpoint=mountpoint,
+            target=target,
+            mount_config=None,
+        )
+        self.assertEqual(item_from_file, MountItem(
+            from_target='t',
+            mountpoint=mountpoint,
+            target=None,
+            mount_config=mount_config,
+        ))
+        return item_from_file
+
     def test_mount_item_default_mountpoint(self):
-        with tempfile.TemporaryDirectory() as build_source:
+        with tempfile.TemporaryDirectory() as mnt_target:
             mount_config = {
-                'build_source': {'type': 'layer', 'target': '//fake:path'},
+                'is_directory': True,
+                'build_source': {'type': 'layer', 'source': '//fake:path'},
             }
-            with open(os.path.join(build_source, 'mountconfig.json'), 'w') as f:
+            with open(os.path.join(mnt_target, 'mountconfig.json'), 'w') as f:
                 json.dump(mount_config, f)
             # Since our initial mountconfig lacks `default_mountpoint`, the
             # item requires its `mountpoint` to be set.
             with self.assertRaisesRegex(AssertionError, 'lacks mountpoint'):
-                MountItem(from_target='t', mountpoint=None, source=build_source)
+                MountItem(
+                    from_target='t',
+                    mountpoint=None,
+                    target=mnt_target,
+                    mount_config=None,
+                )
 
             # Now, check that the default gets used.
             mount_config['default_mountpoint'] = 'potato'
-            with open(os.path.join(build_source, 'mountconfig.json'), 'w') as f:
+            with open(os.path.join(mnt_target, 'mountconfig.json'), 'w') as f:
                 json.dump(mount_config, f)
-            self.assertEqual('potato', MountItem(
-                from_target='t', mountpoint=None, source=build_source,
-            ).mountpoint)
+            self.assertEqual(self._make_mount_item(
+                mountpoint=None,
+                target=mnt_target,
+                mount_config=mount_config,
+            ).mountpoint, 'potato')
 
     def _check_subvol_mounts_meow(self, subvol):
         self.assertEqual(['(Dir)', {
             'meow': ['(Dir)', {}],
             'meta': ['(Dir)', {'private': ['(Dir)', {'mount': ['(Dir)', {
                 'meow': ['(Dir)', {'MOUNT': ['(Dir)', {
+                    'is_directory': ['(File d2)'],
                     'build_source': ['(Dir)', {
                         'type': ['(File d6)'],
-                        'target': [f'(File d{len("//fake:path") + 1})'],
+                        'source': [f'(File d{len("//fake:path") + 1})'],
                     }],
                     'runtime_source': ['(Dir)', {
                         'so': ['(File d3)'],
@@ -256,8 +340,9 @@ class ItemsTestCase(unittest.TestCase):
             }]}]}],
         }], _render_subvol(subvol))
         for filename, contents in (
+            ('is_directory', '1\n'),
             ('build_source/type', 'layer\n'),
-            ('build_source/target', '//fake:path\n'),
+            ('build_source/source', '//fake:path\n'),
             ('runtime_source/so', 'me\n'),
             ('runtime_source/arbitrary/j', 'son\n'),
         ):
@@ -266,18 +351,32 @@ class ItemsTestCase(unittest.TestCase):
             ))) as f:
                 self.assertEqual(contents, f.read())
 
+    def _write_layer_json_into(self, subvol, out_dir):
+        subvol_path = subvol.path().decode()
+        # subvolumes_dir is the grandparent of the subvol by convention
+        subvolumes_dir = os.path.dirname(os.path.dirname(subvol_path))
+        with open(os.path.join(out_dir, 'layer.json'), 'w') as f:
+            SubvolumeOnDisk.from_subvolume_path(
+                subvol_path, subvolumes_dir,
+            ).to_json_file(f)
+        return subvolumes_dir
+
     def test_mount_item(self):
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes, \
                 tempfile.TemporaryDirectory() as source_dir:
             runtime_source = {'so': 'me', 'arbitrary': {'j': 'son'}}
+            mount_config = {
+                'is_directory': True,
+                'build_source': {'type': 'layer', 'source': '//fake:path'},
+                'runtime_source': runtime_source,
+            }
             with open(os.path.join(source_dir, 'mountconfig.json'), 'w') as f:
-                json.dump({
-                    'build_source': {'type': 'layer', 'target': '//fake:path'},
-                    'runtime_source': runtime_source,
-                }, f)
+                json.dump(mount_config, f)
             self._check_item(
-                MountItem(
-                    from_target='t', mountpoint='can/haz', source=source_dir,
+                self._make_mount_item(
+                    mountpoint='can/haz',
+                    target=source_dir,
+                    mount_config=mount_config,
                 ),
                 {ProvidesDoNotAccess(path='can/haz')},
                 {require_directory('can')},
@@ -287,38 +386,88 @@ class ItemsTestCase(unittest.TestCase):
             mountee = temp_subvolumes.create('moun:tee/volume')
             mountee.run_as_root(['tee', mountee.path('kitteh')], input=b'cheez')
 
+            # These sub-mounts inside `mountee` act as canaries to make sure
+            # that (a) `mounter` receives the sub-mounts as a consequence of
+            # mounting `mountee` recursively, (b) that unmounting one in
+            # `mounter` does not affect the original in `mountee` -- i.e.
+            # that rslave propagation is set up correctly, (c) that
+            # unmounting in `mountee` immediately affects `mounter`.
+            #
+            # In practice, our build artifacts should NEVER be mutated after
+            # construction (and the only un-mount is implicitly, and
+            # seemingly safely, performed by `btrfs subvolume delete`).
+            # However, ensuring that we have correct `rslave` propagation is
+            # a worthwhile safeguard for host mounts, where an errant
+            # `umount` by a user inside their repo could otherwise break
+            # their host.
+            for submount in ('submount1', 'submount2'):
+                mountee.run_as_root(['mkdir', mountee.path(submount)])
+                mountee.run_as_root([
+                    'mount', '-o', 'bind,ro', source_dir, mountee.path(submount)
+                ])
+                self.assertTrue(
+                    os.path.exists(mountee.path(submount + '/mountconfig.json'))
+                )
+
             # Make the JSON file normally in "buck-out" that refers to `mountee`
-            mountee_path = mountee.path().decode()
-            subvolumes_dir = os.path.dirname(os.path.dirname(mountee_path))
-            with open(os.path.join(source_dir, 'layer.json'), 'w') as f:
-                SubvolumeOnDisk.from_subvolume_path(
-                    mountee_path, subvolumes_dir,
-                ).to_json_file(f)
+            mountee_subvolumes_dir = self._write_layer_json_into(
+                mountee, source_dir
+            )
 
             # Mount <mountee> at <mounter>/meow
             mounter = temp_subvolumes.create('moun:ter/volume')
-            mount_meow = MountItem(
-                from_target='t', mountpoint='meow', source=source_dir,
+            mount_meow = self._make_mount_item(
+                mountpoint='meow',
+                target=source_dir,
+                mount_config=mount_config,
             )
             self.assertEqual(
                 runtime_source, json.loads(mount_meow.runtime_source),
             )
             with self.assertRaisesRegex(AssertionError, ' could not resolve '):
                 mount_meow.build_source.to_path(
-                    target_to_path={}, subvolumes_dir=subvolumes_dir,
+                    target_to_path={}, subvolumes_dir=mountee_subvolumes_dir,
                 )
             mount_meow.build_resolves_targets(
                 subvol=mounter,
                 target_to_path={'//fake:path': source_dir},
-                subvolumes_dir=subvolumes_dir,
+                subvolumes_dir=mountee_subvolumes_dir,
             )
 
-            # The build created the mountpoint, and populated metadata
+            # This checks the subvolume **contents**, but not the mounts.
+            # Ensure the build created a mountpoint, and populated metadata.
             self._check_subvol_mounts_meow(mounter)
 
             # `mountee` was also mounted at `/meow`
             with open(mounter.path('meow/kitteh')) as f:
                 self.assertEqual('cheez', f.read())
+
+            def check_mountee_mounter_submounts(submount_presence):
+                for submount, (in_mountee, in_mounter) in submount_presence:
+                    self.assertEqual(in_mountee, os.path.exists(
+                        mountee.path(submount + '/mountconfig.json')
+                    ), f'{submount}, {in_mountee}')
+                    self.assertEqual(in_mounter, os.path.exists(
+                        mounter.path('meow/' + submount + '/mountconfig.json')
+                    ), f'{submount}, {in_mounter}')
+
+            # Both sub-mounts are accessible in both places now.
+            check_mountee_mounter_submounts([
+                ('submount1', (True, True)),
+                ('submount2', (True, True)),
+            ])
+            # Unmounting `submount1` from `mountee` also affects `mounter`.
+            mountee.run_as_root(['umount', mountee.path('submount1')])
+            check_mountee_mounter_submounts([
+                ('submount1', (False, False)),
+                ('submount2', (True, True)),
+            ])
+            # Unmounting `submount2` from `mounter` doesn't affect `mountee`.
+            mounter.run_as_root(['umount', mounter.path('meow/submount2')])
+            check_mountee_mounter_submounts([
+                ('submount1', (False, False)),
+                ('submount2', (True, False)),
+            ])
 
             # Check that we read back the `mounter` metadata, mark `/meow`
             # inaccessible, and do not emit a `ProvidesFile` for `kitteh`.
@@ -338,6 +487,29 @@ class ItemsTestCase(unittest.TestCase):
 
             # The child has the same mount, and the same metadata
             self._check_subvol_mounts_meow(mounter_child)
+
+            # Check that we refuse to create nested mounts.
+            nested_mounter = temp_subvolumes.create('nested_mounter')
+            nested_item = MountItem(
+                from_target='t',
+                mountpoint='/whatever',
+                target=None,
+                mount_config={
+                    'is_directory': True,
+                    'build_source': {'type': 'layer', 'source': '//:fake'},
+                },
+            )
+            with tempfile.TemporaryDirectory() as d:
+                mounter_subvolumes_dir = self._write_layer_json_into(mounter, d)
+                with self.assertRaisesRegex(
+                    AssertionError, 'Refusing .* nested mount',
+                ):
+                    nested_item.build_resolves_targets(
+                        subvol=nested_mounter,
+                        target_to_path={'//:fake': d},
+                        subvolumes_dir=mounter_subvolumes_dir,
+                    )
+
 
     def test_symlink(self):
         self._check_item(
@@ -676,8 +848,8 @@ class ItemsTestCase(unittest.TestCase):
             # `_make_path_normal_relative`, so we mock-protect 'xyz'.
             for prot_path in ['xyz', 'xyz/potato/carrot']:
                 with unittest.mock.patch(
-                    'compiler.items._protected_dir_set',
-                    side_effect=lambda sv: _protected_dir_set(sv) | {'xyz'},
+                    'compiler.items._protected_path_set',
+                    side_effect=lambda sv: _protected_path_set(sv) | {'xyz'},
                 ), self.assertRaisesRegex(
                     AssertionError, f'Cannot remove protected .*{prot_path}',
                 ):

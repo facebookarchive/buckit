@@ -34,7 +34,7 @@ def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
         }
     elif type(x) is list:
         return [replace_targets_by_paths(v, target_to_path) for v in x]
-    elif type(x) in [int, float, str, bool]:
+    elif type(x) in [int, float, str, bool, type(None)]:
         return x
     assert False, f'Unknown {type(x)} for {x}'  # pragma: no cover
 
