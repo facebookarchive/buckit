@@ -26,6 +26,49 @@ buck_genrule(
            "\$(dirname $OUT)",
 )
 
+# The next set of layers are used to test our nspawn runtime.
+#
+# They start by making a read-only clone of part of the host filesystem.
+# This is kind of like `systemd-nspawn --volatile`.  A more heremtic
+# solution would be to commit e.g.  a pre-determined Alpine Linux mini image
+# into `fs_image`, but for our simple tests, this is fine.
+
+image.layer(
+    name = "only-for-tests-read-only-host-clone-base",
+    make_dirs = [("/", "var")],
+    mounts = [image.host_dir_mount(source) for source in [
+        # Future: we should probably move /var/facebook into its own,
+        # FB-specific feature.
+        "/bin",
+        "/lib",
+        "/sbin",
+        "/usr",
+        "/var/facebook",
+    ]],
+)
+
+image.layer(
+    name = "only-for-tests-read-only-host-clone",
+    parent_layer = ":only-for-tests-read-only-host-clone-base",
+    mounts = [image.host_dir_mount("/etc")],
+)
+
+image.layer(
+    name = "only-for-tests-read-only-host-clone-no-machine-id",
+    parent_layer = ":only-for-tests-read-only-host-clone-base",
+    # Without os-release, nspawn cannot boot into this image.
+    make_dirs = [("/", "etc")],
+    mounts = [image.host_file_mount("/etc/os-release")],
+)
+
+export_file(name = "deadbeef-machine-id")
+
+image.layer(
+    name = "only-for-tests-read-only-host-clone-with-machine-id",
+    parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
+    copy_deps = [(":deadbeef-machine-id", "/etc/machine-id")],
+)
+
 # The next two targets exercise:
 #  - all forms of constructing a make_dirs request
 #  - specifying `stat` options, like user/group/mode

@@ -45,7 +45,7 @@ def _maybe_make_symlink_to_scratch(
     return target_path
 
 
-def ensure_per_repo_artifacts_dir_exists(path_in_repo) -> str:
+def find_repo_root(path_in_repo: str) -> str:
     '''
     The caller is responsible for providing a path known to be in the repo.
     We cannot just use __file__, because that will never in the repo in
@@ -65,7 +65,13 @@ def ensure_per_repo_artifacts_dir_exists(path_in_repo) -> str:
                 f'{os.path.dirname(os.path.realpath(__file__))}'
             )
         if os.path.exists(os.path.join(repo_path, '.buckconfig')):
-            break
+            return repo_path
+    # Not reached
+
+
+def ensure_per_repo_artifacts_dir_exists(path_in_repo: str) -> str:
+    "See `find_repo_root`'s docblock to understand `path_in_repo`"
+    repo_path = find_repo_root(path_in_repo)
     artifacts_dir = os.path.join(repo_path, 'buck-image-out')
 
     # On Facebook infra, the repo might be hosted on an Eden filesystem,

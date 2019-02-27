@@ -52,7 +52,7 @@ class TempSubvolumes(contextlib.AbstractContextManager):
     The easier approach is to write `with TempSubvolumes() ...` in each test.
     '''
 
-    def __init__(self, path_in_repo):
+    def __init__(self, path_in_repo=None):
         self.subvols = []
         # The 'tmp' subdirectory simplifies cleanup of leaked temp subvolumes
         volume_tmp_dir = os.path.join(volume_dir(path_in_repo), 'tmp')

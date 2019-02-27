@@ -132,11 +132,16 @@ class Subvol:
 
     # NB: It's fine to make this public, once needed.
     #
+    # This differs from the regular `subprocess.Popen` interface in these ways:
+    #   - stdout maps to stderr by default (to protect the caller's stdout),
+    #   - `check` is supported, and default to `True`,
+    #   - `cwd` is prohibited.
+    #
     # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
     # new subvolumes, and not just touch existing ones.
     @contextmanager
     def _popen_as_root(
-        self, args, *, _subvol_exists=True, stdout=None, **kwargs,
+        self, args, *, _subvol_exists=True, stdout=None, check=True, **kwargs,
     ):
         if 'cwd' in kwargs:
             raise AssertionError(
@@ -157,17 +162,19 @@ class Subvol:
             stdout = 2
         with subprocess.Popen(['sudo', *args], stdout=stdout, **kwargs) as pr:
             yield pr
-        check_popen_returncode(pr)
+        if check:
+            check_popen_returncode(pr)
 
     def run_as_root(
-        self, args, timeout=None, input=None, _subvol_exists=True, **kwargs,
+        self, args, timeout=None, input=None, _subvol_exists=True,
+        check=True, **kwargs,
     ):
         '''
         Run a command against an image.  IMPORTANT: You MUST wrap all image
         paths with `Subvol.path`, see that function's docblock.
 
         Mostly API-compatible with subprocess.run, except that:
-            - `check` is hardcoded to True (may be optionalized later),
+            - `check` defaults to True instead of False,
             - `stdout` is redirected to stderr by default,
             - `cwd` is prohibited.
         '''
@@ -176,12 +183,12 @@ class Subvol:
             assert 'stdin' not in kwargs
             kwargs['stdin'] = subprocess.PIPE
         with self._popen_as_root(
-            args, _subvol_exists=_subvol_exists, **kwargs,
+            args, _subvol_exists=_subvol_exists, check=check, **kwargs,
         ) as proc:
             stdout, stderr = proc.communicate(timeout=timeout, input=input)
         return subprocess.CompletedProcess(
             args=proc.args,
-            returncode=proc.returncode,  # always 0 until we support `check`
+            returncode=proc.returncode,
             stdout=stdout,
             stderr=stderr,
         )

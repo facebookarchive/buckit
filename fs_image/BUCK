@@ -149,6 +149,44 @@ python_library(
     gen_srcs = {":fake_sudo.sh": "sudo"},
 )
 
+python_library(
+    name = "nspawn_in_subvol",
+    srcs = ["nspawn_in_subvol.py"],
+    base_module = "",
+    deps = [
+        ":common",
+        ":find_built_subvol",
+        ":testlib_temp_subvolumes",
+        "//fs_image/compiler:items",
+    ],
+)
+
+python_unittest(
+    name = "test-nspawn-in-subvol",
+    srcs = ["tests/test_nspawn_in_subvol.py"],
+    base_module = "",
+    needed_coverage = [(
+        100,
+        ":nspawn_in_subvol",
+    )],
+    par_style = "xar",  # "fastzip" won't work because of `set_up_volume.sh`
+    resources = {
+        "//fs_image/compiler/tests" +
+        ":only-for-tests-read-only-host-clone": "tests/host",
+        "//fs_image/compiler/tests" +
+        ":only-for-tests-read-only-host-clone-no-machine-id": "tests/host-no-machine-id",
+        "//fs_image/compiler/tests" +
+        ":only-for-tests-read-only-host-clone-with-machine-id": "tests/host-with-machine-id",
+    },
+    deps = [":nspawn_in_subvol"],
+)
+
+python_binary(
+    name = "nspawn-run-in-subvol",
+    main_module = "nspawn_in_subvol",
+    deps = [":nspawn_in_subvol"],
+)
+
 python_unittest(
     name = "test-subvolume-garbage-collector",
     srcs = ["tests/test_subvolume_garbage_collector.py"],
