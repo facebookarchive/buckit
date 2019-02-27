@@ -90,7 +90,7 @@ load(
     "@fbcode_macros//build_defs:custom_rule.bzl",
     "get_project_root_from_gen_dir",
 )
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_command_alias", "buck_genrule")
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(
@@ -99,6 +99,7 @@ load(
     "image_feature",
 )
 load(":image_utils.bzl", "image_utils")
+load(":nspawn_in_subvol.bzl", "nspawn_in_subvol_args")
 
 def _get_fbconfig_rule_type():
     return "image_layer"
@@ -188,12 +189,12 @@ def image_layer(
         '''.format(from_sendstream = from_sendstream)
     else:
         make_subvol_cmd = _compile_image_features(
-            rule_name = name,
             current_target = current_target,
-            parent_layer = parent_layer,
             image_feature_kwargs = image_feature_kwargs,
-            yum_from_repo_snapshot = yum_from_repo_snapshot,
+            parent_layer = parent_layer,
+            rule_name = name,
             subvol_name = subvol_name,
+            yum_from_repo_snapshot = yum_from_repo_snapshot,
         )
 
     if mount_config == None:
@@ -210,14 +211,15 @@ def image_layer(
         "type": "layer",
     }
 
+    buck_command_alias(
+        name = name + "-container",
+        args = nspawn_in_subvol_args(":" + name),
+        exe = "//fs_image:nspawn-run-in-subvol",
+        visibility = visibility,
+    )
     buck_genrule(
         name = name,
         out = "layer",
-        type = _get_fbconfig_rule_type(),  # For queries
-        # Layers are only usable on the same host that built them, so
-        # keep our output JSON out of the distributed Buck cache.  See
-        # the docs for BuildRule::isCacheable.
-        cacheable = False,
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
             self_dependency = "//fs_image/buck:image_layer",
             bash = '''
@@ -288,6 +290,11 @@ def image_layer(
                 name,
             ),
         ),
+        # Layers are only usable on the same host that built them, so
+        # keep our output JSON out of the distributed Buck cache.  See
+        # the docs for BuildRule::isCacheable.
+        cacheable = False,
+        type = _get_fbconfig_rule_type(),  # For queries
         visibility = visibility,
     )
 

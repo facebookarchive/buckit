@@ -22,6 +22,11 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "nspawn_in_subvol",
+    srcs = ["nspawn_in_subvol.bzl"],
+)
+
+fake_macro_library(
     name = "wrap_runtime_deps",
     srcs = ["wrap_runtime_deps.bzl"],
 )
@@ -29,7 +34,10 @@ fake_macro_library(
 fake_macro_library(
     name = "image_layer",
     srcs = ["image_layer.bzl"],
-    deps = [":image_utils"],
+    deps = [
+        ":image_utils",
+        ":nspawn_in_subvol",
+    ],
 )
 
 fake_macro_library(

@@ -9,6 +9,16 @@ image.  This target lets you do just that, for example, here is a shell:
                 cut -f 2- -d ' '
     )" -- /bin/bash
 
+The above is a handful to remember, so each layer gets a corresponding
+`-container` target.  To be used like so:
+
+    buck run //PATH/TO:SOME_LAYER-container  # Runs `bash` by default
+    buck run //PATH/TO:SOME_LAYER-container -- -- printenv
+
+Note that there are two sets of `--`.  The first separates `buck run`
+arguments from those of the container runtime.  The second separates the
+container args from the in-container command.
+
 IMPORTANT: This is NOT READY to use as a sandbox for build steps.  The
 reason is that `systemd-nspawn` does a bunch of random things to the
 filesystem, which we would need to explicitly control (see "Filesystem
