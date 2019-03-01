@@ -130,7 +130,9 @@ python_unittest(
         100,
         ":find_built_subvol",
     )],
-    par_style = "xar",  # "fastzip" won't work because of `set_up_volume.sh`
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     resources = {
         "//fs_image/compiler/tests:hello_world_base": "tests/hello_world_base",
     },
@@ -169,7 +171,9 @@ python_unittest(
         100,
         ":nspawn_in_subvol",
     )],
-    par_style = "xar",  # "fastzip" won't work because of `set_up_volume.sh`
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     resources = {
         "//fs_image/compiler/tests" +
         ":only-for-tests-read-only-host-clone": "tests/host",
@@ -184,6 +188,9 @@ python_unittest(
 python_binary(
     name = "nspawn-run-in-subvol",
     main_module = "nspawn_in_subvol",
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     deps = [":nspawn_in_subvol"],
 )
 

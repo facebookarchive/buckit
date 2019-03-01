@@ -60,6 +60,9 @@ python_unittest(
         100,
         ":procfs_serde",
     )],
+    # "fastzip" would break :volume_for_repo in @mode/opt.  "xar" fails
+    # since `root` cannot access the content of an unprivileged XAR.
+    par_style = "zip",
     deps = [
         ":procfs_serde",
         "//fs_image:testlib_temp_subvolumes",
@@ -151,6 +154,9 @@ python_unittest(
         100,
         ":dep_graph",
     )],
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     deps = [
         ":dep_graph",
         "//fs_image:testlib_temp_subvolumes",
@@ -272,7 +278,9 @@ python_unittest(
     name = "test-add-remove-conflict",
     srcs = ["tests/test_add_remove_conflict.py"],
     base_module = "compiler",
-    par_style = "xar",  # "fastzip" would break :volume_for_repo in @mode/opt
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
     resources = {
         TEST_TARGET_PREFIX + READ_MY_DOC_image_feature_target(
             "feature_addremove_conflict_add",
