@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 'Utilities to make Python systems programming more palatable.'
+import array
 import logging
 import os
+import socket
 import subprocess
+import tempfile
 
-from typing import AnyStr, Iterable
+from typing import AnyStr, Iterable, Iterator, Tuple
 from contextlib import AbstractContextManager, contextmanager
 
 
@@ -52,6 +55,56 @@ def check_popen_returncode(proc: subprocess.Popen):
         raise subprocess.CalledProcessError(
             returncode=proc.returncode, cmd=proc.args,
         )
+
+
+@contextmanager
+def listen_temporary_unix_socket() -> Iterator[Tuple[str, socket.socket]]:
+    # Hardcoding /tmp is ugly, but Buck sets $TMP to fairly long paths,
+    # which can cause `AF_UNIX path too long`.
+    with tempfile.TemporaryDirectory(dir='/tmp') as td, \
+            socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lsock:
+        sock_path = os.path.join(td, 'sock')
+        lsock.bind(sock_path)
+        lsock.listen()
+        yield sock_path, lsock
+
+
+def recv_fds(sock, msglen, maxfds, inheritable=False):
+    '''
+    Receives via a Unix domain socket a message of at most `msglen` bytes,
+    with at most `maxfds` file descriptors in the ancillary data.  The file
+    descriptors will be marked O_CLOEXEC unless inheritable is set to False.
+    '''
+    fds = array.array('i')
+    msg, ancdata, msg_flags, _addr = sock.recvmsg(
+        msglen, maxfds * socket.CMSG_SPACE(fds.itemsize),
+        0 if inheritable else socket.MSG_CMSG_CLOEXEC,
+    )
+    assert not (msg_flags & socket.MSG_TRUNC), msg_flags
+    assert not (msg_flags & socket.MSG_CTRUNC), msg_flags
+    assert not (msg_flags & socket.MSG_ERRQUEUE), msg_flags
+    for cmsg_level, cmsg_type, cmsg_data in ancdata:
+        assert cmsg_level == socket.SOL_SOCKET, cmsg_level
+        assert cmsg_type == socket.SCM_RIGHTS, cmsg_type
+        assert len(cmsg_data) % fds.itemsize == 0, cmsg_data
+        fds.frombytes(cmsg_data)
+    return msg, list(fds)
+
+
+# Don't wait forever if the `send_fds` side crashes.  This is 2.5 minutes so
+# we still make progress on overloaded hosts.
+FD_UNIX_SOCK_TIMEOUT = 150
+
+
+def recv_fds_from_unix_sock(sock_path, max_fds):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn_sock:
+        # Don't wait forever if the `send_fds` side crashes.  This is 3
+        # minutes so we still make progress on overloaded hosts.
+        conn_sock.settimeout(FD_UNIX_SOCK_TIMEOUT)
+        conn_sock.connect(sock_path)
+        ignored_msg_len = 128
+        _msg, fds = recv_fds(conn_sock, ignored_msg_len, max_fds)
+        return fds
 
 
 def run_stdout_to_err(

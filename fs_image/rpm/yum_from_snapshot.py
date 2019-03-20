@@ -108,7 +108,6 @@ building a "yum appliance", along these lines:
         One could `nspawn --bind /install_root --private-network -x` into
         the image to use `yum-from-snapshot` in a truly hermetic way.
 '''
-import array
 import os
 import shlex
 import socket
@@ -121,40 +120,14 @@ from contextlib import contextmanager
 from urllib.parse import urlparse, urlunparse
 from typing import Iterator, List, Mapping, TextIO
 
-from .common import get_file_logger, check_popen_returncode, Path
+from common import (
+    check_popen_returncode, FD_UNIX_SOCK_TIMEOUT, get_file_logger,
+    listen_temporary_unix_socket, recv_fds_from_unix_sock,
+)
+from .common import Path
 from .yum_conf import YumConfParser
 
 log = get_file_logger(__file__)
-
-
-@contextmanager
-def _listen_unix_socket(path: str) -> Iterator[socket.socket]:
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lsock:
-        lsock.bind(path)
-        lsock.listen()
-        yield lsock
-
-
-def _recv_fds(sock, msglen, maxfds, inheritable=False):
-    '''
-    Receives via a Unix domain socket a message of at most `msglen` bytes,
-    with at most `maxfds` file descriptors in the ancillary data.  The file
-    descriptors will be marked O_CLOEXEC unless inheritable is set to False.
-    '''
-    fds = array.array('i')
-    msg, ancdata, msg_flags, _addr = sock.recvmsg(
-        msglen, maxfds * socket.CMSG_SPACE(fds.itemsize),
-        0 if inheritable else socket.MSG_CMSG_CLOEXEC,
-    )
-    assert not (msg_flags & socket.MSG_TRUNC), msg_flags
-    assert not (msg_flags & socket.MSG_CTRUNC), msg_flags
-    assert not (msg_flags & socket.MSG_ERRQUEUE), msg_flags
-    for cmsg_level, cmsg_type, cmsg_data in ancdata:
-        assert cmsg_level == socket.SOL_SOCKET, cmsg_level
-        assert cmsg_type == socket.SCM_RIGHTS, cmsg_type
-        assert len(cmsg_data) % fds.itemsize == 0, cmsg_data
-        fds.frombytes(cmsg_data)
-    return msg, list(fds)
 
 
 @contextmanager
@@ -359,8 +332,10 @@ def _make_socket_and_send_via(*, unix_sock_fd):
 
     IMPORTANT: This code must not write anything to stdout, the fd can be 1.
     '''
+    # NB: Some code here is (sort of) copy-pasta'd in `send_fds_and_run.py`,
+    # but it's not obviously worthwhile to reuse it here.
     return ['python3', '-c', textwrap.dedent('''\
-    import array, socket, subprocess, sys
+    import array, socket, sys
 
     def send_fds(sock, msg: bytes, fds: 'List[int]'):
         num_sent = sock.sendmsg([msg], [(
@@ -373,9 +348,11 @@ def _make_socket_and_send_via(*, unix_sock_fd):
     # Make a socket in this netns, and send it to the parent.
     with socket.socket(fileno=''' + str(unix_sock_fd) + ''') as lsock:
         print(f'Sending FD to parent', file=sys.stderr)
+        lsock.settimeout(''' + str(FD_UNIX_SOCK_TIMEOUT) + ''')
         with lsock.accept()[0] as csock, socket.socket(
             socket.AF_INET, socket.SOCK_STREAM
         ) as inet_sock:
+            csock.settimeout(''' + str(FD_UNIX_SOCK_TIMEOUT) + ''')
             send_fds(csock, b'ohai', [inet_sock.fileno()])
     ''')]
 
@@ -490,12 +467,7 @@ def yum_from_snapshot(
                 # ORDER IS IMPORTANT: In case of error, this must be closed
                 # before `proc.__exit__` calls `wait`, or we'll deadlock.
                 ready_fifo, 'w'
-            ) as ready_out, \
-            tempfile.TemporaryDirectory(
-                # This is ugly as sin, but Buck sets $TMP to fairly long
-                # paths, which would cause `AF_UNIX path too long`.
-                dir='/tmp',
-            ) as unix_sock_td:
+            ) as ready_out:
 
         # To start the repo server we must obtain a socket that belongs to
         # the network namespace of the `yum` container, and we must bring up
@@ -503,20 +475,16 @@ def yum_from_snapshot(
         # process has low privileges, we do this via a `sudo` helper.
         with open(netns_fifo, 'r') as netns_in:
             netns_path = netns_in.read()
-        unix_sock_path = os.path.join(unix_sock_td, 'sock')
 
-        with _listen_unix_socket(unix_sock_path) as lsock, subprocess.Popen([
+        with listen_temporary_unix_socket() as (
+            unix_sock_path, list_sock
+        ), subprocess.Popen([
             'sudo', 'nsenter', '--net=' + netns_path,
             # NB: We pass our listening socket as FD 1 to avoid dealing with
             # the `sudo` option of `-C`.  Nothing here writes to `stdout`:
             *_make_socket_and_send_via(unix_sock_fd=1),
-        ], stdout=lsock.fileno()) as sock_proc, \
-                socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as unix_sock:
-            # Don't wait forever if the `send_fds` helper crashes.  This is
-            # 3 minutes so we still make progress on overloaded hosts.
-            unix_sock.settimeout(180)
-            unix_sock.connect(unix_sock_path)
-            _msg, (repo_server_sock_fd,) = _recv_fds(unix_sock, 128, 1)
+        ], stdout=list_sock.fileno()) as sock_proc:
+            repo_server_sock_fd, = recv_fds_from_unix_sock(unix_sock_path, 1)
             repo_server_sock = socket.socket(fileno=repo_server_sock_fd)
         check_popen_returncode(sock_proc)
 
