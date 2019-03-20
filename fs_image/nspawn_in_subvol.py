@@ -98,6 +98,7 @@ user, which we should probably never do).
 '''
 import argparse
 import os
+import pwd
 import re
 import sys
 import uuid
@@ -244,14 +245,13 @@ def _snapshot_subvol(src_subvol, snapshot_into):
 
 
 def nspawn_in_subvol(
-    src_subvol, opts, extra_nspawn_args=None, *,
+    src_subvol, opts, *,
     # These keyword-only arguments generally follow those of `subprocess.run`.
     #   - `check` defaults to True instead of False.
     #   - Unlike `run_as_root`, `stdout` is NOT default-redirected to `stderr`.
     stdout=None, stderr=None, check=True,
 ):
-    if extra_nspawn_args is None:
-        extra_nspawn_args = []
+    extra_nspawn_args = ['--user', opts.user]
 
     if opts.private_network:
         extra_nspawn_args.append('--private-network')
@@ -272,6 +272,15 @@ def nspawn_in_subvol(
         # code we should be running under `buck test` and `buck run`.  NB:
         # As of this writing, `scratch` works incorrectly under `nspawn`,
         # making `artifacts-dir` fail.
+
+    if opts.logs_tmpfs:
+        # Future: Don't assume that the image password DB is compatible
+        # with the host's, and look there instead.
+        pw = pwd.getpwnam(opts.user)
+        extra_nspawn_args.extend(['--tmpfs', '/logs:' + ','.join([
+            f'uid={pw.pw_uid}', f'gid={pw.pw_gid}', 'mode=0755', 'nodev',
+            'nosuid', 'noexec',
+        ])])
 
     # Future: This is definitely not the way to go for providing device
     # nodes, but we need `/dev/fuse` right now to run XARs.  Let's invent a
@@ -360,6 +369,22 @@ def parse_opts(argv):
         help='Makes a read-only recursive bind-mount of the current Buck '
              'project into the container at the same location as it is on '
              'the host. Needed to run in-place binaries.',
+    )
+    parser.add_argument(
+        '--user', default='nobody',
+        help='Changes to the specified user once in the nspawn container. '
+            'Defaults to `nobody` to give you a mostly read-only view of '
+            'the OS.',
+    )
+    parser.add_argument(
+        '--no-logs-tmpfs', action='store_false', dest='logs_tmpfs',
+        help='Our production runtime always provides a user-writable `/logs` '
+            'in the container, so this wrapper simulates it by mounting a '
+            'tmpfs at that location by default. You may need this flag to '
+            'use `--no-snapshot` with an layer that lacks a `/logs` '
+            'mountpoint. NB: we do not supply a persistent writable mount '
+            'since that is guaranteed to break hermeticity and e.g. make '
+            'somebody\'s image tests very hard to debug.',
     )
     parser.add_argument(
         'cmd', nargs='*', default=['/bin/bash'],

@@ -48,6 +48,19 @@ class NspawnTestCase(unittest.TestCase):
                 'test \\! -s /etc/machine-id && test -z "$container_uuid"',
             ])
 
+    def test_logs_directory(self):
+        # The log directory is on by default.
+        ret = self._nspawn_in('host', [
+            '--', 'sh', '-c',
+            'touch /logs/foo && stat --format="%U %G %a" /logs && whoami',
+        ], stdout=subprocess.PIPE)
+        self.assertEqual(0, ret.returncode)
+        self.assertEqual(b'nobody nobody 755\nnobody\n\n', ret.stdout)
+        # And the option prevents it from being created.
+        self.assertEqual(0, self._nspawn_in('host', [
+            '--no-logs-tmpfs', '--', 'test', '!', '-e', '/logs',
+        ]).returncode)
+
     @with_temp_subvols
     def test_non_ephemeral_snapshot(self, temp_subvols):
         dest_subvol = temp_subvols.caller_will_create('persistent')
@@ -59,10 +72,11 @@ class NspawnTestCase(unittest.TestCase):
         dest_subvol._exists = True
         self._nspawn_in('host', [
             '--snapshot-into', dest_subvol.path().decode(), '--',
-            'sh', '-c', 'echo ohaibai > /poke',
+            # Also tests that we are a non-root user in the container.
+            'sh', '-c', 'echo ohaibai "$USER" > /home/nobody/poke',
         ])
-        with open(dest_subvol.path('poke')) as f:
-            self.assertEqual('ohaibai\n', f.read())
+        with open(dest_subvol.path('/home/nobody/poke')) as f:
+            self.assertEqual('ohaibai nobody\n', f.read())
         # Spot-check: the host mounts should still be available on the snapshot
         self.assertTrue(os.path.exists(dest_subvol.path('/bin/bash')))
 
