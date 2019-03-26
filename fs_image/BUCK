@@ -195,6 +195,28 @@ python_binary(
     deps = [":nspawn_in_subvol"],
 )
 
+python_binary(
+    name = "nspawn-test-in-subvol",
+    srcs = ["nspawn_test_in_subvol.py"],
+    base_module = "",
+    main_module = "nspawn_test_in_subvol",
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
+    deps = [":nspawn_in_subvol"],
+)
+
+python_unittest(
+    name = "test-nspawn-test-in-subvol",
+    srcs = ["tests/test_nspawn_test_in_subvol.py"],
+    base_module = "",
+    needed_coverage = [(100, ":nspawn-test-in-subvol-library")],
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
+    deps = [":nspawn-test-in-subvol-library"],
+)
+
 python_unittest(
     name = "test-subvolume-garbage-collector",
     srcs = ["tests/test_subvolume_garbage_collector.py"],
