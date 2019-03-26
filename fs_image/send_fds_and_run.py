@@ -79,6 +79,11 @@ def popen_and_inject_fds_after_sudo(cmd, fds, popen, *, set_listen_fds):
         '--args', '--']` invocation.
     '''
     with listen_temporary_unix_socket() as (lsock_path, lsock), popen([
+        # The wrapper is Python.  In @mode/dev this can end up writing
+        # bytecode as `root` into `buck-out`, which would break Buck's
+        # garbage-collection.  The magic environment variable fixes that.
+        # This doesn't affect @mode/opt since that is precompiled anyway.
+        'env', 'PYTHONDONTWRITEBYTECODE=1',
         # The wrapper is part of this library's `resources`, so this will
         # work in @mode/opt with ZIP-PAR or XAR packaging.
         os.path.join(os.path.dirname(__file__), 'recv-fds-and-run'),
@@ -140,15 +145,7 @@ def send_fds_and_popen(opts, **popen_kwargs):
         opts.cmd,
         opts.fd,
         lambda wrapped_cmd: subprocess.Popen([
-            *(
-                # The wrapper is Python.  In @mode/dev this can end up
-                # writing bytecode as `root` into `buck-out`, which would
-                # break Buck's garbage-collection.  The magic environment
-                # variable fixes that.  This doesn't affect @mode/opt since
-                # that is precompiled anyway.
-                ['sudo', *opts.sudo_arg, 'PYTHONDONTWRITEBYTECODE=1', '--']
-                    if opts.sudo else []
-            ),
+            *(['sudo', *opts.sudo_arg, '--'] if opts.sudo else []),
             *wrapped_cmd,
         ], **popen_kwargs),
         set_listen_fds=opts.set_listen_fds,

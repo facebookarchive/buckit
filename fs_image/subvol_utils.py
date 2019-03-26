@@ -158,7 +158,11 @@ class Subvol:
         # data to stdout to be usable in pipelines.
         if stdout is None:
             stdout = 2
-        with subprocess.Popen(['sudo', *args], stdout=stdout, **kwargs) as pr:
+        # The '--' is to avoid `args` from accidentally being parsed as
+        # environment variables or `sudo` options.
+        with subprocess.Popen(
+            ['sudo', '--', *args], stdout=stdout, **kwargs,
+        ) as pr:
             yield pr
         if check:
             check_popen_returncode(pr)

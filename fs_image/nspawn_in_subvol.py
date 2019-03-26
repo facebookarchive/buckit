@@ -181,6 +181,13 @@ def _inject_os_release_args(subvol):
 
 def nspawn_cmd(nspawn_subvol):
     return [
+        # Without this, nspawn would look for the host systemd's cgroup setup,
+        # which breaks us in continuous integration containers, which may not
+        # have a `systemd` in the host container.
+        #
+        # We set this variable via `env` instead of relying on the `sudo`
+        # configuration because it's important that it be set.
+        'env', 'UNIFIED_CGROUP_HIERARCHY=yes',
         'systemd-nspawn',
         # These are needed since we do not want to require a working `dbus` on
         # the host.
@@ -206,7 +213,7 @@ def nspawn_cmd(nspawn_subvol):
     ]
 
 
-def nspawn_env():
+def nspawn_sanitize_env():
     env = os.environ.copy()
     # `systemd-nspawn` responds to a bunch of semi-private and intentionally
     # (mostly) undocumented environment variables.  Many of these can
@@ -222,10 +229,6 @@ def nspawn_env():
         # effects are annoying to test.
         if var.startswith('SYSTEMD_NSPAWN_'):  # pragma: no cover
             env.pop(var)
-    # Without this, nspawn would look for the host systemd's cgroup setup,
-    # which breaks us in continuous integration containers, which may not
-    # have a `systemd` in the host container.
-    env['UNIFIED_CGROUP_HIERARCHY'] = 'yes'
     return env
 
 
@@ -308,7 +311,9 @@ def nspawn_in_subvol(
         def popen(cmd):
             return nspawn_subvol.popen_as_root(
                 cmd,
-                env=nspawn_env(),
+                # This is a safeguard in case `sudo` lets through these
+                # unwanted environment variables.
+                env=nspawn_sanitize_env(),
                 # `run_as_root` sends stdout to stderr by default -- avoid that
                 stdout=(1 if stdout is None else stdout),
                 stderr=stderr,
