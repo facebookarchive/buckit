@@ -10,6 +10,8 @@ def fake_macro_library(name, srcs, deps = None):
     builds & tests on changes to the macro code, which would make it easy to
     accidentally break trunk.
 
+    This should eventually become unnecessary, follow Q10141.
+
     Future: It'd be great to enforce that `deps` can only refer to rules of
     type `fake_macro_library`.  I'm not sure how to do that without writing
     a full-fledged converter, though.

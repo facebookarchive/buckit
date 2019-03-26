@@ -8,8 +8,10 @@ load(":defs.bzl", "fake_macro_library")
 
 # The following rules are "fake" in the sense that their build artifacts are
 # actually discarded.  However, they are required to trigger automatic
-# builds and tests on changes to the macro library, so we do need to keep
-# them up-to-date (each rule type implicitly depends on one of these).
+# builds and tests on changes to .bzl files, so it is important to keep
+# these up-to-date.  Furthermore, when you add a new rule type, you'll need
+# to make its targets depend on the corresponding `fake_macro_library`.
+# This should eventually become unnecessary, follow Q10141.
 
 fake_macro_library(
     name = "crc32",
@@ -22,8 +24,8 @@ fake_macro_library(
 )
 
 fake_macro_library(
-    name = "nspawn_in_subvol",
-    srcs = ["nspawn_in_subvol.bzl"],
+    name = "artifacts_require_repo",
+    srcs = ["artifacts_require_repo.bzl"],
 )
 
 fake_macro_library(
@@ -35,8 +37,8 @@ fake_macro_library(
     name = "image_layer",
     srcs = ["image_layer.bzl"],
     deps = [
+        ":artifacts_require_repo",
         ":image_utils",
-        ":nspawn_in_subvol",
     ],
 )
 

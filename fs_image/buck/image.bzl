@@ -1,8 +1,8 @@
 "This provides a more friendly UI to the image_* macros."
 
-load("//fs_image/buck:image_feature.bzl", "image_feature")
-load("//fs_image/buck:image_layer.bzl", "image_layer")
-load("//fs_image/buck:image_package.bzl", "image_package")
+load(":image_feature.bzl", "image_feature")
+load(":image_layer.bzl", "image_layer")
+load(":image_package.bzl", "image_package")
 
 def _image_host_mount(source, mountpoint, is_directory):
     return {

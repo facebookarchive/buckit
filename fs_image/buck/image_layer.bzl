@@ -98,8 +98,8 @@ load(
     "DO_NOT_DEPEND_ON_FEATURES_SUFFIX",
     "image_feature",
 )
+load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load(":image_utils.bzl", "image_utils")
-load(":nspawn_in_subvol.bzl", "nspawn_in_subvol_args")
 
 def _get_fbconfig_rule_type():
     return "image_layer"
@@ -213,7 +213,9 @@ def image_layer(
 
     buck_command_alias(
         name = name + "-container",
-        args = nspawn_in_subvol_args(":" + name),
+        args = ["--layer", "$(location {})".format(":" + name)] + (
+            ["--bind-repo-ro"] if built_artifacts_require_repo() else []
+        ),
         exe = "//fs_image:nspawn-run-in-subvol",
         visibility = visibility,
     )
