@@ -100,6 +100,7 @@ import argparse
 import os
 import pwd
 import re
+import subprocess
 import sys
 import uuid
 
@@ -109,6 +110,7 @@ from artifacts_dir import find_repo_root
 from common import nullcontext
 from compiler.mount_item import clone_mounts
 from find_built_subvol import find_built_subvol, Subvol
+from send_fds_and_run import popen_and_inject_fds_after_sudo
 from tests.temp_subvolumes import TempSubvolumes
 
 
@@ -121,8 +123,10 @@ def _exists_in_image(subvol, path):
     return os.path.exists(subvol.path(path))
 
 
-def bind_args(src, dest, *, readonly=True):
+def bind_args(src, dest=None, *, readonly=True):
     'dest is relative to the nspawn container root'
+    if dest is None:
+        dest = src
     # NB: The `systemd-nspawn` docs claim that we can add `:norbind` to make
     # the bind mount non-recursive.  This would be a bad default, so we
     # don't do it, but if you wanted to add it a non-recursive option, be
@@ -186,7 +190,7 @@ def nspawn_cmd(nspawn_subvol):
         # Randomize --machine so that the container has a random hostname
         # each time. The goal is to help detect builds that somehow use the
         # hostname to influence the resulting image.
-        '--machine', 'buck_image_' + uuid.uuid4().hex,
+        '--machine', uuid.uuid4().hex,
         '--directory', nspawn_subvol.path(),
         *_obfuscate_machine_id_args(nspawn_subvol),
         *_inject_os_release_args(nspawn_subvol),
@@ -264,7 +268,7 @@ def nspawn_in_subvol(
         # container.  But, by making it available in the outer mount
         # namespace, its unmounting would become unreliable, and handling
         # that would add a bunch of complex code here.
-        extra_nspawn_args.extend(['--bind-ro', find_repo_root(sys.argv[0])])
+        extra_nspawn_args.extend(bind_args(find_repo_root(sys.argv[0])))
         # Future: we **may** also need to mount the scratch directory
         # pointed to by `buck-image-out`, since otherwise repo code trying
         # to access other built layers won't work.  Not adding it now since
@@ -300,19 +304,35 @@ def nspawn_in_subvol(
         _snapshot_subvol(src_subvol, opts.snapshot_into) if opts.snapshot
             else nullcontext(src_subvol)
     ) as nspawn_subvol:
-        return nspawn_subvol.run_as_root(
-            [
-                *nspawn_cmd(nspawn_subvol),
-                *extra_nspawn_args,
-                # Ensure that the command is not interpreted as nspawn args
-                '--',
-                *opts.cmd,
-            ],
-            env=nspawn_env(),
-            # `run_as_root` sends stdout to stderr by default; avoid that here
-            stdout=(1 if stdout is None else stdout),
+
+        def popen(cmd):
+            return nspawn_subvol.popen_as_root(
+                cmd,
+                env=nspawn_env(),
+                # `run_as_root` sends stdout to stderr by default -- avoid that
+                stdout=(1 if stdout is None else stdout),
+                stderr=stderr,
+                check=check,
+            )
+
+        cmd = [
+            *nspawn_cmd(nspawn_subvol),
+            *extra_nspawn_args,
+            # Ensure that the command is not interpreted as nspawn args
+            '--', *opts.cmd,
+        ]
+        with (
+            # Avoid the overhead of the FD-forwarding wrapper if it's not needed
+            popen_and_inject_fds_after_sudo(
+                cmd, opts.forward_fd, popen, set_listen_fds=True,
+            ) if opts.forward_fd else popen(cmd)
+        ) as proc:
+            stdout, stderr = proc.communicate()
+        return subprocess.CompletedProcess(
+            args=proc.args,
+            returncode=proc.returncode,
+            stdout=stdout,
             stderr=stderr,
-            check=check,
         )
 
 
@@ -385,6 +405,12 @@ def parse_opts(argv):
             'mountpoint. NB: we do not supply a persistent writable mount '
             'since that is guaranteed to break hermeticity and e.g. make '
             'somebody\'s image tests very hard to debug.',
+    )
+    parser.add_argument(
+        '--forward-fd', type=int, action='append', default=[],
+        help='These FDs will be copied into the container with sequential '
+            'FD numbers starting from 3, in the order they were listed '
+            'on the command-line. Repeat to pass multiple FDs.',
     )
     parser.add_argument(
         'cmd', nargs='*', default=['/bin/bash'],

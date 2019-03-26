@@ -130,8 +130,6 @@ class Subvol:
             raise AssertionError(f'{path_in_subvol} is outside the subvol')
         return result_path
 
-    # NB: It's fine to make this public, once needed.
-    #
     # This differs from the regular `subprocess.Popen` interface in these ways:
     #   - stdout maps to stderr by default (to protect the caller's stdout),
     #   - `check` is supported, and default to `True`,
@@ -140,7 +138,7 @@ class Subvol:
     # `_subvol_exists` is a private kwarg letting us `run_as_root` to create
     # new subvolumes, and not just touch existing ones.
     @contextmanager
-    def _popen_as_root(
+    def popen_as_root(
         self, args, *, _subvol_exists=True, stdout=None, check=True, **kwargs,
     ):
         if 'cwd' in kwargs:
@@ -178,11 +176,11 @@ class Subvol:
             - `stdout` is redirected to stderr by default,
             - `cwd` is prohibited.
         '''
-        # IMPORTANT: Any logic that CAN go in _popen_as_root, MUST go there.
+        # IMPORTANT: Any logic that CAN go in popen_as_root, MUST go there.
         if input:
             assert 'stdin' not in kwargs
             kwargs['stdin'] = subprocess.PIPE
-        with self._popen_as_root(
+        with self.popen_as_root(
             args, _subvol_exists=_subvol_exists, check=check, **kwargs,
         ) as proc:
             stdout, stderr = proc.communicate(timeout=timeout, input=input)
@@ -256,7 +254,7 @@ class Subvol:
                 'getfattr', '--no-dereference', '--recursive', self.path()
             ])
 
-        with self._popen_as_root([
+        with self.popen_as_root([
             'btrfs', 'send',
             *(['--no-data'] if no_data else []),
             *(['-p', parent.path()] if parent else []),

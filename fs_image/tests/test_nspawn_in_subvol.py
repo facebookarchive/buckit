@@ -2,6 +2,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 import unittest.mock
 
@@ -27,7 +28,7 @@ class NspawnTestCase(unittest.TestCase):
 
     def test_redirects(self):
         ret = self._nspawn_in(
-            'host', ['--', 'sh', '-c', 'echo ohai ; echo abracadabra >&2'],
+            'host', ['--', 'sh', '-c', 'echo ohai && echo abracadabra >&2'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         # The extra newline is due to T40936918 mentioned in
@@ -60,6 +61,18 @@ class NspawnTestCase(unittest.TestCase):
         self.assertEqual(0, self._nspawn_in('host', [
             '--no-logs-tmpfs', '--', 'test', '!', '-e', '/logs',
         ]).returncode)
+
+    def test_forward_fd(self):
+        with tempfile.TemporaryFile() as tf:
+            tf.write(b'hello')
+            tf.seek(0)
+            ret = self._nspawn_in('host', [
+                '--forward-fd', str(tf.fileno()), '--', 'sh', '-c',
+                'cat <&3 && echo goodbye >&3',
+            ], stdout=subprocess.PIPE)
+            self.assertEqual(b'hello\n', ret.stdout)
+            tf.seek(0)
+            self.assertEqual(b'hellogoodbye\n', tf.read())
 
     @with_temp_subvols
     def test_non_ephemeral_snapshot(self, temp_subvols):

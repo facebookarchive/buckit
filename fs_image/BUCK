@@ -158,6 +158,7 @@ python_library(
     deps = [
         ":common",
         ":find_built_subvol",
+        ":send_fds_and_run",
         ":testlib_temp_subvolumes",
         "//fs_image/compiler:items",
     ],
