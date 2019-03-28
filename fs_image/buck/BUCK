@@ -56,3 +56,13 @@ fake_macro_library(
     srcs = ["image_package.bzl"],
     deps = [":image_utils"],
 )
+
+fake_macro_library(
+    name = "image_python_unittest",
+    srcs = ["image_python_unittest.bzl"],
+    deps = [
+        ":artifacts_require_repo",
+        ":image_layer",
+        ":wrap_runtime_deps",
+    ],
+)
