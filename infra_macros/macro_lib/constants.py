@@ -133,7 +133,6 @@ FBCODE_RULES = [
     'd_binary',
     'd_library',
     'd_library_external',
-    'd_unittest',
     'dewey_artifact',
     'export_file',
     'gen_thrift',

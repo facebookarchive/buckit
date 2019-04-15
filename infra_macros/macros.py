@@ -51,7 +51,6 @@ load("@fbcode_macros//build_defs:cython_library.bzl", "cython_library")
 load("@fbcode_macros//build_defs:d_binary.bzl", "d_binary")
 load("@fbcode_macros//build_defs:d_library_external.bzl", "d_library_external")
 load("@fbcode_macros//build_defs:d_library.bzl", "d_library")
-load("@fbcode_macros//build_defs:d_unittest.bzl", "d_unittest")
 load("@fbcode_macros//build_defs:discard.bzl", "discard")
 load("@fbcode_macros//build_defs:go_binary.bzl", "go_binary")
 load("@fbcode_macros//build_defs:go_bindgen_library.bzl", "go_bindgen_library")
@@ -115,7 +114,6 @@ _CONVERTER_MAP = {
     'd_binary': d_binary,  # noqa F821
     'd_library_external': d_library_external,  # noqa F821
     'd_library': d_library,  # noqa F821
-    'd_unittest': d_unittest,  # noqa F821
     'go_binary': go_binary,  # noqa F821
     'go_bindgen_library': go_bindgen_library,  # noqa F821
     'go_library': go_library,  # noqa F821
