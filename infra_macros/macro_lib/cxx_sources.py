@@ -54,8 +54,4 @@ HEADER_SUFFIXES = (
     'If.tcc',
     'If-inl.h',
     'If-inl.tcc',
-    'Impl.h',
-    'Impl.tcc',
-    'Impl-inl.h',
-    'Impl-inl.tcc',
 )
