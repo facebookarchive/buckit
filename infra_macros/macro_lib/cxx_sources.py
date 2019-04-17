@@ -58,8 +58,4 @@ HEADER_SUFFIXES = (
     'Impl.tcc',
     'Impl-inl.h',
     'Impl-inl.tcc',
-    'Details.h',
-    'Details.tcc',
-    'Details-inl.h',
-    'Details-inl.tcc',
 )
