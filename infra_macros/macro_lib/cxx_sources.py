@@ -50,8 +50,4 @@ HEADER_SUFFIXES = (
     '-defs.h',
     '-defs.hpp',
     '-defs.tcc',
-    'If.h',
-    'If.tcc',
-    'If-inl.h',
-    'If-inl.tcc',
 )
