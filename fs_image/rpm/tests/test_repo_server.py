@@ -10,6 +10,7 @@ import unittest
 
 from contextlib import contextmanager
 
+from .repos import get_test_repos_path
 from ..common import Checksum, Path
 from ..repo_objects import Repodata, RepoMetadata, Rpm
 from ..repo_server import _CHUNK_SIZE, repo_server, read_snapshot_dir
@@ -167,10 +168,12 @@ class RepoServerTestCase(unittest.TestCase):
     def test_normal_snashot_dir_access(self):
         # We've got to populate RepoMetadata.xml with real XML because the
         # server re-parses that.
-        with open(os.path.join(
-            os.path.dirname(__file__),  # @mode/opt OK: repomd.xml is in PAR
-            'repos/aarch64/0/dog/repodata/repomd.xml',
-        ), 'rb') as infile:
+        with open(
+            os.path.join(
+                get_test_repos_path(), 'aarch64/0/dog/repodata/repomd.xml'
+            ),
+            'rb',
+        ) as infile:
             repomd = RepoMetadata.new(xml=infile.read())
 
         repodata_bytes, repodata_sid = self._write(b'A Repodata blob')

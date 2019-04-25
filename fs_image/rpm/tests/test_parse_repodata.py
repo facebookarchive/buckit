@@ -6,25 +6,17 @@ import unittest
 
 from io import BytesIO
 
+from .repos import get_test_repos_path
 from ..repo_objects import RepoMetadata
 from ..parse_repodata import get_rpm_parser, pick_primary_repodata
 
-# This works in @mode/opt because test repos are baked into the PAR
-REPO_ROOT = os.path.join(os.path.dirname(__file__), 'repos/')
-
 
 def _listdir(path) -> 'Set[str]':
-    return {
-        os.path.join(path, p)
-            for p in os.listdir(path)
-                # FB-internal Buck macros for Python create __init__.py
-                # files inside the PAR-embedded repos :/
-                if p != '__init__.py'
-    }
+    return {os.path.join(path, p) for p in os.listdir(path)}
 
 
 def find_test_repos() -> 'Iterator[str, RepoMetadata]':
-    for arch_path in _listdir(REPO_ROOT):
+    for arch_path in _listdir(get_test_repos_path()):
         for step_path in _listdir(arch_path):
             for p in _listdir(step_path):
                 with open(os.path.join(p, 'repodata/repomd.xml'), 'rb') as f:

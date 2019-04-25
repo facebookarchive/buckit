@@ -4,6 +4,7 @@ import hashlib
 import os
 import unittest
 
+from .repos import get_test_repos_path
 from ..common import Checksum
 from ..repo_objects import Rpm, RepoMetadata
 
@@ -36,11 +37,12 @@ class RepoObjectsTestCase(unittest.TestCase):
         ).best_checksum()))
 
     def test_repodata_and_metadata(self):
-        with open(os.path.join(
-            # This works in @mode/opt because test repos are baked into the PAR
-            os.path.dirname(__file__),
-            'repos/aarch64/0/dog/repodata/repomd.xml',
-        ), 'rb') as infile:
+        with open(
+            os.path.join(
+                get_test_repos_path(), 'aarch64/0/dog/repodata/repomd.xml'
+            ),
+            'rb',
+        ) as infile:
             rmd = RepoMetadata.new(xml=infile.read())
             self.assertGreater(rmd.fetch_timestamp, rmd.build_timestamp)
             # If this assert fires, you are changing the canonical hash,

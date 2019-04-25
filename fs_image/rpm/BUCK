@@ -37,14 +37,13 @@ python_library(
     deps = [":common"],
 )
 
-# For now, just include all the test repo data in each test that needs it.
 python_library(
     name = "test_repos",
-    srcs = glob([
-        "tests/repos/x86_64/**/*",
-        "tests/repos/aarch64/**/*",
-    ]),
+    srcs = ["tests/repos.py"],
     base_module = "rpm",
+    deps = [
+        "//libfb/py:fbcode_root",
+    ],
 )
 
 python_unittest(
