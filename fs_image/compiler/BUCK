@@ -113,6 +113,7 @@ python_library(
         ":procfs_serde",
         ":requires_provides",
         ":subvolume_on_disk",
+        "//fs_image:artifacts_dir",
         "//fs_image:subvol_utils",
     ],
 )

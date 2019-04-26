@@ -10,7 +10,7 @@ sort.
 from collections import namedtuple
 from typing import Iterator
 
-from .items import ImageItem, ParentLayerItem, PhaseOrder
+from .items import ImageItem, ParentLayerItem, PhaseOrder, MountItem
 
 
 # To build the item-to-item dependency graph, we need to first build up a
@@ -58,16 +58,31 @@ class ValidatedReqsProvs:
         # Validate that all requirements are satisfied.
         for path, reqs_provs in self.path_to_reqs_provs.items():
             for item_req in reqs_provs.item_reqs:
-                for item_prov in reqs_provs.item_provs:
-                    if item_prov.provides.matches(
-                        self.path_to_reqs_provs, item_req.requires
-                    ):
-                        break
+                # Next four lines of code below are equivalent to:
+                # if (
+                #        not isinstance(item_req.item, MountItem) or
+                #        not item_req.item.is_repo_root
+                #    ):
+                # But people believe such a block might be easier to read as
+                # a positive if statement with a pass. That additional
+                # line of code "pass" doesn't introduce any functionality,
+                # so it is OK to have "pragma: no cover" there.
+                if (
+                        isinstance(item_req.item, MountItem) and
+                        item_req.item.is_repo_root
+                ):
+                    pass  # pragma: no cover
                 else:
-                    raise RuntimeError(
-                        'At {}: nothing in {} matches the requirement {}'
-                        .format(path, reqs_provs.item_provs, item_req)
-                    )
+                    for item_prov in reqs_provs.item_provs:
+                        if item_prov.provides.matches(
+                                self.path_to_reqs_provs, item_req.requires
+                        ):
+                            break
+                    else:
+                        raise RuntimeError(
+                            'At {}: nothing in {} matches the requirement {}'
+                            .format(path, reqs_provs.item_provs, item_req)
+                        )
 
     @staticmethod
     def _add_to_req_map(reqs_provs, req, item):

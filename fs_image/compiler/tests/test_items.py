@@ -278,16 +278,17 @@ class ItemsTestCase(unittest.TestCase):
                 ))) as f:
                     self.assertEqual(contents, f.read())
 
-    def _make_mount_item(self, *, mountpoint, target, mount_config):
+    def _make_mount_item(self, *, mountpoint, target, mount_config,
+                         from_target='t'):
         'Ensures that `target` and `mount_config` make the same item.'
         item_from_file = MountItem(
-            from_target='t',
+            from_target=from_target,
             mountpoint=mountpoint,
             target=target,
             mount_config=None,
         )
         self.assertEqual(item_from_file, MountItem(
-            from_target='t',
+            from_target=from_target,
             mountpoint=mountpoint,
             target=None,
             mount_config=mount_config,
@@ -1013,6 +1014,34 @@ class ItemsTestCase(unittest.TestCase):
                     ],
                     DUMMY_LAYER_OPTS,
                 )
+
+    def test_mount_item_repo_root(self):
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes, \
+                tempfile.TemporaryDirectory() as source_dir:
+            mount_config = {
+                'is_directory': True,
+                'is_repo_root': True,
+                'build_source': {'type': 'host', 'source': None},
+            }
+            with open(os.path.join(source_dir, 'mountconfig.json'), 'w') as f:
+                json.dump(mount_config, f)
+
+            # Mount <repo_root_dir> at <mounter>/<repo_root_dir>
+            mounter = temp_subvolumes.create('moun:ter/volume')
+            mount_repo_root = self._make_mount_item(
+                mountpoint=None,
+                target=source_dir,
+                mount_config=mount_config,
+                from_target='//fs_image/compiler/test',
+            )
+
+            subvol_path = mounter.path().decode()
+            subvolumes_dir = os.path.dirname(os.path.dirname(subvol_path))
+            mount_repo_root.build_resolves_targets(
+                subvol=mounter,
+                target_to_path={'//fake:path': source_dir},
+                subvolumes_dir=subvolumes_dir,
+            )
 
 
 if __name__ == '__main__':

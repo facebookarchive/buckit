@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import tempfile
+import sys
 
 from typing import Iterable, List, Mapping, NamedTuple, Optional, Set
 
@@ -31,6 +32,7 @@ from .subvolume_on_disk import SubvolumeOnDisk
 
 from common import nullcontext
 from subvol_utils import Subvol
+from artifacts_dir import find_repo_root
 
 # This path is off-limits to regular image operations, it exists only to
 # record image metadata and configuration.  This is at the root, instead of
@@ -497,6 +499,7 @@ class MountItem(metaclass=ImageItem):
         ('build_source', NonConstructibleField),
         ('runtime_source', NonConstructibleField),
         ('is_directory', NonConstructibleField),
+        ('is_repo_root', NonConstructibleField),
         # The next two are always None, their content moves into the above
         # `NonConstructibleField`s
         'target',
@@ -514,21 +517,46 @@ class MountItem(metaclass=ImageItem):
             with open(os.path.join(target, 'mountconfig.json')) as f:
                 cfg = json.load(f)
 
+        kwargs['is_repo_root'] = cfg.pop('is_repo_root', False)
         default_mountpoint = cfg.pop('default_mountpoint', None)
-        if kwargs.get('mountpoint') is None:  # Missing or None => use default
-            kwargs['mountpoint'] = default_mountpoint
-            if kwargs['mountpoint'] is None:
-                raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
+
+        mountpoint = kwargs.get('mountpoint')
+        if kwargs['is_repo_root']:
+            assert default_mountpoint is None, (f'default_mountpoint: '
+                                                '{default_mountpoint} '
+                                                'must not be set')
+            assert mountpoint is None, (f'mountpoint: {mountpoint} '
+                                        'must not be set')
+            kwargs['mountpoint'] = find_repo_root(sys.argv[0])
+            assert kwargs['mountpoint'][0] == '/', (f'repo_root: '
+                                                    '{kwargs["mountpoint"]} '
+                                                    'must start from /')
+            kwargs['mountpoint'] = kwargs['mountpoint'][1:]
+        else:
+            if mountpoint is None:  # Missing or None => use default
+                kwargs['mountpoint'] = default_mountpoint
+                if kwargs['mountpoint'] is None:
+                    raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
         _coerce_path_field_normal_relative(kwargs, 'mountpoint')
 
         kwargs['is_directory'] = cfg.pop('is_directory')
+        assert (kwargs['is_directory'] or
+                not kwargs['is_repo_root']), f'cannot host_file_mount repo_root'
+
+        build_source = cfg.pop('build_source')
+        if kwargs['is_repo_root']:
+            assert build_source['source'] is None, (f'source: '
+                                                    '{build_source["source"]} '
+                                                    'must not be set')
+            build_source['source'] = os.path.join('/', kwargs['mountpoint'])
 
         kwargs['build_source'] = mount_item.BuildSource(
-            **cfg.pop('build_source')
+            **build_source
         )
         if kwargs['build_source'].type == 'host' and not (
             kwargs['from_target'].startswith('//fs_image/features/host_mounts')
             or kwargs['from_target'].startswith('//fs_image/compiler/test')
+            or kwargs['from_target'].startswith('//fs_image/build_appliance')
         ):
             raise AssertionError(
                 'Host mounts cause containers to be non-hermetic and fragile, '
@@ -588,8 +616,14 @@ class MountItem(metaclass=ImageItem):
         is_dir = os.path.isdir(source_path)
         assert is_dir == self.is_directory, self
         if is_dir:
+            mkdir_opts = ['--mode=0755']
+            if self.is_repo_root:
+                mkdir_opts.append('-p')
+            # NB: if is_repo_root, mkdir below will create a non-portable dir
+            # like /home/username/fbsource/fbcode in subvol layer, but such
+            #  a layer should never be published as a package.
             subvol.run_as_root([
-                'mkdir', '--mode=0755', subvol.path(self.mountpoint)
+                'mkdir', *mkdir_opts, subvol.path(self.mountpoint)
             ])
         else:  # Regular files, device nodes, FIFOs, you name it.
             # `touch` lacks a `--mode` argument, but the mode of this
