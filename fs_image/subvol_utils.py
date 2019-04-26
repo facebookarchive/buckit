@@ -11,8 +11,18 @@ from btrfs_loopback import LoopbackVolume, run_stdout_to_err
 from common import byteme, check_popen_returncode, get_file_logger, pipe
 from unshare import Namespace, nsenter_as_root, nsenter_as_user, Unshare
 
+from compiler.subvolume_on_disk import SubvolumeOnDisk
+
 log = get_file_logger(__file__)
 MiB = 2 ** 20
+
+
+# A simple helper returning path to subvolume referred by
+# "subvolume_rel_path" key in layer_json json file
+def get_subvolume_path(layer_json, subvolumes_dir):
+    with open(layer_json) as infile:
+        return SubvolumeOnDisk.from_json_file(
+            infile, subvolumes_dir).subvolume_path()
 
 
 # Exposed as a helper so that test_compiler.py can mock it.

@@ -54,6 +54,7 @@ python_library(
         ":btrfs_loopback",
         ":common",
         ":unshare",
+        "//fs_image/compiler:subvolume_on_disk",
     ],
 )
 
@@ -66,6 +67,9 @@ python_unittest(
         ":subvol_utils",
     )],
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
+    resources = {
+        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/build-appliance-testing",
+    },
     deps = [
         ":subvol_utils",
         ":testlib_temp_subvolumes",

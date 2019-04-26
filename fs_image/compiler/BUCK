@@ -130,11 +130,13 @@ python_unittest(
     # since `root` cannot access the content of an unprivileged XAR.
     par_style = "zip",
     resources = {
+        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/build-appliance-testing",
         "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
+        "//fs_image:subvol_utils",
         "//fs_image:testlib_temp_subvolumes",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],

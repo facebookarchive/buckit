@@ -110,6 +110,7 @@ class PhaseOrder(enum.Enum):
 class LayerOpts(NamedTuple):
     layer_target: str
     yum_from_snapshot: str
+    build_appliance: str
 
 
 class ImageItem(type):
@@ -916,9 +917,15 @@ class RpmActionItem(metaclass=ImageItem):
     ):
         # Do as much validation as possible outside of the builder to give
         # fast feedback to the user.
-        assert layer_opts.yum_from_snapshot is not None, (
+        assert (layer_opts.yum_from_snapshot is not None or
+                layer_opts.build_appliance is not None), (
             f'`image_layer` {layer_opts.layer_target} must set '
-            '`yum_from_repo_snapshot`'
+            '`yum_from_repo_snapshot or build_appliance`'
+        )
+        assert (layer_opts.yum_from_snapshot is None or
+                layer_opts.build_appliance is None), (
+            f'`image_layer` {layer_opts.layer_target} must not set '
+            '`both yum_from_repo_snapshot and build_appliance`'
         )
 
         action_to_rpms = {action: set() for action in RpmAction}
@@ -941,30 +948,87 @@ class RpmActionItem(metaclass=ImageItem):
                     continue
                 # Future: `yum-from-snapshot` is actually designed to run
                 # unprivileged (but we have no nice abstraction for this).
-                subvol.run_as_root([
-                    # Since `yum-from-snapshot` variants are generally
-                    # Python binaries built from this very repo, in
-                    # @mode/dev, we would run a symlink-PAR from the
-                    # buck-out tree as `root`.  This would leave behind
-                    # root-owned `__pycache__` directories, which would
-                    # break Buck's fragile cleanup, and cause us to leak old
-                    # build artifacts.  This eventually runs the host out of
-                    # disk space.  Un-deletable *.pyc files can also
-                    # interfere with e.g.  `test-image-layer`, since that
-                    # test relies on there being just one `create_ops`
-                    # subvolume in `buck-image-out` with the "received UUID"
-                    # that was committed to VCS as part of the test
-                    # sendstream.
-                    'env', 'PYTHONDONTWRITEBYTECODE=1',
-                    layer_opts.yum_from_snapshot,
-                    *sum((
+                if layer_opts.build_appliance is None:
+                    subvol.run_as_root([
+                        # Since `yum-from-snapshot` variants are generally
+                        # Python binaries built from this very repo, in
+                        # @mode/dev, we would run a symlink-PAR from the
+                        # buck-out tree as `root`.  This would leave behind
+                        # root-owned `__pycache__` directories, which would
+                        # break Buck's fragile cleanup, and cause us to leak old
+                        # build artifacts.  This eventually runs the host out of
+                        # disk space.  Un-deletable *.pyc files can also
+                        # interfere with e.g.  `test-image-layer`, since that
+                        # test relies on there being just one `create_ops`
+                        # subvolume in `buck-image-out` with the "received UUID"
+                        # that was committed to VCS as part of the test
+                        # sendstream.
+                        'env', 'PYTHONDONTWRITEBYTECODE=1',
+                        layer_opts.yum_from_snapshot,
+                        *sum((
+                            ['--protected-path', d]
+                                for d in _protected_path_set(subvol)
+                        ), []),
+                        '--install-root', subvol.path(), '--',
+                        RPM_ACTION_TYPE_TO_YUM_CMD[action],
+                        # Sort ensures determinism even if `yum` is
+                        # order-dependent
+                        '--assumeyes', '--', *sorted(rpms),
+                    ])
+                else:
+                    '''
+                    ## Future
+                    - implement image feature "manifold_support" with all
+                      those bind-mounts below in mounts = [...]
+                    - add features = ["manifold_support"] to fb_build_appliance
+                    - call nspawn_in_subvol() instead of run_as_root() below
+                    '''
+                    svol = Subvol(
+                        layer_opts.build_appliance,
+                        already_exists=True,
+                    )
+                    mountpoints = mount_item.mountpoints_from_subvol_meta(svol)
+                    bind_mount_args = sum((
+                        [b'--bind-ro=' + svol.path(mp).replace(b':', b'\\:') +
+                         b':' + b'/' + mp.encode()]
+                            for mp in mountpoints
+                        ), [])
+                    protected_path_args = ' '.join(sum((
                         ['--protected-path', d]
                             for d in _protected_path_set(subvol)
-                    ), []),
-                    '--install-root', subvol.path(), '--',
-                    RPM_ACTION_TYPE_TO_YUM_CMD[action],
-                    # Sort ensures determinism even if `yum` is order-dependent
-                    '--assumeyes', '--', *sorted(rpms),
-                ])
+                    ), []))
+                    # Without this, nspawn would look for the host systemd's
+                    # cgroup setup, which breaks us in continuous integration
+                    # containers, which may not have a `systemd` in the host
+                    # container.
+                    subvol.run_as_root([
+                        'env', 'UNIFIED_CGROUP_HIERARCHY=yes',
+                        'systemd-nspawn',
+                        '--quiet',
+                        f'--directory={layer_opts.build_appliance}',
+                        '--register=no',
+                        '--keep-unit',
+                        '--ephemeral',
+                        b'--bind=' + subvol.path().replace(b':', b'\\:') +
+                        b':/mnt',
+                        '--bind-ro=/dev/fuse',
+                        '--bind-ro=/etc/fbwhoami',
+                        '--bind-ro=/etc/smc.tiers',
+                        '--bind-ro=/var/facebook/rootcanal',
+                        *bind_mount_args,
+                        '--capability=CAP_NET_ADMIN',
+                        'sh',
+                        '-c',
+                        (
+                            'mkdir -p /mnt/var/cache/yum; '
+                            'mount --bind /var/cache/yum /mnt/var/cache/yum; '
+                            '/usr/bin/yum-from-fb-snapshot '
+                            f'{protected_path_args}'
+                            ' --install-root /mnt -- '
+                            f'{RPM_ACTION_TYPE_TO_YUM_CMD[action]} '
+                            '--assumeyes -- '
+                            f'{" ".join(sorted(rpms))}'
+                        )
+                    ])
 
         return builder

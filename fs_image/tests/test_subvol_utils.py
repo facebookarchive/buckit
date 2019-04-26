@@ -5,10 +5,11 @@ import tempfile
 import unittest
 import unittest.mock
 
-from subvol_utils import Subvol
+from subvol_utils import Subvol, get_subvolume_path
+
+from find_built_subvol import subvolumes_dir
 
 from .temp_subvolumes import with_temp_subvols
-
 
 class SubvolTestCase(unittest.TestCase):
     '''
@@ -119,3 +120,13 @@ class SubvolTestCase(unittest.TestCase):
                 self.assertEqual(2, sv.mark_readonly_and_send_to_new_loopback(
                     loop_path.name, waste_factor=waste_too_low,
                 ))
+
+    def test_get_subvolume_path(self):
+        layer_json = os.path.join(
+            os.path.dirname(__file__),
+            'build-appliance-testing',
+            'layer.json',
+        )
+        path = get_subvolume_path(layer_json, subvolumes_dir())
+        self.assertTrue(os.path.exists(os.path.join(
+            path, 'usr', 'bin', 'yum-from-fb-snapshot')))

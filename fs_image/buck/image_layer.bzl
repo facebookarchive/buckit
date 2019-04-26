@@ -121,7 +121,9 @@ def image_layer(
         visibility = None,
         # Path to a binary target, with this CLI signature:
         #   yum_from_repo_snapshot --install-root PATH -- SOME YUM ARGS
-        # Required if any dependent `image_feature` specifies `rpms`.
+        # Mutually exclusive with build_appliance: either
+        # yum_from_repo_snapshot or build_appliance is required
+        # if any dependent `image_feature` specifies `rpms`.
         yum_from_repo_snapshot = None,
         # Path to a target outputting a btrfs send-stream of a subvolume;
         # mutually exclusive with using any of the image_feature fields.
@@ -143,6 +145,14 @@ def image_layer(
         # variety of ways, so it's not part of `image.layer` itself, and
         # must be set from outside.
         mount_config = None,
+        # Path to a target outputting a btrfs send-stream of a build appliance:
+        # a self-contained file tree with /usr/bin/yum-from-fb-snapshot and
+        # other tools like btrfs, yum, tar, ln used for image builds along
+        # with all their dependencies (but /usr/local/fbcode).
+        # Mutually exclusive with yum_from_repo_snapshot: either
+        # build_appliance or yum_from_repo_snapshot is required
+        # if any dependent `image_feature` specifies `rpms`.
+        build_appliance = None,
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
     current_target = target_utils.to_label(
@@ -195,6 +205,7 @@ def image_layer(
             rule_name = name,
             subvol_name = subvol_name,
             yum_from_repo_snapshot = yum_from_repo_snapshot,
+            build_appliance = build_appliance,
         )
 
     if mount_config == None:
@@ -306,7 +317,8 @@ def _compile_image_features(
         parent_layer,
         image_feature_kwargs,
         yum_from_repo_snapshot,
-        subvol_name):
+        subvol_name,
+        build_appliance):
     # For ease of use, a layer takes all the arguments of a feature, so
     # just make an implicit feature target to implement this.
     feature_name = rule_name + "-feature"
@@ -345,6 +357,7 @@ def _compile_image_features(
           --subvolume-rel-path \
             "$subvolume_wrapper_dir/"{subvol_name_quoted} \
           --parent-layer-json {parent_layer_json_quoted} \
+          {maybe_quoted_build_appliance_args} \
           {maybe_quoted_yum_from_repo_snapshot_args} \
           --child-layer-target {current_target_quoted} \
           --child-feature-json $(location {my_feature_target}) \
@@ -358,6 +371,11 @@ def _compile_image_features(
         current_target_quoted = shell.quote(current_target),
         my_feature_target = feature_target,
         dep_features_query_macro = dep_features_query_macro,
+        maybe_quoted_build_appliance_args = (
+            "" if not build_appliance else "--build-appliance-json $(location {})/layer.json".format(
+                build_appliance,
+            )
+        ),
         maybe_quoted_yum_from_repo_snapshot_args = (
             "" if not yum_from_repo_snapshot else
             # In terms of **dependency** structure, we want this

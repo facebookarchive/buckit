@@ -10,6 +10,7 @@ import unittest
 import unittest.mock
 
 from contextlib import contextmanager, ExitStack
+from subvol_utils import get_subvolume_path
 
 from btrfs_diff.tests.render_subvols import render_sendstream
 from tests.temp_subvolumes import TempSubvolumes
@@ -30,7 +31,8 @@ from .mock_subvolume_from_json_file import (
 )
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
-DUMMY_LAYER_OPTS = LayerOpts(layer_target='t', yum_from_snapshot='y')
+DUMMY_LAYER_OPTS = LayerOpts(
+    layer_target='t', yum_from_snapshot='y', build_appliance=None)
 
 
 def _render_subvol(subvol: {'Subvol'}):
@@ -924,14 +926,7 @@ class ItemsTestCase(unittest.TestCase):
                 'f': ['(Dir)', {'i': ['(File m755)']}],
             }], _render_subvol(subvol))
 
-    def test_rpm_action_item(self):
-        layer_opts = LayerOpts(
-            layer_target='fake-target',
-            # This works in @mode/opt since this binary is baked into the XAR
-            yum_from_snapshot=os.path.join(
-                os.path.dirname(__file__), 'yum-from-test-snapshot',
-            ),
-        )
+    def _test_rpm_action_item(self, layer_opts):
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('rpm_action')
             self.assertEqual(['(Dir)', {}], _render_subvol(subvol))
@@ -995,6 +990,29 @@ class ItemsTestCase(unittest.TestCase):
                     }],
                 }],
             }], _render_subvol(subvol))
+
+    def test_rpm_action_item_yum_from_snapshot(self):
+        self._test_rpm_action_item(layer_opts=LayerOpts(
+            layer_target='fake-target',
+            # This works in @mode/opt since this binary is baked into the XAR
+            yum_from_snapshot=os.path.join(
+                os.path.dirname(__file__), 'yum-from-test-snapshot',
+            ),
+            build_appliance=None,
+        ))
+
+    def test_rpm_action_item_build_appliance(self):
+        self._test_rpm_action_item(layer_opts=LayerOpts(
+            layer_target='fake-target',
+            yum_from_snapshot=None,
+            build_appliance=get_subvolume_path(
+                        os.path.join(
+                            os.path.dirname(__file__),
+                            'build-appliance-testing',
+                            'layer.json',
+                        ),
+                        TEST_SUBVOLS_DIR)
+        ))
 
     def test_rpm_action_conflict(self):
         # Test both install-install and install-remove conflicts.

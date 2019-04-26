@@ -157,6 +157,7 @@ class CompilerTestCase(unittest.TestCase):
                 LayerOpts(
                     layer_target='fake-target',
                     yum_from_snapshot=self.yum_path,
+                    build_appliance=None,
                 )
             )(subvol)
 
