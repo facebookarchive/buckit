@@ -479,7 +479,10 @@ def yum_from_snapshot(
         with listen_temporary_unix_socket() as (
             unix_sock_path, list_sock
         ), subprocess.Popen([
-            'sudo', 'nsenter', '--net=' + netns_path,
+            # NB: /usr/local/fbcode/bin must come first because /bin/python3
+            # may be very outdated
+            'sudo', 'env', 'PATH=/usr/local/fbcode/bin:/bin', 'nsenter',
+            '--net=' + netns_path,
             # NB: We pass our listening socket as FD 1 to avoid dealing with
             # the `sudo` option of `-C`.  Nothing here writes to `stdout`:
             *_make_socket_and_send_via(unix_sock_fd=1),
