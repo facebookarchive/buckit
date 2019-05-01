@@ -9,6 +9,7 @@ import tempfile
 import unittest
 import unittest.mock
 
+from artifacts_dir import find_repo_root
 from contextlib import contextmanager, ExitStack
 from subvol_utils import get_subvolume_path
 
@@ -1043,6 +1044,16 @@ class ItemsTestCase(unittest.TestCase):
             }
             with open(os.path.join(source_dir, 'mountconfig.json'), 'w') as f:
                 json.dump(mount_config, f)
+            self._check_item(
+                self._make_mount_item(
+                    mountpoint=None,
+                    target=source_dir,
+                    mount_config=mount_config,
+                    from_target='//fs_image/compiler/test',
+                ),
+                {ProvidesDoNotAccess(path=find_repo_root(sys.argv[0]))},
+                {require_directory('/')},
+            )
 
             # Mount <repo_root_dir> at <mounter>/<repo_root_dir>
             mounter = temp_subvolumes.create('moun:ter/volume')

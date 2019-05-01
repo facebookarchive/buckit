@@ -136,6 +136,7 @@ python_unittest(
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
+        "//fs_image:artifacts_dir",
         "//fs_image:subvol_utils",
         "//fs_image:testlib_temp_subvolumes",
         "//fs_image/btrfs_diff:testlib_render_subvols",

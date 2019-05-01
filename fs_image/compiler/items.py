@@ -500,6 +500,13 @@ class MountItem(metaclass=ImageItem):
         ('build_source', NonConstructibleField),
         ('runtime_source', NonConstructibleField),
         ('is_directory', NonConstructibleField),
+        # is_repo_root below is only intended to be used for the build
+        # appliance and testing, not for production images or really anything
+        # outside of //fs_image. There are two issues to be addressed before
+        # is_repo_root becomes first class citizen: 1) prevent to publish a
+        # package built with an is_repo_root item; 2) handle an overlap when
+        # other items require or provide some path which is leading part of
+        # the path provided by is_repo_root item (see 'mkdir -p' below)
         ('is_repo_root', NonConstructibleField),
         # The next two are always None, their content moves into the above
         # `NonConstructibleField`s
@@ -546,10 +553,13 @@ class MountItem(metaclass=ImageItem):
 
         build_source = cfg.pop('build_source')
         if kwargs['is_repo_root']:
-            assert build_source['source'] is None, (f'source: '
-                                                    '{build_source["source"]} '
-                                                    'must not be set')
-            build_source['source'] = os.path.join('/', kwargs['mountpoint'])
+            build_source_path = os.path.join('/', kwargs['mountpoint'])
+            assert (build_source['source'] is None or
+                    build_source['source'] == build_source_path), (
+                        f'source: {build_source["source"]} must not be set or '
+                        f'must be equal to {build_source_path}'
+                    )
+            build_source['source'] = build_source_path
 
         kwargs['build_source'] = mount_item.BuildSource(
             **build_source
@@ -590,7 +600,13 @@ class MountItem(metaclass=ImageItem):
     def requires(self):
         # We don't require the mountpoint itself since it will be shadowed,
         # so this item just makes it with default permissions.
-        yield require_directory(os.path.dirname(self.mountpoint))
+        # repo_root is a special case because it creates parent dirs
+        # (by 'mkdir -p'); see also the comment in class MountItem above.
+        if self.is_repo_root:
+            required_dir = '/'
+        else:
+            required_dir = os.path.dirname(self.mountpoint)
+        yield require_directory(required_dir)
 
     def build_resolves_targets(
         self, *,
