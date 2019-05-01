@@ -1027,10 +1027,6 @@ class RpmActionItem(metaclass=ImageItem):
                         '--ephemeral',
                         b'--bind=' + subvol.path().replace(b':', b'\\:') +
                         b':/mnt',
-                        '--bind-ro=/dev/fuse',
-                        '--bind-ro=/etc/fbwhoami',
-                        '--bind-ro=/etc/smc.tiers',
-                        '--bind-ro=/var/facebook/rootcanal',
                         *bind_mount_args,
                         '--capability=CAP_NET_ADMIN',
                         'sh',
