@@ -114,3 +114,16 @@ class NspawnTestCase(unittest.TestCase):
         ], stdout=subprocess.PIPE, check=False)
         self.assertNotEqual(0, ret.returncode)  # UNENCRYPTED_KITTEH is unset
         self.assertEqual(b'meow\n\n', ret.stdout)
+
+    def test_bindmount_rw(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._nspawn_in('host', [
+                '--user',
+                'root',
+                '--bindmount-rw',
+                f'{tmpdir}=/tmp',
+                '--',
+                'touch',
+                '/tmp/testfile',
+            ])
+            self.assertTrue(os.path.isfile(f'{tmpdir}/testfile'))

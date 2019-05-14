@@ -263,6 +263,14 @@ def nspawn_in_subvol(
     if opts.private_network:
         extra_nspawn_args.append('--private-network')
 
+    if opts.bindmount_rw:
+        for item in opts.bindmount_rw:
+            items = item.split('=')
+            assert len(items) == 2, 'Invalid bindmount ' + item
+            src = items[0].strip()
+            dest = items[1].strip()
+            extra_nspawn_args.extend(bind_args(src, dest, readonly=False))
+
     if opts.bind_repo_ro:
         # NB: Since this bind mount is only made within the nspawn
         # container, it is not visible in the `--snapshot-into` filesystem.
@@ -410,6 +418,11 @@ def parse_opts(argv):
             'mountpoint. NB: we do not supply a persistent writable mount '
             'since that is guaranteed to break hermeticity and e.g. make '
             'somebody\'s image tests very hard to debug.',
+    )
+    parser.add_argument(
+        '--bindmount-rw', metavar='SRC=DEST', nargs='*',
+        help='Read-writable bindmounts (DEST is relative to the container '
+            'root) to create',
     )
     parser.add_argument(
         '--forward-fd', type=int, action='append', default=[],
