@@ -971,6 +971,8 @@ class ItemsTestCase(unittest.TestCase):
                 subvol.path('var/lib/rpm'),
                 subvol.path('var/lib/yum'),
                 subvol.path('var/log/yum.log'),
+                subvol.path('usr/lib/.build-id'),
+                subvol.path('bin/sh'),
             ])
             subvol.run_as_root([
                 'rmdir',
@@ -979,7 +981,10 @@ class ItemsTestCase(unittest.TestCase):
                 subvol.path('var/cache'),
                 subvol.path('var/lib'),
                 subvol.path('var/log'),
+                subvol.path('var/tmp'),
                 subvol.path('var'),
+                subvol.path('usr/lib'),
+                subvol.path('bin'),
             ])
             self.assertEqual(['(Dir)', {
                 'usr': ['(Dir)', {
@@ -987,6 +992,7 @@ class ItemsTestCase(unittest.TestCase):
                         'rpm_test': ['(Dir)', {
                             'carrot.txt': ['(File d13)'],
                             'mice.txt': ['(File d11)'],
+                            'post.txt': ['(File d6)'],
                         }],
                     }],
                 }],

@@ -1,14 +1,14 @@
 {
     "cat-pkgs/rpm-test-mice-0.1-a.x86_64.rpm": {
-        "build_timestamp": 1539402430,
-        "checksum": "sha384:eb634dd0c978fb888da3444a741187a171b62479f1304c097d20a157c5cac03bb6fa36beb153681e04d6e8eb480c9e94",
-        "size": 6166,
-        "storage_id": "test:f56a58fb129b4cad9db1e76756ad1253"
+        "build_timestamp": 1557896506,
+        "checksum": "sha384:3a8da257b09b1df429902d9d076b475cf94dfc60f87a4d3fed573de0e8dd07263b4db98d1c158ed9a4a6e91a2d236e6d",
+        "size": 645540,
+        "storage_id": "test:f22b22c68ec043d4b3a5847d606e8c72"
     },
     "cat-pkgs/rpm-test-milk-2.71-8.x86_64.rpm": {
-        "build_timestamp": 1539402430,
-        "checksum": "sha384:f630fd79dafe943b15cbac5ce654c46dba0671bd73a427cf8544e275d40a77010cf7b730147e7661edbd74b8f995b965",
-        "size": 6170,
-        "storage_id": "test:0531e228bdab4a85a0ebb2ae6107597f"
+        "build_timestamp": 1557896506,
+        "checksum": "sha384:c7b555f04e4b19006f00cde82a882637332468c0b498f7166a34295c9bc3edc611c24573050099c5f9a8f6faf3e68f73",
+        "size": 645540,
+        "storage_id": "test:bed133cb532c427584b916d8aeb6103e"
     }
 }

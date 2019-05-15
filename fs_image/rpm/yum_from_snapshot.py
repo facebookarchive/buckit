@@ -266,6 +266,7 @@ def _isolate_yum_and_wait_until_ready(
     # installed and wants to mutate `/dev/`.  Those changes will be
     # gleefully discarded.
     mount {quoted_dummy_dev} "$install_root"/dev/ -o bind
+    mount /dev/null "$install_root"/dev/null -o bind
 
     # Ensure the log exists, so we can guarantee our yum doesn't write to it.
     touch /var/log/yum.log
@@ -365,8 +366,7 @@ def _dummy_dev() -> str:
         subprocess.check_call(['sudo', 'chown', 'root:root', dummy_dev])
         subprocess.check_call(['sudo', 'chmod', '0755', dummy_dev])
         subprocess.check_call([
-            'sudo', 'mknod', '-m', '0666', os.path.join(dummy_dev, 'null'),
-            'c', '1', '3',
+            'sudo', 'touch', os.path.join(dummy_dev, 'null'),
         ])
         yield dummy_dev
     finally:

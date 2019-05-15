@@ -49,13 +49,20 @@ class YumFromSnapshotTestCase(unittest.TestCase):
             for path, content in [
                 ('mice.txt', 'mice 0.1 a\n'),
                 ('carrot.txt', 'carrot 2 rc0\n'),
+                ('post.txt', 'stuff\n'),
             ]:
                 remove.append(install_root / 'usr/share/rpm_test' / path)
                 with open(remove[-1]) as f:
                     self.assertEqual(content, f.read())
 
+            # Remove /bin/sh
+            remove.append(install_root / 'bin/sh')
+
             # Yum also writes some indexes & metadata.
-            for path in ['var/lib/yum', 'var/lib/rpm', 'var/cache/yum']:
+            for path in [
+                    'var/lib/yum', 'var/lib/rpm', 'var/cache/yum',
+                    'usr/lib/.build-id'
+            ]:
                 remove.append(install_root / path)
                 self.assertTrue(os.path.isdir(remove[-1]))
             remove.append(install_root / 'var/log/yum.log')
@@ -69,8 +76,9 @@ class YumFromSnapshotTestCase(unittest.TestCase):
                 subprocess.run(['sudo', 'rm', '-rf', path], check=True)
             subprocess.run([
                 'sudo', 'rmdir',
-                'usr/share/rpm_test', 'usr/share', 'usr',
-                'var/lib', 'var/cache', 'var/log', 'var',
+                'usr/share/rpm_test', 'usr/share', 'usr/lib', 'usr',
+                'var/lib', 'var/cache', 'var/log', 'var/tmp', 'var',
+                'bin',
             ], check=True, cwd=install_root)
             required_dirs = sorted([b'dev', b'meta'])
             self.assertEqual(required_dirs, sorted(os.listdir(install_root)))

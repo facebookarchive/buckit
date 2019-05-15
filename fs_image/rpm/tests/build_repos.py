@@ -45,8 +45,20 @@ class Rpm(NamedTuple):
         mkdir -p "$RPM_BUILD_ROOT"/usr/share/rpm_test
         echo '{name} {version} {release}' \
           > "$RPM_BUILD_ROOT"/usr/share/rpm_test/{name}.txt
+        mkdir -p "$RPM_BUILD_ROOT"/bin
+        cp /usr/sbin/busybox "$RPM_BUILD_ROOT"/bin/sh
+        %post
+        '''
+        # yum-from-snapshot prepares /dev in a subtle way to protect host
+        # system from side-effects of rpm post-install scripts. The command
+        # below lets us test that /dev/null is prepared properly: if for any
+        # reason "echo > /dev/null" fails, tests will catch post.txt abscence.
+        '''\
+        echo > /dev/null && echo 'stuff' > \
+          "$RPM_BUILD_ROOT"/usr/share/rpm_test/post.txt
         %files
         /usr/share/rpm_test/{name}.txt
+        /bin/sh
         ''').format(**self._asdict())
 
 
