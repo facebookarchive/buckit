@@ -103,13 +103,25 @@ python_library(
 )
 
 python_library(
-    name = "items",
+    name = "mount_item",
     srcs = [
-        "items.py",
         "mount_item.py",
     ],
     base_module = "compiler",
     deps = [
+        ":subvolume_on_disk",
+        "//fs_image:subvol_utils",
+    ],
+)
+
+python_library(
+    name = "items",
+    srcs = [
+        "items.py",
+    ],
+    base_module = "compiler",
+    deps = [
+        ":mount_item",
         ":procfs_serde",
         ":requires_provides",
         ":subvolume_on_disk",
@@ -122,10 +134,16 @@ python_unittest(
     name = "test-items",
     srcs = ["tests/test_items.py"],
     base_module = "compiler",
-    needed_coverage = [(
-        100,
-        ":items",
-    )],
+    needed_coverage = [
+        (
+            100,
+            ":items",
+        ),
+        (
+            100,
+            ":mount_item",
+        ),
+    ],
     # "fastzip" would break :volume_for_repo in @mode/opt.  "xar" fails
     # since `root` cannot access the content of an unprivileged XAR.
     par_style = "zip",
