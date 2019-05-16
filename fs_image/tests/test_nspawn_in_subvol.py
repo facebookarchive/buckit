@@ -116,14 +116,19 @@ class NspawnTestCase(unittest.TestCase):
         self.assertEqual(b'meow\n\n', ret.stdout)
 
     def test_bindmount_rw(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir, \
+                tempfile.TemporaryDirectory() as tmpdir2:
             self._nspawn_in('host', [
                 '--user',
                 'root',
                 '--bindmount-rw',
-                f'{tmpdir}=/tmp',
+                tmpdir, '/tmp',
+                '--bindmount-rw',
+                tmpdir2, '/mnt',
                 '--',
                 'touch',
                 '/tmp/testfile',
+                '/mnt/testfile',
             ])
             self.assertTrue(os.path.isfile(f'{tmpdir}/testfile'))
+            self.assertTrue(os.path.isfile(f'{tmpdir2}/testfile'))

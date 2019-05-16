@@ -265,10 +265,7 @@ def nspawn_in_subvol(
 
     if opts.bindmount_rw:
         for item in opts.bindmount_rw:
-            items = item.split('=')
-            assert len(items) == 2, 'Invalid bindmount ' + item
-            src = items[0].strip()
-            dest = items[1].strip()
+            src, dest = item
             extra_nspawn_args.extend(bind_args(src, dest, readonly=False))
 
     if opts.bind_repo_ro:
@@ -420,7 +417,7 @@ def parse_opts(argv):
             'somebody\'s image tests very hard to debug.',
     )
     parser.add_argument(
-        '--bindmount-rw', metavar='SRC=DEST', nargs='*',
+        '--bindmount-rw', action='append', nargs=2,
         help='Read-writable bindmounts (DEST is relative to the container '
             'root) to create',
     )
