@@ -1025,6 +1025,7 @@ class RpmActionItem(metaclass=ImageItem):
                         '--register=no',
                         '--keep-unit',
                         '--ephemeral',
+                        '--bind-ro=/dev/fuse:/dev/fuse',
                         b'--bind=' + subvol.path().replace(b':', b'\\:') +
                         b':/mnt',
                         *bind_mount_args,
