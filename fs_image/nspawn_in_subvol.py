@@ -308,6 +308,9 @@ def nspawn_in_subvol(
             if k.startswith('THRIFT_TLS_'):
                 extra_nspawn_args.append('--setenv={}={}'.format(k, v))
 
+    if opts.cap_net_admin:
+        extra_nspawn_args.append('--capability=CAP_NET_ADMIN')
+
     with (
         _snapshot_subvol(src_subvol, opts.snapshot_into) if opts.snapshot
             else nullcontext(src_subvol)
@@ -399,6 +402,10 @@ def parse_opts(argv):
         help='Makes a read-only recursive bind-mount of the current Buck '
              'project into the container at the same location as it is on '
              'the host. Needed to run in-place binaries.',
+    )
+    parser.add_argument(
+        '--cap-net-admin', action='store_true',
+        help='Adds CAP_NET_ADMIN capability. Needed to run ifconfig.',
     )
     parser.add_argument(
         '--user', default='nobody',

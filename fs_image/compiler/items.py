@@ -33,6 +33,8 @@ from .subvolume_on_disk import SubvolumeOnDisk
 from common import nullcontext
 from subvol_utils import Subvol
 from artifacts_dir import find_repo_root
+from nspawn_in_subvol import nspawn_in_subvol, \
+    parse_opts as nspawn_in_subvol_parse_opts
 
 # This path is off-limits to regular image operations, it exists only to
 # record image metadata and configuration.  This is at the root, instead of
@@ -999,39 +1001,26 @@ class RpmActionItem(metaclass=ImageItem):
                     - add features = ["manifold_support"] to fb_build_appliance
                     - call nspawn_in_subvol() instead of run_as_root() below
                     '''
-                    svol = Subvol(
+                    appliance_svol = Subvol(
                         layer_opts.build_appliance,
                         already_exists=True,
                     )
-                    mountpoints = mount_item.mountpoints_from_subvol_meta(svol)
-                    bind_mount_args = sum((
-                        [b'--bind-ro=' + svol.path(mp).replace(b':', b'\\:') +
-                         b':' + b'/' + mp.encode()]
-                            for mp in mountpoints
-                        ), [])
                     protected_path_args = ' '.join(sum((
                         ['--protected-path', d]
                             for d in _protected_path_set(subvol)
                     ), []))
-                    # Without this, nspawn would look for the host systemd's
-                    # cgroup setup, which breaks us in continuous integration
-                    # containers, which may not have a `systemd` in the host
-                    # container.
-                    subvol.run_as_root([
-                        'env', 'UNIFIED_CGROUP_HIERARCHY=yes',
-                        'systemd-nspawn',
-                        '--quiet',
-                        f'--directory={layer_opts.build_appliance}',
-                        '--register=no',
-                        '--keep-unit',
-                        '--ephemeral',
-                        '--bind-ro=/dev/fuse:/dev/fuse',
-                        b'--bind=' + subvol.path().replace(b':', b'\\:') +
-                        b':/mnt',
-                        *bind_mount_args,
-                        '--capability=CAP_NET_ADMIN',
-                        'sh',
-                        '-c',
+                    opts = nspawn_in_subvol_parse_opts([
+                        '--layer', 'UNUSED',
+                        '--user', 'root',
+                        # You can see below --no-private-network in conjunction
+                        # with --cap-net-admin. It is not intended to administer
+                        # the host's network stack. See how yum_from_snapshot()
+                        # brings loopback interface up under protection of
+                        # "unshare --net".
+                        '--no-private-network',
+                        '--cap-net-admin',
+                        '--bindmount-rw', subvol.path().decode(), '/mnt',
+                        '--', 'sh', '-c',
                         (
                             'mkdir -p /mnt/var/cache/yum; '
                             'mount --bind /var/cache/yum /mnt/var/cache/yum; '
@@ -1043,5 +1032,5 @@ class RpmActionItem(metaclass=ImageItem):
                             f'{" ".join(sorted(rpms))}'
                         )
                     ])
-
+                    nspawn_in_subvol(appliance_svol, opts, stdout=sys.stderr)
         return builder
