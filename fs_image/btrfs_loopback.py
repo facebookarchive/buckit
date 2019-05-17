@@ -19,8 +19,8 @@ from unshare import Unshare, nsenter_as_root, nsenter_as_user
 log = get_file_logger(__file__)
 MiB = 2 ** 20
 # Otherwise, `mkfs.btrfs` fails with:
-#   ERROR: minimum size for each btrfs device is 113246208
-MIN_CREATE_BYTES = 108 * MiB
+#   ERROR: minimum size for each btrfs device is 114294784
+MIN_CREATE_BYTES = 109 * MiB
 # The smallest size, to which btrfs will GROW a tiny filesystem. For
 # lower values, `btrfs resize` prints:
 #   ERROR: unable to resize '_foo/volume': Invalid argument
