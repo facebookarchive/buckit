@@ -107,7 +107,7 @@ class NspawnTestCase(unittest.TestCase):
     def test_cap_net_admin(self):
         self._nspawn_in('host', [
             '--user', 'root', '--no-private-network', '--cap-net-admin', '--',
-            'unshare', '--mount', 'ifconfig', 'lo', 'up',
+            'unshare', '--net', 'ifconfig', 'lo', 'up',
         ])
 
     @unittest.mock.patch.dict('os.environ', {
