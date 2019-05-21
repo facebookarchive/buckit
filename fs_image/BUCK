@@ -5,7 +5,8 @@ load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 python_library(
     name = "common",
     srcs = ["common.py"],
-    base_module = "",
+    # `common` is a "common" module name, so `import common` would collide.
+    base_module = "fs_image",
 )
 
 python_library(

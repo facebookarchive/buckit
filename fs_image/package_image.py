@@ -217,8 +217,8 @@ import subprocess
 
 from typing import Mapping
 
-from common import init_logging, check_popen_returncode
 from compiler.subvolume_on_disk import SubvolumeOnDisk
+from fs_image.common import init_logging, check_popen_returncode
 from subvol_utils import Subvol
 
 

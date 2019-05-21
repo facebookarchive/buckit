@@ -120,7 +120,7 @@ from contextlib import contextmanager
 from urllib.parse import urlparse, urlunparse
 from typing import Iterator, List, Mapping, TextIO
 
-from common import (
+from fs_image.common import (
     check_popen_returncode, FD_UNIX_SOCK_TIMEOUT, get_file_logger,
     listen_temporary_unix_socket, recv_fds_from_unix_sock,
 )

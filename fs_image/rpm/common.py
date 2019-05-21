@@ -8,7 +8,7 @@ from typing import AnyStr, NamedTuple
 
 # Hide the fact that some of our dependencies aren't in `rpm` any more, the
 # `rpm` library still imports them from `rpm.common`.
-from common import (  # noqa: F401
+from fs_image.common import (  # noqa: F401
     byteme, get_file_logger, init_logging, check_popen_returncode,
 )
 

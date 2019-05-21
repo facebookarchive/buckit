@@ -41,7 +41,7 @@ import sys
 
 from contextlib import contextmanager
 
-from common import (
+from fs_image.common import (
     FD_UNIX_SOCK_TIMEOUT, get_file_logger, init_logging,
     listen_temporary_unix_socket,
 )

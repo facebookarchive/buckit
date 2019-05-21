@@ -30,11 +30,11 @@ from .provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from .requires import require_directory, require_file
 from .subvolume_on_disk import SubvolumeOnDisk
 
-from common import nullcontext
-from subvol_utils import Subvol
 from artifacts_dir import find_repo_root
+from fs_image.common import nullcontext
 from nspawn_in_subvol import nspawn_in_subvol, \
     parse_opts as nspawn_in_subvol_parse_opts
+from subvol_utils import Subvol
 
 # This path is off-limits to regular image operations, it exists only to
 # record image metadata and configuration.  This is at the root, instead of

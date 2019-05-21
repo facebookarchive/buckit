@@ -107,9 +107,9 @@ import uuid
 from contextlib import contextmanager
 
 from artifacts_dir import find_repo_root
-from common import nullcontext
 from compiler.mount_item import clone_mounts
 from find_built_subvol import find_built_subvol, Subvol
+from fs_image.common import nullcontext
 from send_fds_and_run import popen_and_inject_fds_after_sudo
 from tests.temp_subvolumes import TempSubvolumes
 

@@ -8,7 +8,9 @@ from contextlib import contextmanager
 from typing import AnyStr, BinaryIO, Iterator
 
 from btrfs_loopback import LoopbackVolume, run_stdout_to_err
-from common import byteme, check_popen_returncode, get_file_logger, pipe
+from fs_image.common import (
+    byteme, check_popen_returncode, get_file_logger, pipe,
+)
 from unshare import Namespace, nsenter_as_root, nsenter_as_user, Unshare
 
 from compiler.subvolume_on_disk import SubvolumeOnDisk

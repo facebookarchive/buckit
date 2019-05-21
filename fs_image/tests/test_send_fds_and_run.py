@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 
-from common import pipe
+from fs_image.common import pipe
 from send_fds_and_run import send_fds_and_popen, parse_opts
 
 

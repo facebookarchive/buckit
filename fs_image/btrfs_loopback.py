@@ -13,7 +13,7 @@ import tempfile
 
 from typing import Optional
 
-from common import byteme, get_file_logger, run_stdout_to_err
+from fs_image.common import byteme, get_file_logger, run_stdout_to_err
 from unshare import Unshare, nsenter_as_root, nsenter_as_user
 
 log = get_file_logger(__file__)
