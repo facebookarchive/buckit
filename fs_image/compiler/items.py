@@ -1019,14 +1019,14 @@ class RpmActionItem(metaclass=ImageItem):
                         # "unshare --net".
                         '--no-private-network',
                         '--cap-net-admin',
-                        '--bindmount-rw', subvol.path().decode(), '/mnt',
+                        '--bindmount-rw', subvol.path().decode(), '/work',
                         '--', 'sh', '-c',
                         (
                             'mkdir -p /mnt/var/cache/yum; '
                             'mount --bind /var/cache/yum /mnt/var/cache/yum; '
                             '/usr/bin/yum-from-fb-snapshot '
                             f'{protected_path_args}'
-                            ' --install-root /mnt -- '
+                            ' --install-root /work -- '
                             f'{RPM_ACTION_TYPE_TO_YUM_CMD[action]} '
                             '--assumeyes -- '
                             f'{" ".join(sorted(rpms))}'
