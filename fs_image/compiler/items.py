@@ -459,6 +459,14 @@ class SymlinkToDirItem(SymlinkItem, metaclass=ImageItem):
         yield require_directory(os.path.dirname(self.dest))
 
 
+# We should allow symlinks to certain files that will be in the image
+# at runtime but may not be at build time.
+def _whitelisted_symlink_source(source: str) -> bool:
+    return source in [
+        'dev/null',
+    ]
+
+
 class SymlinkToFileItem(SymlinkItem, metaclass=ImageItem):
     customize_fields = SymlinkItem._customize_fields_impl
 
@@ -466,7 +474,8 @@ class SymlinkToFileItem(SymlinkItem, metaclass=ImageItem):
         yield ProvidesFile(path=self.dest)
 
     def requires(self):
-        yield require_file(self.source)
+        if not _whitelisted_symlink_source(self.source):
+            yield require_file(self.source)
         yield require_directory(os.path.dirname(self.dest))
 
 

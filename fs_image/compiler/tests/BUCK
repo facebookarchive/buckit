@@ -124,6 +124,8 @@ image.feature(
     ],
     symlinks_to_files = [
         ("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
+        # /dev/null is whitelisted to be a dangling symlink
+        ("/dev/null", "/foo/symlink_to_dev_null"),
     ],
 )
 

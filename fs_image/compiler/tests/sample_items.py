@@ -83,6 +83,11 @@ ID_TO_ITEM = {
         dest='/foo/symlink_to_hello_world.tar',
         source='/foo/hello_world.tar',
     ),
+    'foo/symlink_to_dev_null': SymlinkToFileItem(
+        from_target=T_SYMLINKS,
+        dest='/foo/symlink_to_dev_null',
+        source='/dev/null',
+    ),
     'foo/bar/hello_world.tar': CopyFileItem(
         from_target=T_KITCHEN_SINK,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
