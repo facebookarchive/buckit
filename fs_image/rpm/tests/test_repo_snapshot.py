@@ -74,8 +74,8 @@ class RepoSnapshotTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             snapshot.to_directory(Path(td))
             self.assertEqual(
-                ['repomd.xml', 'repodata.json', 'rpm.json'],
-                os.listdir(td),
+                sorted(['repomd.xml', 'repodata.json', 'rpm.json']),
+                sorted(os.listdir(td)),
             )
             with open(os.path.join(td, 'repomd.xml'), 'rb') as f:
                 self.assertEqual(b'foo', f.read())
