@@ -15,7 +15,7 @@ rm -rf /tmp/<name>-$$
 mkdir -m 700 /tmp/<name>-$$
 cp $DIR/<start_ghci> /tmp/<name>-$$
 
-PATH=<binutils_path>:"$PATH" <ghc_path> -pgml<cxx_path> -pgmc<cc_path> -optc-B<binutils_path> -pgma<cc_path> -pgmi$DIR/<iserv_path> -opta-B<binutils_path> -pgmP<cpp_path> -optP-undef -optP-traditional-cpp -I. -no-global-package-db -no-user-package-db -hide-all-packages <exposed_packages> <package_dbs> <compiler_flags> --interactive <srcs> ${DIR}/<squashed_so> -ghci-script /tmp/<name>-$$/start.ghci "$@"
+PATH=<binutils_path>:"$PATH" <user_ghci_path> -pgml<cxx_path> -pgmc<cc_path> -optc-B<binutils_path> -pgma<cc_path> -pgmi$DIR/<iserv_path> -opta-B<binutils_path> -pgmP<cpp_path> -optP-undef -optP-traditional-cpp -I. -no-global-package-db -no-user-package-db -hide-all-packages <exposed_packages> <package_dbs> <compiler_flags> --interactive <srcs> ${DIR}/<squashed_so> -ghci-script /tmp/<name>-$$/start.ghci "$@"
 retVal=$?
 rm -rf /tmp/<name>-$$
 exit $retVal
