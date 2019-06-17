@@ -164,7 +164,21 @@ def image_python_unittest(
         resources = {
             # Allow CI determinators to discover that tests need to be
             # rebuilt if this .bzl file changes.
-            "//fs_image/buck:image_python_unittest": "_unused_rsrc_for_dep",
+            "//fs_image/buck:image_python_unittest": "_unused_rsrc_for_bzl_dep",
+            # This "porcelain" target `name` already has 5-hop dependency on
+            # the "plumbing" target `test_name`, which actually contains the
+            # source files for the test.  We add this redundant dummy
+            # dependency to aid CI dependency resolution -- our current
+            # heuristics consider targets that are far away from the changed
+            # source code in terms of dependency hops to be lower priority
+            # to run.  But the current target is the only real way to
+            # execute the source, so we must ensure it's not far from the
+            # source files in the dependency graph.  This puts us at 1 hop.
+            ":" + test_name: "_unused_rsrc_for_test_sources",
+            # Same rationale as for the dependency on `:test_name` -- we
+            # don't want to be too many hops away from any source code
+            # included in the layer being tested.
+            layer: "_unused_rsrc_for_layer",
         },
         main_module = "nspawn_test_in_subvol",
         deps = [
