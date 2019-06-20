@@ -429,7 +429,8 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
         self.build_stat_options(subvol, dest)
 
 
-class SymlinkItem(HasStatOptions):
+class SymlinkBase:
+    __slots__ = ()
     fields = ['source', 'dest']
 
     def _customize_fields_impl(kwargs):  # noqa: B902
@@ -448,8 +449,8 @@ class SymlinkItem(HasStatOptions):
         )
 
 
-class SymlinkToDirItem(SymlinkItem, metaclass=ImageItem):
-    customize_fields = SymlinkItem._customize_fields_impl
+class SymlinkToDirItem(SymlinkBase, metaclass=ImageItem):
+    customize_fields = SymlinkBase._customize_fields_impl
 
     def provides(self):
         yield ProvidesDirectory(path=self.dest)
@@ -467,8 +468,8 @@ def _whitelisted_symlink_source(source: str) -> bool:
     ]
 
 
-class SymlinkToFileItem(SymlinkItem, metaclass=ImageItem):
-    customize_fields = SymlinkItem._customize_fields_impl
+class SymlinkToFileItem(SymlinkBase, metaclass=ImageItem):
+    customize_fields = SymlinkBase._customize_fields_impl
 
     def provides(self):
         yield ProvidesFile(path=self.dest)
