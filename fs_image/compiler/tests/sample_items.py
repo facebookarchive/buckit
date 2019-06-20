@@ -54,8 +54,7 @@ ID_TO_ITEM = {
         from_target=T_BAD_DIR,
         into_dir='/foo',
         path_to_make='borf/beep',
-        user='uuu',
-        group='ggg',
+        user_group='uuu:ggg',
         mode='mmm',
     ),
     'foo/fighter': SymlinkToDirItem(
@@ -97,7 +96,7 @@ ID_TO_ITEM = {
         from_target=T_KITCHEN_SINK,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/bar/hello_world_again.tar',
-        group='nobody',
+        user_group='nobody:nobody',
     ),
     'foo/borf/hello_world': TarballItem(
         from_target=T_TAR,

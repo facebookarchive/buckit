@@ -151,7 +151,7 @@ class ItemsTestCase(unittest.TestCase):
                 from_target='t', source='/dev/null', dest='/d/',
             ).build(subvol)
             self.assertEqual(
-                ['(Dir)', {'d': ['(Dir)', {'null': ['(File m755)']}]}],
+                ['(Dir)', {'d': ['(Dir)', {'null': ['(File m444)']}]}],
                 _render_subvol(subvol),
             )
 
@@ -169,7 +169,7 @@ class ItemsTestCase(unittest.TestCase):
                 from_target='t', source='/dev/null', dest='/d/null',
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
-                mode='u+rw', user='12', group='34',
+                mode='u+rw', user_group='12:34',
             ).build(subvol)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m600 o12:34)']}]}],
@@ -190,7 +190,7 @@ class ItemsTestCase(unittest.TestCase):
 
             MakeDirsItem(
                 from_target='t', path_to_make='/a/b/', into_dir='/d',
-                user='77', group='88', mode='u+rx',
+                user_group='77:88', mode='u+rx',
             ).build(subvol)
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
@@ -205,10 +205,12 @@ class ItemsTestCase(unittest.TestCase):
             # of preexisting directories, and quietly creates non-existent
             # ones with default permissions.
             MakeDirsItem(
-                from_target='t', path_to_make='a', into_dir='/no_dir', user='4'
+                from_target='t', path_to_make='a', into_dir='/no_dir',
+                user_group='4:0'
             ).build(subvol)
             MakeDirsItem(
-                from_target='t', path_to_make='a/new', into_dir='/d', user='5'
+                from_target='t', path_to_make='a/new', into_dir='/d',
+                user_group='5:0'
             ).build(subvol)
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
@@ -550,7 +552,7 @@ class ItemsTestCase(unittest.TestCase):
             self.assertEqual(['(Dir)', {
                 'dir': ['(Dir)', {}],
                 'dir_symlink': ['(Symlink /dir)'],
-                'file': ['(File m755)'],
+                'file': ['(File m444)'],
                 'file_symlink': ['(Symlink /file)'],
             }], _render_subvol(subvol))
 
@@ -782,8 +784,7 @@ class ItemsTestCase(unittest.TestCase):
                 into_dir='x',
                 path_to_make='y/z',
                 mode=0o733,
-                user='cat',
-                group='dog',
+                user_group='cat:dog',
             ),
             {ProvidesDirectory(path='x/y'), ProvidesDirectory(path='x/y/z')},
             {require_directory('x')},
@@ -832,16 +833,16 @@ class ItemsTestCase(unittest.TestCase):
                 'a': ['(Dir)', {
                     'b': ['(Dir)', {
                         'c': ['(Dir)', {
-                            'd': ['(File m755)'],
-                            'e': ['(File m755)'],
+                            'd': ['(File m444)'],
+                            'e': ['(File m444)'],
                         }],
                         'f_sym': ['(Symlink /f)'],
                     }],
                 }],
                 'f': ['(Dir)', {
                     'g': ['(Dir)', {}],
-                    'h': ['(File m755)'],
-                    'i': ['(File m755)'],
+                    'h': ['(File m444)'],
+                    'i': ['(File m444)'],
                     'i_sym': ['(Symlink /f/i)'],
                 }],
             }]
@@ -924,7 +925,7 @@ class ItemsTestCase(unittest.TestCase):
             ], DUMMY_LAYER_OPTS)(subvol)
             self.assertEqual(['(Dir)', {
                 'a': ['(Dir)', {}],
-                'f': ['(Dir)', {'i': ['(File m755)']}],
+                'f': ['(Dir)', {'i': ['(File m444)']}],
             }], _render_subvol(subvol))
 
     def _test_rpm_action_item(self, layer_opts):

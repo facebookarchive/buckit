@@ -52,11 +52,10 @@ image.layer(
     parent_layer = ":only-for-tests-read-only-host-clone-base",
     # `test_non_ephemeral_snapshot` needs a place to write as `nobody`.
     make_dirs = [{
-        "group": "nobody",
         "into_dir": "/",
         "mode": "u+rwx,og+rx",
         "path_to_make": "home/nobody",
-        "user": "nobody",
+        "user:group": "nobody:nobody",
     }],
     mounts = [image.host_dir_mount("/etc")],
 )
@@ -83,7 +82,7 @@ image.layer(
 
 # The next two targets exercise:
 #  - all forms of constructing a make_dirs request
-#  - specifying `stat` options, like user/group/mode
+#  - specifying `stat` options, like user:group & mode
 
 image.feature(
     name = "feature_dirs",
@@ -98,11 +97,10 @@ image.feature(
     name = "feature_bad_dir",
     make_dirs = [
         {
-            "group": "ggg",
             "into_dir": "/foo",
             "mode": "mmm",
             "path_to_make": "borf/beep",
-            "user": "uuu",
+            "user:group": "uuu:ggg",
         },
     ],
 )
@@ -181,7 +179,7 @@ image.feature(
         (":hello_world.tar", "/foo/bar/"),
         {
             "dest": "/foo/bar/hello_world_again.tar",
-            "group": "nobody",
+            "user:group": "nobody:nobody",
             "source": ":hello_world.tar",
         },
     ],
@@ -318,11 +316,10 @@ image.layer(
         ("/foo", "borf"),  # for :feature_tar
         ("/foo", "extracted_hello"),
         {
-            "group": "nobody",
             "into_dir": "/foo",
             "mode": 0o711,
             "path_to_make": "more_extracted_hello",
-            "user": "nobody",
+            "user:group": "nobody:nobody",
         },
     ],
     parent_layer = ":parent_layer",

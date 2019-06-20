@@ -116,7 +116,11 @@ def image_python_unittest(
     test_layer = name + "--test-layer"
     image_layer(
         name = test_layer,
-        copy_deps = [(":" + wrapped_test_name, binary_path)],
+        copy_deps = [{
+            "dest": binary_path,
+            "mode": "a+rx",
+            "source": ":" + wrapped_test_name,
+        }],
         parent_layer = layer,
         visibility = visibility,
     )

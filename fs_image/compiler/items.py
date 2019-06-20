@@ -368,54 +368,54 @@ def tarball_item_factory(
     return TarballItem(**kwargs, tarball=tarball)
 
 
-class HasStatOptions:
-    '''
-    Helper for setting `stat (2)` options on files, directories, etc, which
-    we are creating inside the image.  Interfaces with `StatOptions` in the
-    image build tool.
-    '''
-    __slots__ = ()
-    # `mode` can be an integer fully specifying the bits, or a symbolic
-    # string like `u+rx`.  In the latter case, the changes are applied on
-    # top of mode 0.
-    #
-    # The defaut mode 0755 is good for directories, and OK for files.  I'm
-    # not trying adding logic to vary the default here, since this really
-    # only comes up in tests, and `image_feature` usage should set this
-    # explicitly.
-    fields = [('mode', 0o755), ('user', 'root'), ('group', 'root')]
-
-    def _mode_impl(self):
-        return (  # The symbolic mode must be applied after 0ing all bits.
-            f'{self.mode:04o}' if isinstance(self.mode, int)
-                else f'a-rwxXst,{self.mode}'
-        )
-
-    def build_stat_options(self, subvol: Subvol, full_target_path: str):
-        # `chmod` lacks a --no-dereference flag to protect us from following
-        # `full_target_path` if it's a symlink.  As far as I know, this
-        # should never occur, so just let the exception fly.
-        subvol.run_as_root(['test', '!', '-L', full_target_path])
-        # -R is not a problem since it cannot be the case that we are
-        # creating a directory that already has something inside it.  On
-        # the plus side, it helps with nested directory creation.
-        subvol.run_as_root([
-            'chmod', '-R', self._mode_impl(),
-            full_target_path
-        ])
-        subvol.run_as_root([
-            'chown', '--no-dereference', '-R', f'{self.user}:{self.group}',
-            full_target_path,
-        ])
+# Helpers for setting `stat (2)` options on files, directories, etc, which
+# we are creating inside the image.
 
 
-class CopyFileItem(HasStatOptions, metaclass=ImageItem):
-    fields = ['source', 'dest']
+# `mode` can be an integer fully specifying the bits, or a symbolic
+# string like `u+rx`.  In the latter case, the changes are applied on
+# top of mode 0.
+STAT_OPTION_FIELDS = [('mode', None), ('user_group', None)]
+
+
+def customize_stat_options(kwargs, *, default_mode):
+    'Mutates `kwargs`.'
+    if kwargs['mode'] is None:
+        kwargs['mode'] = default_mode
+    if kwargs['user_group'] is None:
+        kwargs['user_group'] = 'root:root'
+
+
+def build_stat_options(item, subvol: Subvol, full_target_path: str):
+    # `chmod` lacks a --no-dereference flag to protect us from following
+    # `full_target_path` if it's a symlink.  As far as I know, this should
+    # never occur, so just let the exception fly.
+    subvol.run_as_root(['test', '!', '-L', full_target_path])
+    # -R is not a problem since it cannot be the case that we are creating a
+    # directory that already has something inside it.  On the plus side, it
+    # helps with nested directory creation.
+    subvol.run_as_root([
+        'chmod', '-R',
+        (  # The symbolic mode must be applied after 0ing all bits.
+            f'{item.mode:04o}' if isinstance(item.mode, int)
+                else f'a-rwxXst,{item.mode}'
+        ),
+        full_target_path
+    ])
+    subvol.run_as_root([
+        'chown', '--no-dereference', '-R', item.user_group,
+        full_target_path,
+    ])
+
+
+class CopyFileItem(metaclass=ImageItem):
+    fields = ['source', 'dest'] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
         kwargs['dest'] = _make_rsync_style_dest_path(
             kwargs['dest'], kwargs['source']
         )
+        customize_stat_options(kwargs, default_mode=0o444)
 
     def provides(self):
         yield ProvidesFile(path=self.dest)
@@ -426,7 +426,7 @@ class CopyFileItem(HasStatOptions, metaclass=ImageItem):
     def build(self, subvol: Subvol):
         dest = subvol.path(self.dest)
         subvol.run_as_root(['cp', self.source, dest])
-        self.build_stat_options(subvol, dest)
+        build_stat_options(self, subvol, dest)
 
 
 class SymlinkBase:
@@ -480,12 +480,15 @@ class SymlinkToFileItem(SymlinkBase, metaclass=ImageItem):
         yield require_directory(os.path.dirname(self.dest))
 
 
-class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
-    fields = ['into_dir', 'path_to_make']
+class MakeDirsItem(metaclass=ImageItem):
+    fields = ['into_dir', 'path_to_make'] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
         _coerce_path_field_normal_relative(kwargs, 'into_dir')
         _coerce_path_field_normal_relative(kwargs, 'path_to_make')
+        # Unlike files, leave directories as writable by the owner by
+        # default, since it's reasonable for files to be added at runtime.
+        customize_stat_options(kwargs, default_mode=0o755)
 
     def provides(self):
         inner_dir = os.path.join(self.into_dir, self.path_to_make)
@@ -500,8 +503,8 @@ class MakeDirsItem(HasStatOptions, metaclass=ImageItem):
         outer_dir = self.path_to_make.split('/', 1)[0]
         inner_dir = subvol.path(os.path.join(self.into_dir, self.path_to_make))
         subvol.run_as_root(['mkdir', '-p', inner_dir])
-        self.build_stat_options(
-            subvol, subvol.path(os.path.join(self.into_dir, outer_dir)),
+        build_stat_options(
+            self, subvol, subvol.path(os.path.join(self.into_dir, outer_dir)),
         )
 
 

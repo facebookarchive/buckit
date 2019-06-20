@@ -138,6 +138,12 @@ def _coerce_dict_to_items(maybe_dct):
     "Any collection that takes a list of pairs also takes a dict."
     return maybe_dct.items() if types.is_dict(maybe_dct) else maybe_dct
 
+def _normalize_stat_options(d):
+    if "user:group" in d:
+        # enriched namedtuples cannot deal with colons in names
+        d["user_group"] = d.pop("user:group")
+    return d
+
 def _normalize_make_dirs(make_dirs):
     if make_dirs == None:
         return []
@@ -153,7 +159,7 @@ def _normalize_make_dirs(make_dirs):
                     "(working_dir, dirs_to_create)",
                 )
             d = {"into_dir": d[0], "path_to_make": d[1]}
-        normalized.append(d)
+        normalized.append(_normalize_stat_options(d))
     return normalized
 
 def _normalize_mounts(target_tagger, mounts):
@@ -219,7 +225,7 @@ def _normalize_copy_deps(target_tagger, copy_deps):
                 )
             d = {"dest": d[1], "source": d[0]}
         _tag_required_target_key(target_tagger, d, "source")
-        normalized.append(d)
+        normalized.append(_normalize_stat_options(d))
     return normalized
 
 def _normalize_tarballs(target_tagger, tarballs, visibility):
