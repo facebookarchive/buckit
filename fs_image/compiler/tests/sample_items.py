@@ -90,7 +90,7 @@ ID_TO_ITEM = {
     'foo/bar/hello_world.tar': CopyFileItem(
         from_target=T_KITCHEN_SINK,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
-        dest='/foo/bar/',
+        dest='/foo/bar/hello_world.tar',
     ),
     'foo/bar/hello_world_again.tar': CopyFileItem(
         from_target=T_KITCHEN_SINK,

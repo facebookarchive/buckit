@@ -432,16 +432,16 @@ def image_feature(
         mounts = None,
         # An iterable of targets to copy into the image --
         #  - `source` is the Buck target to copy,
-        #  - `dest` is an image-absolute path. We follow the `rsync`
-        #     convention -- if `dest` ends with a slash, the copy will be at
-        #     `dest/output filename of source`.  Otherwise, `dest` is a full
-        #     path, including a new filename for the target's output.  The
-        #     directory of `dest` must get created by another
-        #     `image_feature` item.
+        #  - `dest` is an image-absolute path, including a filename for the
+        #     file being copied.  The directory of `dest` must get created
+        #     by another `image_feature` item.
         # Order is not signficant, the image compiler will sort the actions
         # automatically.  Supported item formats:
-        #  - tuple: ('//target/to/copy', 'image_absolute/dir')
-        #  - dict: {'source': '//target/to/copy', 'dest': 'image_absolute/dir'}
+        #  - tuple: ('//target/to/copy', 'image_absolute/dir/filename')
+        #  - dict: {
+        #        'dest': 'image_absolute/dir/filename',
+        #        'source': '//target/to/copy',
+        #    }
         copy_deps = None,
         # An iterable of tarballs to extract inside the image.
         #

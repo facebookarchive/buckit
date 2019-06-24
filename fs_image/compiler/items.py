@@ -170,8 +170,8 @@ def _coerce_path_field_normal_relative(kwargs, field: str):
 
 def _make_rsync_style_dest_path(dest: str, source: str) -> str:
     '''
-    rsync convention for a destination: "ends/in/slash/" means "copy
-    into this directory", "does/not/end/with/slash" means "copy with
+    rsync convention for a destination: "ends/in/slash/" means "write
+    into this directory", "does/not/end/with/slash" means "write with
     the specified filename".
     '''
 
@@ -412,9 +412,7 @@ class CopyFileItem(metaclass=ImageItem):
     fields = ['source', 'dest'] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
-        kwargs['dest'] = _make_rsync_style_dest_path(
-            kwargs['dest'], kwargs['source']
-        )
+        _coerce_path_field_normal_relative(kwargs, 'dest')
         customize_stat_options(kwargs, default_mode=0o444)
 
     def provides(self):

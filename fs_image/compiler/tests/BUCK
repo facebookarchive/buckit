@@ -164,8 +164,7 @@ image.feature(
 # cannot be materialized as an `image.layer` because of `feature_bad_dir`.
 #
 # Exercises:
-#  - all forms of specifying target outputs to copy, including the rsync
-#    trailing-slash
+#  - all forms of specifying target outputs to copy
 #  - copying other targets' outputs into the image, including stat options
 #  - making directories & symlinks
 #  - extracting tarballs
@@ -176,7 +175,7 @@ image.feature(
 image.feature(
     name = "feature_kitchen_sink",
     copy_deps = [
-        (":hello_world.tar", "/foo/bar/"),
+        (":hello_world.tar", "/foo/bar/hello_world.tar"),
         {
             "dest": "/foo/bar/hello_world_again.tar",
             "user:group": "nobody:nobody",
@@ -289,7 +288,7 @@ image.layer(
     copy_deps = [
         # This directory comes from `rpm-test-carrot`. This tests that our
         # dependency engine sees RPM contents as a "provides".
-        (":hello_world.tar", "/usr/share/rpm_test/"),
+        (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),
         {
             "dest": "/foo/bar/even_more_hello_world.tar",
             "source": ":hello_world.tar",

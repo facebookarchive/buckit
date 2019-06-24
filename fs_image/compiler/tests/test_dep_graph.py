@@ -19,7 +19,7 @@ PATH_TO_ITEM = {
     '/a/b/c': MakeDirsItem(from_target='', into_dir='/', path_to_make='a/b/c'),
     '/a/d/e': MakeDirsItem(from_target='', into_dir='a', path_to_make='d/e'),
     '/a/b/c/F': CopyFileItem(from_target='', source='x', dest='a/b/c/F'),
-    '/a/d/e/G': CopyFileItem(from_target='', source='G', dest='a/d/e/'),
+    '/a/d/e/G': CopyFileItem(from_target='', source='G', dest='a/d/e/G'),
 }
 
 
@@ -46,7 +46,7 @@ class ValidateReqsProvsTestCase(unittest.TestCase):
             RuntimeError, '^Both .* and .* from .* provide the same path$'
         ):
             ValidatedReqsProvs([
-                CopyFileItem(from_target='', source='x', dest='y/'),
+                CopyFileItem(from_target='', source='x', dest='y/x'),
                 MakeDirsItem(from_target='', into_dir='/', path_to_make='y/x'),
             ])
 

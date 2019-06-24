@@ -121,7 +121,7 @@ class ItemsTestCase(unittest.TestCase):
 
     def test_copy_file(self):
         self._check_item(
-            CopyFileItem(from_target='t', source='a/b/c', dest='d/'),
+            CopyFileItem(from_target='t', source='a/b/c', dest='d/c'),
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
         )
@@ -147,8 +147,7 @@ class ItemsTestCase(unittest.TestCase):
             subvol.run_as_root(['mkdir', subvol.path('d')])
 
             CopyFileItem(
-                # `dest` has a rsync-convention trailing /
-                from_target='t', source='/dev/null', dest='/d/',
+                from_target='t', source='/dev/null', dest='/d/null',
             ).build(subvol)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m444)']}]}],
@@ -158,14 +157,13 @@ class ItemsTestCase(unittest.TestCase):
             # Fail to write to a nonexistent dir
             with self.assertRaises(subprocess.CalledProcessError):
                 CopyFileItem(
-                    from_target='t', source='/dev/null', dest='/no_dir/',
+                    from_target='t', source='/dev/null', dest='/no_dir/null',
                 ).build(subvol)
 
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
             # check for this, and a run-time check would add overhead.
             CopyFileItem(
-                # Test this works without the rsync-covnvention /, too
                 from_target='t', source='/dev/null', dest='/d/null',
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
@@ -539,7 +537,6 @@ class ItemsTestCase(unittest.TestCase):
 
             # We need a source file to validate a SymlinkToFileItem
             CopyFileItem(
-                # `dest` has a rsync-convention trailing /
                 from_target='t', source='/dev/null', dest='/file',
             ).build(subvol)
             SymlinkToDirItem(
