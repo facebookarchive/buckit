@@ -69,7 +69,7 @@ python_unittest(
     )],
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
     resources = {
-        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/build-appliance-testing",
+        "//fs_image/compiler/tests:hello_world_base": "tests/hello-layer",
     },
     deps = [
         ":subvol_utils",

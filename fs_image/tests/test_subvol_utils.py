@@ -123,10 +123,7 @@ class SubvolTestCase(unittest.TestCase):
 
     def test_get_subvolume_path(self):
         layer_json = os.path.join(
-            os.path.dirname(__file__),
-            'build-appliance-testing',
-            'layer.json',
+            os.path.dirname(__file__), 'hello-layer', 'layer.json',
         )
         path = get_subvolume_path(layer_json, subvolumes_dir())
-        self.assertTrue(os.path.exists(os.path.join(
-            path, 'usr', 'bin', 'yum-from-fb-snapshot')))
+        self.assertTrue(os.path.exists(os.path.join(path, 'hello_world')))
