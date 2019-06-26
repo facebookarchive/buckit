@@ -12,7 +12,7 @@ def _maybe_make_symlink_to_scratch(
     IMPORTANT: This must be safe against races with other concurrent copies
     of `artifacts_dir.py`.
     '''
-    scratch_bin = shutil.which('scratch')
+    scratch_bin = shutil.which('mkscratch')
     if scratch_bin is None:
         return symlink_path
 

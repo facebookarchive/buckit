@@ -282,7 +282,7 @@ def nspawn_in_subvol(
         # to access other built layers won't work.  Not adding it now since
         # that seems like a rather esoteric requirement for the sorts of
         # code we should be running under `buck test` and `buck run`.  NB:
-        # As of this writing, `scratch` works incorrectly under `nspawn`,
+        # As of this writing, `mkscratch` works incorrectly under `nspawn`,
         # making `artifacts-dir` fail.
 
     if opts.logs_tmpfs:
