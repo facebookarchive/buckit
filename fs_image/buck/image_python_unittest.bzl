@@ -3,9 +3,8 @@ load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
-load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load(":image_layer.bzl", "image_layer")
-load(":wrap_runtime_deps.bzl", "wrap_runtime_deps_as_build_time_deps")
+load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 def image_python_unittest(
         name,
@@ -82,32 +81,14 @@ def image_python_unittest(
         **python_unittest_kwargs
     )
 
-    artifacts_require_repo = built_artifacts_require_repo()
-
-    # The build-time -> run-time dependency wrapper doesn't work inside
-    # @mode/opt containers, since those (deliberately) don't bind-mount the
-    # repo inside.  They are supposed to be self-contained and ready for
-    # production.
-    #
-    # However, in @mode/opt we don't care about the build-time / run-time
-    # dependency problem since C++ & Python build artifacts are
-    # self-contained, making the two dependency types identical.
-    #
-    # # NB: This check here causes the target graphs to be subtly different
-    # between @mode/dev and @mode/opt.  I don't expect this to cause
-    # problems for CI, however, because this internal target shouldn't have
-    # any semantics for our test or build infrastructure.
-    wrapped_test_name = test_name
-    if artifacts_require_repo:
-        # NB: Anything that includes the wrapped target output must be marked
-        # uncacheable.  At the moment, this is only the `image_layer`, which
-        # always sets `cacheable = False` anyway.
-        wrapped_test_name = "wrapped-" + test_name
-        wrap_runtime_deps_as_build_time_deps(
-            name = wrapped_test_name,
-            target = ":" + test_name,
-            visibility = visibility,
-        )
+    # NB: Anything that includes the wrapped target output must be marked
+    # uncacheable.  At the moment, this is only the `image_layer`, which
+    # always sets `cacheable = False` anyway.
+    _, wrapped_test_target = maybe_wrap_runtime_deps_as_build_time_deps(
+        name = "wrapped-" + test_name,
+        target = ":" + test_name,
+        visibility = visibility,
+    )
 
     # Make a test-specific image containing the test binary.
     binary_path = "/layer-test-binary"
@@ -119,7 +100,7 @@ def image_python_unittest(
         copy_deps = [{
             "dest": binary_path,
             "mode": "a+rx",
-            "source": ":" + wrapped_test_name,
+            "source": wrapped_test_target,
         }],
         parent_layer = layer,
         visibility = visibility,

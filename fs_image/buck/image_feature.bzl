@@ -45,7 +45,7 @@ load(
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
-load(":wrap_runtime_deps.bzl", "wrap_runtime_deps_as_build_time_deps")
+load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -259,15 +259,14 @@ def _normalize_tarballs(target_tagger, tarballs, visibility):
             # The generator may be in a different directory, so make the
             # target path normal to ensure the hashing is deterministic.
             generator = _normalize_target(d.pop("generator"))
-            wrapped_generator = "tarball_wrap_generator_" + hex_crc32(generator)
 
-            # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
-            wrap_runtime_deps_as_build_time_deps(
-                name = wrapped_generator,
+            # See the `maybe_wrap_runtime_deps_as_build_time_deps` docblock.
+            _, maybe_wrapped = maybe_wrap_runtime_deps_as_build_time_deps(
+                name = "tarball_wrap_generator_" + hex_crc32(generator),
                 target = generator,
                 visibility = visibility,
             )
-            d["generator"] = _tag_target(target_tagger, ":" + wrapped_generator)
+            d["generator"] = _tag_target(target_tagger, maybe_wrapped)
 
         if "hash" not in d:
             fail(

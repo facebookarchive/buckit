@@ -1,25 +1,76 @@
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 
-def wrap_runtime_deps_as_build_time_deps(name, target, visibility):
+_ARTIFACTS_REQUIRE_REPO = built_artifacts_require_repo()
+
+def maybe_wrap_runtime_deps_as_build_time_deps(
+        name,
+        target,
+        visibility,
+        path_in_output = None,
+        dynamic_path_in_output = False):
     """
-    Wraps the `target` with a new target in the current project named `name`
-    to convert its run-time dependencies to build-time dependencies.
+    If necessary (see "When..."), wraps `target` with a new target named
+    `name`, in the current project.
 
-    IMPORTANT: The resulting artifact is NOT cacheable, so if you include
-    its contents in some other artifact, that artifact must ALSO become
-    non-cacheable.
+    Returns `(False, target)` if unwrapped, or `(True, ':<name>')` otherwise.
 
-    This is used when `image.layer` will run `target` as part of its build
-    process, or when some target needs to be executable from inside an
-    `image.layer`.
+    The build-time dependencies of the wrapper `:<name>` will include the
+    run-time dependencies of `target`.
 
-    The reason for this is that due to Buck limitations, `image.layer`
-    cannot directly take on runtime dependencies (more on that below), so
-    the wrapper does that for us.
+    Wrapping is commonly used when `image.layer` will run `target` as part
+    of its build process, or when some target needs to be executable from
+    inside an `image.layer`.
+
+    IMPORTANT: The build artifact of `:<name>` is NOT cacheable, so if you
+    include its contents in some other artifact, that artifact must ALSO
+    become non-cacheable.
+
+    ## Special situations
+
+      - `path_in_output` sets the wrapper to execute a fixed file out of a
+        directory that is output by an executable rule.
+
+      - `dynamic_path_in_output` was made for `install_executable_trees`,
+         where we need the wrapper to be able to execute multiple files from
+         a directory that was output by an executable target, and the file
+         paths are not known at runtime.
+
+         DANGER: This DRASTICALLY changes the API of the wrapper target.
+         When you execute a `dynamic_path_in_output=True` wrapper, its
+         `$1` is interpreted as a path inside the output directory,
+         under `path_in_output`. In other words, the wrapper runs:
+
+             buck-out/gen/<target>/out/<path_in_output>/$1
+
+         This means that when you use `dynamic_path_in_output=True`, you
+         must separately handle the case when the target is returned
+         unwrapped -- the wrapped & unwrapped targets work DIFFERENTLY.
+
+    ## Why is wrapping needed?
+
+    There are two reasons for wrapping.
+
+      - The primary reason for this is that due to Buck limitations,
+        `image.layer` cannot directly take on run-time dependencies (more on
+        that below), so the wrapper makes ALL dependencies (run-time or
+        build-time) look like build-time dependencies.
+
+      - The second reason is to execute in-place (aka @mode/dev) binaries
+        from inside an image -- in that case, the wrapper acts much like a
+        symlink, although it ALSO has the effect of ensuring that the image
+        gets rebuilt if any of the runtime dependencies of its contained
+        executables change.  In many cases, this results in over-building in
+        @mode/dev -- the more performant solution would be to have a tag on
+        in-image executables signaling whether they are permitted to be used
+        as part of the image build.  For most, the tag would say "no", and
+        those would not need runtime dependency wrapping.  However, the
+        extra complexity makes this idea "far future".
 
     Here is what would go wrong if we just passed `target` directly to
-    `image.layer`.
+    `image.layer` to execute:
 
      - For concreteness' sake, let's say that `target` needs to be
        executed by the `image.layer` build script (as is the case for
@@ -73,20 +124,52 @@ def wrap_runtime_deps_as_build_time_deps(name, target, visibility):
         implementation directly access the data collated by its features.
         Then, the layer could just issue $(exe) macros for all runtime-
         dependency targets.  NB: This would bring a build speed win, too.
+
+    ## When should we NOT wrap?
+
+    This build-time -> run-time dependency wrapper doesn't work inside
+    @mode/opt containers, since those (deliberately) don't bind-mount the
+    repo inside.  They are supposed to be self-contained and ready for
+    production.
+
+    However, in @mode/opt we don't care about the build-time / run-time
+    dependency problem since C++ & Python build artifacts are
+    self-contained, making the two dependency types identical.
+
+    NB: This check here causes the target graphs to be subtly different
+    between @mode/dev and @mode/opt.  I don't expect this to cause
+    problems for CI, however, because this internal target shouldn't have
+    any semantics for our test or build infrastructure.
     """
+    if not _ARTIFACTS_REQUIRE_REPO:
+        return False, target
     buck_genrule(
         name = name,
         out = "wrapper.sh",
         bash = '''
 cat >> "$TMP/out" <<'EOF'
 #!/bin/bash
-exec $(exe {target_to_wrap}) "$@"
+{set_dynamic_path_in_output}\
+exec $(exe {target_to_wrap}){quoted_path_in_output}{dynamic_path_in_output} "$@"
 EOF
 echo "# New output each build: \\$(date) $$ $PID $RANDOM $RANDOM" >> "$TMP/out"
 chmod a+rx "$TMP/out"
 mv "$TMP/out" "$OUT"
-        '''.format(target_to_wrap = target),
+        '''.format(
+            target_to_wrap = target,
+            set_dynamic_path_in_output = "" if not dynamic_path_in_output else (
+                "dynamic_path_in_output=$1\n" +
+                "shift\n"
+            ),
+            quoted_path_in_output = "" if path_in_output == None else (
+                "/" + shell.quote(path_in_output)
+            ),
+            dynamic_path_in_output = "" if not dynamic_path_in_output else '/"$dynamic_path_in_output"',
+        ),
         # We deliberately generate a unique output on each rebuild.
         cacheable = False,
+        # Whatever we wrap was executable, so the wrapper might as well be, too
+        executable = True,
         visibility = get_visibility(visibility, name),
     )
+    return True, ":" + name

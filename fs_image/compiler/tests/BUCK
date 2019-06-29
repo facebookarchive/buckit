@@ -6,9 +6,8 @@
 
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule", "buck_sh_binary")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("//fs_image/buck:artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load("//fs_image/buck:image.bzl", "image")
-load("//fs_image/buck:wrap_runtime_deps.bzl", "wrap_runtime_deps_as_build_time_deps")
+load("//fs_image/buck:wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # The rule `hello_world.tar` must be deterministic to be used in images.
 hello_tar_hash = (
@@ -87,13 +86,6 @@ image.layer(
 #  - a uni tests `test_rpm_action_item_build_appliance` in `test-items`
 #  - a full-layer integration test `test_build_appliance` in `test-image-layer`
 
-# Future: this goes away promptly with `install_executables`.
-wrap_runtime_deps_as_build_time_deps(
-    name = "yum-wrap",
-    target = "//fs_image/rpm:yum-from-test-snapshot",
-    visibility = None,
-)
-
 image.layer(
     name = "fake-build-appliance-from-host",
     parent_layer = ":only-for-tests-read-only-host-clone",
@@ -111,9 +103,11 @@ image.layer(
     copy_deps = [{
         "dest": "/yum-from-snapshot",
         "mode": "a+rx",
-        "source": (
-            ":yum-wrap" if built_artifacts_require_repo() else "//fs_image/rpm:yum-from-test-snapshot"
-        ),
+        "source": maybe_wrap_runtime_deps_as_build_time_deps(
+            name = "yum-wrap",
+            target = "//fs_image/rpm:yum-from-test-snapshot",
+            visibility = None,
+        )[1],
     }],
 )
 
