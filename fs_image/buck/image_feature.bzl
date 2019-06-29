@@ -114,16 +114,26 @@ seems more flexible and less messy than maintaining a look-aside list of
 targets whose paths the `image_layer` converter would need to resolve.
 
 """
-_TargetTaggerInfo = provider(fields = ["normalize_target", "targets"])
+_TargetTaggerInfo = provider(fields = ["targets"])
 
-def _target_tagger_of(normalize_target):
-    return _TargetTaggerInfo(
-        normalize_target = normalize_target,
-        targets = [],
+def _target_tagger():
+    return _TargetTaggerInfo(targets = [])
+
+def _normalize_target(target):
+    parsed = target_utils.parse_target(
+        target,
+        # $(query_targets ...) omits the current repo/cell name
+        default_repo = "",
+        default_base_path = native.package_name(),
+    )
+    return target_utils.to_label(
+        repo = parsed.repo,
+        path = parsed.base_path,
+        name = parsed.name,
     )
 
 def _tag_target(tagger, target):
-    target = tagger.normalize_target(target)
+    target = _normalize_target(target)
     tagger.targets.append(target)
     return {"__BUCK_TARGET": target}
 
@@ -248,7 +258,7 @@ def _normalize_tarballs(target_tagger, tarballs, visibility):
         else:
             # The generator may be in a different directory, so make the
             # target path normal to ensure the hashing is deterministic.
-            generator = target_tagger.normalize_target(d.pop("generator"))
+            generator = _normalize_target(d.pop("generator"))
             wrapped_generator = "tarball_wrap_generator_" + hex_crc32(generator)
 
             # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
@@ -343,19 +353,6 @@ def _normalize_symlinks(symlinks):
             d = {"dest": d[1], "source": d[0]}
         normalized.append(d)
     return normalized
-
-def _normalize_target(target):
-    parsed = target_utils.parse_target(
-        target,
-        # $(query_targets ...) omits the current repo/cell name
-        default_repo = "",
-        default_base_path = native.package_name(),
-    )
-    return target_utils.to_label(
-        repo = parsed.repo,
-        path = parsed.base_path,
-        name = parsed.name,
-    )
 
 def image_feature(
         name,
@@ -532,9 +529,8 @@ def image_feature(
     #     automatically enumerated from our JSON output.
     # (2) Builds a list of targets so that this converter can tell Buck
     #     that the `image_feature` depends on it.
-    target_tagger = _target_tagger_of(_normalize_target)
+    target_tagger = _target_tagger()
     out_dict = struct(
-        # noqa: F821
         # Omit the ugly suffix here since this is meant only for
         # humans to read while debugging.
         target = _normalize_target(":" + name),
