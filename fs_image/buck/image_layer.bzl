@@ -146,12 +146,12 @@ def image_layer(
         # must be set from outside.
         mount_config = None,
         # Path to a target outputting a btrfs send-stream of a build appliance:
-        # a self-contained file tree with /usr/bin/yum-from-fb-snapshot and
-        # other tools like btrfs, yum, tar, ln used for image builds along
-        # with all their dependencies (but /usr/local/fbcode).
-        # Mutually exclusive with yum_from_repo_snapshot: either
-        # build_appliance or yum_from_repo_snapshot is required
-        # if any dependent `image_feature` specifies `rpms`.
+        # a self-contained file tree with /yum-from-snapshot and other tools
+        # like btrfs, yum, tar, ln used for image builds along with all
+        # their dependencies (but /usr/local/fbcode).  Mutually exclusive
+        # with yum_from_repo_snapshot: either build_appliance or
+        # yum_from_repo_snapshot is required if any dependent
+        # `image_feature` specifies `rpms`.
         build_appliance = None,
         **image_feature_kwargs):
     visibility = get_visibility(visibility, name)
