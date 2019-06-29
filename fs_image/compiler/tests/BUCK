@@ -6,7 +6,9 @@
 
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule", "buck_sh_binary")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("//fs_image/buck:artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load("//fs_image/buck:image.bzl", "image")
+load("//fs_image/buck:wrap_runtime_deps.bzl", "wrap_runtime_deps_as_build_time_deps")
 
 # The rule `hello_world.tar` must be deterministic to be used in images.
 hello_tar_hash = (
@@ -78,6 +80,49 @@ image.layer(
     name = "only-for-tests-read-only-host-clone-with-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
     copy_deps = [(":deadbeef-machine-id", "/etc/machine-id")],
+)
+
+# The next 2 layers exercise the build appliance logic for RPM installation
+# (and other items in the future?).  This powers two distinct test types:
+#  - a uni tests `test_rpm_action_item_build_appliance` in `test-items`
+#  - a full-layer integration test `test_build_appliance` in `test-image-layer`
+
+# Future: this goes away promptly with `install_executables`.
+wrap_runtime_deps_as_build_time_deps(
+    name = "yum-wrap",
+    target = "//fs_image/rpm:yum-from-test-snapshot",
+    visibility = None,
+)
+
+image.layer(
+    name = "fake-build-appliance-from-host",
+    parent_layer = ":only-for-tests-read-only-host-clone",
+    # These stub directories are needed to make `yum-from-snapshot`'s host
+    # path protection feature happy.  The alternative is to make all of
+    # these ONLY be protected if they exist, but that has safety downsides,
+    # and involves more code.
+    make_dirs = [
+        ("/var", "tmp"),
+        ("/var", "log"),
+        ("/var", "cache/yum"),
+        ("/var", "lib/rpm"),
+        ("/var/lib", "yum"),
+    ],
+    copy_deps = [{
+        "dest": "/yum-from-snapshot",
+        "mode": "a+rx",
+        "source": (
+            ":yum-wrap" if built_artifacts_require_repo() else "//fs_image/rpm:yum-from-test-snapshot"
+        ),
+    }],
+    mounts = [image.host_dir_mount_repo_root()],
+)
+
+# Verified by `test_build_appliance` in `test-image-layer`.
+image.layer(
+    name = "validates-build-appliance",
+    rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
+    build_appliance = ":fake-build-appliance-from-host",
 )
 
 # The next two targets exercise:

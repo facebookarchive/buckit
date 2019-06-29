@@ -149,7 +149,8 @@ python_unittest(
     # since `root` cannot access the content of an unprivileged XAR.
     par_style = "zip",
     resources = {
-        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/build-appliance-testing",
+        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
+        "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",
         "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },
     deps = [
@@ -260,6 +261,7 @@ image_feature_python_unittest(
 )
 
 IMAGE_LAYER_DEPS = [
+    "validates-build-appliance",
     "child_layer",
     "parent_layer",
     "hello_world_base",

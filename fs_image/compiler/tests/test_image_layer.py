@@ -18,6 +18,13 @@ TARGET_TO_PATH = {
 }
 
 
+def _pop_path(render, path):
+    parts = path.split('/')
+    for part in parts[:-1]:
+        render = render[1][part]
+    return render[1].pop(parts[-1])
+
+
 class ImageLayerTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -145,3 +152,45 @@ class ImageLayerTestCase(unittest.TestCase):
                     render_demo_subvols(**{op: True}),
                     render_sendstream(sv.mark_readonly_and_get_sendstream()),
                 )
+
+    def test_build_appliance(self):
+        with self.target_subvol('validates-build-appliance') as sv:
+            r = render_sendstream(sv.mark_readonly_and_get_sendstream())
+
+            ino, = _pop_path(r, 'bin/sh')  # Busybox from `rpm-test-carrot`
+            self.assertRegex(ino, r'^\(File m755 d[0-9]+\)$')
+
+            ino, = _pop_path(r, 'var/log/yum.log')
+            self.assertRegex(ino, r'^\(File m600 d[0-9]+\)$')
+
+            # Ignore a bunch of yum & RPM spam
+            for ignore_dir in [
+                'usr/lib/.build-id',
+                'var/cache/yum',
+                'var/lib/rpm',
+                'var/lib/yum',
+            ]:
+                ino, _ = _pop_path(r, ignore_dir)
+                self.assertEqual('(Dir)', ino)
+
+            self.assertEqual(['(Dir)', {
+                'bin': ['(Dir)', {}],
+                'dev': ['(Dir)', {}],
+                'meta': ['(Dir)', {}],
+                'usr': ['(Dir)', {
+                    'lib': ['(Dir)', {}],
+                    'share': ['(Dir)', {
+                        'rpm_test': ['(Dir)', {
+                            'carrot.txt': ['(File d13)'],
+                            # From the `rpm-test-carrot` post-install script
+                            'post.txt': ['(File d6)'],
+                        }],
+                    }],
+                }],
+                'var': ['(Dir)', {
+                    'cache': ['(Dir)', {}],
+                    'lib': ['(Dir)', {}],
+                    'log': ['(Dir)', {}],
+                    'tmp': ['(Dir)', {}],
+                }],
+            }], r)

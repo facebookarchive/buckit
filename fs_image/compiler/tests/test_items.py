@@ -1007,17 +1007,23 @@ class ItemsTestCase(unittest.TestCase):
         ))
 
     def test_rpm_action_item_build_appliance(self):
-        self._test_rpm_action_item(layer_opts=LayerOpts(
-            layer_target='fake-target',
-            yum_from_snapshot=None,
-            build_appliance=get_subvolume_path(
-                        os.path.join(
-                            os.path.dirname(__file__),
-                            'build-appliance-testing',
-                            'layer.json',
-                        ),
-                        TEST_SUBVOLS_DIR)
-        ))
+        # We have two test build appliances: one fake one assembled from
+        # host mounts, and another FB-specific one that is an actual
+        # published image used for production builds.  Let's exercise both.
+        for filename in [
+            'fb-test-build-appliance', 'host-test-build-appliance',
+        ]:
+            self._test_rpm_action_item(layer_opts=LayerOpts(
+                layer_target='fake-target',
+                yum_from_snapshot=None,
+                build_appliance=get_subvolume_path(
+                            os.path.join(
+                                os.path.dirname(__file__),
+                                filename,
+                                'layer.json',
+                            ),
+                            TEST_SUBVOLS_DIR),
+            ))
 
     def test_rpm_action_conflict(self):
         # Test both install-install and install-remove conflicts.
