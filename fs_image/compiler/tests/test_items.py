@@ -1065,44 +1065,6 @@ class ItemsTestCase(unittest.TestCase):
                     DUMMY_LAYER_OPTS,
                 )
 
-    def test_mount_item_repo_root(self):
-        with TempSubvolumes(sys.argv[0]) as temp_subvolumes, \
-                tempfile.TemporaryDirectory() as source_dir:
-            mount_config = {
-                'is_directory': True,
-                'is_repo_root': True,
-                'build_source': {'type': 'host', 'source': None},
-            }
-            with open(os.path.join(source_dir, 'mountconfig.json'), 'w') as f:
-                json.dump(mount_config, f)
-            self._check_item(
-                self._make_mount_item(
-                    mountpoint=None,
-                    target=source_dir,
-                    mount_config=mount_config,
-                    from_target='//fs_image/compiler/test',
-                ),
-                {ProvidesDoNotAccess(path=find_repo_root(sys.argv[0]))},
-                {require_directory('/')},
-            )
-
-            # Mount <repo_root_dir> at <mounter>/<repo_root_dir>
-            mounter = temp_subvolumes.create('moun:ter/volume')
-            mount_repo_root = self._make_mount_item(
-                mountpoint=None,
-                target=source_dir,
-                mount_config=mount_config,
-                from_target='//fs_image/compiler/test',
-            )
-
-            subvol_path = mounter.path().decode()
-            subvolumes_dir = os.path.dirname(os.path.dirname(subvol_path))
-            mount_repo_root.build_resolves_targets(
-                subvol=mounter,
-                target_to_path={'//fake:path': source_dir},
-                subvolumes_dir=subvolumes_dir,
-            )
-
 
 if __name__ == '__main__':
     unittest.main()

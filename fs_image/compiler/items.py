@@ -514,14 +514,6 @@ class MountItem(metaclass=ImageItem):
         ('build_source', NonConstructibleField),
         ('runtime_source', NonConstructibleField),
         ('is_directory', NonConstructibleField),
-        # is_repo_root below is only intended to be used for the build
-        # appliance and testing, not for production images or really anything
-        # outside of //fs_image. There are two issues to be addressed before
-        # is_repo_root becomes first class citizen: 1) prevent to publish a
-        # package built with an is_repo_root item; 2) handle an overlap when
-        # other items require or provide some path which is leading part of
-        # the path provided by is_repo_root item (see 'mkdir -p' below)
-        ('is_repo_root', NonConstructibleField),
         # The next two are always None, their content moves into the above
         # `NonConstructibleField`s
         'target',
@@ -539,44 +531,17 @@ class MountItem(metaclass=ImageItem):
             with open(os.path.join(target, 'mountconfig.json')) as f:
                 cfg = json.load(f)
 
-        kwargs['is_repo_root'] = cfg.pop('is_repo_root', False)
         default_mountpoint = cfg.pop('default_mountpoint', None)
-
-        mountpoint = kwargs.get('mountpoint')
-        if kwargs['is_repo_root']:
-            assert default_mountpoint is None, (f'default_mountpoint: '
-                                                '{default_mountpoint} '
-                                                'must not be set')
-            assert mountpoint is None, (f'mountpoint: {mountpoint} '
-                                        'must not be set')
-            kwargs['mountpoint'] = find_repo_root(sys.argv[0])
-            assert kwargs['mountpoint'][0] == '/', (f'repo_root: '
-                                                    '{kwargs["mountpoint"]} '
-                                                    'must start from /')
-            kwargs['mountpoint'] = kwargs['mountpoint'][1:]
-        else:
-            if mountpoint is None:  # Missing or None => use default
-                kwargs['mountpoint'] = default_mountpoint
-                if kwargs['mountpoint'] is None:
-                    raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
+        if kwargs.get('mountpoint') is None:  # Missing or None => use default
+            kwargs['mountpoint'] = default_mountpoint
+            if kwargs['mountpoint'] is None:
+                raise AssertionError(f'MountItem {kwargs} lacks mountpoint')
         _coerce_path_field_normal_relative(kwargs, 'mountpoint')
 
         kwargs['is_directory'] = cfg.pop('is_directory')
-        assert (kwargs['is_directory'] or
-                not kwargs['is_repo_root']), f'cannot host_file_mount repo_root'
-
-        build_source = cfg.pop('build_source')
-        if kwargs['is_repo_root']:
-            build_source_path = os.path.join('/', kwargs['mountpoint'])
-            assert (build_source['source'] is None or
-                    build_source['source'] == build_source_path), (
-                        f'source: {build_source["source"]} must not be set or '
-                        f'must be equal to {build_source_path}'
-                    )
-            build_source['source'] = build_source_path
 
         kwargs['build_source'] = mount_item.BuildSource(
-            **build_source
+            **cfg.pop('build_source')
         )
         if kwargs['build_source'].type == 'host' and not (
             kwargs['from_target'].startswith('//fs_image/features/host_mounts')
@@ -613,13 +578,7 @@ class MountItem(metaclass=ImageItem):
     def requires(self):
         # We don't require the mountpoint itself since it will be shadowed,
         # so this item just makes it with default permissions.
-        # repo_root is a special case because it creates parent dirs
-        # (by 'mkdir -p'); see also the comment in class MountItem above.
-        if self.is_repo_root:
-            required_dir = '/'
-        else:
-            required_dir = os.path.dirname(self.mountpoint)
-        yield require_directory(required_dir)
+        yield require_directory(os.path.dirname(self.mountpoint))
 
     def build_resolves_targets(
         self, *,
@@ -646,14 +605,8 @@ class MountItem(metaclass=ImageItem):
         is_dir = os.path.isdir(source_path)
         assert is_dir == self.is_directory, self
         if is_dir:
-            mkdir_opts = ['--mode=0755']
-            if self.is_repo_root:
-                mkdir_opts.append('-p')
-            # NB: if is_repo_root, mkdir below will create a non-portable dir
-            # like /home/username/fbsource/fbcode in subvol layer, but such
-            #  a layer should never be published as a package.
             subvol.run_as_root([
-                'mkdir', *mkdir_opts, subvol.path(self.mountpoint)
+                'mkdir', '--mode=0755', subvol.path(self.mountpoint),
             ])
         else:  # Regular files, device nodes, FIFOs, you name it.
             # `touch` lacks a `--mode` argument, but the mode of this
