@@ -33,19 +33,19 @@ class AddRemoveConflictTestCase(unittest.TestCase):
         )
 
     def test_check_layers(self):
+        meta = {'meta': ['(Dir)', {'private': ['(Dir)', {'opts': ['(Dir)', {
+            'artifacts_may_require_repo': ['(File d2)'],
+        }]}]}]}
         # The parent has a couple of directories.
         self.assertEqual(
-            ['(Dir)', {
-                'a': ['(Dir)', {'b': ['(Dir)', {}]}],
-                'meta': ['(Dir)', {}],
-            }],
+            ['(Dir)', {'a': ['(Dir)', {'b': ['(Dir)', {}]}], **meta}],
             render_sendstream(find_built_subvol(
                 self._resource_path('parent')
             ).mark_readonly_and_get_sendstream()),
         )
         # The child is near-empty because the `remove_paths` cleaned it up.
         self.assertEqual(
-            ['(Dir)', {'meta': ['(Dir)', {}]}],
+            ['(Dir)', {**meta}],
             render_sendstream(find_built_subvol(
                 self._resource_path('child')
             ).mark_readonly_and_get_sendstream()),

@@ -115,7 +115,6 @@ image.layer(
             ":yum-wrap" if built_artifacts_require_repo() else "//fs_image/rpm:yum-from-test-snapshot"
         ),
     }],
-    mounts = [image.host_dir_mount_repo_root()],
 )
 
 # Verified by `test_build_appliance` in `test-image-layer`.

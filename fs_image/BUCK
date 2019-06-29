@@ -166,6 +166,7 @@ python_library(
         ":send_fds_and_run",
         ":testlib_temp_subvolumes",
         "//fs_image/compiler:mount_item",
+        "//fs_image/compiler:procfs_serde",
     ],
 )
 

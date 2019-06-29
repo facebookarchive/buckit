@@ -33,7 +33,11 @@ from .mock_subvolume_from_json_file import (
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
 DUMMY_LAYER_OPTS = LayerOpts(
-    layer_target='t', yum_from_snapshot='y', build_appliance=None)
+    layer_target='t',
+    yum_from_snapshot='y',
+    build_appliance=None,
+    artifacts_may_require_repo=True,
+)
 
 
 def _render_subvol(subvol: {'Subvol'}):
@@ -116,7 +120,11 @@ class ItemsTestCase(unittest.TestCase):
                 [FilesystemRootItem(from_target='t')], DUMMY_LAYER_OPTS,
             )(subvol)
             self.assertEqual(
-                ['(Dir)', {'meta': ['(Dir)', {}]}], _render_subvol(subvol),
+                ['(Dir)', {'meta': ['(Dir)', {'private': ['(Dir)', {
+                    'opts': ['(Dir)', {
+                        'artifacts_may_require_repo': ['(File d2)'],
+                    }],
+                }]}]}], _render_subvol(subvol),
             )
 
     def test_copy_file(self):
@@ -261,15 +269,17 @@ class ItemsTestCase(unittest.TestCase):
 
             self.assertEqual(['(Dir)', {
                 'lala': ['(File)'],  # An empty mountpoint for /dev/null
-                'meta': ['(Dir)', {'private': ['(Dir)', {'mount': ['(Dir)', {
-                    'lala': ['(Dir)', {'MOUNT': ['(Dir)', {
+                'meta': ['(Dir)', {'private': ['(Dir)', {
+                    # No `opts/artifacts_may_require_repo` here because we
+                    # directly created the subvol instead of using an Item.
+                    'mount': ['(Dir)', {'lala': ['(Dir)', {'MOUNT': ['(Dir)', {
                         'is_directory': ['(File d2)'],
                         'build_source': ['(Dir)', {
                             'type': ['(File d5)'],
                             'source': [f'(File d{len("/dev/null") + 1})'],
                         }],
-                    }]}],
-                }]}]}],
+                    }]}]}],
+                }]}],
             }], _render_subvol(subvol))
             for filename, contents in (
                 ('is_directory', '0\n'),
@@ -329,8 +339,11 @@ class ItemsTestCase(unittest.TestCase):
     def _check_subvol_mounts_meow(self, subvol):
         self.assertEqual(['(Dir)', {
             'meow': ['(Dir)', {}],
-            'meta': ['(Dir)', {'private': ['(Dir)', {'mount': ['(Dir)', {
-                'meow': ['(Dir)', {'MOUNT': ['(Dir)', {
+            'meta': ['(Dir)', {'private': ['(Dir)', {
+                'opts': ['(Dir)', {
+                    'artifacts_may_require_repo': ['(File d2)'],
+                }],
+                'mount': ['(Dir)', {'meow': ['(Dir)', {'MOUNT': ['(Dir)', {
                     'is_directory': ['(File d2)'],
                     'build_source': ['(Dir)', {
                         'type': ['(File d6)'],
@@ -340,8 +353,8 @@ class ItemsTestCase(unittest.TestCase):
                         'so': ['(File d3)'],
                         'arbitrary': ['(Dir)', {'j': ['(File d4)']}],
                     }],
-                }]}],
-            }]}]}],
+                }]}]}],
+            }]}],
         }], _render_subvol(subvol))
         for filename, contents in (
             ('is_directory', '1\n'),
@@ -419,7 +432,9 @@ class ItemsTestCase(unittest.TestCase):
             )
 
             # Mount <mountee> at <mounter>/meow
-            mounter = temp_subvolumes.create('moun:ter/volume')
+            mounter = temp_subvolumes.caller_will_create('mount:er/volume')
+            root_item = FilesystemRootItem(from_target='t')
+            root_item.get_phase_builder([root_item], DUMMY_LAYER_OPTS)(mounter)
             mount_meow = self._make_mount_item(
                 mountpoint='meow',
                 target=source_dir,
@@ -771,7 +786,9 @@ class ItemsTestCase(unittest.TestCase):
             child_content = copy.deepcopy(parent_content)
             child_content[1]['a'][1]['c'] = ['(Dir)', {}]
             # Since the parent lacked a /meta, the child added it.
-            child_content[1]['meta'] = ['(Dir)', {}]
+            child_content[1]['meta'] = ['(Dir)', {'private': ['(Dir)', {
+                'opts': ['(Dir)', {'artifacts_may_require_repo': ['(File d2)']}]
+            }]}]
             self.assertEqual(child_content, _render_subvol(child))
 
     def test_stat_options(self):
@@ -937,6 +954,8 @@ class ItemsTestCase(unittest.TestCase):
             # `yum-from-snapshot` needs a `/meta` directory to work
             subvol.run_as_root(['mkdir', subvol.path('meta')])
             self.assertEqual(
+                # No `opts/artifacts_may_require_repo` here because we directly
+                # created the subvol instead of using an Item.
                 ['(Dir)', {'meta': ['(Dir)', {}]}], _render_subvol(subvol),
             )
 
@@ -1004,6 +1023,7 @@ class ItemsTestCase(unittest.TestCase):
                 os.path.dirname(__file__), 'yum-from-test-snapshot',
             ),
             build_appliance=None,
+            artifacts_may_require_repo=True,  # This value is ignored.
         ))
 
     def test_rpm_action_item_build_appliance(self):
@@ -1023,6 +1043,7 @@ class ItemsTestCase(unittest.TestCase):
                                 'layer.json',
                             ),
                             TEST_SUBVOLS_DIR),
+                artifacts_may_require_repo=True,  # This value is ignored.
             ))
 
     def test_rpm_action_conflict(self):

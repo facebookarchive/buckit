@@ -224,9 +224,7 @@ def image_layer(
 
     buck_command_alias(
         name = name + "-container",
-        args = ["--layer", "$(location {})".format(":" + name)] + (
-            ["--bind-repo-ro"] if built_artifacts_require_repo() else []
-        ),
+        args = ["--layer", "$(location {})".format(":" + name)],
         exe = "//fs_image:nspawn-run-in-subvol",
         visibility = visibility,
     )
@@ -352,7 +350,7 @@ def _compile_image_features(
         # `image_feature` to those targets' outputs.
         #
         # `exe` vs `location` is explained in `image_package.py`.
-        $(exe //fs_image:compiler) \
+        $(exe //fs_image:compiler) {maybe_artifacts_require_repo} \
           --subvolumes-dir "$subvolumes_dir" \
           --subvolume-rel-path \
             "$subvolume_wrapper_dir/"{subvol_name_quoted} \
@@ -371,6 +369,16 @@ def _compile_image_features(
         current_target_quoted = shell.quote(current_target),
         my_feature_target = feature_target,
         dep_features_query_macro = dep_features_query_macro,
+        # Future: Consider **only** emitting this flag if the image is also
+        # known to actually contain executable artifacts (via
+        # `install_executable`).  NB: This may not actually be 100% doable
+        # at macro parse time, since `install_executable_tree` does not know
+        # if it's installing an executable file or a data file until
+        # build-time.  That said, the parse-time test would already narrow
+        # the scope when the repo is mounted, and one could potentially
+        # extend the compiler to further modulate this flag upon checking
+        # whether any executables were in fact installed.
+        maybe_artifacts_require_repo = "--artifacts-may-require-repo" if built_artifacts_require_repo() else "",
         maybe_quoted_build_appliance_args = (
             "" if not build_appliance else "--build-appliance-json $(location {})/layer.json".format(
                 build_appliance,

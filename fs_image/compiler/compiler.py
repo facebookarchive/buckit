@@ -70,6 +70,18 @@ def parse_args(args):
         help='Path to the JSON output of target referred by build_appliance',
     )
     parser.add_argument(
+        '--artifacts-may-require-repo', action='store_true',
+        help='Buck @mode/dev produces "in-place" build artifacts that are '
+            'not truly standalone. It is important to be able to execute '
+            'code from images built in this mode to support rapid '
+            'development and debugging, even though it is not a "true" '
+            'self-contained image. To allow execution of in-place binaries, '
+            'fs_image runtimes will automatically mount the repo into any '
+            '`--artifacts-may-require-repo` image at runtime (e.g. when '
+            'running image unit-tests, when using `-container` or `-boot` '
+            'targets, when using the image as a build appliance).',
+    )
+    parser.add_argument(
         '--child-layer-target', required=True,
         help='The name of the Buck target describing the layer being built',
     )
@@ -128,10 +140,10 @@ def build_image(args):
         layer_opts = LayerOpts(
             layer_target=args.child_layer_target,
             yum_from_snapshot=args.yum_from_repo_snapshot,
-            build_appliance=None
-            if not args.build_appliance_json
-            else get_subvolume_path(
-                    args.build_appliance_json, args.subvolumes_dir),
+            build_appliance=get_subvolume_path(
+                args.build_appliance_json, args.subvolumes_dir,
+            ) if args.build_appliance_json else None,
+            artifacts_may_require_repo=args.artifacts_may_require_repo,
         )
         # Creating all the builders up-front lets phases validate their input
         for builder in [

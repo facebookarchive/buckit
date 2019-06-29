@@ -93,6 +93,7 @@ class CompilerTestCase(unittest.TestCase):
         # `Subvolume(..., already_exists=True)` will work.
         is_btrfs.return_value = True
         return build_image(parse_args([
+            '--artifacts-may-require-repo',  # Must match LayerOpts below
             '--subvolumes-dir', TEST_SUBVOLS_DIR,
             '--subvolume-rel-path', FAKE_SUBVOL,
             '--yum-from-repo-snapshot', self.yum_path,
@@ -158,6 +159,7 @@ class CompilerTestCase(unittest.TestCase):
                     layer_target='fake-target',
                     yum_from_snapshot=self.yum_path,
                     build_appliance=None,
+                    artifacts_may_require_repo=True,  # Must match _compile
                 )
             )(subvol)
 

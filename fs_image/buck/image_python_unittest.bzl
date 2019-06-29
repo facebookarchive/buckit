@@ -134,11 +134,7 @@ def image_python_unittest(
             "def nspawn_in_subvol_args():\n" +
             "    return {args}\n"
         ).format(
-            args = repr(
-                (["--bind-repo-ro"] if artifacts_require_repo else []) +
-                # An inane comment on how Buildifier formatting is terrible
-                ["--user", run_as_user, "--", binary_path],
-            ),
+            args = repr(["--user", run_as_user, "--", binary_path]),
         ))),
         visibility = visibility,
     )

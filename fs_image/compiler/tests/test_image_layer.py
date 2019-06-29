@@ -176,7 +176,9 @@ class ImageLayerTestCase(unittest.TestCase):
             self.assertEqual(['(Dir)', {
                 'bin': ['(Dir)', {}],
                 'dev': ['(Dir)', {}],
-                'meta': ['(Dir)', {}],
+                'meta': ['(Dir)', {'private': ['(Dir)', {'opts': ['(Dir)', {
+                    'artifacts_may_require_repo': ['(File d2)'],
+                }]}]}],
                 'usr': ['(Dir)', {
                     'lib': ['(Dir)', {}],
                     'share': ['(Dir)', {

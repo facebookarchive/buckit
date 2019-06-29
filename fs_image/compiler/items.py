@@ -110,9 +110,10 @@ class PhaseOrder(enum.Enum):
 
 
 class LayerOpts(NamedTuple):
+    artifacts_may_require_repo: bool
+    build_appliance: str
     layer_target: str
     yum_from_snapshot: str
-    build_appliance: str
 
 
 class ImageItem(type):
@@ -580,7 +581,6 @@ class MountItem(metaclass=ImageItem):
         if kwargs['build_source'].type == 'host' and not (
             kwargs['from_target'].startswith('//fs_image/features/host_mounts')
             or kwargs['from_target'].startswith('//fs_image/compiler/test')
-            or kwargs['from_target'].startswith('//fs_image/build_appliance')
         ):
             raise AssertionError(
                 'Host mounts cause containers to be non-hermetic and fragile, '
@@ -699,10 +699,37 @@ def _is_path_protected(path: str, protected_paths: Set[str]) -> bool:
     return False
 
 
-def _ensure_meta_dir_exists(subvol: Subvol):
+def _ensure_meta_dir_exists(subvol: Subvol, layer_opts: LayerOpts):
     subvol.run_as_root([
         'mkdir', '--mode=0755', '--parents', subvol.path(META_DIR),
     ])
+    # One might ask: why are we serializing this into the image instead
+    # of just putting a condition on `built_artifacts_require_repo`
+    # into our Buck macros? Two reasons:
+    #   - In the case of build appliance images, it is possible for a
+    #     @mode/dev (in-place) build to use **either** a @mode/dev, or a
+    #     @mode/opt (standalone) build appliance. The only way to know
+    #     to know if the appliance needs a repo mount is to have a marker
+    #     in the image.
+    #   - By marking the images, we avoid having to conditionally add
+    #     `--bind-repo-ro` flags in a bunch of places in our codebase.  The
+    #     in-image marker enables `nspawn_in_subvol` to decide.
+    arr_path = os.path.join(META_DIR, 'private/opts/artifacts_may_require_repo')
+    if os.path.exists(subvol.path(arr_path)):
+        parent_arr = procfs_serde.deserialize(subvol, arr_path)
+        # The check is <= because we should permit building @mode/dev
+        # children from published @mode/opt images.
+        assert int(parent_arr) <= int(layer_opts.artifacts_may_require_repo), (
+            f'{subvol.path()} is trying to build a self-contained layer '
+            f'(layer_opts.artifacts_may_require_repo) from a parent that was '
+            f'marked as requiring the repo to run ({parent_arr})'
+        )
+        # I looked into adding an `allow_overwrite` flag to `serialize`, but
+        # it was too much hassle to do it right.
+        subvol.run_as_root(['rm', subvol.path(arr_path)])
+    procfs_serde.serialize(
+        layer_opts.artifacts_may_require_repo, subvol, arr_path,
+    )
 
 
 class ParentLayerItem(metaclass=ImageItem):
@@ -776,7 +803,7 @@ class ParentLayerItem(metaclass=ImageItem):
             subvol.snapshot(parent_subvol)
             # This assumes that the parent has everything mounted already.
             mount_item.clone_mounts(parent_subvol, subvol)
-            _ensure_meta_dir_exists(subvol)
+            _ensure_meta_dir_exists(subvol, layer_opts)
 
         return builder
 
@@ -809,7 +836,7 @@ class FilesystemRootItem(metaclass=ImageItem):
             # but in practice, probably any other choice would be wrong.
             subvol.run_as_root(['chmod', '0755', subvol.path()])
             subvol.run_as_root(['chown', 'root:root', subvol.path()])
-            _ensure_meta_dir_exists(subvol)
+            _ensure_meta_dir_exists(subvol, layer_opts)
 
         return builder
 
@@ -1005,13 +1032,6 @@ class RpmActionItem(metaclass=ImageItem):
                         '--assumeyes', '--', *sorted(rpms),
                     ])
                 else:
-                    '''
-                    ## Future
-                    - implement image feature "manifold_support" with all
-                      those bind-mounts below in mounts = [...]
-                    - add features = ["manifold_support"] to fb_build_appliance
-                    - call nspawn_in_subvol() instead of run_as_root() below
-                    '''
                     appliance_svol = Subvol(
                         layer_opts.build_appliance,
                         already_exists=True,

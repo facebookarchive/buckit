@@ -107,6 +107,7 @@ import uuid
 from contextlib import contextmanager
 
 from artifacts_dir import find_repo_root
+from compiler import procfs_serde
 from compiler.mount_item import clone_mounts
 from find_built_subvol import find_built_subvol, Subvol
 from fs_image.common import nullcontext
@@ -268,7 +269,9 @@ def nspawn_in_subvol(
             src, dest = item
             extra_nspawn_args.extend(bind_args(src, dest, readonly=False))
 
-    if opts.bind_repo_ro:
+    if opts.bind_repo_ro or procfs_serde.deserialize(
+        src_subvol, 'meta/private/opts/artifacts_may_require_repo'
+    ):
         # NB: Since this bind mount is only made within the nspawn
         # container, it is not visible in the `--snapshot-into` filesystem.
         # This is a worthwhile trade-off -- it is technically possible to
@@ -398,10 +401,12 @@ def parse_opts(argv):
             'of the layer to ensure that the contained paths are valid.',
     )
     parser.add_argument(
-        '--bind-repo-ro', action='store_true',
+        '--bind-repo-ro', action='store_true', default=None,
         help='Makes a read-only recursive bind-mount of the current Buck '
              'project into the container at the same location as it is on '
-             'the host. Needed to run in-place binaries.',
+             'the host. Needed to run in-place binaries. The default is to '
+             'make this bind-mount only if `--layer` artifacts need access '
+             'to the repo.',
     )
     parser.add_argument(
         '--cap-net-admin', action='store_true',
