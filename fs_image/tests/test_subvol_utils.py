@@ -56,7 +56,7 @@ class SubvolTestCase(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             _subvol_exists=False,
         )
-        self.assertEqual(['sudo', '--'] + args, r.args)
+        self.assertEqual(['sudo', 'TMP=', '--'] + args, r.args)
         self.assertEqual(0, r.returncode)
         self.assertEqual(b'my out', r.stdout)
         self.assertEqual(b'my err', r.stderr)

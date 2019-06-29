@@ -173,7 +173,15 @@ class Subvol:
         # The '--' is to avoid `args` from accidentally being parsed as
         # environment variables or `sudo` options.
         with subprocess.Popen(
-            ['sudo', '--', *args], stdout=stdout, **kwargs,
+            # Clobber any pre-existing `TMP` because in the context of Buck,
+            # this is often set to something inside the repo's `buck-out`
+            # (as documented in https://buck.build/rule/genrule.html).
+            # Using the in-repo temporary directory causes a variety of
+            # issues, including (i) `yum` leaking root-owned files into
+            # `buck-out`, breaking `buck clean`, and (ii) `systemd-nspawn`
+            # bugging out with "Failed to create inaccessible file node"
+            # when we use `--bind-repo-ro`.
+            ['sudo', 'TMP=', '--', *args], stdout=stdout, **kwargs,
         ) as pr:
             yield pr
         if check:
