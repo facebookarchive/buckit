@@ -27,9 +27,9 @@ class NspawnTestCase(unittest.TestCase):
         ).returncode)
 
     def test_redirects(self):
+        cmd = ['--', 'sh', '-c', 'echo ohai && echo abracadabra >&2']
         ret = self._nspawn_in(
-            'host', ['--', 'sh', '-c', 'echo ohai && echo abracadabra >&2'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            'host', cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         # The extra newline is due to T40936918 mentioned in
         # `nspawn_in_subvol.py`.  It would disappear if I passed `--quiet`
@@ -38,6 +38,14 @@ class NspawnTestCase(unittest.TestCase):
         # stderr is not just a clean `abracadabra\n` because we don't
         # suppress nspawn's debugging output.
         self.assertIn(b'abracadabra\n', ret.stderr)
+
+        # The same test with `--quiet` is much simpler.
+        ret = self._nspawn_in(
+            'host', ['--quiet'] + cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        self.assertEqual(b'ohai\n', ret.stdout)
+        self.assertEqual(b'abracadabra\n', ret.stderr)
 
     def test_machine_id(self):
         # Whether or not the layer filesystem had a machine ID, it should

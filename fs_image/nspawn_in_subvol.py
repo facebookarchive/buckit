@@ -257,9 +257,12 @@ def nspawn_in_subvol(
     # These keyword-only arguments generally follow those of `subprocess.run`.
     #   - `check` defaults to True instead of False.
     #   - Unlike `run_as_root`, `stdout` is NOT default-redirected to `stderr`.
-    stdout=None, stderr=None, check=True,
+    stdout=None, stderr=None, check=True, quiet=False,
 ):
     extra_nspawn_args = ['--user', opts.user]
+
+    if opts.quiet:
+        extra_nspawn_args.append('--quiet')
 
     if opts.private_network:
         extra_nspawn_args.append('--private-network')
@@ -438,6 +441,9 @@ def parse_opts(argv):
         help='These FDs will be copied into the container with sequential '
             'FD numbers starting from 3, in the order they were listed '
             'on the command-line. Repeat to pass multiple FDs.',
+    )
+    parser.add_argument(
+        '--quiet', action='store_true', help='See `man systemd-nspawn`.',
     )
     parser.add_argument(
         'cmd', nargs='*', default=['/bin/bash'],

@@ -8,7 +8,7 @@ from ..dep_graph import (
     DependencyGraph, ItemProv, ItemReq, ItemReqsProvs, ValidatedReqsProvs,
 )
 from ..items import (
-    CopyFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
+    InstallFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory
@@ -18,8 +18,12 @@ PATH_TO_ITEM = {
     '/': FilesystemRootItem(from_target=''),
     '/a/b/c': MakeDirsItem(from_target='', into_dir='/', path_to_make='a/b/c'),
     '/a/d/e': MakeDirsItem(from_target='', into_dir='a', path_to_make='d/e'),
-    '/a/b/c/F': CopyFileItem(from_target='', source='x', dest='a/b/c/F'),
-    '/a/d/e/G': CopyFileItem(from_target='', source='G', dest='a/d/e/G'),
+    '/a/b/c/F': InstallFileItem(
+        from_target='', source='x', dest='a/b/c/F', is_executable_=False,
+    ),
+    '/a/d/e/G': InstallFileItem(
+        from_target='', source='G', dest='a/d/e/G', is_executable_=False,
+    ),
 }
 
 
@@ -46,12 +50,16 @@ class ValidateReqsProvsTestCase(unittest.TestCase):
             RuntimeError, '^Both .* and .* from .* provide the same path$'
         ):
             ValidatedReqsProvs([
-                CopyFileItem(from_target='', source='x', dest='y/x'),
+                InstallFileItem(
+                    from_target='', source='x', dest='y/x', is_executable_=False
+                ),
                 MakeDirsItem(from_target='', into_dir='/', path_to_make='y/x'),
             ])
 
     def test_unmatched_requirement(self):
-        item = CopyFileItem(from_target='', source='x', dest='y')
+        item = InstallFileItem(
+            from_target='', source='x', dest='y', is_executable_=False,
+        )
         with self.assertRaises(
             RuntimeError,
             msg='^At /: nothing in set() matches the requirement '

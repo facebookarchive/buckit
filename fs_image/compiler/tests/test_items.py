@@ -17,7 +17,7 @@ from btrfs_diff.tests.render_subvols import render_sendstream
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
-    CopyFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
+    InstallFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
     MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
     RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
     SymlinkToFileItem, TarballItem, _hash_tarball, _protected_path_set,
@@ -91,7 +91,9 @@ class ItemsTestCase(unittest.TestCase):
     def test_phase_orders(self):
         self.assertIs(
             None,
-            CopyFileItem(from_target='t', source='a', dest='b').phase_order(),
+            InstallFileItem(
+                from_target='t', source='a', dest='b', is_executable_=False,
+            ).phase_order(),
         )
         self.assertEqual(
             PhaseOrder.PARENT_LAYER,
@@ -127,35 +129,56 @@ class ItemsTestCase(unittest.TestCase):
                 }]}]}], _render_subvol(subvol),
             )
 
-    def test_copy_file(self):
+    def test_install_file(self):
+        exe_item = InstallFileItem(
+            from_target='t', source='a/b/c', dest='d/c', is_executable_=True,
+        )
+        self.assertEqual(0o555, exe_item.mode)
+        self.assertEqual('a/b/c', exe_item.source)
         self._check_item(
-            CopyFileItem(from_target='t', source='a/b/c', dest='d/c'),
+            exe_item,
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
         )
+
+        # Checks `path_in_source`, as well as "is_executable_=False"
+        data_item = InstallFileItem(
+            from_target='t', source='a', path_in_source='b/c', dest='d',
+            is_executable_=False,
+        )
+        self.assertEqual(0o444, data_item.mode)
+        self.assertEqual('a/b/c', data_item.source)
         self._check_item(
-            CopyFileItem(from_target='t', source='a/b/c', dest='d'),
+            data_item,
             {ProvidesFile(path='d')},
             {require_directory('/')},
         )
+
         # NB: We don't need to get coverage for this check on ALL the items
         # because the presence of the ProvidesDoNotAccess items it the real
         # safeguard -- e.g. that's what prevents TarballItem from writing
         # to /meta/ or other protected paths.
         with self.assertRaisesRegex(AssertionError, 'cannot start with meta/'):
-            CopyFileItem(from_target='t', source='a/b/c', dest='/meta/foo')
+            InstallFileItem(
+                from_target='t', source='a/b/c', dest='/meta/foo',
+                is_executable_=False,
+            )
 
     def test_enforce_no_parent_dir(self):
         with self.assertRaisesRegex(AssertionError, r'cannot start with \.\.'):
-            CopyFileItem(from_target='t', source='a', dest='a/../../b')
+            InstallFileItem(
+                from_target='t', source='a', dest='a/../../b',
+                is_executable_=False,
+            )
 
-    def test_copy_file_command(self):
+    def test_install_file_command(self):
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('tar-sv')
             subvol.run_as_root(['mkdir', subvol.path('d')])
 
-            CopyFileItem(
+            InstallFileItem(
                 from_target='t', source='/dev/null', dest='/d/null',
+                is_executable_=False,
             ).build(subvol)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m444)']}]}],
@@ -164,18 +187,19 @@ class ItemsTestCase(unittest.TestCase):
 
             # Fail to write to a nonexistent dir
             with self.assertRaises(subprocess.CalledProcessError):
-                CopyFileItem(
+                InstallFileItem(
                     from_target='t', source='/dev/null', dest='/no_dir/null',
+                    is_executable_=False,
                 ).build(subvol)
 
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
             # check for this, and a run-time check would add overhead.
-            CopyFileItem(
+            InstallFileItem(
                 from_target='t', source='/dev/null', dest='/d/null',
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
-                mode='u+rw', user_group='12:34',
+                mode='u+rw', user_group='12:34', is_executable_=False,
             ).build(subvol)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m600 o12:34)']}]}],
@@ -551,8 +575,9 @@ class ItemsTestCase(unittest.TestCase):
             subvol.run_as_root(['mkdir', subvol.path('dir')])
 
             # We need a source file to validate a SymlinkToFileItem
-            CopyFileItem(
+            InstallFileItem(
                 from_target='t', source='/dev/null', dest='/file',
+                is_executable_=False,
             ).build(subvol)
             SymlinkToDirItem(
                 from_target='t', source='/dir', dest='/dir_symlink'
@@ -826,8 +851,9 @@ class ItemsTestCase(unittest.TestCase):
                 from_target='t', path_to_make='/a/b/c', into_dir='/',
             ).build(subvol)
             for d in ['d', 'e']:
-                CopyFileItem(
+                InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
+                    is_executable_=False,
                 ).build(subvol)
             MakeDirsItem(
                 from_target='t', path_to_make='/f/g', into_dir='/',
@@ -837,8 +863,9 @@ class ItemsTestCase(unittest.TestCase):
                 from_target='t', source='/f', dest='/a/b/f_sym',
             ).build(subvol)
             for d in ['h', 'i']:
-                CopyFileItem(
+                InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/f/{d}',
+                    is_executable_=False,
                 ).build(subvol)
             SymlinkToDirItem(
                 from_target='t', source='/f/i', dest='/f/i_sym',

@@ -78,7 +78,7 @@ export_file(name = "deadbeef-machine-id")
 image.layer(
     name = "only-for-tests-read-only-host-clone-with-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
-    copy_deps = [(":deadbeef-machine-id", "/etc/machine-id")],
+    install_data = {":deadbeef-machine-id": "/etc/machine-id"},
 )
 
 # The next 2 layers exercise the build appliance logic for RPM installation
@@ -100,15 +100,9 @@ image.layer(
         ("/var", "lib/rpm"),
         ("/var/lib", "yum"),
     ],
-    copy_deps = [{
-        "dest": "/yum-from-snapshot",
-        "mode": "a+rx",
-        "source": maybe_wrap_runtime_deps_as_build_time_deps(
-            name = "yum-wrap",
-            target = "//fs_image/rpm:yum-from-test-snapshot",
-            visibility = None,
-        )[1],
-    }],
+    install_executables = {
+        "//fs_image/rpm:yum-from-test-snapshot": "/yum-from-snapshot",
+    },
 )
 
 # Verified by `test_build_appliance` in `test-image-layer`.
@@ -147,7 +141,7 @@ image.feature(
 #   - all forms of specifying symlinks
 image.feature(
     name = "feature_symlinks",
-    copy_deps = [
+    install_data = [
         (":hello_world.tar", "/foo/hello_world.tar"),
     ],
     symlinks_to_dirs = [
@@ -168,6 +162,8 @@ image.feature(
 # Exercises:
 #  - all forms of specifying a tarball to extract
 #  - installing and removing RPMs
+# NB: Unlike `feature_install_files`, this **implicitly** depends on some
+# feature to provide directories `/foo/borf/`.
 image.feature(
     name = "feature_tar_and_rpms",
     rpms = {
@@ -198,6 +194,79 @@ image.feature(
     },
 )
 
+python_binary(
+    name = "print-ok",
+    srcs = ["print_ok.py"],
+    base_module = "fs_image",
+    main_module = "fs_image.print_ok",
+)
+
+buck_genrule(
+    name = "dir-print-ok",
+    out = "dir",
+    bash = '''
+    mkdir -p "$OUT/subdir"
+    cp $(location {maybe_wrapped_ok}) "$OUT"/subdir/print-ok
+    echo meow > "$OUT"/kitteh
+    '''.format(
+        # A @mode/dev PAR will break if we copy it into another directory,
+        # since it relies on the linktree being its sibling.  Using this
+        # wrapper prevents that.
+        maybe_wrapped_ok = maybe_wrap_runtime_deps_as_build_time_deps(
+            name = "wrap-print-ok",
+            target = ":print-ok",
+            visibility = None,
+        )[1],
+    ),
+    cacheable = False,  # The wrapper makes our output non-cacheable.
+    # This is required to be able to execute anything out of the directory.
+    executable = True,
+)
+
+# Exercises `install_{data,executables}, taking care to cover all reasonable
+# combinations of :
+#   - Rsync convention
+#   - Data vs executables
+#   - Installing a file from a target that outputs a directory
+#
+# Be sure to add any new installed executables to `test-execute-installed`.
+#
+# NB: Unlike `feature_tar_and_rpms`, this **explicitly** depends on
+# `feature_dirs` to provide directories `/foo/bar/`.  This exercises the
+# case where the same feature is pulled in via several dependency paths.
+image.feature(
+    name = "feature_install_files",
+    features = [":feature_dirs"],  # We use /foo/bar for a couple of installs.
+    make_dirs = [("/foo/bar/", "installed")],  # Most things will go here.
+    install_data = [
+        (":hello_world.tar", "/foo/bar/hello_world.tar"),
+        {
+            "dest": "/foo/bar/hello_world_again.tar",
+            "source": ":hello_world.tar",
+            "user:group": "nobody:nobody",
+        },
+        {
+            "dest": "/foo/bar/installed/yittal-kitteh",
+            "path_in_source": "kitteh",
+            "source": ":dir-print-ok",
+        },
+    ],
+    install_executables = [
+        (":print-ok", "/foo/bar/installed/print-ok"),
+        {
+            "dest": "/foo/bar/installed/print-ok-too",
+            "path_in_source": "subdir/print-ok",
+            "source": ":dir-print-ok",
+        },
+    ],
+)
+
+image.layer(
+    name = "installed-executables",
+    parent_layer = ":only-for-tests-read-only-host-clone",
+    features = [":feature_install_files"],
+)
+
 # Omnibus feature for test-compiler and test-image-feature.  It currently
 # cannot be materialized as an `image.layer` because of `feature_bad_dir`.
 #
@@ -212,14 +281,6 @@ image.feature(
 #    something installed by an RPM, add T_REMOVE_PATHS to sample_items, etc
 image.feature(
     name = "feature_kitchen_sink",
-    copy_deps = [
-        (":hello_world.tar", "/foo/bar/hello_world.tar"),
-        {
-            "dest": "/foo/bar/hello_world_again.tar",
-            "user:group": "nobody:nobody",
-            "source": ":hello_world.tar",
-        },
-    ],
     remove_paths = [
         "/path/to/remove",
         ("/path/to/remove", "if_exists"),
@@ -231,6 +292,7 @@ image.feature(
     features = [
         ":feature_bad_dir",
         ":feature_dirs",
+        ":feature_install_files",
         ":feature_mount",
         ":feature_tar_and_rpms",
         ":feature_symlinks",
@@ -323,7 +385,7 @@ image.layer(
 
 image.layer(
     name = "parent_layer",
-    copy_deps = [
+    install_data = [
         # This directory comes from `rpm-test-carrot`. This tests that our
         # dependency engine sees RPM contents as a "provides".
         (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),

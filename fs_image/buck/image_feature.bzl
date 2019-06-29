@@ -221,20 +221,84 @@ def _normalize_mounts(target_tagger, mounts):
 
     return normalized
 
-def _normalize_copy_deps(target_tagger, copy_deps):
-    if copy_deps == None:
+def _maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
+    # The target to wrap may be in a different directory, so we normalize
+    # its path to ensure the hashing is deterministic.  This assures reuse
+    # at least within the current TARGETS files.
+    target = _normalize_target(target)
+
+    # The wrapper target is plumbing, so it will start with the provided
+    # prefix to hide it from e.g.  tab-completion.  Then, it includes an
+    # excerpt of the original target name to ease debugging.  Lastly, a hash
+    # of the full target path accounts for identically-named targets from
+    # different directories.
+    _, name = target.split(":")
+    wrapped_target = wrap_prefix + "__" + (
+        name if len(name) < 15 else (name[:6] + "..." + name[-6:])
+    ) + "__" + hex_crc32(target)
+
+    # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
+    was_wrapped, maybe_target = maybe_wrap_runtime_deps_as_build_time_deps(
+        name = wrapped_target,
+        target = target,
+        **kwargs
+    )
+    return was_wrapped, _tag_target(target_tagger, maybe_target)
+
+def _normalize_install_files(target_tagger, files, visibility, is_executable):
+    if files == None:
         return []
 
     normalized = []
-    for d in _coerce_dict_to_items(copy_deps):
+    kwarg_name = "install_executables" if is_executable else "install_data"
+
+    for d in _coerce_dict_to_items(files):
         if types.is_tuple(d):
             if len(d) != 2:
                 fail(
-                    "copy_deps tuples must have the form: " +
-                    "(target_to_copy, destination_dir_or_path)",
+                    "`{}` tuples must have the form: ".format(kwarg_name) +
+                    "(target_to_copy, destination_path)",
                 )
-            d = {"dest": d[1], "source": d[0]}
-        _tag_required_target_key(target_tagger, d, "source")
+            if types.is_string(d[1]):
+                d = {"dest": d[1], "source": d[0]}
+            elif types.is_dict(d[1]):
+                rest_of_d = d[1]
+                if "source" in rest_of_d:
+                    fail('"source": {...} must not set source in the dict')
+                d = {"source": d[0]}
+                d.update(rest_of_d)
+            else:
+                fail("Tuple element in `{}` has unexpected type: {}".format(
+                    kwarg_name,
+                    d[1],
+                ))
+        d["is_executable_"] = is_executable  # Changes default permissions
+        if is_executable:
+            was_wrapped, d["source"] = _maybe_wrap_executable_target(
+                target_tagger = target_tagger,
+                target = d.pop("source"),
+                wrap_prefix = "install_executables_wrap_source",
+                visibility = visibility,
+                # NB: Buck makes it hard to execute something out of an
+                # output that is a directory, but it is possible so long as
+                # the rule outputting the directory is marked executable
+                # (see e.g.  `print-ok-too` in `feature_install_files`).
+                path_in_output = d.get("path_in_source", None),
+            )
+            if was_wrapped:
+                # The wrapper itself resolves `path_in_source`, so the
+                # compiler does not have to.
+                d.pop("path_in_source", None)
+        else:
+            # Future: If `is_executable` is not set, we should use a Buck
+            # macro that enforces that the target is non-executable, as I
+            # suggested on Q15839.  This should probably be done inside
+            # `_tag_required_target_key` to ensure that we avoid "unwrapped
+            # executable" bugs everywhere.  A possible reason NOT to do this
+            # is that it would require fixes to `install_data` invocations
+            # that extract non-executable contents out of a directory target
+            # that is executable.
+            _tag_required_target_key(target_tagger, d, "source")
         normalized.append(_normalize_stat_options(d))
     return normalized
 
@@ -256,17 +320,12 @@ def _normalize_tarballs(target_tagger, tarballs, visibility):
         if "tarball" in d:
             _tag_required_target_key(target_tagger, d, "tarball")
         else:
-            # The generator may be in a different directory, so make the
-            # target path normal to ensure the hashing is deterministic.
-            generator = _normalize_target(d.pop("generator"))
-
-            # See the `maybe_wrap_runtime_deps_as_build_time_deps` docblock.
-            _, maybe_wrapped = maybe_wrap_runtime_deps_as_build_time_deps(
-                name = "tarball_wrap_generator_" + hex_crc32(generator),
-                target = generator,
+            _was_wrapped, d["generator"] = _maybe_wrap_executable_target(
+                target_tagger = target_tagger,
+                target = d.pop("generator"),
+                wrap_prefix = "tarball_wrap_generator",
                 visibility = visibility,
             )
-            d["generator"] = _tag_target(target_tagger, maybe_wrapped)
 
         if "hash" not in d:
             fail(
@@ -426,19 +485,65 @@ def image_feature(
         # Future: we may need another feature for removing mounts provided
         # by parent layers.
         mounts = None,
-        # An iterable of targets to copy into the image --
-        #  - `source` is the Buck target to copy,
-        #  - `dest` is an image-absolute path, including a filename for the
-        #     file being copied.  The directory of `dest` must get created
-        #     by another `image_feature` item.
-        # Order is not signficant, the image compiler will sort the actions
-        # automatically.  Supported item formats:
-        #  - tuple: ('//target/to/copy', 'image_absolute/dir/filename')
-        #  - dict: {
-        #        'dest': 'image_absolute/dir/filename',
-        #        'source': '//target/to/copy',
-        #    }
-        copy_deps = None,
+        # The `install_` arguments are used to copy Buck build artifacts
+        # (wholly or partially) into an image. Basic syntax:
+        #
+        # Each argument is an iterable of targets to copy into the image.
+        # You can supply a list mixing dicts and 2-element tuples (as
+        # below), or a dict keyed by source target (more below).
+        #
+        # Prefer to use the shortest form possible, instead of repeating the
+        # defaults in your spec.
+        #
+        # If you are supplying a list, here is what it can contain:
+        #   - tuple: ('//source/to:copy', 'image_absolute/dest/filename')
+        #   - dict: {
+        #         # An image-absolute path, including a filename for the
+        #         # file being copied.  The directory of `dest` must get
+        #         # created by another `image_feature` item.
+        #         'dest': 'image_absolute/dir/filename',
+        #
+        #         # The Buck target to copy (or to copy from).
+        #         'source': '//target/to/copy',
+        #
+        #         # If 'source' is a directory, copy just this one file.
+        #         # Defaults to `None`, since most sources are files.
+        #         'path_in_source': 'subdir/file',
+        #
+        #         # Please do NOT copy these defaults into your TARGETS:
+        #         'user:group': 'root:root',
+        #         'mode': 'a+r',  # or 'a+rx' for `install_executables`
+        #     }
+        #
+        # If your iterable is a dict, you can use items of two types:
+        #   - `'//source/to:copy': 'image/dest',`
+        #   - `'//source/to:copy': { ... dict as above, minus `source` ... },`
+        #
+        # The iterable's order is not signficant, the image compiler will
+        # sort the actions automatically.
+        #
+        # If the file being copied is an executable (e.g. `cpp_binary`,
+        # `python_binary`), use `install_executable`.  Ditto for copying
+        # executable files from inside directories output by other (custom?)
+        # executable rules. For everything else, use `install_data` [1].
+        #
+        # The implementation of `install_executables` differs significantly
+        # in `@mode/dev` in order to support the execution of in-place
+        # binaries (dynamically linked C++, linktree Python) from within an
+        # image.  Internal implementation differences aside, the resulting
+        # image should "quack" like your real, production `@mode/opt`.
+        #
+        # [1] Corner case: if you want to copy a non-executable file from
+        # inside a directory output by a Buck target, which is marked
+        # executable, then you should use `install_data`, even though the
+        # underlying rule is executable.
+        #
+        # Design note: This API forces you to distinguish between source
+        # targets that are executable and those that are not, because (until
+        # Buck supports providers), it is not possible to deduce this
+        # automatically at parse-time.
+        install_data = None,
+        install_executables = None,
         # An iterable of tarballs to extract inside the image.
         #
         # Each item must specify EXACTLY ONE of `tarball`, `generator`:
@@ -534,8 +639,17 @@ def image_feature(
         # humans to read while debugging.
         target = _normalize_target(":" + name),
         make_dirs = _normalize_make_dirs(make_dirs),
-        copy_files =
-            _normalize_copy_deps(target_tagger, copy_deps),
+        install_files = _normalize_install_files(
+            target_tagger = target_tagger,
+            files = install_data,
+            visibility = visibility,
+            is_executable = False,
+        ) + _normalize_install_files(
+            target_tagger = target_tagger,
+            files = install_executables,
+            visibility = visibility,
+            is_executable = True,
+        ),
         mounts = _normalize_mounts(target_tagger, mounts),
         tarballs = _normalize_tarballs(target_tagger, tarballs, visibility),
         remove_paths = _normalize_remove_paths(remove_paths),

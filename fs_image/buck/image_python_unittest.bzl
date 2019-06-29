@@ -4,7 +4,6 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":image_layer.bzl", "image_layer")
-load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 def image_python_unittest(
         name,
@@ -81,15 +80,6 @@ def image_python_unittest(
         **python_unittest_kwargs
     )
 
-    # NB: Anything that includes the wrapped target output must be marked
-    # uncacheable.  At the moment, this is only the `image_layer`, which
-    # always sets `cacheable = False` anyway.
-    _, wrapped_test_target = maybe_wrap_runtime_deps_as_build_time_deps(
-        name = "wrapped-" + test_name,
-        target = ":" + test_name,
-        visibility = visibility,
-    )
-
     # Make a test-specific image containing the test binary.
     binary_path = "/layer-test-binary"
 
@@ -97,11 +87,7 @@ def image_python_unittest(
     test_layer = name + "--test-layer"
     image_layer(
         name = test_layer,
-        copy_deps = [{
-            "dest": binary_path,
-            "mode": "a+rx",
-            "source": wrapped_test_target,
-        }],
+        install_executables = {(":" + test_name): binary_path},
         parent_layer = layer,
         visibility = visibility,
     )

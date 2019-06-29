@@ -4,6 +4,7 @@
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("//fs_image/buck:artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load(":defs.bzl", "READ_MY_DOC_image_feature_target", "TEST_TARGET_PREFIX", "image_feature_python_unittest")
 
 python_library(
@@ -206,13 +207,19 @@ python_library(
 TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_dirs"),
     READ_MY_DOC_image_feature_target("feature_bad_dir"),
-    READ_MY_DOC_image_feature_target("feature_mount"),
     READ_MY_DOC_image_feature_target("feature_symlinks"),
     READ_MY_DOC_image_feature_target("feature_tar_and_rpms"),
+    READ_MY_DOC_image_feature_target("feature_mount"),
+    "print-ok",
+    "dir-print-ok",
+    READ_MY_DOC_image_feature_target("feature_install_files"),
     READ_MY_DOC_image_feature_target("feature_kitchen_sink"),
     "hello_world_base",
     "hello_world.tar",
-]
+] + ([
+    "install_executables_wrap_source__dir-print-ok__4331d20c",
+    "install_executables_wrap_source__print-ok__c032e51d",
+] if built_artifacts_require_repo() else [])
 
 image_feature_python_unittest(
     name = "test-image-feature",

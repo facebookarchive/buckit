@@ -387,6 +387,9 @@ def customize_stat_options(kwargs, *, default_mode):
         kwargs['user_group'] = 'root:root'
 
 
+# Future: this should validate that the user & group actually exist in the
+# image's passwd/group databases (blocked on having those be first-class
+# objects in the image build process).
 def build_stat_options(item, subvol: Subvol, full_target_path: str):
     # `chmod` lacks a --no-dereference flag to protect us from following
     # `full_target_path` if it's a symlink.  As far as I know, this should
@@ -409,12 +412,37 @@ def build_stat_options(item, subvol: Subvol, full_target_path: str):
     ])
 
 
-class CopyFileItem(metaclass=ImageItem):
-    fields = ['source', 'dest'] + STAT_OPTION_FIELDS
+RAISE_KEY_ERROR = object()
+
+
+def _pop_and_make_None(d, k, default=RAISE_KEY_ERROR):
+    'Like dict.pop, but inserts None into `d` afterwards.'
+    v = d.pop(k) if default is RAISE_KEY_ERROR else d.pop(k, default)
+    d[k] = None
+    return v
+
+
+class InstallFileItem(metaclass=ImageItem):
+    fields = [
+        'source',
+        'dest',
+        # The following fields are None after `customize_fields`:
+        ('path_in_source', None),
+        'is_executable_',
+    ] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
+        path_in_source = _pop_and_make_None(kwargs, 'path_in_source', None)
+        if path_in_source is not None:
+            kwargs['source'] = os.path.normpath(
+                kwargs['source'] + '/' + path_in_source
+            )
         _coerce_path_field_normal_relative(kwargs, 'dest')
-        customize_stat_options(kwargs, default_mode=0o444)
+        customize_stat_options(
+            kwargs,
+            default_mode=0o555 if _pop_and_make_None(kwargs, 'is_executable_')
+                else 0o444,
+        )
 
     def provides(self):
         yield ProvidesFile(path=self.dest)

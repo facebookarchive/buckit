@@ -2,13 +2,17 @@
 import os
 
 from ..items import (
-    CopyFileItem, FilesystemRootItem, MakeDirsItem, MountItem,
+    InstallFileItem, FilesystemRootItem, MakeDirsItem, MountItem,
     RemovePathAction, RemovePathItem, RpmActionItem, RpmAction,
     SymlinkToDirItem, SymlinkToFileItem, TarballItem,
 )
 
 HELLO_TAR_HASH = 'sha256:' \
     'dd83365abc69fe39990096a9396d9d2d6fbf75f849ab1640a10fdf9614d8d03d'
+
+_NONPORTABLE_ARTIFACTS = int(os.environ.get(
+    'test_image_feature_built_artifacts_require_repo'
+))
 
 T_BASE = '//fs_image/compiler/tests'
 # Use the "debug", human-readable forms of the image_feature targets here,
@@ -18,6 +22,13 @@ T_BAD_DIR = f'{T_BASE}:feature_bad_dir'
 T_MOUNT = f'{T_BASE}:feature_mount'
 T_SYMLINKS = f'{T_BASE}:feature_symlinks'
 T_TAR = f'{T_BASE}:feature_tar_and_rpms'
+T_PRINT_OK = f'{T_BASE}:print-ok'
+T_EXE_WRAP_PRINT_OK = \
+    f'{T_BASE}:install_executables_wrap_source__print-ok__c032e51d'
+T_DIR_PRINT_OK = f'{T_BASE}:dir-print-ok'
+T_EXE_WRAP_DIR_PRINT_OK = \
+    f'{T_BASE}:install_executables_wrap_source__dir-print-ok__4331d20c'
+T_INSTALL_FILES = f'{T_BASE}:feature_install_files'
 T_KITCHEN_SINK = f'{T_BASE}:feature_kitchen_sink'
 T_HELLO_WORLD_BASE = f'{T_BASE}:hello_world_base'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
@@ -44,12 +55,16 @@ def mangle(feature_target):
 # existing only to give names to specific items.
 ID_TO_ITEM = {
     '/': FilesystemRootItem(from_target=None),
+
+    # From `feature_dirs`:
     'foo/bar': MakeDirsItem(
         from_target=T_DIRS, into_dir='/', path_to_make='/foo/bar'
     ),
     'foo/bar/baz': MakeDirsItem(
         from_target=T_DIRS, into_dir='/foo/bar', path_to_make='baz'
     ),
+
+    # From `feature_bad_dir`:
     'foo/borf/beep': MakeDirsItem(
         from_target=T_BAD_DIR,
         into_dir='/foo',
@@ -57,6 +72,8 @@ ID_TO_ITEM = {
         user_group='uuu:ggg',
         mode='mmm',
     ),
+
+    # From `feature_symlinks`:
     'foo/fighter': SymlinkToDirItem(
         from_target=T_SYMLINKS,
         dest='/foo/fighter',
@@ -72,10 +89,11 @@ ID_TO_ITEM = {
         dest='/foo/bar/baz/',
         source='/foo/bar',
     ),
-    'foo/hello_world.tar': CopyFileItem(
+    'foo/hello_world.tar': InstallFileItem(
         from_target=T_SYMLINKS,
         source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
         dest='/foo/hello_world.tar',
+        is_executable_=False,
     ),
     'foo/symlink_to_hello_world.tar': SymlinkToFileItem(
         from_target=T_SYMLINKS,
@@ -87,17 +105,8 @@ ID_TO_ITEM = {
         dest='/foo/symlink_to_dev_null',
         source='/dev/null',
     ),
-    'foo/bar/hello_world.tar': CopyFileItem(
-        from_target=T_KITCHEN_SINK,
-        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
-        dest='/foo/bar/hello_world.tar',
-    ),
-    'foo/bar/hello_world_again.tar': CopyFileItem(
-        from_target=T_KITCHEN_SINK,
-        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
-        dest='/foo/bar/hello_world_again.tar',
-        user_group='nobody:nobody',
-    ),
+
+    # From `feature_tar_and_rpms`:
     'foo/borf/hello_world': TarballItem(
         from_target=T_TAR,
         tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
@@ -111,36 +120,6 @@ ID_TO_ITEM = {
         into_dir='foo',
         hash=HELLO_TAR_HASH,
         force_root_ownership=False,
-    ),
-    'meownt': MountItem(
-        from_target=T_MOUNT,
-        mountpoint='meownt',
-        target=TARGET_TO_PATH[T_HELLO_WORLD_BASE],
-        mount_config=None,
-    ),
-    'host_etc': MountItem(
-        from_target=T_MOUNT,
-        mountpoint='host_etc',
-        target=None,
-        mount_config={
-            'is_directory': True,
-            'build_source': {'type': 'host', 'source': '/etc'},
-        },
-    ),
-    '.remove_if_exists/path/to/remove': RemovePathItem(
-        from_target=T_KITCHEN_SINK,
-        path='/path/to/remove',
-        action=RemovePathAction.if_exists,
-    ),
-    '.remove_assert_exists/path/to/remove': RemovePathItem(
-        from_target=T_KITCHEN_SINK,
-        path='/path/to/remove',
-        action=RemovePathAction.assert_exists,
-    ),
-    '.remove_assert_exists/another/path/to/remove': RemovePathItem(
-        from_target=T_KITCHEN_SINK,
-        path='/another/path/to/remove',
-        action=RemovePathAction.assert_exists,
     ),
     '.rpms/install/rpm-test-mice': RpmActionItem(
         from_target=T_TAR,
@@ -156,6 +135,84 @@ ID_TO_ITEM = {
         from_target=T_TAR,
         name='rpm-test-milk',
         action=RpmAction.remove_if_exists,
+    ),
+
+    # From `feature_mount`:
+    'meownt': MountItem(
+        from_target=T_MOUNT,
+        mountpoint='meownt',
+        target=TARGET_TO_PATH[T_HELLO_WORLD_BASE],
+        mount_config=None,
+    ),
+    'host_etc': MountItem(
+        from_target=T_MOUNT,
+        mountpoint='host_etc',
+        target=None,
+        mount_config={
+            'is_directory': True,
+            'build_source': {'type': 'host', 'source': '/etc'},
+        },
+    ),
+
+    # From `feature_install_files`:
+    'foo/bar/hello_world.tar': InstallFileItem(
+        from_target=T_INSTALL_FILES,
+        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        dest='/foo/bar/hello_world.tar',
+        is_executable_=False,
+    ),
+    'foo/bar/hello_world_again.tar': InstallFileItem(
+        from_target=T_INSTALL_FILES,
+        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        dest='/foo/bar/hello_world_again.tar',
+        user_group='nobody:nobody',
+        is_executable_=False,
+    ),
+    'foo/bar/installed': MakeDirsItem(
+        from_target=T_INSTALL_FILES,
+        into_dir='/foo/bar',
+        path_to_make='/installed',
+    ),
+    'foo/bar/installed/yittal-kitteh': InstallFileItem(
+        from_target=T_INSTALL_FILES,
+        source=TARGET_TO_PATH[T_DIR_PRINT_OK],
+        path_in_source='kitteh',
+        dest='/foo/bar/installed/yittal-kitteh',
+        is_executable_=False,
+    ),
+    'foo/bar/installed/print-ok': InstallFileItem(
+        from_target=T_INSTALL_FILES,
+        source=TARGET_TO_PATH[
+            T_EXE_WRAP_PRINT_OK if _NONPORTABLE_ARTIFACTS else T_PRINT_OK
+        ],
+        dest='/foo/bar/installed/print-ok',
+        is_executable_=True,
+    ),
+    'foo/bar/installed/print-ok-too': InstallFileItem(
+        from_target=T_INSTALL_FILES,
+        source=(
+            TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK] if _NONPORTABLE_ARTIFACTS
+                else f'{TARGET_TO_PATH[T_DIR_PRINT_OK]}/subdir/print-ok'
+        ),
+        dest='/foo/bar/installed/print-ok-too',
+        is_executable_=True,
+    ),
+
+    # From `feature_kitchen_sink`:
+    '.remove_if_exists/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/path/to/remove',
+        action=RemovePathAction.if_exists,
+    ),
+    '.remove_assert_exists/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/path/to/remove',
+        action=RemovePathAction.assert_exists,
+    ),
+    '.remove_assert_exists/another/path/to/remove': RemovePathItem(
+        from_target=T_KITCHEN_SINK,
+        path='/another/path/to/remove',
+        action=RemovePathAction.assert_exists,
     ),
 }
 

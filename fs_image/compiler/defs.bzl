@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("//fs_image/buck:artifacts_require_repo.bzl", "built_artifacts_require_repo")
 
 TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 
@@ -17,13 +18,17 @@ def READ_MY_DOC_image_feature_target(name):
         "SO_DO_NOT_DO_THIS_EVER_PLEASE_KTHXBAI"
     )
 
-def image_feature_python_unittest(test_image_feature_transitive_deps, deps = None, **kwargs):
-    env = {
+def image_feature_python_unittest(test_image_feature_transitive_deps, deps = None, env = None, **kwargs):
+    env = env or {}
+    env.update({
         "test_image_feature_path_to_" + t: "$(location {})".format(
             TEST_TARGET_PREFIX + t,
         )
         for t in test_image_feature_transitive_deps
-    }
+    })
+    env["test_image_feature_built_artifacts_require_repo"] = \
+        str(int(built_artifacts_require_repo()))
+
     deps = (deps or []) + [":sample_items"]
 
     # For now cpp_deps is raw buck deps for python_ targets

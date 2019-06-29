@@ -356,3 +356,16 @@ python_unittest(
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )
+
+python_unittest(
+    name = "test-execute-installed",
+    srcs = ["tests/test_execute_installed.py"],
+    base_module = "fs_image.compiler",
+    # Ensures we can read resources in @mode/opt. "xar" cannot work because
+    # `root` cannot access the content of unprivileged XARs.
+    par_style = "zip",
+    resources = {
+        "//fs_image/compiler/tests:installed-executables": "tests/exe-layer",
+    },
+    deps = [":nspawn_in_subvol"],
+)
