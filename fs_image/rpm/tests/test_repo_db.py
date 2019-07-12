@@ -166,3 +166,84 @@ class RepoDBTestCase(unittest.TestCase):
                 build_timestamp=37,
             ),
         )
+
+    def test_get_rpm_storage_id_and_checksum(self):
+        table = RpmTable()
+        # We'll have two entries for the same exact RPM, but the different
+        # repos that contain it will have computed different checksums.
+        rpm1 = Rpm(
+            location='packages/fake.rpm',
+            checksum=Checksum('fa', 'ke1'),
+            # At this point, we are trying to look this up:
+            canonical_checksum=None,
+            size=1337,
+            build_timestamp=37,
+        )
+        # This second repo **also** stores the same RPM filename in a
+        # different location, no problem there.
+        rpm2 = rpm1._replace(
+            location='RPMs/fake.rpm',
+            checksum=Checksum('fa', 'ke2'),
+        )
+        canonical = Checksum('can', 'onical')
+        # It is also OK to have the checksum be the same as the canonical one.
+        rpm_canon = rpm1._replace(checksum=canonical)
+        with self._make_db_ctx(self._make_conn_ctx()) as db_ctx:
+            # Nothing was inserted, yet.
+            self.assertEqual(
+                (None, None),
+                db_ctx.get_rpm_storage_id_and_checksum(table, rpm1),
+            )
+            # We'll insert the RPM with its different checksums.
+            insertion_order = [rpm_canon, rpm1, rpm2]
+            for idx, inserted_rpm in enumerate(insertion_order):
+                self.assertEqual('fake_sid', db_ctx.maybe_store(
+                    table,
+                    inserted_rpm._replace(canonical_checksum=canonical),
+                    'fake_sid',
+                ))
+                # Looking up by any inserted RPM checksum gets the same result.
+                for rpm in insertion_order[:idx + 1]:
+                    self.assertEqual(
+                        ('fake_sid', canonical),
+                        db_ctx.get_rpm_storage_id_and_checksum(table, rpm),
+                    )
+
+    def test_get_rpm_canonical_checksums(self):
+        table = RpmTable()
+        canonical1 = Checksum('can', 'onical1')
+        canonical2 = Checksum('can', 'onical2')
+        with self._make_db_ctx(self._make_conn_ctx()) as db_ctx:
+            # These two entries into the `rpm` table refer to the same RPM
+            # (same canonical checksum), but this illustrates that the
+            # contents of such an RPM will currently be stored twice.
+            self.assertEqual('sid_same1', db_ctx.maybe_store(table, Rpm(
+                location='packages/fake.rpm',
+                checksum=Checksum('fa', 'ke1'),
+                canonical_checksum=canonical1,
+                size=1337,
+                build_timestamp=37,
+            ), 'sid_same1'))
+            self.assertEqual('sid_same2', db_ctx.maybe_store(table, Rpm(
+                location='packages/fake.rpm',
+                checksum=Checksum('fa', 'ke2'),
+                canonical_checksum=canonical1,
+                size=1337,
+                build_timestamp=37,
+            ), 'sid_same2'))
+
+            # This here is an actual bug in the RPM repos: same RPM filename,
+            # but different contents. Uh-oh.
+            self.assertEqual('sid_diff', db_ctx.maybe_store(table, Rpm(
+                location='buggy/fake.rpm',
+                checksum=Checksum('fa', 'ke3'),
+                canonical_checksum=canonical2,
+                size=420,
+                build_timestamp=73,
+            ), 'sid_diff'))
+
+            # Whew, we can detect this mutable RPM file in our repos.
+            self.assertEqual(
+                {canonical1, canonical2},
+                set(db_ctx.get_rpm_canonical_checksums(table, 'fake.rpm')),
+            )

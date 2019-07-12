@@ -20,6 +20,13 @@ All the query logic is in `RepoDBContext` below, so that's a good docblock
 to read next.
 
 
+## Bugs
+
+  - If two RPM repos store the same RPM using different checksum algorithms,
+    these will currently get two different storage IDs, wasting space in the
+    key-value store.  This is rare enough I don't see it as worth fixing.
+
+
 ## Rationale: Why is it useful to have a DB?
 
 Logically, this RPM repo snapshotter just wants to commit an atomic snapshot
@@ -97,10 +104,15 @@ IMPORTANT: We must byte-coerce (`byteme`) all strings that go into the DB:
 import enum
 
 from contextlib import AbstractContextManager, contextmanager
-from typing import ContextManager, Optional, Union
+from typing import AnyStr, ContextManager, Iterator, Optional, Tuple, Union
+
 
 from .common import byteme
-from .repo_objects import Repodata, RepoMetadata, Rpm
+from .repo_objects import Checksum, Repodata, RepoMetadata, Rpm
+
+
+def unbyteme(s: AnyStr) -> str:
+    return s.decode() if isinstance(s, bytes) else s
 
 
 class StorageTable:
@@ -387,6 +399,68 @@ class RepoDBContext(AbstractContextManager):
             assert fts + 60 >= db_fts, f'{fts} + 60 < {db_fts}'
             assert repomd_xml == db_repomd_xml, f'{repomd_xml} {db_repomd_xml}'
             return db_fts
+
+    def get_rpm_storage_id_and_checksum(self, tbl: RpmTable, rpm: Rpm) \
+            -> Tuple[str, Checksum]:
+        'Returns a storage_id, and its canonical checksum from the DB.'
+        assert rpm.canonical_checksum is None
+        with self._cursor() as cursor:
+            p = self._placeholder()
+            checksum = byteme(str(rpm.checksum))
+            # This query does not have a perfect index, but because our
+            # primary key starts with `filename`, it only has to iterate
+            # over all the known checksums for a given filename, which would
+            # at worst be a handful.
+            cursor.execute(f'''
+                SELECT {self._identifiers(tbl.column_names())}, `storage_id`
+                FROM `{tbl.NAME}`
+                WHERE (`filename` = {p} AND (
+                    `checksum` = {p} OR `canonical_checksum` = {p}
+                ))
+            ''', (byteme(rpm.filename()), checksum, checksum))
+            results = cursor.fetchall()
+            if not results:
+                return None, None
+
+            # We can get multiple results:
+            #  - at most 1 match on the `checksum` column
+            #  - many matches on the `canonical_checksum` column
+            # However, they should all have the same size, canonical
+            # checksum, and storage ID, so let's assert that.
+            canonical_checksums = set()
+            other_checksums = set()
+            storage_ids = set()
+            for db_values in results:
+                storage_ids.add(db_values[-1].decode('latin-1'))
+                for col_name, db_val, val in zip(
+                    tbl.column_names(), db_values[:-1], tbl.column_values(rpm),
+                ):
+                    if col_name == 'checksum':
+                        other_checksums.add(
+                            Checksum.from_string(unbyteme(db_val))
+                        )
+                    elif col_name == 'canonical_checksum':
+                        canonical_checksums.add(
+                            Checksum.from_string(unbyteme(db_val))
+                        )
+                    else:
+                        assert db_val == val, f'{col_name} {db_val} {val}'
+            assert len(storage_ids) == 1, storage_ids
+            assert len(canonical_checksums) == 1, canonical_checksums
+            assert rpm.checksum in (other_checksums | canonical_checksums)
+            return (storage_ids.pop(), canonical_checksums.pop())
+
+    def get_rpm_canonical_checksums(self, table: RpmTable, filename: str) \
+            -> Iterator[Checksum]:
+        with self._cursor() as cursor:
+            # Like in `get_rpm_storage_id_and_checksums`, the primary
+            # key helps make this query efficient.
+            cursor.execute(f'''
+                SELECT `canonical_checksum` FROM `{table.NAME}`
+                WHERE (`filename` = {self._placeholder()})
+            ''', (byteme(filename),))
+            for (canonical_checksum,) in cursor.fetchall():
+                yield Checksum.from_string(canonical_checksum.decode())
 
     def get_storage_id(
         self, table: StorageTable, obj: Union['Rpm', Repodata],
