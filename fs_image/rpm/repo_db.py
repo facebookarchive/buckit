@@ -97,10 +97,50 @@ IMPORTANT: We must byte-coerce (`byteme`) all strings that go into the DB:
 import enum
 
 from contextlib import AbstractContextManager, contextmanager
-from typing import ContextManager, Union
+from typing import ContextManager, Optional, Union
 
 from .common import byteme
-from .repo_objects import RepoMetadata
+from .repo_objects import Repodata, RepoMetadata
+
+
+class StorageTable:
+    '''
+    A base class for correct `SELECT` / `INSERT` queries against all colums.
+    Its child classes represent tables in our repo DB.
+    '''
+    def _column_funcs(self):
+        'Ensures that column_{names,values} have the same order.'
+        # NB: We do not store `obj.location` in the DB, because the same
+        # object can occur in different repos at different locations.
+        return [
+            ('checksum', lambda obj: byteme(str(obj.checksum))),
+            ('build_timestamp', lambda obj: byteme(obj.build_timestamp)),
+            ('size', lambda obj: byteme(obj.size)),
+        ]
+
+    def column_names(self):
+        return tuple(c for c, _ in self._column_funcs())
+
+    def column_values(self, obj):
+        return tuple(fn(obj) for _, fn in self._column_funcs())
+
+
+class RepodataTable(StorageTable):
+    '''
+    Records all "repodata" blobs that ever existed in this repo (the SQLite
+    or XML RPM primary indexes that are referenced from `repomd.xml`).
+
+    Unlike `RpmTable`, it would not be too bad to include the repo name in
+    this table.  However, in practice, one repo can be an alias of another,
+    sharing the same repodata files.  By not referring to the repo name, we
+    will only store such files once.
+    '''
+    NAME = 'repodata'
+    KEY_COLUMNS = ('checksum',)
+    CLASS = Repodata
+
+    def key(self, obj):  # Update KEY_COLUMNS, _TABLE_KEYS if changing this
+        return (byteme(str(obj.checksum)),)
 
 
 class SQLDialect(enum.Enum):
@@ -158,6 +198,12 @@ class RepoDBContext(AbstractContextManager):
         },
     }
     _TABLE_COLUMNS = {
+        RepodataTable.NAME: {
+            'checksum': 'NOT NULL',
+            'size': 'NOT NULL',
+            'build_timestamp': 'NOT NULL',
+            'storage_id': 'NOT NULL',
+        },
         'repo_metadata': {
             'repo': 'NOT NULL',
             # The fetch time lets us reconstruct what all repos looked like
@@ -169,6 +215,7 @@ class RepoDBContext(AbstractContextManager):
         },
     }
     _TABLE_KEYS = {
+        RepodataTable.NAME: ['PRIMARY KEY (`checksum`)'],
         # Unlike RpmTable and RepoTable, the top-level metadata is keyed on
         # the repo name.  That lets us handle repos that are aliases of each
         # other without copying large repodata blobs.
@@ -219,6 +266,9 @@ class RepoDBContext(AbstractContextManager):
 
     def _or_ignore(self) -> str:
         return f"{'' if self._dialect == SQLDialect.MYSQL else 'OR'} IGNORE"
+
+    def _identifiers(self, identifiers):
+        return ', '.join(f'`{i}`' for i in identifiers)
 
     def _ensure_tables_exist(self, _ensure_line_is_covered=lambda: None):
         # Future: it would be better if this function checked that the table
@@ -291,6 +341,62 @@ class RepoDBContext(AbstractContextManager):
             assert fts + 60 >= db_fts, f'{fts} + 60 < {db_fts}'
             assert repomd_xml == db_repomd_xml, f'{repomd_xml} {db_repomd_xml}'
             return db_fts
+
+    def get_storage_id(
+        self, table: StorageTable, obj: Union['Rpm', Repodata],
+    ) -> Optional[str]:
+        with self._cursor() as cursor:
+            cursor.execute(f'''
+                SELECT {self._identifiers(table.column_names())}, `storage_id`
+                FROM `{table.NAME}`
+                WHERE ({
+                    ' AND '.join(
+                        f'`{c}` = {self._placeholder()}'
+                            for c in table.KEY_COLUMNS
+                    )
+                })
+            ''', table.key(obj))
+            results = cursor.fetchall()
+            if not results:
+                return None
+            db_values, = results
+            # Check that the DB columns we got back agree with `obj`.
+            for col_name, db_val, val in zip(
+                table.column_names(), db_values[:-1], table.column_values(obj),
+            ):
+                # Explained in this field's declaration in `Repodata`
+                if col_name == 'build_timestamp' and type(obj) is Repodata:
+                    assert db_val <= val, (db_val, val, obj)
+                else:
+                    assert db_val == val, (db_val, val, obj)
+            return db_values[-1].decode('latin-1')  # We put `storage_id` last
+
+    def maybe_store(self, table: StorageTable, obj, storage_id: str) -> str:
+        '''
+        Records `obj` with `storage_id` in the DB, or if `obj` had already
+        been stored, returns its pre-existing storage ID.
+        '''
+        # If this were None, `INSERT OR IGNORE` would quietly return a row
+        # count of 0, ultimately causing this function to return None.
+        assert storage_id is not None
+        # In theory, when this is storing the primary repodata, we could do
+        # a consistency check asserting that all its RPMs are in the DB, but
+        # this would make the transaction slow, and thus isn't worth it.  We
+        # can do this kind of expensive check before writing out a JSON view
+        # of the current repo to the filesystem for version control.
+        with self._cursor() as cursor:
+            col_names = table.column_names()
+            cursor.execute(f'''
+                INSERT {self._or_ignore()} INTO `{table.NAME}`
+                ({self._identifiers(col_names)}, `storage_id`)
+                VALUES ({
+                    ', '.join([self._placeholder()] * (len(col_names) + 1))
+                })
+            ''', (*table.column_values(obj), byteme(storage_id)))
+            if cursor.rowcount:
+                return storage_id  # We won the race to insert our storage_id
+            # Our storage_id will not be used, find the already-stored one.
+            return self.get_storage_id(table, obj)
 
     def commit(self):
         self._conn.commit()

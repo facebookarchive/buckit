@@ -4,8 +4,9 @@ import unittest
 
 from unittest import mock
 
-from ..repo_db import RepoDBContext, SQLDialect
-from ..repo_objects import RepoMetadata
+from ..common import Checksum
+from ..repo_db import RepodataTable, RepoDBContext, SQLDialect
+from ..repo_objects import Repodata, RepoMetadata
 from ..db_connection import DBConnectionContext
 
 
@@ -23,6 +24,15 @@ class RepoDBTestCase(unittest.TestCase):
 
     def _check_schema(self, conn):
         for (a_name, a_sql), (e_name, e_sql) in zip(_get_schema(conn), [
+            ('repodata', (
+                'CREATE TABLE `repodata` ('
+                ' `checksum` BLOB NOT NULL,'
+                ' `size` INTEGER NOT NULL,'
+                ' `build_timestamp` INTEGER NOT NULL,'
+                ' `storage_id` BLOB NOT NULL,'
+                ' PRIMARY KEY (`checksum`)'
+                ' )'
+            )),
             ('repo_metadata', (
                 'CREATE TABLE `repo_metadata` ('
                 ' `repo` BLOB NOT NULL,'
@@ -103,3 +113,32 @@ class RepoDBTestCase(unittest.TestCase):
                 )
                 if do_commit:
                     db_ctx.commit()
+
+    def _check_maybe_store_and_get_storage_id(self, table, obj):
+        with self._make_db_ctx(self._make_conn_ctx()) as db_ctx:
+            self.assertIs(None, db_ctx.get_storage_id(table, obj))
+            self.assertEqual(
+                'fake1', db_ctx.maybe_store(table, obj, 'fake1')
+            )
+            self.assertEqual('fake1', db_ctx.get_storage_id(table, obj))
+            # This was already stored, so return the old storage ID.
+            self.assertEqual(
+                'fake1', db_ctx.maybe_store(table, obj, 'fake2')
+            )
+            # It is also possible to have an near-identical repodata index
+            # with an earlier `build_timestamp`.
+            if isinstance(obj, Repodata):
+                self.assertEqual('fake1', db_ctx.get_storage_id(
+                    table, obj._replace(build_timestamp=obj.build_timestamp + 1),
+                ))
+
+    def test_repodata_maybe_store_and_get_storage_id(self):
+        self._check_maybe_store_and_get_storage_id(
+            RepodataTable(),
+            Repodata(
+                location='repodata/fake.sqlite.gz',
+                checksum=Checksum('fake', 'fake'),
+                size=1337,
+                build_timestamp=37,
+            ),
+        )
