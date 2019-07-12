@@ -29,7 +29,9 @@ class SQLiteConnectionContext(DBConnectionContext, plugin_kind='sqlite'):
 
     # Does not suppress exceptions
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        # We must act equivalently to the MySQL context in rolling back
+        # uncommitted changes on context exit.
+        self._conn.rollback()
 
 
 # NB: If needed, it would be trivial to add a plain MySQL context. I'm
