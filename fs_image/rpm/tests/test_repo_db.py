@@ -5,8 +5,8 @@ import unittest
 from unittest import mock
 
 from ..common import Checksum
-from ..repo_db import RepodataTable, RepoDBContext, SQLDialect
-from ..repo_objects import Repodata, RepoMetadata
+from ..repo_db import RepodataTable, RepoDBContext, RpmTable, SQLDialect
+from ..repo_objects import Repodata, RepoMetadata, Rpm
 from ..db_connection import DBConnectionContext
 
 
@@ -24,6 +24,17 @@ class RepoDBTestCase(unittest.TestCase):
 
     def _check_schema(self, conn):
         for (a_name, a_sql), (e_name, e_sql) in zip(_get_schema(conn), [
+            ('rpm', (
+                'CREATE TABLE `rpm` ('
+                ' `filename` BLOB NOT NULL,'
+                ' `checksum` BLOB NOT NULL,'
+                ' `canonical_checksum` BLOB NOT NULL,'
+                ' `size` INTEGER NOT NULL,'
+                ' `build_timestamp` INTEGER NOT NULL,'
+                ' `storage_id` BLOB NOT NULL,'
+                ' PRIMARY KEY (`filename`, `checksum`)'
+                ' )'
+            )),
             ('repodata', (
                 'CREATE TABLE `repodata` ('
                 ' `checksum` BLOB NOT NULL,'
@@ -138,6 +149,19 @@ class RepoDBTestCase(unittest.TestCase):
             Repodata(
                 location='repodata/fake.sqlite.gz',
                 checksum=Checksum('fake', 'fake'),
+                size=1337,
+                build_timestamp=37,
+            ),
+        )
+
+    def test_rpm_maybe_store_and_get_storage_id(self):
+        # NB: For RPMs, only `maybe_store` is used as part of the public API.
+        self._check_maybe_store_and_get_storage_id(
+            RpmTable(),
+            Rpm(
+                location='packages/fake.rpm',
+                checksum=Checksum('fake', 'fake'),
+                canonical_checksum=Checksum('fake', 'fake'),
                 size=1337,
                 build_timestamp=37,
             ),

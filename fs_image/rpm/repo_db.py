@@ -100,7 +100,7 @@ from contextlib import AbstractContextManager, contextmanager
 from typing import ContextManager, Optional, Union
 
 from .common import byteme
-from .repo_objects import Repodata, RepoMetadata
+from .repo_objects import Repodata, RepoMetadata, Rpm
 
 
 class StorageTable:
@@ -123,6 +123,43 @@ class StorageTable:
 
     def column_values(self, obj):
         return tuple(fn(obj) for _, fn in self._column_funcs())
+
+
+class RpmTable(StorageTable):
+    '''
+    Records all instances of RPM files that ever existed in our repos.
+
+    The same RPM may occur in different repos, at different locations, so
+    this table includes neither the repo, nor the location.
+
+    Moreover, repos may use different checksum algorithms for the same file.
+    In that case, this table will include MULTIPLE ROWS with the same
+    filename -- in fact, the primary key is (`filename`, `checksum`), which
+    permits efficient retrieval of all checksums for a filename.
+
+    To detect different content hiding under the same filename, we also
+    store a "canonical_checksum".  Thus (`filename`, `canonical_checksum`)
+    must be unique for compliant RPMs -- any duplication signals that
+    somebody changed the RPM content without changing the version. Since
+    this is a snapshotting tool, we can only hope to detect, but not to
+    prevent this. Thus, we do not have a `UNIQUE` constraint for this.
+    '''
+    NAME = 'rpm'
+    KEY_COLUMNS = ('filename', 'checksum')
+    CLASS = Rpm
+
+    def _column_funcs(self):
+        return [
+            ('filename', lambda obj: byteme(obj.filename())),
+            (
+                'canonical_checksum',
+                lambda obj: byteme(str(obj.canonical_checksum)),
+            ),
+            *super()._column_funcs(),
+        ]
+
+    def key(self, obj):  # Update KEY_COLUMNS, _TABLE_KEYS if changing this
+        return (byteme(obj.filename()), byteme(str(obj.checksum)))
 
 
 class RepodataTable(StorageTable):
@@ -198,6 +235,14 @@ class RepoDBContext(AbstractContextManager):
         },
     }
     _TABLE_COLUMNS = {
+        RpmTable.NAME: {
+            'filename': 'NOT NULL',
+            'checksum': 'NOT NULL',  # As specified by the primary repodata
+            'canonical_checksum': 'NOT NULL',  # As computed by us
+            'size': 'NOT NULL',
+            'build_timestamp': 'NOT NULL',
+            'storage_id': 'NOT NULL',
+        },
         RepodataTable.NAME: {
             'checksum': 'NOT NULL',
             'size': 'NOT NULL',
@@ -215,6 +260,7 @@ class RepoDBContext(AbstractContextManager):
         },
     }
     _TABLE_KEYS = {
+        RpmTable.NAME: ['PRIMARY KEY (`filename`, `checksum`)'],
         RepodataTable.NAME: ['PRIMARY KEY (`checksum`)'],
         # Unlike RpmTable and RepoTable, the top-level metadata is keyed on
         # the repo name.  That lets us handle repos that are aliases of each
