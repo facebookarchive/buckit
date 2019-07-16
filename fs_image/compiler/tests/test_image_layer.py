@@ -157,8 +157,10 @@ class ImageLayerTestCase(unittest.TestCase):
         with self.target_subvol('validates-build-appliance') as sv:
             r = render_sendstream(sv.mark_readonly_and_get_sendstream())
 
-            ino, = _pop_path(r, 'bin/sh')  # Busybox from `rpm-test-carrot`
-            self.assertRegex(ino, r'^\(File m755 d[0-9]+\)$')
+            ino, = _pop_path(r, 'bin/sh')  # Busybox from `rpm-test-milk`
+            # NB: We changed permissions on this at some point, but after
+            # the migration diffs land, the [75] can become a 5.
+            self.assertRegex(ino, r'^\(File m[75]55 d[0-9]+\)$')
 
             ino, = _pop_path(r, 'var/log/yum.log')
             self.assertRegex(ino, r'^\(File m600 d[0-9]+\)$')
@@ -183,8 +185,8 @@ class ImageLayerTestCase(unittest.TestCase):
                     'lib': ['(Dir)', {}],
                     'share': ['(Dir)', {
                         'rpm_test': ['(Dir)', {
-                            'carrot.txt': ['(File d13)'],
-                            # From the `rpm-test-carrot` post-install script
+                            'milk.txt': ['(File d12)'],
+                            # From the `rpm-test-milk` post-install script
                             'post.txt': ['(File d6)'],
                         }],
                     }],

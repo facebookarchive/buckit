@@ -991,7 +991,7 @@ class ItemsTestCase(unittest.TestCase):
                 RpmActionItem.get_phase_builder(
                     [RpmActionItem(
                         from_target='m',
-                        name='rpm-test-mice-2',
+                        name='rpm-test-milk-2.71',
                         action=RpmAction.install,
                     )],
                     layer_opts,
@@ -1001,7 +1001,12 @@ class ItemsTestCase(unittest.TestCase):
                 [
                     RpmActionItem(
                         from_target='t', name=n, action=RpmAction.install,
-                    ) for n in ['rpm-test-mice', 'rpm-test-carrot']
+                    ) for n in [
+                        # This specific RPM contains `/bin/sh` and a
+                        # post-install script to test `/dev/null` isolation.
+                        'rpm-test-milk',
+                        'rpm-test-carrot',
+                    ]
                 ],
                 layer_opts,
             )(subvol)
@@ -1035,7 +1040,7 @@ class ItemsTestCase(unittest.TestCase):
                     'share': ['(Dir)', {
                         'rpm_test': ['(Dir)', {
                             'carrot.txt': ['(File d13)'],
-                            'mice.txt': ['(File d11)'],
+                            'milk.txt': ['(File d12)'],
                             'post.txt': ['(File d6)'],
                         }],
                     }],

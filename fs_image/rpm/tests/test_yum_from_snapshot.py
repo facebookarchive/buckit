@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from ..common import init_logging, Path
 from .yum_from_test_snapshot import yum_from_test_snapshot
 
-_INSTALL_ARGS = ['install', '--assumeyes', 'rpm-test-carrot', 'rpm-test-mice']
+_INSTALL_ARGS = ['install', '--assumeyes', 'rpm-test-carrot', 'rpm-test-milk']
 
 init_logging()
 
@@ -47,7 +47,7 @@ class YumFromSnapshotTestCase(unittest.TestCase):
 
             # Check that the RPMs installed their payload.
             for path, content in [
-                ('mice.txt', 'mice 0.1 a\n'),
+                ('milk.txt', 'milk 2.71 8\n'),
                 ('carrot.txt', 'carrot 2 rc0\n'),
                 ('post.txt', 'stuff\n'),
             ]:
@@ -95,7 +95,7 @@ class YumFromSnapshotTestCase(unittest.TestCase):
                 pass
         with self.assertRaises(subprocess.CalledProcessError) as ctx:
             with self._yum_install(protected_paths=[
-                'usr/share/rpm_test/mice.txt'
+                'usr/share/rpm_test/milk.txt'
             ]):
                 pass
         # It was none other than `yum install` that failed.
