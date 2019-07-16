@@ -1,6 +1,8 @@
+load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 
 python_library(
     name = "pluggable",
@@ -38,6 +40,20 @@ python_library(
     deps = [
         "//libfb/py:fbcode_root",
     ],
+)
+
+python_library(
+    name = "temp_repos",
+    srcs = ["tests/temp_repos.py"],
+    base_module = "rpm",
+    resources = {
+        third_party.replace_third_party_repo(
+            "third-party//busybox:bin/busybox",
+            platform_utils.get_platform_for_current_buildfile(),
+        ): "tests/third_party/busybox",
+        # NB: It would be great to also use `rpmbuild` from the third-party
+        # repo, but doing this is fairly intractable, see D15511231.
+    },
 )
 
 python_unittest(
