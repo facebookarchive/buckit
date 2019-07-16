@@ -9,13 +9,14 @@ import threading
 import unittest
 
 from contextlib import contextmanager
+from typing import Mapping, Tuple
 
-from .repos import get_test_repos_path
 from ..common import Checksum, Path
 from ..repo_objects import Repodata, RepoMetadata, Rpm
 from ..repo_server import _CHUNK_SIZE, repo_server, read_snapshot_dir
 from ..repo_snapshot import RepoSnapshot, MutableRpmError
 from ..storage import Storage
+from ..tests import temp_repos
 
 
 def _checksum(algo: str, data: bytes) -> Checksum:
@@ -24,7 +25,7 @@ def _checksum(algo: str, data: bytes) -> Checksum:
     return Checksum(algorithm=algo, hexdigest=h.hexdigest())
 
 
-def _no_date(headers: 'Mapping[str, str]') -> 'Mapping[str, str]':
+def _no_date(headers: Mapping[str, str]) -> Mapping[str, str]:
     '''
     Comparing headers between two adjacent requests can break if they
     straddle a 00:00:01 boundary. So, ignore the date.
@@ -82,7 +83,7 @@ class RepoServerTestCase(unittest.TestCase):
             )
             self.assertEqual('text/xml', req.headers['content-type'])
 
-    def _write(self, content: bytes) -> 'Tuple[str, bytes]':
+    def _write(self, content: bytes) -> Tuple[str, bytes]:
         with self.storage.writer() as out:
             out.write(content)
             return content, out.commit()
@@ -167,13 +168,14 @@ class RepoServerTestCase(unittest.TestCase):
     # very minimal snapshot.
     def test_normal_snashot_dir_access(self):
         # We've got to populate RepoMetadata.xml with real XML because the
-        # server re-parses that.
-        with open(
-            os.path.join(
-                get_test_repos_path(), 'aarch64/0/dog/repodata/repomd.xml'
-            ),
-            'rb',
-        ) as infile:
+        # server re-parses that.  Note that the content of it isn't relevant
+        # to the rest of the test, so it's fine to use a random repo.
+        with temp_repos.temp_repos_steps(repo_change_steps=[{
+            'nil': temp_repos.Repo([]),
+        }]) as repos_root, \
+                open(
+                    os.path.join(repos_root, '0/nil/repodata/repomd.xml'), 'rb',
+                ) as infile:
             repomd = RepoMetadata.new(xml=infile.read())
 
         repodata_bytes, repodata_sid = self._write(b'A Repodata blob')

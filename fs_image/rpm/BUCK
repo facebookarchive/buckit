@@ -171,7 +171,7 @@ python_unittest(
     ],
     deps = [
         ":repo_server",
-        ":test_repos",
+        ":temp_repos",
     ],
     external_deps = ["python-requests"],
 )
