@@ -34,15 +34,6 @@ python_library(
 )
 
 python_library(
-    name = "test_repos",
-    srcs = ["tests/repos.py"],
-    base_module = "rpm",
-    deps = [
-        "//libfb/py:fbcode_root",
-    ],
-)
-
-python_library(
     name = "temp_repos",
     srcs = ["tests/temp_repos.py"],
     base_module = "rpm",
