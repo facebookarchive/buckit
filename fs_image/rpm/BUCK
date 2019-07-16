@@ -103,7 +103,7 @@ python_unittest(
     ],
     deps = [
         ":parse_repodata",
-        ":test_repos",
+        ":temp_repos",
     ],
 )
 
