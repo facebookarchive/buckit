@@ -4,9 +4,9 @@ import hashlib
 import os
 import unittest
 
-from .repos import get_test_repos_path
 from ..common import Checksum
 from ..repo_objects import Rpm, RepoMetadata
+from ..tests import temp_repos as tr
 
 
 class RepoObjectsTestCase(unittest.TestCase):
@@ -37,14 +37,13 @@ class RepoObjectsTestCase(unittest.TestCase):
         ).best_checksum()))
 
     def test_repodata_and_metadata(self):
-        with open(
-            os.path.join(
-                get_test_repos_path(), 'aarch64/0/dog/repodata/repomd.xml'
-            ),
-            'rb',
+        with tr.temp_repos_steps(repo_change_steps=[{
+            'whale': tr.Repo([tr.Rpm('x', '5', '6'), tr.Rpm('y', '3.4', 'b')]),
+        }]) as repos_dir, open(
+            os.path.join(repos_dir, '0/whale/repodata/repomd.xml'), 'rb',
         ) as infile:
             rmd = RepoMetadata.new(xml=infile.read())
-            self.assertGreater(rmd.fetch_timestamp, rmd.build_timestamp)
+            self.assertGreaterEqual(rmd.fetch_timestamp, rmd.build_timestamp)
             # If this assert fires, you are changing the canonical hash,
             # which is super-risky since it will break the existing DB.  So,
             # this test just exists to make sure you plan to migrate all the

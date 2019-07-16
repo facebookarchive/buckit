@@ -66,7 +66,7 @@ python_unittest(
     par_style = "zip",  # fastzip would break the data include
     deps = [
         ":repo_objects",
-        ":test_repos",
+        ":temp_repos",
     ],
 )
 
