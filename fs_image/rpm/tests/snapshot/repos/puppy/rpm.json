@@ -1,20 +1,20 @@
 {
     "dog-pkgs/rpm-test-carrot-2-rc0.x86_64.rpm": {
-        "build_timestamp": 1557896505,
-        "checksum": "sha384:dad46f06c69c972831fbda99756758b20f8dbc52cc4af7554f8d17d3e2bb3cbe35e827c84155f94dcd1b73c78d876877",
-        "size": 645548,
-        "storage_id": "test:77b1d0cd5d854d3493c4f7844320d8df"
+        "build_timestamp": 1559631538,
+        "checksum": "sha384:c9db90c158f3d59013c0eae9bfdfdcd45cc668b0006500f6ce1d08fca13d4ea0de81bc77c082813b11a75089b3309123",
+        "size": 6392,
+        "storage_id": "test:29ef9b0b7e6a4968aa566e932628e5ff"
     },
     "dog-pkgs/rpm-test-mice-0.1-a.x86_64.rpm": {
-        "build_timestamp": 1557896506,
-        "checksum": "sha384:3a8da257b09b1df429902d9d076b475cf94dfc60f87a4d3fed573de0e8dd07263b4db98d1c158ed9a4a6e91a2d236e6d",
-        "size": 645540,
-        "storage_id": "test:f22b22c68ec043d4b3a5847d606e8c72"
+        "build_timestamp": 1559631539,
+        "checksum": "sha384:3d392a16ea1b0072a23f5b1852a2bc96cfe729ba3d3a39acf41eb21dc0baecdf68c12e9704ee8984c19d5521fa890ba0",
+        "size": 6380,
+        "storage_id": "test:48b11e34c9e04c47bf78fb1d28c3e0bb"
     },
     "dog-pkgs/rpm-test-milk-1.41-42.x86_64.rpm": {
-        "build_timestamp": 1557896507,
-        "checksum": "sha384:bd824d7cd09bc8fbc0a908bc5736894c7b950c133157b631c10dcd4441775a58760c985115ee71814964a25fcd877422",
-        "size": 645548,
-        "storage_id": "test:8e5f9452669b437587dc576fdfae77c8"
+        "build_timestamp": 1559631540,
+        "checksum": "sha384:a489d939bcebcf42551daf0242ed98c072ab64e9fd6dcbea915c9e7d255ebdbdeccd9b5a0947a15f1022fe6c1ef8881b",
+        "size": 6388,
+        "storage_id": "test:4233a21fc61c4fad8ccfdf5aba267f6e"
     }
 }

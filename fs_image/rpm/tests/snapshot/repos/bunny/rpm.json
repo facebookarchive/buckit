@@ -1,8 +1,8 @@
 {
     "bunny-pkgs/rpm-test-carrot-2-rc0.x86_64.rpm": {
-        "build_timestamp": 1557896505,
-        "checksum": "sha384:dad46f06c69c972831fbda99756758b20f8dbc52cc4af7554f8d17d3e2bb3cbe35e827c84155f94dcd1b73c78d876877",
-        "size": 645548,
-        "storage_id": "test:77b1d0cd5d854d3493c4f7844320d8df"
+        "build_timestamp": 1559631538,
+        "checksum": "sha384:c9db90c158f3d59013c0eae9bfdfdcd45cc668b0006500f6ce1d08fca13d4ea0de81bc77c082813b11a75089b3309123",
+        "size": 6392,
+        "storage_id": "test:29ef9b0b7e6a4968aa566e932628e5ff"
     }
 }
