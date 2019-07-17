@@ -207,10 +207,14 @@ def nspawn_cmd(nspawn_subvol):
         # Explicitly do not look for any settings for our ephemeral machine
         # on the host.
         '--settings=no',
-        # Prevents the container from re-acquiring e.g. the mknod capability.
-        '--no-new-privileges=1',
+        # Test containers probably should not be accessing host devices, so
+        # take that away until proven necessary.
+        '--drop-capability=CAP_MKNOD',
         # The timezone should be set up explicitly, not by nspawn's fiat.
         '--timezone=off',  # requires v239+
+        # Future: Uncomment.  This is good container hygiene.  It had to go
+        # since it breaks XAR binaries, which rely on a setuid bootstrap.
+        # '--no-new-privileges=1',
     ]
 
 
