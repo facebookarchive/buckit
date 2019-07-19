@@ -224,6 +224,8 @@ def image_layer(
 
     buck_command_alias(
         name = name + "-container",
+        # Careful: Our unit tests (e.g. for XAR) rely on this not needing
+        # any special command-line arguments besides picking the layer.
         args = ["--layer", "$(location {})".format(":" + name)],
         exe = "//fs_image:nspawn-run-in-subvol",
         visibility = visibility,

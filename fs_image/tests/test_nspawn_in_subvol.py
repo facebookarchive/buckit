@@ -146,3 +146,20 @@ class NspawnTestCase(unittest.TestCase):
             ])
             self.assertTrue(os.path.isfile(f'{tmpdir}/testfile'))
             self.assertTrue(os.path.isfile(f'{tmpdir2}/testfile'))
+
+    def test_xar(self):
+        'Make sure that XAR binaries work in vanilla `buck run` containers'
+        ret = self._nspawn_in('host-hello-xar', [
+            '--', '/hello.xar',
+        ], stdout=subprocess.PIPE, check=True)
+        self.assertEqual(b'hello world\n\n', ret.stdout)
+
+    def test_mknod(self):
+        'CAP_MKNOD is dropped by our runtime.'
+        ret = self._nspawn_in('host', [
+            '--user', 'root', '--quiet', '--', 'mknod', '/foo', 'c', '1', '3',
+        ], stderr=subprocess.PIPE, check=False)
+        self.assertNotEqual(0, ret.returncode)
+        self.assertEqual(
+            b"mknod: '/foo': Operation not permitted\n", ret.stderr,
+        )
