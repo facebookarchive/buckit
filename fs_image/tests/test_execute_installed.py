@@ -29,7 +29,15 @@ class ExecuteInstalledTestCase(unittest.TestCase):
             '/foo/bar/installed/print-ok-too',
         ]:
             ret = self._nspawn_in(
-                'exe-layer', [print_ok],
+                'exe-layer', [
+                    # Workaround: When the test is compiled with LLVM
+                    # profiling, then `print-ok` would try to write to
+                    # `/default.profraw`, which is not permitted to the test
+                    # user `nobody`.  This would print errors to stderr and
+                    # cause our assertion below to fail.
+                    'env', 'LLVM_PROFILE_FILE=/tmp/default.profraw',
+                    print_ok,
+                ],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
             self.assertEqual((b'ok\n', b''), (ret.stdout, ret.stderr))
