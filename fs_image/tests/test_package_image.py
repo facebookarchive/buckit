@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -26,15 +27,23 @@ class PackageImageTestCase(unittest.TestCase):
         self.my_dir = os.path.dirname(__file__)
 
     @contextmanager
-    def _package_image(self, json_path: str, format: str) -> Iterator[str]:
+    def _package_image(
+        self,
+        json_path: str,
+        format: str,
+        rw_subvolume: bool = False
+    ) -> Iterator[str]:
         with tempfile.TemporaryDirectory() as td:
             out_path = os.path.join(td, format)
-            package_image([
+            args = [
                 '--subvolumes-dir', self.subvolumes_dir,
                 '--subvolume-json', json_path,
                 '--format', format,
                 '--output-path', out_path,
-            ])
+            ]
+            if rw_subvolume:
+                args.append('--rw-subvolume')
+            package_image(args)
             yield out_path
 
     def _sibling_path(self, rel_path: str):
@@ -98,6 +107,32 @@ class PackageImageTestCase(unittest.TestCase):
                     self._sibling_path('create_ops-original.sendstream'),
                     temp_sendstream.name,
                 )
+            finally:
+                nsenter_as_root(unshare, 'umount', mount_dir)
+
+    def test_package_image_as_btrfs_loopback_writable(self):
+        with self._package_image(
+            self._sibling_path('create_ops.layer/layer.json'),
+            'btrfs',
+            rw_subvolume=True,
+        ) as out_path, \
+                Unshare([Namespace.MOUNT, Namespace.PID]) as unshare, \
+                tempfile.TemporaryDirectory() as mount_dir:
+            os.chmod(
+                out_path,
+                stat.S_IMODE(os.stat(out_path).st_mode)
+                | (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH),
+            )
+            subprocess.check_call(nsenter_as_root(
+                unshare, 'mount', '-t', 'btrfs', '-o', 'loop,discard,nobarrier',
+                out_path, mount_dir,
+            ))
+            try:
+                subprocess.check_call(nsenter_as_root(
+                    unshare, 'touch', os.path.join(mount_dir,
+                                                   'create_ops',
+                                                   'foo'),
+                ))
             finally:
                 nsenter_as_root(unshare, 'umount', mount_dir)
 

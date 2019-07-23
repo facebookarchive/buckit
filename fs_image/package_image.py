@@ -219,7 +219,7 @@ from typing import Mapping
 
 from compiler.subvolume_on_disk import SubvolumeOnDisk
 from fs_image.common import init_logging, check_popen_returncode
-from subvol_utils import Subvol
+from subvol_utils import Subvol, SubvolOpts
 
 
 class Format:
@@ -245,7 +245,12 @@ class Sendstream(Format, format_name='sendstream'):
     See the script-level docs for details on supporting incremental ones.
     '''
 
-    def package_full(self, svod: SubvolumeOnDisk, output_path: str):
+    def package_full(
+        self,
+        svod: SubvolumeOnDisk,
+        output_path: str,
+        subvol_opts: SubvolOpts,
+    ):
         # Future: rpm.common.create_ro, but it's kind of a big dep.
         # Luckily `image_package` will promptly mark this read-only.
         assert not os.path.exists(output_path)
@@ -264,7 +269,12 @@ class SendstreamZst(Format, format_name='sendstream.zst'):
     `TarballZst`, `SendstreamGz`, etc.
     '''
 
-    def package_full(self, svod: SubvolumeOnDisk, output_path: str):
+    def package_full(
+        self,
+        svod: SubvolumeOnDisk,
+        output_path: str,
+        subvol_opts: SubvolOpts,
+    ):
         assert not os.path.exists(output_path)
         with open(output_path, 'wb') as outfile, subprocess.Popen(
                 ['zstd', '--stdout'], stdin=subprocess.PIPE, stdout=outfile
@@ -280,10 +290,18 @@ class BtrfsImage(Format, format_name='btrfs'):
     Packages the subvolume as a btrfs-formatted disk image, usage:
       mount -t btrfs image.btrfs dest/ -o loop
     '''
-    def package_full(self, svod: SubvolumeOnDisk, output_path: str):
+    def package_full(
+        self,
+        svod: SubvolumeOnDisk,
+        output_path: str,
+        subvol_opts: SubvolOpts,
+    ):
         Subvol(
             svod.subvolume_path(), already_exists=True,
-        ).mark_readonly_and_send_to_new_loopback(output_path)
+        ).mark_readonly_and_send_to_new_loopback(
+            output_path,
+            subvol_opts=subvol_opts
+        )
         # Paranoia: images are read-only after being built
         os.chmod(
             output_path,
@@ -320,6 +338,11 @@ def parse_args(argv):
     parser.add_argument(
         '--output-path', required=True,
         help='Write the image package file(s) to this path -- must not exist',
+    )
+
+    parser.add_argument(
+        '--rw-subvolume', action='store_true',
+        default=False, help=f'Make the btrfs subvolume read-writable',
     )
     # Future: To add support for incremental send-streams, we'd want to
     # use this (see `--ancestor-jsons` in `image_package.bzl`)
@@ -368,10 +391,12 @@ def parse_args(argv):
 
 def package_image(argv):
     args = parse_args(argv)
+    opts = SubvolOpts(readonly=not args.rw_subvolume)
     with open(args.subvolume_json) as infile:
         Format.make(args.format).package_full(
             SubvolumeOnDisk.from_json_file(infile, args.subvolumes_dir),
             output_path=args.output_path,
+            subvol_opts=opts
         )
 
 

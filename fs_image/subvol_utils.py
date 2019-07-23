@@ -5,7 +5,7 @@ import subprocess
 import time
 
 from contextlib import contextmanager
-from typing import AnyStr, BinaryIO, Iterator
+from typing import AnyStr, BinaryIO, Iterator, NamedTuple
 
 from btrfs_loopback import LoopbackVolume, run_stdout_to_err
 from fs_image.common import (
@@ -39,6 +39,15 @@ def _path_is_btrfs_subvol(path):
     ).stdout.decode().strip()
     ino = os.stat(path).st_ino
     return fs_type == 'btrfs' and ino == 256
+
+
+class SubvolOpts(NamedTuple):
+    # For sending subvolumes to an image, whether to leave the
+    # subvolume read only
+    readonly: bool = True
+
+
+_default_subvol_opts = SubvolOpts()
 
 
 class Subvol:
@@ -300,7 +309,10 @@ class Subvol:
             yield
 
     def mark_readonly_and_send_to_new_loopback(
-        self, output_path, waste_factor=1.15,
+        self,
+        output_path,
+        subvol_opts: SubvolOpts = _default_subvol_opts,
+        waste_factor=1.15,
     ) -> int:
         '''
         Overwrites `ouput_path` with a new btrfs image, and send this
@@ -396,7 +408,11 @@ class Subvol:
         while True:
             attempts += 1
             fs_bytes *= waste_factor
-            if self._send_to_loopback_if_fits(output_path, int(fs_bytes)):
+            if self._send_to_loopback_if_fits(
+                    output_path,
+                    int(fs_bytes),
+                    subvol_opts.readonly
+            ):
                 break
             log.warning(f'{self._path} did not fit in {fs_bytes} bytes')
         # Future: It would not be unreasonable to run some sanity checks on
@@ -481,7 +497,12 @@ class Subvol:
     # Mocking this allows tests to exercise the fallback "out of space" path.
     _OUT_OF_SPACE_SUFFIX = b': No space left on device\n'
 
-    def _send_to_loopback_if_fits(self, output_path, fs_size_bytes) -> bool:
+    def _send_to_loopback_if_fits(
+        self,
+        output_path,
+        fs_size_bytes,
+        readonly: bool,
+    ) -> bool:
         '''
         Creates a loopback of the specified size, and sends the current
         subvolume to it.  Returns True if the subvolume fits in that space.
@@ -515,5 +536,19 @@ class Subvol:
                         recv_ret.stderr.decode(errors='surrogateescape'),
                     )
                 recv_ret.check_returncode()
+                if not readonly:
+                    sub_info = self.run_as_root([
+                        'btrfs', 'sub', 'show', self.path(),
+                    ], stdout=subprocess.PIPE).stdout
+                    # Format is:
+                    # <path>
+                    #    Name:  <subvol_name>
+                    #    ...
+                    sub_name = sub_info.splitlines()[1].split()[1]
+                    subvol_path = os.path.join(loop_vol.dir(), sub_name)
+                    run_stdout_to_err(nsenter_as_root(
+                        ns, 'btrfs', 'property', 'set', '-ts', subvol_path,
+                        'ro', 'false',
+                    )).check_returncode()
             loop_vol.minimize_size()
             return True

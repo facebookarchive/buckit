@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import unittest.mock
 
-from subvol_utils import Subvol, get_subvolume_path
+from subvol_utils import Subvol, SubvolOpts, get_subvolume_path
 
 from find_built_subvol import subvolumes_dir
 
@@ -120,6 +120,23 @@ class SubvolTestCase(unittest.TestCase):
                 self.assertEqual(2, sv.mark_readonly_and_send_to_new_loopback(
                     loop_path.name, waste_factor=waste_too_low,
                 ))
+
+    @with_temp_subvols
+    def test_mark_readonly_and_send_to_new_loopback_writable(
+        self,
+        temp_subvols
+    ):
+        sv = temp_subvols.create('subvol')
+        sv.run_as_root([
+            'dd', 'if=/dev/zero', b'of=' + sv.path('d'), 'bs=1M', 'count=200',
+        ])
+        sv.run_as_root(['mkdir', sv.path('0')])
+        sv.run_as_root(['tee', sv.path('0/0')], input=b'0123456789')
+        with tempfile.NamedTemporaryFile() as loop_path:
+            self.assertEqual(
+                1, sv.mark_readonly_and_send_to_new_loopback(
+                    loop_path.name, subvol_opts=SubvolOpts(readonly=False)),
+            )
 
     def test_get_subvolume_path(self):
         layer_json = os.path.join(
