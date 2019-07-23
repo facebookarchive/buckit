@@ -10,13 +10,13 @@ After running from inside the per-Buck-repo btrfs volume,
 `test_parse_dump.py` and `test_parse_send_stream.py` compare the parsed
 output to what we expect on the basis of this script.
 
-For usage, `buck run .../btrfs_diff:make-demo-sendstreams -- --help`.
+For usage, `buck run fs_image/btrfs_diff:make-demo-sendstreams -- --help`.
 
 ## Updating this script's gold output
 
 Run this:
 
-  buck run .../btrfs_diff:make-demo-sendstreams* -- \\
+  buck run fs_image/btrfs_diff:make-demo-sendstreams* -- \\
     --write-gold-to-dir btrfs_diff/tests/
 
 You will then need to manually update `uuid_create` and related fields in
@@ -50,6 +50,7 @@ import contextlib
 import enum
 import pickle
 import pprint
+import shlex
 import subprocess
 import sys
 import time
@@ -110,6 +111,9 @@ def _make_create_ops_subvolume(subvols: TempSubvolumes, path: bytes) -> Subvol:
         'dd', 'if=/dev/zero', 'of=' + p('zeros_hole_zeros'),
         'oflag=append', 'conv=notrunc', 'bs=1024', 'count=16',
     ])
+    # A trailing hole exercises the `truncate` sendstream command.
+    run(['bash', '-c', 'echo hello > ' + shlex.quote(p('hello_big_hole'))])
+    run(['truncate', '-s', '1G', p('hello_big_hole')])
 
     # This just serves to show that `btrfs send` ignores nested subvolumes.
     # There is no mention of `nested_subvol` in the send-stream.
@@ -149,6 +153,10 @@ def _make_mutate_ops_subvolume(
     # the mock VFS.  NB: The absolute path to `chattr` is a clowny hack to
     # work around a clowny hack, to work around clowny hacks.  Don't ask.
     run(['/usr/bin/chattr', '+a', p('hello_renamed/een')])
+    # Besides files with trailing holes, one can also get `truncate`
+    # sendstream commands in incremental sendstreams by having a snapshot
+    # truncate relative a file relative to the parent.
+    run(['truncate', '-s', '2', p('hello_big_hole')])
 
     return subvol
 

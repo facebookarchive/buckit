@@ -24,12 +24,12 @@ from ..send_stream import (
 
 # Update these constants to make the tests pass again after running
 # `demo_sendstreams` with `--update-gold`.
-UUID_CREATE = b'6ad7f240-3ae2-7441-aaa0-ec207ee22c80'
-TRANSID_CREATE = 2435
-UUID_MUTATE = b'45310bdc-d438-4143-8e11-ecac9c12b91b'
-TRANSID_MUTATE = 2438
+UUID_CREATE = b'481757f7-6c61-2942-9bea-ee222b120c81'
+TRANSID_CREATE = 93993
+UUID_MUTATE = b'b5db3896-faf8-b44e-a952-c02f903ab445'
+TRANSID_MUTATE = 93996
 # Take a `oNUM-NUM-NUM` file from the send-stream, and use the middle number.
-TEMP_PATH_MIDDLES = {'create_ops': 2433, 'mutate_ops': 2437}
+TEMP_PATH_MIDDLES = {'create_ops': 93991, 'mutate_ops': 93995}
 # I have never seen this initial value change. First number in `oN-N-N`.
 TEMP_PATH_COUNTER = 256
 
@@ -136,7 +136,6 @@ def get_filtered_and_expected_items(
         di.link(path=p('hello/world'), dest=p('goodbye')),
         utimes('.'),
         utimes('hello'),
-        di.truncate(path=p('goodbye'), size=0),
         *base_metadata('goodbye'),
 
         *and_rename(di.mknod(
@@ -168,7 +167,6 @@ def get_filtered_and_expected_items(
         ),
         write('56KB_nuls', offset=0, data=b'\0' * FILE_SZ1),
         write('56KB_nuls', offset=FILE_SZ1, data=b'\0' * FILE_SZ2),
-        di.truncate(path=p('56KB_nuls'), size=FILE_SZ),
         *base_metadata('56KB_nuls'),
 
         *and_rename(
@@ -180,7 +178,6 @@ def get_filtered_and_expected_items(
             from_transid=b'' if dump_mode else TRANSID_CREATE,
             from_path=p('56KB_nuls'), clone_offset=0,
         ),
-        di.truncate(path=p('56KB_nuls_clone'), size=FILE_SZ),
         *base_metadata('56KB_nuls_clone'),
 
         *and_rename(
@@ -188,8 +185,14 @@ def get_filtered_and_expected_items(
         ),
         write('zeros_hole_zeros', offset=0, data=b'\0' * 16384),
         write('zeros_hole_zeros', offset=32768, data=b'\0' * 16384),
-        di.truncate(path=p('zeros_hole_zeros'), size=49152),
         *base_metadata('zeros_hole_zeros'),
+
+        *and_rename(
+            di.mkfile(path=temp_path('create_ops')), b'hello_big_hole',
+        ),
+        write('hello_big_hole', offset=0, data=b'hello\n' + b'\0' * 4090),
+        di.truncate(path=p('hello_big_hole'), size=2**30),
+        *base_metadata('hello_big_hole', mode=0o644),
 
         di.snapshot(
             path=p('mutate_ops'),
@@ -215,15 +218,16 @@ def get_filtered_and_expected_items(
         utimes('.'),
         utimes('.'),
         utimes('hello_renamed'),
-        di.truncate(path=p('farewell'), size=0),
         utimes('farewell'),
+
+        di.truncate(path=p('hello_big_hole'), size=2),
+        utimes('hello_big_hole'),
 
         *and_rename(
             di.mkfile(path=temp_path('mutate_ops')), b'hello_renamed/een',
         ),
         # Not using `write` since we pass `--no-data` for `mutate_ops`.
         di.update_extent(path=p('hello_renamed/een'), offset=0, len=5),
-        di.truncate(path=p('hello_renamed/een'), size=5),
         *base_metadata('hello_renamed/een'),
     ]
 
@@ -241,7 +245,7 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
 
     goodbye_world = InodeRepr('(File)')  # This empty file gets hardlinked
 
-    def render_create_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros):
+    def render_create_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros, big_hole):
         return render_subvols.expected_rendering(['(Dir)', {
             'hello': ["(Dir x'user.test_attr'='chickens')", {
                 'world': [goodbye_world],
@@ -256,9 +260,11 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             '56KB_nuls': [f'(File d{FILE_SZ}({kb_nuls}))'],
             '56KB_nuls_clone': [f'(File d{FILE_SZ}({kb_nuls_clone}))'],
             'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
+            # We have 6 bytes of data, but holes are block-aligned
+            'hello_big_hole': [f'(File d4096{big_hole}h1073737728)'],
         }])
 
-    def render_mutate_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros):
+    def render_mutate_ops(kb_nuls, kb_nuls_clone, zeros_holes_zeros, big_hole):
         return render_subvols.expected_rendering(['(Dir)', {
             'hello_renamed': ['(Dir)', {"een": ['(File d5)']}],
             'buffered': [f'(Block m600 {os.makedev(1337, 31415):x})'],
@@ -270,6 +276,8 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             '56KB_nuls': [f'(File d{FILE_SZ}({kb_nuls}))'],
             '56KB_nuls_clone': [f'(File d{FILE_SZ}({kb_nuls_clone}))'],
             'zeros_hole_zeros': [f'(File {zeros_holes_zeros})'],
+            # This got truncated to 2 bytes.
+            'hello_big_hole': [f'(File d2{big_hole})'],
         }])
 
     # These ChunkClones get repeated a lot below.
@@ -308,6 +316,7 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
                     'h16384(mutate_ops@zeros_hole_zeros:16384+16384@0)'
                     'd16384(mutate_ops@zeros_hole_zeros:32768+16384@0)'
                 ),
+                big_hole='(mutate_ops@hello_big_hole:0+2@0)',
             ),
             'mutate_ops': render_mutate_ops(
                 kb_nuls=f'{create}/{create_clone}/{mutate_clone}',
@@ -317,6 +326,7 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
                     'h16384(create_ops@zeros_hole_zeros:16384+16384@0)'
                     'd16384(create_ops@zeros_hole_zeros:32768+16384@0)'
                 ),
+                big_hole='(create_ops@hello_big_hole:0+2@0)',
             ),
         }
     elif create_ops:
@@ -324,6 +334,7 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             kb_nuls=create_clone,
             kb_nuls_clone=create,
             zeros_holes_zeros='d16384h16384d16384',
+            big_hole='',
         )
     elif mutate_ops:
         # This single-subvolume render of `mutate_ops` doesn't show the fact
@@ -332,5 +343,6 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
             kb_nuls=mutate_clone,
             kb_nuls_clone=mutate,
             zeros_holes_zeros='d16384h16384d16384',
+            big_hole='',
         )
     raise AssertionError('Set at least one of {create,mutate}_ops')
