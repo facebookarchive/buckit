@@ -8,11 +8,20 @@ import unittest.mock
 
 from nspawn_in_subvol import (
     find_repo_root, find_built_subvol, nspawn_in_subvol, parse_opts,
+    _nspawn_version
 )
 from tests.temp_subvolumes import with_temp_subvols
 
 
 class NspawnTestCase(unittest.TestCase):
+    def setUp(self):
+        # Setup expected stdout line endings depending on the version
+        # of systemd-nspawn.  Version 242 'fixed' stdout line endings.
+        # The extra newline for versions < 242 is due to T40936918 mentioned
+        # in `nspawn_in_subvol.py`.  It would disappear if we passed `--quiet`
+        # to nspawn, but we want to retain the extra debug logging.
+        self.nspawn_version = _nspawn_version()
+        self.maybe_extra_ending = b'\n' if self.nspawn_version < 242 else b''
 
     def _nspawn_in(self, rsrc_name, args, **kwargs):
         opts = parse_opts([
@@ -20,6 +29,20 @@ class NspawnTestCase(unittest.TestCase):
             '--layer', os.path.join(os.path.dirname(__file__), rsrc_name),
         ] + args)
         return nspawn_in_subvol(find_built_subvol(opts.layer), opts, **kwargs)
+
+    def test_nspawn_version(self):
+        with unittest.mock.patch('subprocess.check_output') as version:
+            version.return_value = (
+                'systemd 602214076 (v602214076-2.fb1)\n+AVOGADROS SYSTEMD\n')
+            self.assertEqual(602214076, _nspawn_version())
+
+        # Check that the real nspawn on the machine running this test is
+        # actually a sane version.  We need at least 239 to do anything useful
+        # and 1000 seems like a reasonable upper bound, but mostly I'm just
+        # guessing here.
+        self.assertTrue(_nspawn_version() > 239)
+        self.assertTrue(_nspawn_version() < 1000)
+
 
     def test_exit_code(self):
         self.assertEqual(37, self._nspawn_in(
@@ -31,12 +54,10 @@ class NspawnTestCase(unittest.TestCase):
         ret = self._nspawn_in(
             'host', cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
-        # The extra newline is due to T40936918 mentioned in
-        # `nspawn_in_subvol.py`.  It would disappear if I passed `--quiet`
-        # to nspawn, but I want to retain the extra debug logging.
-        self.assertEqual(b'ohai\n\n', ret.stdout)
+        self.assertEqual(b'ohai\n' + self.maybe_extra_ending, ret.stdout)
+
         # stderr is not just a clean `abracadabra\n` because we don't
-        # suppress nspawn's debugging output.
+        # suppress nspawn's debugging output, hence the 'assertIn'.
         self.assertIn(b'abracadabra\n', ret.stderr)
 
         # The same test with `--quiet` is much simpler.
@@ -64,7 +85,10 @@ class NspawnTestCase(unittest.TestCase):
             'touch /logs/foo && stat --format="%U %G %a" /logs && whoami',
         ], stdout=subprocess.PIPE)
         self.assertEqual(0, ret.returncode)
-        self.assertEqual(b'nobody nobody 755\nnobody\n\n', ret.stdout)
+        self.assertEqual(
+            b'nobody nobody 755\nnobody\n' + self.maybe_extra_ending,
+            ret.stdout
+        )
         # And the option prevents it from being created.
         self.assertEqual(0, self._nspawn_in('host', [
             '--no-logs-tmpfs', '--', 'test', '!', '-e', '/logs',
@@ -78,7 +102,7 @@ class NspawnTestCase(unittest.TestCase):
                 '--forward-fd', str(tf.fileno()), '--', 'sh', '-c',
                 'cat <&3 && echo goodbye >&3',
             ], stdout=subprocess.PIPE)
-            self.assertEqual(b'hello\n', ret.stdout)
+            self.assertEqual(b'hello' + self.maybe_extra_ending, ret.stdout)
             tf.seek(0)
             self.assertEqual(b'hellogoodbye\n', tf.read())
 
@@ -127,7 +151,7 @@ class NspawnTestCase(unittest.TestCase):
             'printenv', 'THRIFT_TLS_KITTEH', 'UNENCRYPTED_KITTEH',
         ], stdout=subprocess.PIPE, check=False)
         self.assertNotEqual(0, ret.returncode)  # UNENCRYPTED_KITTEH is unset
-        self.assertEqual(b'meow\n\n', ret.stdout)
+        self.assertEqual(b'meow\n' + self.maybe_extra_ending, ret.stdout)
 
     def test_bindmount_rw(self):
         with tempfile.TemporaryDirectory() as tmpdir, \
@@ -152,7 +176,7 @@ class NspawnTestCase(unittest.TestCase):
         ret = self._nspawn_in('host-hello-xar', [
             '--', '/hello.xar',
         ], stdout=subprocess.PIPE, check=True)
-        self.assertEqual(b'hello world\n\n', ret.stdout)
+        self.assertEqual(b'hello world\n' + self.maybe_extra_ending, ret.stdout)
 
     def test_mknod(self):
         'CAP_MKNOD is dropped by our runtime.'

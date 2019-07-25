@@ -7,7 +7,7 @@ image.  This target lets you do just that, for example, here is a shell:
         buck build --show-output \\
             //fs_image/compiler/tests:only-for-tests-read-only-host-clone |
                 cut -f 2- -d ' '
-    )" -- /bin/bash
+    )"
 
 The above is a handful to remember, so each layer gets a corresponding
 `-container` target.  To be used like so:
@@ -18,6 +18,12 @@ The above is a handful to remember, so each layer gets a corresponding
 Note that there are two sets of `--`.  The first separates `buck run`
 arguments from those of the container runtime.  The second separates the
 container args from the in-container command.
+
+Note: If no command is passed to systemd-nspawn to execute, then the
+defualt behavior is to invoke a shell. `/bin/bash` is tried first and if
+that is not found then `/bin/sh` is used.  We use this default behavior
+to provide a shell as the default when `buck run` is used as in the
+example above.
 
 IMPORTANT: This is NOT READY to use as a sandbox for build steps.  The
 reason is that `systemd-nspawn` does a bunch of random things to the
@@ -32,14 +38,16 @@ mutations" below).
 
   - T40937041: If `stdout` is a PTY, then `stderr` redirection does not work
     -- the container's `stderr` will also point at the PTY.  This is an
-    nspawn bug, and working around it form this wrapper would be hard.
+    nspawn bug, and working around it form this wrapper would be hard.  This
+    issue was fixed in systemd 242.
 
   - T40936918: At present, `nspawn` prints a spurious newline to stdout,
     even if `stdout` is redirected.  This is due to an errant `putc('\\n',
     stdout);` in `nspawn.c`.  This will most likely be fixed in future
     releases of systemd.  I could work around this in the wrapper by passing
     `--quiet` when `not sys.stdout.isatty()`.  However, that loses valuable
-    debugging output, so I'm not doing it yet.
+    debugging output, so I'm not doing it yet.  This issue was fixed in
+    systemd 242.
 
 
 ## What does nspawn do, roughly?
@@ -180,6 +188,23 @@ def _inject_os_release_args(subvol):
     return bind_args('/dev/null', os_release_paths[0])  # pragma: no cover
 
 
+def _nspawn_version():
+    '''
+    We now care about the version of nspawn we are running.  The output of
+    systemd-nspawn --version looks like:
+
+    ```
+    systemd 242 (v242-2.fb1)
+    +PAM +AUDIT +SELINUX +IMA ...
+    ```
+    So we can get the major version as the second token of the first line.
+    We hope that the output of systemd-nspawn --version is stable enough
+    to keep parsing it like this.
+    '''
+    return int(subprocess.check_output([
+        'systemd-nspawn', '--version']).split()[1])
+
+
 def nspawn_cmd(nspawn_subvol):
     return [
         # Without this, nspawn would look for the host systemd's cgroup setup,
@@ -263,6 +288,10 @@ def nspawn_in_subvol(
     #   - Unlike `run_as_root`, `stdout` is NOT default-redirected to `stderr`.
     stdout=None, stderr=None, check=True, quiet=False,
 ):
+    # Lets get the version locally right up front.  If this fails we'd like to
+    # know early rather than later.
+    version = _nspawn_version()
+
     extra_nspawn_args = ['--user', opts.user]
 
     if opts.quiet:
@@ -341,9 +370,16 @@ def nspawn_in_subvol(
         cmd = [
             *nspawn_cmd(nspawn_subvol),
             *extra_nspawn_args,
-            # Ensure that the command is not interpreted as nspawn args
-            '--', *opts.cmd,
+            *([
+                # If we have a cmd to pass to nspawn then lets tell nspawn to
+                # use the --pipe option.  This will bite us if someone tries to
+                # run an interactive repl or directly invoke a shell like
+                # /bin/bash or /bin/zsh.
+                *(['--pipe'] if version >= 242 else []),
+                '--', *opts.cmd
+            ] if opts.cmd else []),
         ]
+
         with (
             # Avoid the overhead of the FD-forwarding wrapper if it's not needed
             popen_and_inject_fds_after_sudo(
@@ -450,7 +486,7 @@ def parse_opts(argv):
         '--quiet', action='store_true', help='See `man systemd-nspawn`.',
     )
     parser.add_argument(
-        'cmd', nargs='*', default=['/bin/bash'],
+        'cmd', nargs='*',
         help='The command to run (as PID 2) in the container',
     )
     opts = parser.parse_args(argv)
