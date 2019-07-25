@@ -126,6 +126,9 @@ class SubvolTestCase(unittest.TestCase):
         self,
         temp_subvols
     ):
+        # `test_package_image_as_btrfs_loopback_writable` actually
+        # tests that the subvolume is writable, here we just test that
+        # the subvol util helper method works
         sv = temp_subvols.create('subvol')
         sv.run_as_root([
             'dd', 'if=/dev/zero', b'of=' + sv.path('d'), 'bs=1M', 'count=200',

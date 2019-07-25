@@ -31,19 +31,17 @@ class PackageImageTestCase(unittest.TestCase):
         self,
         json_path: str,
         format: str,
-        rw_subvolume: bool = False
+        writable_subvolume: bool = False
     ) -> Iterator[str]:
         with tempfile.TemporaryDirectory() as td:
             out_path = os.path.join(td, format)
-            args = [
+            package_image([
                 '--subvolumes-dir', self.subvolumes_dir,
                 '--subvolume-json', json_path,
                 '--format', format,
                 '--output-path', out_path,
-            ]
-            if rw_subvolume:
-                args.append('--rw-subvolume')
-            package_image(args)
+                *(['--writable-subvolume'] if writable_subvolume else []),
+            ])
             yield out_path
 
     def _sibling_path(self, rel_path: str):
@@ -114,7 +112,7 @@ class PackageImageTestCase(unittest.TestCase):
         with self._package_image(
             self._sibling_path('create_ops.layer/layer.json'),
             'btrfs',
-            rw_subvolume=True,
+            writable_subvolume=True,
         ) as out_path, \
                 Unshare([Namespace.MOUNT, Namespace.PID]) as unshare, \
                 tempfile.TemporaryDirectory() as mount_dir:

@@ -411,7 +411,7 @@ class Subvol:
             if self._send_to_loopback_if_fits(
                     output_path,
                     int(fs_bytes),
-                    subvol_opts.readonly
+                    subvol_opts,
             ):
                 break
             log.warning(f'{self._path} did not fit in {fs_bytes} bytes')
@@ -501,7 +501,7 @@ class Subvol:
         self,
         output_path,
         fs_size_bytes,
-        readonly: bool,
+        subvol_opts: SubvolOpts
     ) -> bool:
         '''
         Creates a loopback of the specified size, and sends the current
@@ -536,15 +536,8 @@ class Subvol:
                         recv_ret.stderr.decode(errors='surrogateescape'),
                     )
                 recv_ret.check_returncode()
-                if not readonly:
-                    sub_info = self.run_as_root([
-                        'btrfs', 'sub', 'show', self.path(),
-                    ], stdout=subprocess.PIPE).stdout
-                    # Format is:
-                    # <path>
-                    #    Name:  <subvol_name>
-                    #    ...
-                    sub_name = sub_info.splitlines()[1].split()[1]
+                if not subvol_opts.readonly:
+                    sub_name = os.path.basename(self.path())
                     subvol_path = os.path.join(loop_vol.dir(), sub_name)
                     run_stdout_to_err(nsenter_as_root(
                         ns, 'btrfs', 'property', 'set', '-ts', subvol_path,

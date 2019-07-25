@@ -24,7 +24,7 @@ def image_package(
         # If possible, do not set this. Prefer the standard naming convention.
         layer = None,
         visibility = None,
-        rw_subvolume = False):
+        writable_subvolume = False):
     visibility = get_visibility(visibility, name)
     sendstream_zst = ".sendstream.zst"
     if name.endswith(sendstream_zst):
@@ -66,7 +66,7 @@ def image_package(
             '''.format(
                 format = format,
                 layer = layer,
-                rw = "--rw-subvolume" if rw_subvolume else "",
+                rw = "--writable-subvolume" if writable_subvolume else "",
                 # Future: When adding support for incremental outputs,
                 # use something like this to obtain all the ancestors,
                 # so that the packager can verify that the specified

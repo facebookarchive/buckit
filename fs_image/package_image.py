@@ -341,8 +341,10 @@ def parse_args(argv):
     )
 
     parser.add_argument(
-        '--rw-subvolume', action='store_true',
-        default=False, help=f'Make the btrfs subvolume read-writable',
+        '--writable-subvolume', action='store_true',
+        default=False,
+        help=f'By default, the subvolume inside a loopback is marked read-only.'
+        ' Pass this flag to mark it writable.',
     )
     # Future: To add support for incremental send-streams, we'd want to
     # use this (see `--ancestor-jsons` in `image_package.bzl`)
@@ -391,12 +393,12 @@ def parse_args(argv):
 
 def package_image(argv):
     args = parse_args(argv)
-    opts = SubvolOpts(readonly=not args.rw_subvolume)
+    opts = SubvolOpts(readonly=not args.writable_subvolume)
     with open(args.subvolume_json) as infile:
         Format.make(args.format).package_full(
             SubvolumeOnDisk.from_json_file(infile, args.subvolumes_dir),
             output_path=args.output_path,
-            subvol_opts=opts
+            subvol_opts=opts,
         )
 
 
