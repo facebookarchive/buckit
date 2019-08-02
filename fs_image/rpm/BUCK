@@ -220,6 +220,50 @@ python_binary(
 )
 
 python_library(
+    name = "common_args",
+    srcs = ["common_args.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        "//fs_image/rpm/facebook:db_connection",
+        "//fs_image/rpm/storage/facebook:storage",
+    ],
+)
+
+python_library(
+    name = "snapshot_repo",
+    srcs = ["snapshot_repo.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        ":common_args",
+        ":repo_db",
+        ":repo_downloader",
+        ":repo_sizer",
+    ],
+)
+
+python_binary(
+    name = "snapshot-repo",
+    main_module = "rpm.snapshot_repo",
+    deps = [":snapshot_repo"],
+)
+
+python_unittest(
+    name = "test-snapshot-repo",
+    srcs = ["tests/test_snapshot_repo.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":common_args"),
+        (100, ":snapshot_repo"),
+    ],
+    deps = [
+        ":snapshot_repo",
+        ":temp_repos",
+    ],
+)
+
+python_library(
     name = "yum_conf",
     srcs = ["yum_conf.py"],
     base_module = "rpm",
