@@ -3,12 +3,15 @@
 import array
 import logging
 import os
+import random
 import socket
 import subprocess
 import tempfile
 
-from typing import AnyStr, Iterable, Iterator, Tuple
+from typing import AnyStr, Iterable, Iterator, List, Tuple, TypeVar
 from contextlib import AbstractContextManager, contextmanager
+
+T = TypeVar('T')
 
 
 # Bite me, Python3.
@@ -55,6 +58,19 @@ def check_popen_returncode(proc: subprocess.Popen):
         raise subprocess.CalledProcessError(
             returncode=proc.returncode, cmd=proc.args,
         )
+
+
+def set_new_key(d, k, v):
+    '`d[k] = v` that raises if it would it would overwrite an existing value'
+    if k in d:
+        raise KeyError(f'{k} was already set')
+    d[k] = v
+
+
+def shuffled(it: Iterable[T]) -> List[T]:
+    l = list(it)
+    random.shuffle(l)
+    return l
 
 
 @contextmanager

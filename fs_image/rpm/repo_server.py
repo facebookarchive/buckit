@@ -33,7 +33,9 @@ from socketserver import BaseServer
 from http.server import BaseHTTPRequestHandler, HTTPStatus
 from typing import Mapping, Tuple
 
-from .common import Checksum, get_file_logger, Path, set_new_key
+from fs_image.common import get_file_logger, set_new_key
+
+from .common import Checksum, Path
 from .repo_objects import RepoMetadata
 from .repo_snapshot import FileIntegrityError, ReportableError
 from .storage import Storage

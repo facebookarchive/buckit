@@ -114,7 +114,7 @@ class RepoMetadata(NamedTuple):
 
     @classmethod
     def new(cls, *, xml: bytes):  # NamedTuple.__new__ cannot be overridden
-        repodatas = tuple(_parse_repomd(xml))
+        repodatas = frozenset(_parse_repomd(xml))
         return cls.__new__(
             cls,
             xml=xml,

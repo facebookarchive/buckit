@@ -85,6 +85,17 @@ class Rpm(NamedTuple):
 class Repo(NamedTuple):
     rpms: List[Rpm]
 
+    # Future: Reconsider having repos not know their names, and being
+    # represented as dicts.  Lists of name-aware repos may be cleaner.
+    # Similarly, `arch` should probably be in `Repo`, and defaulted there.
+    def locations(self, repo_name, arch: str = 'x86_64'):
+        return [
+            (
+                f'{repo_name}-pkgs/rpm-test-'
+                f'{r.name}-{r.version}-{r.release}.{arch}.rpm'
+            ) for r in self.rpms
+        ]
+
 
 # The `rpm` module is concerned with recording the evolution of a set of
 # RPM repos over time. Therefore, a generic input to achieve good test

@@ -3,14 +3,17 @@
 import hashlib
 import os
 import stat
+import struct
 
 from typing import AnyStr, NamedTuple
 
 # Hide the fact that some of our dependencies aren't in `rpm` any more, the
 # `rpm` library still imports them from `rpm.common`.
 from fs_image.common import (  # noqa: F401
-    byteme, get_file_logger, init_logging, check_popen_returncode,
+    byteme, check_popen_returncode, get_file_logger, init_logging,
 )
+
+_UINT64_STRUCT = struct.Struct('=Q')
 
 
 # `pathlib` refuses to operate on `bytes`, which is the only sane way on Linux.
@@ -54,11 +57,32 @@ def create_ro(path, mode):
     return open(path, mode, opener=ro_opener)
 
 
-def set_new_key(d, k, v):
-    '`d[k] = v` that raises if it would it would overwrite an existing value'
-    if k in d:
-        raise KeyError(f'{k} was already set')
-    d[k] = v
+class RpmShard(NamedTuple):
+    '''
+    Used for testing, or for splitting a snapshot into parallel processes.
+    In the latter case, each snapshot will redundantly fetch & store the
+    metadata, so don't go overboard with the number of shards.
+    '''
+    shard: int
+    modulo: int
+
+    @classmethod
+    def from_string(cls, shard_name: str) -> 'RpmShard':
+        shard, mod = (int(v) for v in shard_name.split(':'))
+        assert 0 <= shard < mod, f'Bad RPM shard: {shard_name}'
+        return RpmShard(shard=shard, modulo=mod)
+
+    def in_shard(self, rpm):
+        # Our contract is that the RPM filename is the global primary key,
+        #
+        # We use the last 8 bytes of SHA1, since we need a deterministic
+        # hash for parallel downloads, and Python standard library lacks
+        # fast non-cryptographic hashes like CityHash or SpookyHashV2.
+        # adler32 is faster, but way too collision-prone to bother.
+        h, = _UINT64_STRUCT.unpack_from(
+            hashlib.sha1(byteme(rpm.filename())).digest(), 12
+        )
+        return h % self.modulo == self.shard
 
 
 class Checksum(NamedTuple):
