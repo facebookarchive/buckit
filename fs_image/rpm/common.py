@@ -23,26 +23,25 @@ class Path(bytes):
     def __new__(cls, arg, *args, **kwargs):
         return super().__new__(cls, byteme(arg), *args, **kwargs)
 
-    def __truediv__(self, right: AnyStr) -> bytes:
+    def __truediv__(self, right: AnyStr) -> 'Path':
         return Path(os.path.join(self, byteme(right)))
 
-    def __rtruediv__(self, left: AnyStr) -> bytes:
+    def __rtruediv__(self, left: AnyStr) -> 'Path':
         return Path(os.path.join(byteme(left), self))
 
-    def decode(self):  # Future: add other args as needed.
-        # Python uses `surrogateescape` when the filesystem contains invalid
-        # utf-8. Test:
-        #   $ mkdir -p test/$'\xc3('
-        #   $ python3 -c 'import os;print(os.listdir("test"))'
-        #   ['\udcc3(']
+    def basename(self) -> 'Path':
+        return Path(os.path.basename(self))
+
+    def dirname(self) -> 'Path':
+        return Path(os.path.dirname(self))
+
+    def decode(self) -> str:  # Future: add other args as needed.
+        # Python uses `surrogateescape` for invalid UTF-8 from the filesystem.
         return super().decode(errors='surrogateescape')
 
     @classmethod
     def from_argparse(cls, s: str) -> 'Path':
-        # Python uses `surrogateescape` for `sys.argv`. Test:
-        #   $ python3 -c 'import sys;print(repr(sys.argv[1]),' \
-        #       'repr(sys.argv[1].encode(errors="surrogateescape")))' $'\xc3('
-        #   '\udcc3(' b'\xc3('
+        # Python uses `surrogateescape` for `sys.argv`.
         return Path(s.encode(errors='surrogateescape'))
 
 
@@ -51,7 +50,7 @@ def create_ro(path, mode):
     def ro_opener(path, flags):
         return os.open(
             path,
-            (flags & ~os.O_TRUNC) | os.O_CREAT | os.O_CLOEXEC,
+            (flags & ~os.O_TRUNC) | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
             mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH,
         )
     return open(path, mode, opener=ro_opener)

@@ -17,6 +17,14 @@ python_library(
     deps = ["//fs_image:common"],
 )
 
+python_unittest(
+    name = "test-common",
+    srcs = ["tests/test_common.py"],
+    base_module = "rpm",
+    needed_coverage = [(100, ":common")],
+    deps = [":common"],
+)
+
 # NB: For Facebook-internal binaries, add `facebook:db_connection` to
 # your `deps`, but import this regular `rpm.db_connection` module.
 python_library(
