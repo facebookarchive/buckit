@@ -17,13 +17,20 @@ python_library(
     deps = ["//fs_image:common"],
 )
 
-# NB: For anything that runs at Facebook, add `facebook:db_connection` to
+# NB: For Facebook-internal binaries, add `facebook:db_connection` to
 # your `deps`, but import this regular `rpm.db_connection` module.
 python_library(
     name = "db_connection",
     srcs = ["db_connection.py"],
     base_module = "rpm",
     deps = [":pluggable"],
+)
+
+python_library(
+    name = "deleted_mutable_rpms",
+    srcs = ["deleted_mutable_rpms.py"],
+    base_module = "rpm",
+    deps = ["//fs_image/rpm/facebook:deleted_mutable_rpms"],
 )
 
 python_library(
