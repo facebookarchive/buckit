@@ -19,6 +19,8 @@ def _listdir(path) -> Set[str]:
 def find_test_repos(repos_root) -> Iterator[Tuple[str, RepoMetadata]]:
     for step_path in _listdir(repos_root):
         for p in _listdir(step_path):
+            if os.path.basename(p) == 'yum.conf':
+                continue
             with open(os.path.join(p, 'repodata/repomd.xml'), 'rb') as f:
                 yield p, RepoMetadata.new(xml=f.read())
 

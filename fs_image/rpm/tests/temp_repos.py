@@ -6,7 +6,9 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+import urllib.parse
 
+from configparser import ConfigParser
 from contextlib import contextmanager
 from typing import Dict, List, NamedTuple, Optional
 
@@ -191,8 +193,13 @@ def make_repo_steps(
                 repos[repo_name] = repo
         step_dir = os.path.join(out_dir, str(step))
         os.makedirs(step_dir)
+        yum_conf = ConfigParser()
+        yum_conf['main'] = {}
         for repo_name, repo in repos.items():
             repo_dir = os.path.join(step_dir, repo_name)
+            yum_conf[repo_name] = {
+                'baseurl': 'file://' + urllib.parse.quote(repo_dir),
+            }
             if isinstance(repo, str):  # Alias of another repo
                 assert repo in repos
                 if avoid_symlinks:
@@ -223,7 +230,8 @@ def make_repo_steps(
                     )
             # Now that all RPMs were built, we can generate the Yum metadata
             subprocess.run(['createrepo_c', repo_dir], check=True)
-
+        with open(os.path.join(step_dir, 'yum.conf'), 'w') as out_f:
+            yum_conf.write(out_f)
 
 @contextmanager
 def temp_repos_steps(base_dir=None, arch: str = 'x86_64', *args, **kwargs):

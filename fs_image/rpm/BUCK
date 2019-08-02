@@ -327,3 +327,39 @@ python_unittest(
         ":yum-from-test-snapshot-library",
     ],
 )
+
+python_library(
+    name = "snapshot_repos",
+    srcs = ["snapshot_repos.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        ":repo_db",
+        ":repo_downloader",
+        ":repo_sizer",
+        ":yum_conf",
+    ],
+)
+
+python_binary(
+    name = "snapshot-repos",
+    main_module = "rpm.snapshot_repos",
+    deps = [
+        ":common_args",
+        ":snapshot_repos",
+    ],
+)
+
+python_unittest(
+    name = "test-snapshot-repos",
+    srcs = ["tests/test_snapshot_repos.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":common_args"),
+        (100, ":snapshot_repos"),
+    ],
+    deps = [
+        ":snapshot_repos",
+        ":temp_repos",
+    ],
+)
