@@ -14,3 +14,9 @@ image.python_unittest(
     needed_coverage = [(100, ":coverage_test_helper")],
     deps = [":coverage_test_helper"],
 )
+
+image.cpp_unittest(
+    name = "test-image-cpp-unittest",
+    srcs = ["ImageCppUnittestTest.cpp"],
+    layer = "//fs_image/compiler/tests:only-for-tests-read-only-host-clone",
+)

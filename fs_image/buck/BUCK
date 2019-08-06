@@ -70,3 +70,9 @@ fake_macro_library(
     srcs = ["image_python_unittest.bzl"],
     deps = [":image_unittest_helpers"],
 )
+
+fake_macro_library(
+    name = "image_cpp_unittest",
+    srcs = ["image_cpp_unittest.bzl"],
+    deps = [":image_unittest_helpers"],
+)

@@ -1,5 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
+load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
 load(":image_layer.bzl", "image_layer")
 load(":image_package.bzl", "image_package")
@@ -30,6 +31,7 @@ def image_host_file_mount(source, mountpoint = None):
     )
 
 image = struct(
+    cpp_unittest = image_cpp_unittest,
     layer = image_layer,
     feature = image_feature,
     host_dir_mount = image_host_dir_mount,
