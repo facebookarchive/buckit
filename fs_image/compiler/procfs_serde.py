@@ -82,8 +82,8 @@ Invariants:
   - Given an extension, and the deserialized data structure, it has a
     unique serialization to the extension's on-disk format.
   - Formats aside from `.bin` ought to be usable in coreutils-style scripts.
-  - `serialize(deserialize(x)) == x` -- but the opposite is not guaranteed,
-    e.g. all scalars will be stringified.
+  - `serialize(deserialize_untyped(x)) == x` -- but the opposite is not
+    guaranteed, e.g. all scalars will be stringified.
 
 Convention: in Python identifiers, the . of the extension maps to __.
 '''
@@ -168,12 +168,12 @@ def serialize(data: Any, subvol, path_with_ext: str):
     )
 
 
-def deserialize(subvol, path_with_ext: str) -> Any:
+def deserialize_untyped(subvol, path_with_ext: str) -> Any:
     # NB: while `isdir` and `isfile` do follow symbolic links, `subvol.path`
     # will prevent the use of symlinks that take us outside the subvol.
     if os.path.isdir(subvol.path(path_with_ext)):
         return {
-            k: deserialize(subvol, os.path.join(path_with_ext, k))
+            k: deserialize_untyped(subvol, os.path.join(path_with_ext, k))
                 for k in os.listdir(subvol.path(path_with_ext).decode())
         }
     elif os.path.isfile(subvol.path(path_with_ext)):
@@ -199,3 +199,7 @@ def deserialize(subvol, path_with_ext: str) -> Any:
             raise AssertionError(f'Unsupported extension (path_with_ext)')
     else:
         raise AssertionError(f'{path_with_ext} is neither a file nor a dir')
+
+
+def deserialize_int(*args, **kwargs) -> int:
+    return int(deserialize_untyped(*args, **kwargs))

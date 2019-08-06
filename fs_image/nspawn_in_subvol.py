@@ -305,7 +305,7 @@ def nspawn_in_subvol(
             src, dest = item
             extra_nspawn_args.extend(bind_args(src, dest, readonly=False))
 
-    if opts.bind_repo_ro or procfs_serde.deserialize(
+    if opts.bind_repo_ro or procfs_serde.deserialize_int(
         src_subvol, 'meta/private/opts/artifacts_may_require_repo'
     ):
         # NB: Since this bind mount is only made within the nspawn

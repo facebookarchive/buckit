@@ -697,10 +697,10 @@ def _ensure_meta_dir_exists(subvol: Subvol, layer_opts: LayerOpts):
     #     in-image marker enables `nspawn_in_subvol` to decide.
     arr_path = os.path.join(META_DIR, 'private/opts/artifacts_may_require_repo')
     if os.path.exists(subvol.path(arr_path)):
-        parent_arr = procfs_serde.deserialize(subvol, arr_path)
+        parent_arr = procfs_serde.deserialize_int(subvol, arr_path)
         # The check is <= because we should permit building @mode/dev
-        # children from published @mode/opt images.
-        assert int(parent_arr) <= int(layer_opts.artifacts_may_require_repo), (
+        # children from published @mode/opt images. The CLI arg is bool.
+        assert parent_arr <= int(layer_opts.artifacts_may_require_repo), (
             f'{subvol.path()} is trying to build a self-contained layer '
             f'(layer_opts.artifacts_may_require_repo) from a parent that was '
             f'marked as requiring the repo to run ({parent_arr})'

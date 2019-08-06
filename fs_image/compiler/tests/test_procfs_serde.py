@@ -6,7 +6,7 @@ import unittest
 from btrfs_diff.tests.render_subvols import render_sendstream
 from tests.temp_subvolumes import with_temp_subvols
 
-from ..procfs_serde import serialize, deserialize
+from ..procfs_serde import serialize, deserialize_untyped, deserialize_int
 
 
 def _render_subvol(subvol: {'Subvol'}):
@@ -29,7 +29,9 @@ class TestProcfsSerDe(unittest.TestCase):
     def _check_serialize_deserialize_idempotence(
         self, subvol, orig_dir, name_with_ext
     ):
-        data = deserialize(subvol, os.path.join(orig_dir, name_with_ext))
+        data = deserialize_untyped(
+            subvol, os.path.join(orig_dir, name_with_ext),
+        )
         new_dir = self._next_dir()
         serialize(data, subvol, os.path.join(new_dir, name_with_ext))
         rendered = _render_subvol(subvol)[1]
@@ -120,26 +122,33 @@ class TestProcfsSerDe(unittest.TestCase):
             'foobar',
         )
 
-    # Not bothering to test deserialization of valid values, since the
-    # `serialize(deserialize(x)) == x` test of `test_serialize` cover it.
     @with_temp_subvols
-    def test_deserialize_errors(self, temp_subvols):
+    def test_deserialize(self, temp_subvols):
         subvol = temp_subvols.create('y')
-        # Writing this test is easier if we don't eed to write as root.
+        # Writing this test is easier if we don't need to write as root.
         subvol.run_as_root([
             'chown', f'{os.geteuid()}:{os.getegid()}', subvol.path(),
         ])
 
+        # Test type coercion.  Not testing untyped deserialization, since
+        # `test_serialize` checks `serialize(deserialize_untyped(x)) == x`.
+
+        with open(subvol.path('valid_int'), 'wb') as f:
+            f.write(b'37\n')
+        self.assertEquals(37, deserialize_int(subvol, 'valid_int'))
+
+        # Now check error conditions unrelated to type coercion
+
         with open(subvol.path('no_newline'), 'wb') as f:
             f.write(b'3.14')
         with self.assertRaisesRegex(AssertionError, ' a trailing newline,'):
-            deserialize(subvol, 'no_newline')
+            deserialize_untyped(subvol, 'no_newline')
 
         with open(subvol.path('foo.badext'), 'wb') as f:
             f.write(b'\n')
         with self.assertRaisesRegex(AssertionError, 'Unsupported extension '):
-            deserialize(subvol, 'foo.badext')
+            deserialize_untyped(subvol, 'foo.badext')
 
         os.mkfifo(subvol.path('a_fifo'))
         with self.assertRaisesRegex(AssertionError, ' a file nor a dir'):
-            deserialize(subvol, 'a_fifo')
+            deserialize_untyped(subvol, 'a_fifo')
