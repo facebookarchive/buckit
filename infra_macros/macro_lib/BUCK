@@ -1,17 +1,6 @@
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
 python_library(
-    name = "macro_lib",
-    srcs = glob([
-        "**/*.py",
-    ]),
-    # Buck macros must be runnable from source tree and so *cannot* have any
-    # deps.
-    deps = [],
-    external_deps = [],
-)
-
-python_library(
     name = "cxx_sources",
     srcs = [
         "cxx_sources.py",
