@@ -10,7 +10,7 @@ import time
 import tempfile
 
 from contextlib import contextmanager
-from typing import AnyStr, Callable, List, NamedTuple, TypeVar
+from typing import AnyStr, Callable, Iterable, List, NamedTuple, TypeVar
 
 # Hide the fact that some of our dependencies aren't in `rpm` any more, the
 # `rpm` library still imports them from `rpm.common`.
@@ -50,6 +50,12 @@ class Path(bytes):
     def from_argparse(cls, s: str) -> 'Path':
         # Python uses `surrogateescape` for `sys.argv`.
         return Path(s.encode(errors='surrogateescape'))
+
+
+@contextmanager
+def temp_dir(**kwargs) -> Iterable['Path']:
+    with tempfile.TemporaryDirectory(**kwargs) as td:
+        yield Path(td)
 
 
 def create_ro(path, mode):

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import json
+import os
+import shutil
 import unittest
 import urllib.parse
 import tempfile
 
 from . import temp_repos
 
-from ..common import Path
+from ..common import temp_dir
 from ..snapshot_repo import snapshot_repo
 
 
@@ -15,12 +17,21 @@ class SnapshotRepoTestCase(unittest.TestCase):
     def test_snapshot(self):
         with temp_repos.temp_repos_steps(repo_change_steps=[{
             'dog': temp_repos.SAMPLE_STEPS[0]['dog'],
-        }]) as repos_root, tempfile.TemporaryDirectory() as td:
-            td = Path(td)
+        }]) as repos_root, temp_dir() as td:
+            with open(td / 'fake_gpg_key', 'w'):
+                pass
+
+            whitelist_dir = td / 'gpg_whitelist'
+            os.mkdir(whitelist_dir)
+            shutil.copy(td / 'fake_gpg_key', whitelist_dir)
+
             snapshot_repo([
                 '--repo-name', 'dog',
                 '--repo-url',
                     'file://' + urllib.parse.quote(repos_root + '/0/dog'),
+                '--gpg-key-whitelist-dir', whitelist_dir.decode(),
+                '--gpg-url',
+                    'file://' + urllib.parse.quote(td / 'fake_gpg_key'),
                 '--snapshot-dir', (td / 'snap').decode(),
                 '--storage', json.dumps({
                     'key': 'test',

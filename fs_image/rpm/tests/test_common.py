@@ -9,7 +9,7 @@ import time
 import unittest
 
 from ..common import (
-    Checksum, create_ro, log as common_log, Path,
+    Checksum, create_ro, log as common_log, Path, temp_dir,
     populate_temp_dir_and_rename, retry_fn, RpmShard,
 )
 
@@ -58,28 +58,28 @@ class TestCommon(unittest.TestCase):
         ))
 
     def test_create_ro(self):
-        with tempfile.TemporaryDirectory() as td:
-            with create_ro(Path(td) / 'hello_ro', 'w') as out_f:
+        with temp_dir() as td:
+            with create_ro(td / 'hello_ro', 'w') as out_f:
                 out_f.write('world_ro')
-            with open(Path(td) / 'hello_rw', 'w') as out_f:
+            with open(td / 'hello_rw', 'w') as out_f:
                 out_f.write('world_rw')
 
             # `_create_ro` refuses to overwrite both RO and RW files.
             with self.assertRaises(FileExistsError):
-                create_ro(Path(td) / 'hello_ro', 'w')
+                create_ro(td / 'hello_ro', 'w')
             with self.assertRaises(FileExistsError):
-                create_ro(Path(td) / 'hello_rw', 'w')
+                create_ro(td / 'hello_rw', 'w')
 
             # Regular `open` can accidentelly clobber the RW, but not the RW.
             if os.geteuid() != 0:  # Root can clobber anything :/
                 with self.assertRaises(PermissionError):
-                    open(Path(td) / 'hello_ro', 'a')
-            with open(Path(td) / 'hello_rw', 'a') as out_f:
+                    open(td / 'hello_ro', 'a')
+            with open(td / 'hello_rw', 'a') as out_f:
                 out_f.write(' -- appended')
 
-            with open(Path(td) / 'hello_ro') as in_f:
+            with open(td / 'hello_ro') as in_f:
                 self.assertEqual('world_ro', in_f.read())
-            with open(Path(td) / 'hello_rw') as in_f:
+            with open(td / 'hello_rw') as in_f:
                 self.assertEqual('world_rw -- appended', in_f.read())
 
     def test_rpm_shard(self):
@@ -120,11 +120,11 @@ class TestCommon(unittest.TestCase):
             self.assertEqual(contents, in_f.read())
 
     def test_populate_temp_dir_and_rename(self):
-        with tempfile.TemporaryDirectory() as td:
+        with temp_dir() as td:
             # Create and populate "foo"
-            foo_path = Path(td) / 'foo'
+            foo_path = td / 'foo'
             with populate_temp_dir_and_rename(foo_path) as td2:
-                self.assertTrue(td2.startswith(td.encode() + b'/'))
+                self.assertTrue(td2.startswith(td + b'/'))
                 self.assertEqual(td2, td / td2.basename())
                 self.assertNotEqual(td2.basename(), 'foo')
                 with create_ro(td2 / 'hello', 'w') as out_f:

@@ -40,6 +40,7 @@ from fs_image.common import get_file_logger, nullcontext, set_new_key, shuffled
 
 from .common import RpmShard
 from .deleted_mutable_rpms import deleted_mutable_rpms
+from .open_url import open_url
 from .parse_repodata import get_rpm_parser, pick_primary_repodata
 from .repo_objects import CANONICAL_HASH, Checksum, Repodata, RepoMetadata, Rpm
 from .repo_db import RepoDBContext, RepodataTable, RpmTable
@@ -59,21 +60,6 @@ log = get_file_logger(__file__)
 
 class RepodataParseError(Exception):
     pass
-
-
-@contextmanager
-def _open_url(url: str) -> Iterable[BytesIO]:
-    parsed_url = requests.utils.urlparse(url)
-    if parsed_url.scheme == 'file':
-        assert parsed_url.netloc == '', f'Bad file URL: {url}'
-        with open(parsed_url.path, 'rb') as infile:
-            yield infile
-    elif parsed_url.scheme in ['http', 'https']:
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            yield r.raw  # A file-like `io`-style object for the HTTP stream
-    else:  # pragma: no cover
-        raise RuntimeError(f'Unknown URL scheme in {url}')
 
 
 def _read_chunks(input: BytesIO) -> Iterator[bytes]:
@@ -158,7 +144,7 @@ class RepoDownloader:
     @contextmanager
     def _download(self, relative_url):
         assert not relative_url.startswith('/')
-        with _open_url(
+        with open_url(
             urllib.parse.urljoin(self._repo_url, relative_url)
         ) as input:
             yield input

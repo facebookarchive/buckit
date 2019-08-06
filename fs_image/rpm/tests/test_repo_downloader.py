@@ -14,8 +14,6 @@ Future work:
 import os
 import re
 import requests
-import subprocess
-import sys
 import unittest
 import urllib.parse
 import tempfile
@@ -128,27 +126,6 @@ class RepoDownloaderTestCase(unittest.TestCase):
             Storage.make(key='test', kind='filesystem', base_dir=storage_dir),
         )
 
-    # We already get file:// url coverage from the other tests.
-    def test_open_http_url(self):
-        with tempfile.TemporaryDirectory() as server_dir:
-            with open(os.path.join(server_dir, 'hello'), 'w') as out_f:
-                out_f.write('world')
-            with subprocess.Popen([
-                sys.executable, '-c', '''
-import http.server as hs
-with hs.HTTPServer(('localhost', 0), hs.SimpleHTTPRequestHandler) as httpd:
-    print('http://{}:{}/'.format(*httpd.socket.getsockname()), flush=True)
-    httpd.serve_forever()
-                ''',
-            ], cwd=server_dir, stdout=subprocess.PIPE) as proc:
-                try:
-                    with repo_downloader._open_url(
-                        proc.stdout.readline().decode().rstrip('\n') + 'hello'
-                    ) as in_f:
-                        self.assertEqual(b'world', in_f.read())
-                finally:
-                    proc.kill()
-
     def _check_storage_id_error(self, storage_id_to_obj, error_cls):
         'Ensure exactly one of the objects has an "error" storage ID.'
         error_dict = None
@@ -200,7 +177,7 @@ with hs.HTTPServer(('localhost', 0), hs.SimpleHTTPRequestHandler) as httpd:
 
     @contextmanager
     def _check_download_error(self, url_regex, corrupt_file_fn, error_cls):
-        original_open_url = repo_downloader._open_url
+        original_open_url = repo_downloader.open_url
 
         def my_open_url(url):
             if re.match(url_regex, url):
@@ -210,7 +187,7 @@ with hs.HTTPServer(('localhost', 0), hs.SimpleHTTPRequestHandler) as httpd:
 
         with tempfile.TemporaryDirectory() as storage_dir:
             downloader = self._make_downloader(storage_dir, '0/good_dog')
-            with mock.patch.object(repo_downloader, '_open_url') as mock_fn:
+            with mock.patch.object(repo_downloader, 'open_url') as mock_fn:
                 mock_fn.side_effect = my_open_url
                 bad_snapshot = downloader.download()
                 self._check_snapshot(

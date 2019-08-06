@@ -25,6 +25,24 @@ python_unittest(
     deps = [":common"],
 )
 
+python_library(
+    name = "open_url",
+    srcs = ["open_url.py"],
+    base_module = "rpm",
+    external_deps = ["python-requests"],
+)
+
+python_unittest(
+    name = "test-open-url",
+    srcs = ["tests/test_open_url.py"],
+    base_module = "rpm",
+    needed_coverage = [(100, ":open_url")],
+    deps = [
+        ":common",
+        ":open_url",
+    ],
+)
+
 # NB: For Facebook-internal binaries, add `facebook:db_connection` to
 # your `deps`, but import this regular `rpm.db_connection` module.
 python_library(
@@ -163,12 +181,12 @@ python_library(
     deps = [
         ":common",
         ":deleted_mutable_rpms",
+        ":open_url",
         ":parse_repodata",
         ":repo_db",
         ":repo_objects",
         ":repo_snapshot",
     ],
-    external_deps = ["python-requests"],
 )
 
 python_unittest(
@@ -231,12 +249,31 @@ python_library(
 )
 
 python_library(
+    name = "gpg_keys",
+    srcs = ["gpg_keys.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        ":open_url",
+    ],
+)
+
+python_unittest(
+    name = "test-gpg-keys",
+    srcs = ["tests/test_gpg_keys.py"],
+    base_module = "rpm",
+    needed_coverage = [(100, ":gpg_keys")],
+    deps = [":gpg_keys"],
+)
+
+python_library(
     name = "snapshot_repo",
     srcs = ["snapshot_repo.py"],
     base_module = "rpm",
     deps = [
         ":common",
         ":common_args",
+        ":gpg_keys",
         ":repo_db",
         ":repo_downloader",
         ":repo_sizer",
@@ -334,6 +371,7 @@ python_library(
     base_module = "rpm",
     deps = [
         ":common",
+        ":gpg_keys",
         ":repo_db",
         ":repo_downloader",
         ":repo_sizer",

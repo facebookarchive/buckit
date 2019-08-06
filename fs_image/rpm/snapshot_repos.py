@@ -35,6 +35,7 @@ from .common import (
     RpmShard,
 )
 from .common_args import add_standard_args
+from .gpg_keys import snapshot_gpg_keys
 from .repo_db import RepoDBContext
 from .repo_downloader import RepoDownloader
 from .repo_sizer import RepoSizer
@@ -50,6 +51,7 @@ def snapshot_repos(
     repo_db_ctx: RepoDBContext,
     storage: Storage,
     rpm_shard: RpmShard,
+    gpg_key_whitelist_dir: str,
     retries: int,
 ):
     declared_sizer = RepoSizer()
@@ -63,6 +65,13 @@ def snapshot_repos(
         with populate_temp_dir_and_rename(
             dest / repo.name, overwrite=True
         ) as td:
+            # This is outside the retry_fn not to mask transient
+            # verification failures.  I don't expect many infra failures.
+            snapshot_gpg_keys(
+                key_urls=repo.gpg_key_urls,
+                whitelist_dir=gpg_key_whitelist_dir,
+                snapshot_dir=td,
+            )
             retry_fn(
                 lambda: RepoDownloader(
                     repo.name, repo.base_url, repo_db_ctx, storage
@@ -100,6 +109,7 @@ def snapshot_repos_from_args(argv: List[str]):
             repo_db_ctx=RepoDBContext(args.db, args.db.SQL_DIALECT),
             storage=args.storage,
             rpm_shard=args.rpm_shard,
+            gpg_key_whitelist_dir=args.gpg_key_whitelist_dir,
             retries=args.retries,
         )
 

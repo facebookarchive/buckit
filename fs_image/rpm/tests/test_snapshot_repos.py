@@ -5,7 +5,7 @@ import tempfile
 
 from . import temp_repos
 
-from ..common import Path
+from ..common import temp_dir
 
 from ..snapshot_repos import snapshot_repos_from_args
 
@@ -16,10 +16,10 @@ class SnapshotReposTestCase(unittest.TestCase):
         with temp_repos.temp_repos_steps(repo_change_steps=[{
             'cat': temp_repos.SAMPLE_STEPS[0]['cat'],
             'dog': temp_repos.SAMPLE_STEPS[0]['dog'],
-        }]) as repos_root, tempfile.TemporaryDirectory() as td:
-            td = Path(td)
+        }]) as repos_root, temp_dir() as td:
             snapshot_repos_from_args([
                 '--yum-conf', repos_root + '/0/yum.conf',
+                '--gpg-key-whitelist-dir', (td / 'gpg_whitelist').decode(),
                 '--snapshot-dir', (td / 'snap').decode(),
                 '--storage', json.dumps({
                     'key': 'test',

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 'Arguments shared between `snapshot-repo` and `snapshot-repos`.'
-from .common import RpmShard
+from .common import Path, RpmShard
 from .storage import Storage
 from .db_connection import DBConnectionContext
 
@@ -10,13 +10,18 @@ from .db_connection import DBConnectionContext
 # each one is accessed appropriately.
 def add_standard_args(parser):
     parser.add_argument(  # Pass this to `populate_temp_dir_and_rename`
-        '--snapshot-dir', required=True,
+        '--snapshot-dir', required=True, type=Path.from_argparse,
         help='Create or overwrite an RPM repo snapshot at this location. '
             'This consists of top-level repo metadata plus JSON indexes '
             'that provide `storage_id`s for the large binary blobs, which '
             'are actually written to `--storage`. The snapshot is meant '
             'to be committed into a version-control system, so it is concise '
             'and textual.',
+    )
+    parser.add_argument(  # Pass this to `snapshot_gpg_keys`
+        '--gpg-key-whitelist-dir', required=True, type=Path.from_argparse,
+        help='We will only trust (and snapshot) GPG keys from this list -- '
+            'encountering any other keys will abort the snapshot.',
     )
     Storage.add_argparse_arg(  # Pass this to `RepoDownloader`
         parser, '--storage', required=True,
