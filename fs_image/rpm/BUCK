@@ -78,6 +78,7 @@ python_library(
         # NB: It would be great to also use `rpmbuild` from the third-party
         # repo, but doing this is fairly intractable, see D15511231.
     },
+    deps = [":common"],
 )
 
 python_unittest(

@@ -7,21 +7,22 @@ import unittest
 from io import BytesIO
 from typing import Iterator, Set, Tuple
 
+from ..common import Path
 from ..repo_objects import Repodata, RepoMetadata
 from ..parse_repodata import get_rpm_parser, pick_primary_repodata
 from ..tests.temp_repos import SAMPLE_STEPS, temp_repos_steps
 
 
-def _listdir(path) -> Set[str]:
-    return {os.path.join(path, p) for p in os.listdir(path)}
+def _listdir(path: Path) -> Set[Path]:
+    return {path / p for p in os.listdir(path)}
 
 
-def find_test_repos(repos_root) -> Iterator[Tuple[str, RepoMetadata]]:
+def find_test_repos(repos_root: Path) -> Iterator[Tuple[Path, RepoMetadata]]:
     for step_path in _listdir(repos_root):
         for p in _listdir(step_path):
-            if os.path.basename(p) == 'yum.conf':
+            if p.basename() == b'yum.conf':
                 continue
-            with open(os.path.join(p, 'repodata/repomd.xml'), 'rb') as f:
+            with open(p / 'repodata/repomd.xml', 'rb') as f:
                 yield p, RepoMetadata.new(xml=f.read())
 
 
@@ -79,15 +80,15 @@ class ParseRepodataTestCase(unittest.TestCase):
         } for step in SAMPLE_STEPS]
         for repo_path, repomd in find_test_repos(self.repos_root):
             xml_rd, sql_rd = self._xml_and_sqlite_primaries(repomd)
-            with open(os.path.join(repo_path, xml_rd.location), 'rb') as xf, \
-                    open(os.path.join(repo_path, sql_rd.location), 'rb') as sf:
+            with open(repo_path / xml_rd.location, 'rb') as xf, \
+                    open(repo_path / sql_rd.location, 'rb') as sf:
                 sql_rpms = _rpm_set(sf, sql_rd)
                 self.assertEqual(_rpm_set(xf, xml_rd), sql_rpms)
 
                 # A joint test of repo parsing and `temp_repos`: check that
                 # we had exactly the RPMs that were specified.
-                step = int(os.path.basename(os.path.dirname(repo_path)))
-                repo = os.path.basename(repo_path)  # `Repo` or `str` (name)
+                step = int(repo_path.dirname().basename())
+                repo = repo_path.basename().decode()  # `Repo` or `str` (name)
                 # If it's an alias, search in `step`, not `last_step`, since
                 # an alias refers to the step being queried, not the step
                 # when it was established. NB: These semantics aren't in any
@@ -109,7 +110,7 @@ class ParseRepodataTestCase(unittest.TestCase):
                     },
                     {os.path.basename(r.location) for r in sql_rpms},
                 )
-                unseen_steps[step].pop(os.path.basename(repo_path), None)
+                unseen_steps[step].pop(repo_path.basename().decode(), None)
         self.assertEqual([], [s for s in unseen_steps if s])
 
     def test_pick_primary_and_errors(self):
@@ -134,7 +135,7 @@ class ParseRepodataTestCase(unittest.TestCase):
     def test_sqlite_edge_cases(self):
         for repo_path, repomd in find_test_repos(self.repos_root):
             _, sql_rd = self._xml_and_sqlite_primaries(repomd)
-            with open(os.path.join(repo_path, sql_rd.location), 'rb') as sf:
+            with open(repo_path / sql_rd.location, 'rb') as sf:
                 bz_data = sf.read()
             # Some in-the-wild primary SQLite dbs are .gz, while all of ours
             # are .bz2, so let's recompress.

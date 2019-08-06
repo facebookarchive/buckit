@@ -11,12 +11,13 @@ import unittest
 from contextlib import contextmanager
 from typing import Mapping, Tuple
 
+from . import temp_repos
+
 from ..common import Checksum, Path
 from ..repo_objects import Repodata, RepoMetadata, Rpm
 from ..repo_server import _CHUNK_SIZE, repo_server, read_snapshot_dir
 from ..repo_snapshot import RepoSnapshot, MutableRpmError
 from ..storage import Storage
-from ..tests import temp_repos
 
 
 def _checksum(algo: str, data: bytes) -> Checksum:
@@ -172,10 +173,9 @@ class RepoServerTestCase(unittest.TestCase):
         # to the rest of the test, so it's fine to use a random repo.
         with temp_repos.temp_repos_steps(repo_change_steps=[{
             'nil': temp_repos.Repo([]),
-        }]) as repos_root, \
-                open(
-                    os.path.join(repos_root, '0/nil/repodata/repomd.xml'), 'rb',
-                ) as infile:
+        }]) as repos_root, open(
+            repos_root / '0/nil/repodata/repomd.xml', 'rb',
+        ) as infile:
             repomd = RepoMetadata.new(xml=infile.read())
 
         repodata_bytes, repodata_sid = self._write(b'A Repodata blob')

@@ -40,7 +40,7 @@ class RepoObjectsTestCase(unittest.TestCase):
         with tr.temp_repos_steps(repo_change_steps=[{
             'whale': tr.Repo([tr.Rpm('x', '5', '6'), tr.Rpm('y', '3.4', 'b')]),
         }]) as repos_dir, open(
-            os.path.join(repos_dir, '0/whale/repodata/repomd.xml'), 'rb',
+            repos_dir / '0/whale/repodata/repomd.xml', 'rb',
         ) as infile:
             rmd = RepoMetadata.new(xml=infile.read())
             self.assertGreaterEqual(rmd.fetch_timestamp, rmd.build_timestamp)

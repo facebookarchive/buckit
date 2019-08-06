@@ -119,9 +119,7 @@ class RepoDownloaderTestCase(unittest.TestCase):
     def _make_downloader(self, storage_dir, step_and_repo, db_context=None):
         return repo_downloader.RepoDownloader(
             step_and_repo,
-            'file://' + urllib.parse.quote(
-                self.repos_root + '/' + step_and_repo
-            ),
+            'file://' + urllib.parse.quote(self.repos_root / step_and_repo),
             self._make_db_context() if db_context is None else db_context,
             Storage.make(key='test', kind='filesystem', base_dir=storage_dir),
         )

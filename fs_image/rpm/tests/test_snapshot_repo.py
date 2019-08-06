@@ -28,7 +28,7 @@ class SnapshotRepoTestCase(unittest.TestCase):
             snapshot_repo([
                 '--repo-name', 'dog',
                 '--repo-url',
-                    'file://' + urllib.parse.quote(repos_root + '/0/dog'),
+                    'file://' + urllib.parse.quote(repos_root / '0/dog'),
                 '--gpg-key-whitelist-dir', whitelist_dir.decode(),
                 '--gpg-url',
                     'file://' + urllib.parse.quote(td / 'fake_gpg_key'),

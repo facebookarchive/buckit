@@ -12,6 +12,8 @@ from configparser import ConfigParser
 from contextlib import contextmanager
 from typing import Dict, List, NamedTuple, Optional
 
+from ..common import Path
+
 
 def busybox_path() -> str:
     return os.path.join(os.path.dirname(__file__), 'third_party/busybox')
@@ -250,7 +252,7 @@ def temp_repos_steps(base_dir=None, arch: str = 'x86_64', *args, **kwargs):
     td = tempfile.mkdtemp(dir=base_dir)
     try:
         make_repo_steps(out_dir=td, arch=arch, *args, **kwargs)
-        yield td
+        yield Path(td)
     except BaseException:  # Clean up even on Ctrl-C
         shutil.rmtree(td)
         raise

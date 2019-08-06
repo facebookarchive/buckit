@@ -18,7 +18,7 @@ class SnapshotReposTestCase(unittest.TestCase):
             'dog': temp_repos.SAMPLE_STEPS[0]['dog'],
         }]) as repos_root, temp_dir() as td:
             snapshot_repos_from_args([
-                '--yum-conf', repos_root + '/0/yum.conf',
+                '--yum-conf', (repos_root / '0/yum.conf').decode(),
                 '--gpg-key-whitelist-dir', (td / 'gpg_whitelist').decode(),
                 '--snapshot-dir', (td / 'snap').decode(),
                 '--storage', json.dumps({
