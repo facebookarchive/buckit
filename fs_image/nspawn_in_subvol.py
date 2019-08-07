@@ -346,6 +346,8 @@ def nspawn_in_subvol(
         for k, v in os.environ.items():
             if k.startswith('THRIFT_TLS_'):
                 extra_nspawn_args.append('--setenv={}={}'.format(k, v))
+    # This is last to let the user have final say over the environment.
+    extra_nspawn_args.extend('--setenv=' + se for se in opts.setenv)
 
     if opts.cap_net_admin:
         extra_nspawn_args.append('--capability=CAP_NET_ADMIN')
@@ -460,6 +462,10 @@ def parse_opts(argv):
         help='Changes to the specified user once in the nspawn container. '
             'Defaults to `nobody` to give you a mostly read-only view of '
             'the OS.',
+    )
+    parser.add_argument(
+        '--setenv', action='append', default=[],
+        help='See `man systemd-nspawn`.',
     )
     parser.add_argument(
         '--no-logs-tmpfs', action='store_false', dest='logs_tmpfs',

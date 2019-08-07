@@ -40,21 +40,24 @@ def _tags_to_hide_test():
         "slow",
     ]
 
-def _pop_tags_and_other_kwargs(unittest_kwargs, arg_names = None):
-    # Some kwargs must set on the outer wrapper, instead of the inner test
-    # to be wrapped.  This is true for "tags" regardless of test language.
-    popped_kwargs = {}
-    for kwarg_name in ["tags"] + (arg_names if arg_names else []):
-        if kwarg_name in unittest_kwargs:
-            popped_kwargs[kwarg_name] = unittest_kwargs.pop(kwarg_name)
-    return popped_kwargs
-
 def _nspawn_wrapper_properties(
         name,
         layer,
         run_as_user,
+        inner_test_kwargs,
+        extra_outer_kwarg_names,
         caller_fake_library,
         visibility):
+    # These args must be on the outer wrapper test, regardless of language.
+    outer_kwarg_names = ["tags", "env"]
+    outer_kwarg_names.extend(extra_outer_kwarg_names)
+
+    real_inner_test_kwargs = inner_test_kwargs.copy()
+    outer_test_kwargs = {}
+    for kwarg in outer_kwarg_names:
+        if kwarg in real_inner_test_kwargs:
+            outer_test_kwargs[kwarg] = real_inner_test_kwargs.pop(kwarg)
+
     # This target name gets a suffix to keep it discoverable via tab-completion
     test_layer = name + "--test-layer"
 
@@ -79,11 +82,21 @@ def _nspawn_wrapper_properties(
     buck_genrule(
         name = test_spec_py,
         out = "unused_name.py",
-        bash = 'echo {} > "$OUT"'.format(shell.quote((
-            "def nspawn_in_subvol_args():\n" +
-            "    return {args}\n"
-        ).format(
-            args = repr(["--user", run_as_user, "--", binary_path]),
+        bash = 'echo {} > "$OUT"'.format(shell.quote(("""\
+import os
+def nspawn_in_subvol_args():
+    return [
+        '--user', {user_repr},
+        *[
+            '--setenv={{}}={{}}'.format(k, os.environ.get(k, ''))
+                for k in {pass_through_env_repr}
+        ],
+        '--', {binary_path_repr},
+    ]
+""").format(
+            user_repr = repr(run_as_user),
+            pass_through_env_repr = outer_test_kwargs.get("env", []),
+            binary_path_repr = repr(binary_path),
         ))),
         visibility = visibility,
     )
@@ -112,6 +125,8 @@ def _nspawn_wrapper_properties(
     )
 
     return struct(
+        inner_test_kwargs = real_inner_test_kwargs,
+        outer_test_kwargs = outer_test_kwargs,
         impl_python_library = ":" + wrapper_impl_library,
         # Users of `image.*_unittest` only see the outer "porcelain" target,
         # which internally wraps a hidden test binary.  Test code changes
@@ -169,6 +184,5 @@ def _nspawn_wrapper_properties(
 image_unittest_helpers = struct(
     hidden_test_name = _hidden_test_name,
     nspawn_wrapper_properties = _nspawn_wrapper_properties,
-    pop_tags_and_other_kwargs = _pop_tags_and_other_kwargs,
     tags_to_hide_test = _tags_to_hide_test,
 )

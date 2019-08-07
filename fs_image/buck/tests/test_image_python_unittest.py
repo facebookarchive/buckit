@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import unittest
 import getpass
+import os
+import unittest
 
 from coverage_test_helper import coverage_test_helper
 
@@ -16,3 +17,44 @@ class ImagePythonUnittestTest(unittest.TestCase):
             catlog.write('Feed me.')
         # Future: add more assertions here as it becomes necessary what
         # aspects of test containers we actually care about.
+
+    def test_env(self):
+        # Ensure that per-test `env` settings do reach the container.
+        self.assertEqual('meow', os.environ.pop('kitteh'))
+        # Ensure that the container's environment is sanitized.
+        env_whitelist = {
+            # Session basics
+            'HOME',
+            'LOGNAME',
+            'NOTIFY_SOCKET',
+            'PATH',
+            'TERM',
+            'USER',
+
+            # Provided by the shell running the test
+            'PWD',
+            'SHLVL',
+
+            # `nspawn --as-pid2` sets these 2, although they're quite silly.
+            'container',
+            'container_uuid',  # our nspawn runtime actually sets this to ''
+
+            # These 2 are another `systemd` artifact, appearing when we pass
+            # FDs into the container.
+            'LISTEN_FDS',
+            'LISTEN_PID',
+
+            # PAR noise that doesn't start with `FB_PAR_` (filtered below)
+            'PAR_LAUNCH_TIMESTAMP',
+            'SCRIBE_LOG_USAGE',
+            'LC_ALL',
+            'LC_CTYPE',
+        }
+        for var in os.environ:
+            if var.startswith('FB_PAR_'):  # Set for non-in-place build modes
+                continue
+            self.assertIn(var, env_whitelist)
+        # If the whitelist proves unmaintainable, Buck guarantees that this
+        # variable is set, and it is NOT explicitly passed into containers,
+        # so it ought to be absent.  See also `test-unsanitized-env`.
+        self.assertNotIn('BUCK_BUILD_ID', os.environ)

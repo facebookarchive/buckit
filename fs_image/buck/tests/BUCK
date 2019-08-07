@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("//fs_image/buck:image.bzl", "image")
 
 python_library(
@@ -13,10 +14,20 @@ image.python_unittest(
     layer = "//fs_image/compiler/tests:only-for-tests-read-only-host-clone",
     needed_coverage = [(100, ":coverage_test_helper")],
     deps = [":coverage_test_helper"],
+    env = {"kitteh": "meow"},
 )
 
 image.cpp_unittest(
     name = "test-image-cpp-unittest",
     srcs = ["ImageCppUnittestTest.cpp"],
     layer = "//fs_image/compiler/tests:only-for-tests-read-only-host-clone",
+    env = {"kitteh": "meow"},
+)
+
+# Ensures that BUCK_BUILD_ID isn't just missing from the container tests by
+# accident, but rather that it's explicitly sanitized.
+python_unittest(
+    name = "test-unsanitized-env",
+    srcs = ["test_unsanitized_env.py"],
+    env = {"kitteh": "meow"},
 )

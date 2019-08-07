@@ -11,21 +11,22 @@ def image_cpp_unittest(
         visibility = None,
         **cpp_unittest_kwargs):
     visibility = get_visibility(visibility, name)
-    wrapper_kwargs = helpers.pop_tags_and_other_kwargs(cpp_unittest_kwargs)
-
-    cpp_unittest(
-        name = helpers.hidden_test_name(name),
-        tags = helpers.tags_to_hide_test(),
-        visibility = visibility,
-        **cpp_unittest_kwargs
-    )
 
     wrapper_props = helpers.nspawn_wrapper_properties(
         name = name,
         layer = layer,
         run_as_user = run_as_user,
+        inner_test_kwargs = cpp_unittest_kwargs,
+        extra_outer_kwarg_names = [],
         caller_fake_library = "//fs_image/buck:image_cpp_unittest",
         visibility = visibility,
+    )
+
+    cpp_unittest(
+        name = helpers.hidden_test_name(name),
+        tags = helpers.tags_to_hide_test(),
+        visibility = visibility,
+        **wrapper_props.inner_test_kwargs
     )
 
     wrapper_binary = "layer-test-wrapper-" + name
@@ -37,7 +38,6 @@ def image_cpp_unittest(
         # because `root` cannot access the content of unprivileged XARs.
         par_style = "zip",
         visibility = visibility,
-        **wrapper_kwargs
     )
 
     # Here, we generate a C file, whose only job is to `execv` the Python
@@ -101,6 +101,16 @@ int main(int argc, char **argv) {{
         visibility = visibility,
     )
 
+    env = wrapper_props.outer_test_kwargs.pop("env")
+    env.update({
+        # These dependencies must be on the user-visible "porcelain"
+        # target, see the helper code for the explanation.
+        "_dep_for_test_wrapper_{}".format(idx): "$(location {})".format(
+            target,
+        )
+        for idx, target in enumerate(wrapper_props.porcelain_deps)
+    })
+
     # This is a `cpp_unittest` for reasons very similar to why the wrapper
     # binary in `image_python_unittest.bzl` is a `python_unittest`.  We
     # could eliminate all of the above contortions if Buck adds support for
@@ -109,14 +119,8 @@ int main(int argc, char **argv) {{
     cpp_unittest(
         name = name,
         srcs = [":" + exec_wrapper_c],
-        # These dependencies must be on the user-visible "porcelain" target,
-        # see the helper code for the explanation.
-        env = {
-            "_dep_for_test_wrapper_{}".format(idx): "$(location {})".format(
-                target,
-            )
-            for idx, target in enumerate(wrapper_props.porcelain_deps)
-        },
+        env = env,
         use_default_test_main = False,
         visibility = visibility,
+        **wrapper_props.outer_test_kwargs
     )

@@ -10,9 +10,17 @@ def image_python_unittest(
         par_style = None,
         **python_unittest_kwargs):
     visibility = get_visibility(visibility, name)
-    wrapper_kwargs = helpers.pop_tags_and_other_kwargs(
-        python_unittest_kwargs,
-        arg_names = ["needed_coverage"],
+
+    wrapper_props = helpers.nspawn_wrapper_properties(
+        name = name,
+        layer = layer,
+        run_as_user = run_as_user,
+        inner_test_kwargs = python_unittest_kwargs,
+        # Future: there is probably a "generically correct" way of handling
+        # `needed_coverage`, but we'll find it later.
+        extra_outer_kwarg_names = ["needed_coverage"],
+        caller_fake_library = "//fs_image/buck:image_python_unittest",
+        visibility = visibility,
     )
 
     # `par_style` only applies to the inner test that runs the actual user
@@ -40,15 +48,7 @@ def image_python_unittest(
         tags = helpers.tags_to_hide_test(),
         par_style = par_style,
         visibility = visibility,
-        **python_unittest_kwargs
-    )
-
-    wrapper_props = helpers.nspawn_wrapper_properties(
-        name = name,
-        layer = layer,
-        run_as_user = run_as_user,
-        caller_fake_library = "//fs_image/buck:image_python_unittest",
-        visibility = visibility,
+        **wrapper_props.inner_test_kwargs
     )
 
     # This outer "test" is not a test at all, but a wrapper that passes
@@ -88,5 +88,5 @@ def image_python_unittest(
         # because `root` cannot access the content of unprivileged XARs.
         par_style = "zip",
         visibility = visibility,
-        **wrapper_kwargs
+        **wrapper_props.outer_test_kwargs
     )
