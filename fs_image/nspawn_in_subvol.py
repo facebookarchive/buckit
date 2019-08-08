@@ -301,9 +301,12 @@ def nspawn_in_subvol(
         extra_nspawn_args.append('--private-network')
 
     if opts.bindmount_rw:
-        for item in opts.bindmount_rw:
-            src, dest = item
+        for src, dest in opts.bindmount_rw:
             extra_nspawn_args.extend(bind_args(src, dest, readonly=False))
+
+    if opts.bindmount_ro:
+        for src, dest in opts.bindmount_ro:
+            extra_nspawn_args.extend(bind_args(src, dest, readonly=True))
 
     if opts.bind_repo_ro or procfs_serde.deserialize_int(
         src_subvol, 'meta/private/opts/artifacts_may_require_repo'
@@ -381,7 +384,6 @@ def nspawn_in_subvol(
                 '--', *opts.cmd
             ] if opts.cmd else []),
         ]
-
         with (
             # Avoid the overhead of the FD-forwarding wrapper if it's not needed
             popen_and_inject_fds_after_sudo(
@@ -480,6 +482,11 @@ def parse_opts(argv):
     parser.add_argument(
         '--bindmount-rw', action='append', nargs=2,
         help='Read-writable bindmounts (DEST is relative to the container '
+            'root) to create',
+    )
+    parser.add_argument(
+        '--bindmount-ro', action='append', nargs=2,
+        help='Read-only bindmounts (DEST is relative to the container '
             'root) to create',
     )
     parser.add_argument(

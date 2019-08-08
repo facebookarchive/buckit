@@ -32,6 +32,7 @@ T_INSTALL_FILES = f'{T_BASE}:feature_install_files'
 T_KITCHEN_SINK = f'{T_BASE}:feature_kitchen_sink'
 T_HELLO_WORLD_BASE = f'{T_BASE}:hello_world_base'
 T_HELLO_WORLD_TAR = f'{T_BASE}:hello_world.tar'
+T_RPM_TEST_CHEESE = f'{T_BASE}:rpm-test-cheese-2-1.rpm'
 
 TARGET_ENV_VAR_PREFIX = 'test_image_feature_path_to_'
 TARGET_TO_PATH = {
@@ -124,6 +125,11 @@ ID_TO_ITEM = {
     '.rpms/install/rpm-test-mice': RpmActionItem(
         from_target=T_TAR,
         name='rpm-test-mice',
+        action=RpmAction.install,
+    ),
+    '.rpms/install/rpm-test-cheese-2-1.rpm': RpmActionItem(
+        from_target=T_TAR,
+        source=TARGET_TO_PATH[T_RPM_TEST_CHEESE],
         action=RpmAction.install,
     ),
     '.rpms/remove_if_exists/rpm-test-carrot': RpmActionItem(
@@ -220,7 +226,10 @@ ID_TO_ITEM = {
 # Imitates the output of `DependencyGraph.ordered_phases` for `test-compiler`
 ORDERED_PHASES = (
     (FilesystemRootItem.get_phase_builder, ['/']),
-    (RpmActionItem.get_phase_builder, ['.rpms/install/rpm-test-mice']),
+    (RpmActionItem.get_phase_builder, [
+        '.rpms/install/rpm-test-mice',
+        '.rpms/install/rpm-test-cheese-2-1.rpm'
+    ]),
     (RpmActionItem.get_phase_builder, [
         '.rpms/remove_if_exists/rpm-test-carrot',
         '.rpms/remove_if_exists/rpm-test-milk',

@@ -162,6 +162,22 @@ image.feature(
     ],
 )
 
+# These RPMs were generated with the "rpm-test-cheese.spec".
+# The values should be updated to match the number of the version.
+# You can build the RPMs with `rpmbuild` or update the spec section
+# in fs_image/rpm/tests/temp_repos.py to build with this spec.
+export_file(name = "rpm-test-cheese-1-1.rpm")
+
+export_file(name = "rpm-test-cheese-2-1.rpm")
+
+export_file(name = "rpm-test-cheese-3-1.rpm")
+
+image.layer(
+    name = "layer-with-only-one-locally-installed-rpm",
+    build_appliance = ":fake-build-appliance-from-host",
+    rpms = [":rpm-test-cheese-2-1.rpm"],
+)
+
 # Exercises:
 #  - all forms of specifying a tarball to extract
 #  - installing and removing RPMs
@@ -170,6 +186,8 @@ image.feature(
 image.feature(
     name = "feature_tar_and_rpms",
     rpms = {
+        # Local RPM file that is not (yet) installed or published
+        ":rpm-test-cheese-2-1.rpm": "install",
         "rpm-test-carrot": "remove_if_exists",  # Installed by `parent_layer`
         "rpm-test-mice": "install",
         # No-op in `child_layer` -- it was never installed
@@ -443,6 +461,30 @@ image.layer(
 image.package(name = "child_layer.sendstream")
 
 image.package(name = "child_layer.btrfs")
+
+# This will install /usr/share/rpm_test/cheese2.txt.
+image.layer(
+    name = "base_cheese_layer",
+    parent_layer = ":hello_world_base",
+    rpms = {":rpm-test-cheese-2-1.rpm": "install"},
+    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+)
+
+# This downgrades and installs /usr/share/rpm_test/cheese1.txt.
+image.layer(
+    name = "older_cheese_layer",
+    parent_layer = ":base_cheese_layer",
+    rpms = {":rpm-test-cheese-1-1.rpm": "install"},
+    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+)
+
+# This upgrades and installs /usr/share/rpm_test/cheese3.txt.
+image.layer(
+    name = "newer_cheese_layer",
+    parent_layer = ":base_cheese_layer",
+    rpms = {":rpm-test-cheese-3-1.rpm": "install"},
+    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+)
 
 ##
 ## These few rules help test the `image.layer` `from_sendstream` feature.

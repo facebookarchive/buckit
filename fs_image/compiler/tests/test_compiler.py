@@ -19,6 +19,7 @@ from .mock_subvolume_from_json_file import (
 _orig_btrfs_get_volume_props = svod._btrfs_get_volume_props
 FAKE_SUBVOL = 'FAKE_SUBVOL'
 
+
 def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
     '''
     The purpose of these mocks is to run the compiler while recording

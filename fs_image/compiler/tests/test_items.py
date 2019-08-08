@@ -9,11 +9,13 @@ import tempfile
 import unittest
 import unittest.mock
 
-from artifacts_dir import find_repo_root
 from contextlib import contextmanager, ExitStack
+from find_built_subvol import find_built_subvol
 from subvol_utils import get_subvolume_path
 
 from btrfs_diff.tests.render_subvols import render_sendstream
+from rpm.common import Path
+from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
@@ -553,7 +555,6 @@ class ItemsTestCase(unittest.TestCase):
                         subvolumes_dir=mounter_subvolumes_dir,
                     )
 
-
     def test_symlink(self):
         self._check_item(
             SymlinkToDirItem(from_target='t', source='x', dest='y'),
@@ -997,6 +998,21 @@ class ItemsTestCase(unittest.TestCase):
                     layer_opts,
                 )(subvol)
 
+            # Cannot pass both `name` and `source`
+            with self.assertRaisesRegex(
+                AssertionError,
+                'Exactly one of `name` or `source` must be set .*',
+            ):
+                RpmActionItem.get_phase_builder(
+                    [RpmActionItem(
+                        from_target='m',
+                        name='rpm-test-milk',
+                        source='rpm-test-milk',
+                        action=RpmAction.install,
+                    )],
+                    layer_opts,
+                )(subvol)
+
             RpmActionItem.get_phase_builder(
                 [
                     RpmActionItem(
@@ -1007,6 +1023,13 @@ class ItemsTestCase(unittest.TestCase):
                         'rpm-test-milk',
                         'rpm-test-carrot',
                     ]
+                ] + [
+                    RpmActionItem(
+                        from_target='t',
+                        source=(Path(__file__).dirname() /
+                            "rpm-test-cheese-1-1.rpm").decode(),
+                        action=RpmAction.install,
+                    )
                 ],
                 layer_opts,
             )(subvol)
@@ -1040,6 +1063,7 @@ class ItemsTestCase(unittest.TestCase):
                     'share': ['(Dir)', {
                         'rpm_test': ['(Dir)', {
                             'carrot.txt': ['(File d13)'],
+                            'cheese1.txt': ['(File d36)'],
                             'milk.txt': ['(File d12)'],
                             'post.txt': ['(File d6)'],
                         }],
@@ -1078,8 +1102,59 @@ class ItemsTestCase(unittest.TestCase):
                 artifacts_may_require_repo=True,  # This value is ignored.
             ))
 
+    def test_rpm_action_item_auto_downgrade(self):
+        layer_opts = LayerOpts(
+            layer_target='fake-target',
+            yum_from_snapshot=Path(__file__).dirname() /
+                'yum-from-test-snapshot',
+            build_appliance=None,
+            artifacts_may_require_repo=False,  # unused
+        )
+        parent_subvol = find_built_subvol(
+            (Path(__file__).dirname() / 'test-with-one-local-rpm').decode()
+        )
+        src_rpm = Path(__file__).dirname() / "rpm-test-cheese-1-1.rpm"
+
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            # ensure cheese2 is installed in the parent from rpm-test-cheese-2-1
+            assert os.path.isfile(
+                parent_subvol.path('/usr/share/rpm_test/cheese2.txt')
+            )
+            # make sure the RPM we are installing is older in order to
+            # trigger the downgrade
+            src_data = RpmMetadata.from_file(src_rpm)
+            subvol_data = RpmMetadata.from_subvol(parent_subvol, src_data.name)
+            assert compare_rpm_versions(src_data, subvol_data) < 0
+
+            subvol = temp_subvolumes.snapshot(parent_subvol, 'rpm_action')
+            RpmActionItem.get_phase_builder(
+                [
+                    RpmActionItem(
+                        from_target='t',
+                        source=src_rpm.decode(),
+                        action=RpmAction.install)
+                ],
+                layer_opts,
+            )(subvol)
+            subvol.run_as_root([
+                'rm', '-rf',
+                subvol.path('dev'),
+                subvol.path('meta'),
+                subvol.path('var'),
+            ])
+            self.assertEqual(['(Dir)', {
+                'usr': ['(Dir)', {
+                    'share': ['(Dir)', {
+                        'rpm_test': ['(Dir)', {
+                            'cheese1.txt': ['(File d36)'],
+                        }],
+                    }],
+                }],
+            }], _render_subvol(subvol))
+
     def test_rpm_action_conflict(self):
-        # Test both install-install and install-remove conflicts.
+        # Test both install-install, install-remove, and install-downgrade
+        # conflicts.
         for rpm_actions in (
             (('cat', RpmAction.install), ('cat', RpmAction.install)),
             (
@@ -1096,6 +1171,42 @@ class ItemsTestCase(unittest.TestCase):
                     ],
                     DUMMY_LAYER_OPTS,
                 )
+
+        with self.assertRaisesRegex(RuntimeError, 'RPM action conflict '):
+            # An extra test case for local RPM name conflicts (filenames are
+            # different but RPM names are the same)
+            RpmActionItem.get_phase_builder(
+                [
+                    RpmActionItem(
+                        from_target='t',
+                        source=(Path(__file__).dirname() /
+                            "rpm-test-cheese-2-1.rpm").decode(),
+                        action=RpmAction.install,
+                    ),
+                    RpmActionItem(
+                        from_target='t',
+                        source=(Path(__file__).dirname() /
+                            "rpm-test-cheese-1-1.rpm").decode(),
+                        action=RpmAction.remove_if_exists,
+                    ),
+                ],
+                DUMMY_LAYER_OPTS,
+            )
+
+    def test_rpm_action_no_passing_downgrade(self):
+        with self.assertRaisesRegex(
+            AssertionError, '\'downgrade\' cannot be passed'
+        ):
+            RpmActionItem.get_phase_builder(
+                [
+                    RpmActionItem(
+                        from_target='t',
+                        name='derp',
+                        action=RpmAction.downgrade
+                    )
+                ],
+                DUMMY_LAYER_OPTS,
+            )
 
 
 if __name__ == '__main__':

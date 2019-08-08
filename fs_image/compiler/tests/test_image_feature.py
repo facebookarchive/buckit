@@ -53,7 +53,10 @@ class ImageFeatureTestCase(unittest.TestCase):
             ),
             (
                 RpmActionItem.get_phase_builder,
-                (si.ID_TO_ITEM['.rpms/install/rpm-test-mice'],),
+                (
+                    si.ID_TO_ITEM['.rpms/install/rpm-test-mice'],
+                    si.ID_TO_ITEM['.rpms/install/rpm-test-cheese-2-1.rpm'],
+                ),
             ),
             (
                 RemovePathItem.get_phase_builder,

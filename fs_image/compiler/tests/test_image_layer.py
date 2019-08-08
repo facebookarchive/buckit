@@ -50,15 +50,15 @@ class ImageLayerTestCase(unittest.TestCase):
             yield find_built_subvol(TARGET_TO_PATH[target])
 
     def _check_hello(self, subvol_path):
-        with open(os.path.join(subvol_path, 'hello_world')) as hello:
+        with open(os.path.join(subvol_path, b'hello_world')) as hello:
             self.assertEqual('', hello.read())
 
     def _check_parent(self, subvol_path):
         self._check_hello(subvol_path)
         # :parent_layer
         for path in [
-            'usr/share/rpm_test/hello_world.tar',
-            'foo/bar/even_more_hello_world.tar',
+            b'usr/share/rpm_test/hello_world.tar',
+            b'foo/bar/even_more_hello_world.tar',
         ]:
             self.assertTrue(
                 os.path.isfile(os.path.join(subvol_path, path)),
@@ -66,19 +66,19 @@ class ImageLayerTestCase(unittest.TestCase):
             )
         # :feature_dirs not tested by :parent_layer
         self.assertTrue(
-            os.path.isdir(os.path.join(subvol_path, 'foo/bar/baz')),
+            os.path.isdir(os.path.join(subvol_path, b'foo/bar/baz')),
         )
         # :hello_world_base was mounted here
         self.assertTrue(os.path.exists(
-            os.path.join(subvol_path, 'mounted_hello/hello_world')
+            os.path.join(subvol_path, b'mounted_hello/hello_world')
         ))
 
         # :feature_symlinks
         for source, dest in [
-            ('foo/bar', 'foo/fighter'),
-            ('foo/bar', 'foo/face'),
-            ('foo/bar', 'foo/bar/baz/bar'),
-            ('foo/hello_world.tar', 'foo/symlink_to_hello_world.tar'),
+            (b'foo/bar', b'foo/fighter'),
+            (b'foo/bar', b'foo/face'),
+            (b'foo/bar', b'foo/bar/baz/bar'),
+            (b'foo/hello_world.tar', b'foo/symlink_to_hello_world.tar'),
         ]:
             self.assertTrue(
                 os.path.exists(os.path.join(subvol_path, source)),
@@ -91,7 +91,7 @@ class ImageLayerTestCase(unittest.TestCase):
             )
 
             self.assertEqual(
-                os.path.join('/', source),
+                os.path.join(b'/', source),
                 os.readlink(os.path.join(subvol_path, dest))
             )
 
@@ -99,18 +99,19 @@ class ImageLayerTestCase(unittest.TestCase):
         self._check_parent(subvol_path)
         for path in [
             # :feature_tar_and_rpms
-            'foo/borf/hello_world',
-            'foo/hello_world',
-            'usr/share/rpm_test/mice.txt',
+            b'foo/borf/hello_world',
+            b'foo/hello_world',
+            b'usr/share/rpm_test/mice.txt',
+            b'usr/share/rpm_test/cheese2.txt',
             # :child_layer
-            'foo/extracted_hello/hello_world',
-            'foo/more_extracted_hello/hello_world',
+            b'foo/extracted_hello/hello_world',
+            b'foo/more_extracted_hello/hello_world',
         ]:
             self.assertTrue(os.path.isfile(os.path.join(subvol_path, path)))
         for path in [
             # :feature_tar_and_rpms ensures these are absent
-            'usr/share/rpm_test/carrot.txt',
-            'usr/share/rpm_test/milk.txt',
+            b'usr/share/rpm_test/carrot.txt',
+            b'usr/share/rpm_test/milk.txt',
         ]:
             self.assertFalse(os.path.exists(os.path.join(subvol_path, path)))
 
@@ -121,16 +122,39 @@ class ImageLayerTestCase(unittest.TestCase):
             'hello_world_base',
             mount_config={'runtime_source': {'type': 'chicken'}},
         ) as subvol:
-            self._check_hello(subvol.path().decode())
+            self._check_hello(subvol.path())
         with self.target_subvol('parent_layer') as subvol:
-            self._check_parent(subvol.path().decode())
+            self._check_parent(subvol.path())
             # Cannot check this in `_check_parent`, since that gets called
             # by `_check_child`, but the RPM gets removed in the child.
-            self.assertTrue(os.path.isfile(os.path.join(
-                subvol.path().decode(), 'usr/share/rpm_test/carrot.txt',
-            )))
+            self.assertTrue(os.path.isfile(
+                subvol.path('usr/share/rpm_test/carrot.txt')
+            ))
         with self.target_subvol('child_layer') as subvol:
-            self._check_child(subvol.path().decode())
+            self._check_child(subvol.path())
+        with self.target_subvol('base_cheese_layer') as subvol:
+            self._check_hello(subvol.path())
+            self.assertTrue(os.path.isfile(
+                subvol.path('/usr/share/rpm_test/cheese2.txt')
+            ))
+        with self.target_subvol('older_cheese_layer') as subvol:
+            self._check_hello(subvol.path())
+            self.assertTrue(os.path.isfile(
+                subvol.path('/usr/share/rpm_test/cheese1.txt')
+            ))
+            # Make sure the original file is removed when the RPM is downgraded
+            self.assertFalse(os.path.isfile(
+                subvol.path('/usr/share/rpm_test/cheese2.txt')
+            ))
+        with self.target_subvol('newer_cheese_layer') as subvol:
+            self._check_hello(subvol.path())
+            self.assertTrue(os.path.isfile(
+                subvol.path('/usr/share/rpm_test/cheese3.txt')
+            ))
+            # Make sure the original file is removed when the RPM is upgraded
+            self.assertFalse(os.path.isfile(
+                subvol.path('/usr/share/rpm_test/cheese2.txt')
+            ))
 
     def test_layer_from_demo_sendstreams(self):
         # `btrfs_diff.demo_sendstream` produces a subvolume send-stream with

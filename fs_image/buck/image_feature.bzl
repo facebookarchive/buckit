@@ -371,7 +371,15 @@ def _normalize_remove_paths(remove_paths):
 
     return normalized
 
-def _normalize_rpms(rpms):
+def _rpm_name_or_source(name_source):
+    # Normal RPM names cannot have a colon, whereas target paths
+    # ALWAYS have a colon.
+    if ":" in name_source:
+        return "source"
+    else:
+        return "name"
+
+def _normalize_rpms(target_tagger, rpms):
     if rpms == None:
         return []
 
@@ -386,13 +394,19 @@ def _normalize_rpms(rpms):
         elif types.is_tuple(rpm):  # Handles `rpms` being a dict, too
             if len(rpm) != 2:
                 fail("Rpm entry {} must be (name, action)".format(rpm))
-            dct = {"name": rpm[0], "action": rpm[1]}
+            dct = {"action": rpm[1], _rpm_name_or_source(rpm[0]): rpm[0]}
         else:
             if not types.is_string(rpm):
                 fail("Bad rpms item {}".format(rpm))
-            dct = {"name": rpm, "action": "install"}
+            dct = {"action": "install", _rpm_name_or_source(rpm): rpm}
+
         if dct["action"] not in valid_actions:
             fail("Action for rpm {} must be in {}".format(rpm, valid_actions))
+
+        source = dct.pop("source", None)
+        if source != None:
+            dct["source"] = _tag_target(target_tagger, source)
+
         normalized.append(dct)
     return normalized
 
@@ -657,7 +671,7 @@ def image_feature(
         # names right here, since we'd need the repo snapshot to decide
         # whether the names are valid, and whether they contain a
         # version or release number.  That'll happen later in the build.
-        rpms = _normalize_rpms(rpms),
+        rpms = _normalize_rpms(target_tagger, rpms),
         symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
         symlinks_to_files = _normalize_symlinks(symlinks_to_files),
         features = [

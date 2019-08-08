@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 import sys
 
-from typing import Iterable, List, Mapping, NamedTuple, Optional, Set
+from typing import Iterable, List, Mapping, NamedTuple, Optional, Set, Tuple
 
 from . import mount_item
 from . import procfs_serde
@@ -30,10 +30,11 @@ from .provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from .requires import require_directory, require_file
 from .subvolume_on_disk import SubvolumeOnDisk
 
-from artifacts_dir import find_repo_root
 from fs_image.common import nullcontext
 from nspawn_in_subvol import nspawn_in_subvol, \
     parse_opts as nspawn_in_subvol_parse_opts
+from rpm.common import Path
+from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from subvol_utils import Subvol
 
 # This path is off-limits to regular image operations, it exists only to
@@ -45,6 +46,7 @@ from subvol_utils import Subvol
 # NB: The trailing slash is significant, making this a protected directory,
 # not a protected file.
 META_DIR = 'meta/'
+
 
 @enum.unique
 class PhaseOrder(enum.Enum):
@@ -921,6 +923,7 @@ class RpmAction(enum.Enum):
     # not already installed, but `yum` doesn't seem to support that, and
     # implementing it manually is a hassle.
     remove_if_exists = 'remove_if_exists'
+    downgrade = 'downgrade'
 
 
 RPM_ACTION_TYPE_TO_YUM_CMD = {
@@ -931,22 +934,54 @@ RPM_ACTION_TYPE_TO_YUM_CMD = {
     RpmAction.install: 'install-n',
     # The way `yum` works, this is a no-op if the package is missing.
     RpmAction.remove_if_exists: 'remove-n',
+    RpmAction.downgrade: 'downgrade',
 }
 
 
 # These items are part of a phase, so they don't get dependency-sorted, so
 # there is no `requires()` or `provides()` or `build()` method.
 class RpmActionItem(metaclass=ImageItem):
-    fields = ['name', 'action']
+    fields = [
+        ('name', None),
+        ('source', None),
+        'action',
+    ]
 
     def customize_fields(kwargs):  # noqa: B902
+        assert (kwargs.get('name') is None) ^ (kwargs.get('source') is None), \
+            f'Exactly one of `name` or `source` must be set in {kwargs}'
         kwargs['action'] = RpmAction(kwargs['action'])
+        assert kwargs['action'] != RpmAction.downgrade, \
+            '\'downgrade\' cannot be passed'
 
     def phase_order(self):
         return {
             RpmAction.install: PhaseOrder.RPM_INSTALL,
             RpmAction.remove_if_exists: PhaseOrder.RPM_REMOVE,
         }[self.action]
+
+    def _parse_items_to_rpms_and_bindmounts(
+        self, items: List['__class__']
+    ) -> Tuple[List[str], List[str]]:
+        cnt = 0
+        rpms = []
+        addl_bindmounts = []
+        for item in items:
+            if item.name is not None:
+                rpms.append(item.name)
+            else:
+                # For custom bind mount destinations, nspawn is strict on
+                # destinations where the parent directories don't exist.
+                # Because of that, we bind all the local RPMs in "/" with
+                # uniquely prefix-ed names.
+                basename = os.path.basename(item.source)
+                dest = f'/localhostrpm_{cnt}_{basename}'
+                addl_bindmounts += [
+                    '--bindmount-ro', f'{item.source}', dest,
+                ]
+                rpms.append(dest)
+                cnt += 1
+        return rpms, addl_bindmounts
 
     @classmethod
     def get_phase_builder(
@@ -965,27 +1000,53 @@ class RpmActionItem(metaclass=ImageItem):
             '`both yum_from_repo_snapshot and build_appliance`'
         )
 
-        action_to_rpms = {action: set() for action in RpmAction}
+        action_to_items = {action: set() for action in RpmAction}
         rpm_to_actions = {}
         for item in items:
             assert isinstance(item, RpmActionItem), item
-            action_to_rpms[item.action].add(item.name)
-            actions = rpm_to_actions.setdefault(item.name, [])
+            action_to_items[item.action].add(item)
+            if item.source is not None:
+                rpm_name = RpmMetadata.from_file(Path(item.source)).name
+            else:
+                rpm_name = item.name
+            actions = rpm_to_actions.setdefault(rpm_name, [])
             actions.append((item.action, item.from_target))
             # Raise when a layer has multiple actions for one RPM -- even
             # when all actions are the same.  This can be relaxed if needed.
             if len(actions) != 1:
                 raise RuntimeError(
-                    f'RPM action conflict for {item.name}: {actions}'
+                    f'RPM action conflict for {rpm_name}: {actions}'
                 )
 
         def builder(subvol: Subvol):
-            for action, rpms in action_to_rpms.items():
-                if not rpms:
+            # Go through the list of RPMs to install and change the action to
+            # downgrade if it is a local RPM with a lower version than what is
+            # installed.
+            # This is done in the builder because we need access to the subvol.
+            for item in action_to_items[RpmAction.install].copy():
+                if item.source is not None:
+                    a = RpmMetadata.from_file(Path(item.source))
+                    try:
+                        b = RpmMetadata.from_subvol(subvol, a.name)
+                    except (RuntimeError, ValueError):
+                        # This can happen if the RPM DB does not exist in the
+                        # subvolume or the package is not installed.
+                        continue
+                    if compare_rpm_versions(a, b) <= 0:
+                        action_to_items[RpmAction.install].remove(item)
+                        action_to_items[RpmAction.downgrade].add(item)
+
+            for action, items in action_to_items.items():
+                if not items:
                     continue
+
                 # Future: `yum-from-snapshot` is actually designed to run
                 # unprivileged (but we have no nice abstraction for this).
                 if layer_opts.build_appliance is None:
+                    rpms = []
+                    for i in items:
+                        rpms.append(i.name if i.name is not None else i.source)
+
                     subvol.run_as_root([
                         # Since `yum-from-snapshot` variants are generally
                         # Python binaries built from this very repo, in
@@ -1017,11 +1078,17 @@ class RpmActionItem(metaclass=ImageItem):
                         layer_opts.build_appliance,
                         already_exists=True,
                     )
+
+                    rpms, add_bindro = cls._parse_items_to_rpms_and_bindmounts(
+                        cls, items
+                    )
+
                     protected_path_args = ' '.join(sum((
                         ['--protected-path', d]
                             for d in _protected_path_set(subvol)
                     ), []))
-                    opts = nspawn_in_subvol_parse_opts([
+
+                    opts = nspawn_in_subvol_parse_opts(add_bindro + [
                         '--layer', 'UNUSED',
                         '--user', 'root',
                         # You can see below --no-private-network in conjunction

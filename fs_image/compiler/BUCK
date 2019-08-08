@@ -126,9 +126,10 @@ python_library(
         ":procfs_serde",
         ":requires_provides",
         ":subvolume_on_disk",
-        "//fs_image:artifacts_dir",
         "//fs_image:nspawn_in_subvol",
         "//fs_image:subvol_utils",
+        "//fs_image/rpm:common",
+        "//fs_image/rpm:rpm_metadata",
     ],
 )
 
@@ -152,15 +153,18 @@ python_unittest(
     resources = {
         "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
         "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",
+        "//fs_image/compiler/tests:layer-with-only-one-locally-installed-rpm": "tests/test-with-one-local-rpm",
+        "//fs_image/compiler/tests:rpm-test-cheese-1-1.rpm": "tests/rpm-test-cheese-1-1.rpm",
+        "//fs_image/compiler/tests:rpm-test-cheese-2-1.rpm": "tests/rpm-test-cheese-2-1.rpm",
         "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
     },
     deps = [
         ":items",
         ":mock_subvolume_from_json_file",
-        "//fs_image:artifacts_dir",
-        "//fs_image:subvol_utils",
+        "//fs_image:find_built_subvol",
         "//fs_image:testlib_temp_subvolumes",
         "//fs_image/btrfs_diff:testlib_render_subvols",
+        "//fs_image/rpm:rpm_metadata",
     ],
 )
 
@@ -209,6 +213,7 @@ TEST_IMAGE_FEATURE_TRANSITIVE_DEPS = [
     READ_MY_DOC_image_feature_target("feature_bad_dir"),
     READ_MY_DOC_image_feature_target("feature_symlinks"),
     READ_MY_DOC_image_feature_target("feature_tar_and_rpms"),
+    "rpm-test-cheese-2-1.rpm",
     READ_MY_DOC_image_feature_target("feature_mount"),
     "print-ok",
     "dir-print-ok",
@@ -271,6 +276,9 @@ IMAGE_LAYER_DEPS = [
     "validates-build-appliance",
     "child_layer",
     "parent_layer",
+    "base_cheese_layer",
+    "older_cheese_layer",
+    "newer_cheese_layer",
     "hello_world_base",
     "create_ops",
 ]

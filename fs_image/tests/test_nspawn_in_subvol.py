@@ -43,7 +43,6 @@ class NspawnTestCase(unittest.TestCase):
         self.assertTrue(_nspawn_version() > 239)
         self.assertTrue(_nspawn_version() < 1000)
 
-
     def test_exit_code(self):
         self.assertEqual(37, self._nspawn_in(
             'host', ['--', 'sh', '-c', 'exit 37'], check=False,
@@ -170,6 +169,24 @@ class NspawnTestCase(unittest.TestCase):
             ])
             self.assertTrue(os.path.isfile(f'{tmpdir}/testfile'))
             self.assertTrue(os.path.isfile(f'{tmpdir2}/testfile'))
+
+    def test_bindmount_ro(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(subprocess.CalledProcessError):
+                ret = self._nspawn_in('host', [
+                    '--user',
+                    'root',
+                    '--bindmount-ro',
+                    tmpdir, '/tmp',
+                    '--',
+                    'touch',
+                    '/tmp/testfile',
+                ])
+                self.assertEqual(
+                    "touch: cannot touch '/tmp/testfile': " +
+                        "Read-only file system",
+                    ret.stdout,
+                )
 
     def test_xar(self):
         'Make sure that XAR binaries work in vanilla `buck run` containers'
