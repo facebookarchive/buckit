@@ -402,3 +402,36 @@ python_unittest(
         ":temp_repos",
     ],
 )
+
+python_library(
+    name = "rpm_metadata",
+    srcs = ["rpm_metadata.py"],
+    base_module = "rpm",
+    deps = [
+        ":common",
+        "//fs_image:subvol_utils",
+    ],
+    external_deps = [
+        ("rpm", None, "python-rpm"),
+    ],
+)
+
+python_unittest(
+    name = "test-rpm-metadata",
+    srcs = ["tests/test_rpm_metadata.py"],
+    base_module = "rpm",
+    needed_coverage = [
+        (100, ":rpm_metadata"),
+    ],
+    par_style = "zip",
+    resources = {
+        "//fs_image/compiler/tests:child_layer": "tests/child-layer",
+        "//fs_image/compiler/tests:hello_world_base": "tests/hello-layer",
+    },
+    deps = [
+        ":common",
+        ":rpm_metadata",
+        ":temp_repos",
+        "//fs_image:find_built_subvol",
+    ],
+)
