@@ -88,7 +88,6 @@ python_unittest(
     needed_coverage = [
         (100, ":repo_objects"),
     ],
-    par_style = "zip",  # fastzip would break the data include
     deps = [
         ":repo_objects",
         ":temp_repos",
