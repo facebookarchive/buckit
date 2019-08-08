@@ -104,7 +104,7 @@ load(":image_utils.bzl", "image_utils")
 def _get_fbconfig_rule_type():
     return "image_layer"
 
-def image_layer(
+def _bare_image_layer(
         name = None,
         # The name of another `image_layer` target, on top of which the
         # current layer will install its features.
@@ -222,14 +222,6 @@ def image_layer(
         "type": "layer",
     }
 
-    buck_command_alias(
-        name = name + "-container",
-        # Careful: Our unit tests (e.g. for XAR) rely on this not needing
-        # any special command-line arguments besides picking the layer.
-        args = ["--layer", "$(location {})".format(":" + name)],
-        exe = "//fs_image:nspawn-run-in-subvol",
-        visibility = visibility,
-    )
     buck_genrule(
         name = name,
         out = "layer",
@@ -406,3 +398,37 @@ def _compile_image_features(
             )
         ),
     )
+
+def _add_run_in_subvol_target(name, kind, layer_ext = ""):
+    buck_command_alias(
+        name = name + "-" + kind,
+        args = ["--layer", "$(location {})".format(":" + name + layer_ext)] + (
+            ["--boot"] if kind == "boot" else []
+        ),
+        exe = "//fs_image:nspawn-run-in-subvol",
+        visibility = [],
+    )
+
+def image_layer(
+        name = None,
+        # Used to identify that this layer can be booted and will trigger
+        # the generation of a `-boot` target.
+        enable_boot_target = False,
+        **image_layer_kwargs):
+    """
+    Wrap the the creation of the image layer to allow users to interact
+    with the constructed subvol using `buck run //path/to:layer-{container,boot}`.
+    Most of the user documentation is on `_bare_image_layer()`.
+    """
+
+    # First define the actual layer
+    _bare_image_layer(
+        name = name,
+        **image_layer_kwargs
+    )
+
+    # Add the `-container` run target
+    _add_run_in_subvol_target(name, "container")
+
+    if enable_boot_target:
+        _add_run_in_subvol_target(name, "boot")

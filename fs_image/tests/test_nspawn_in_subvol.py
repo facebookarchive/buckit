@@ -8,7 +8,7 @@ import unittest.mock
 
 from nspawn_in_subvol import (
     find_repo_root, find_built_subvol, nspawn_in_subvol, parse_opts,
-    _nspawn_version
+    _nspawn_version,
 )
 from tests.temp_subvolumes import with_temp_subvols
 
@@ -204,3 +204,72 @@ class NspawnTestCase(unittest.TestCase):
         self.assertEqual(
             b"mknod: '/foo': Operation not permitted\n", ret.stderr,
         )
+
+    def test_boot_cmd_is_system_running(self):
+        ret = self._nspawn_in('slimos', [
+            '--boot',
+            # This needs to be root because we don't yet create a proper
+            # login session for non-privileged users when we execute commands.
+            # Systemctl will try and connect to the user session
+            # when it's run as non-root.
+            '--user=root',
+            '--',
+            '/usr/bin/systemctl', 'is-system-running', '--wait',
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        self.assertEqual(0, ret.returncode)
+        self.assertEqual(b'running', ret.stdout.strip())
+        self.assertEqual(b'', ret.stderr)
+
+    def test_boot_cmd_failure(self):
+        ret = self._nspawn_in('slimos', [
+            '--boot',
+            '--',
+            '/usr/bin/false',
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        self.assertEqual(1, ret.returncode)
+        self.assertEqual(b'', ret.stdout)
+        self.assertEqual(b'', ret.stderr)
+
+    def test_boot_forward_fd(self):
+        with tempfile.TemporaryFile() as tf:
+            tf.write(b'hello')
+            tf.seek(0)
+            ret = self._nspawn_in('slimos', [
+                '--boot',
+                '--forward-fd', str(tf.fileno()),
+                '--',
+                '/usr/bin/sh',
+                '-c',
+                '/usr/bin/cat <&3 && /usr/bin/echo goodbye >&3',
+            ], stdout=subprocess.PIPE, check=True)
+            self.assertEqual(b'hello', ret.stdout)
+            tf.seek(0)
+            self.assertEqual(b'hellogoodbye\n', tf.read())
+
+    def test_boot_unprivileged_user(self):
+        ret = self._nspawn_in('slimos', [
+            '--boot',
+            '--',
+            '/bin/whoami',
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        self.assertEqual(0, ret.returncode)
+        self.assertEqual(b'nobody\n', ret.stdout)
+        self.assertEqual(b'', ret.stderr)
+
+    def test_boot_env_clean(self):
+        ret = self._nspawn_in('slimos', [
+            '--boot',
+            '--',
+            '/bin/env',
+        ], stdout=subprocess.PIPE, check=True)
+        self.assertEqual(0, ret.returncode)
+
+        # Verify we aren't getting anything in from the outside we don't want
+        self.assertNotIn(b'BUCK_BUILD_ID', ret.stdout)
+
+        # Verify we get what we expect
+        self.assertIn(b'HOME', ret.stdout)
+        self.assertIn(b'PATH', ret.stdout)
+        self.assertIn(b'LOGNAME', ret.stdout)
+        self.assertIn(b'USER', ret.stdout)
+        self.assertIn(b'TERM', ret.stdout)

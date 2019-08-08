@@ -6,8 +6,7 @@ image.  This target lets you do just that, for example, here is a shell:
     buck run //fs_image:nspawn-run-in-subvol -- --layer "$(
         buck build --show-output \\
             //fs_image/compiler/tests:only-for-tests-read-only-host-clone |
-                cut -f 2- -d ' '
-    )"
+                cut -f 2- -d ' ')"
 
 The above is a handful to remember, so each layer gets a corresponding
 `-container` target.  To be used like so:
@@ -94,10 +93,6 @@ user, which we should probably never do).
 
 ## Future
 
-  - Support for `--boot`?  For now, we just run a single process in the
-    foreground, but --boot may be required if a Chef cookbook needs to talk
-    to the resident systemd.
-
   - Should we drop CAP_NET_ADMIN, or any other capabilities?  Note that
     NET_ADMIN might be needed to set up `--private-network` interfaces.
 
@@ -105,9 +100,11 @@ user, which we should probably never do).
 
 '''
 import argparse
+import functools
 import os
 import pwd
 import re
+import signal
 import subprocess
 import sys
 import uuid
@@ -122,6 +119,8 @@ from fs_image.common import nullcontext
 from send_fds_and_run import popen_and_inject_fds_after_sudo
 from tests.temp_subvolumes import TempSubvolumes
 
+
+DEFAULT_SHELL = '/bin/bash'
 
 def _colon_quote_path(path):
     return re.sub('[\\\\:]', lambda m: '\\' + m.group(0), path)
@@ -205,7 +204,7 @@ def _nspawn_version():
         'systemd-nspawn', '--version']).split()[1])
 
 
-def nspawn_cmd(nspawn_subvol):
+def _nspawn_cmd(nspawn_subvol):
     return [
         # Without this, nspawn would look for the host systemd's cgroup setup,
         # which breaks us in continuous integration containers, which may not
@@ -218,8 +217,6 @@ def nspawn_cmd(nspawn_subvol):
         # These are needed since we do not want to require a working `dbus` on
         # the host.
         '--register=no', '--keep-unit',
-        # Some of the commands we will run will not work correctly as PID 1.
-        '--as-pid2',
         # Randomize --machine so that the container has a random hostname
         # each time. The goal is to help detect builds that somehow use the
         # hostname to influence the resulting image.
@@ -292,7 +289,20 @@ def nspawn_in_subvol(
     # know early rather than later.
     version = _nspawn_version()
 
-    extra_nspawn_args = ['--user', opts.user]
+    # Get the pw database info for the requested user. This is so we can use
+    # the uid/gid for the /logs tmpfs mount and for executing commands
+    # as the right user in the booted case.  Also, we use this set HOME
+    # properly for executing commands with nsenter.
+    # Future: Don't assume that the image password DB is compatible
+    # with the host's, and look there instead.
+    pw = pwd.getpwnam(opts.user)
+
+    if opts.boot:
+        extra_nspawn_args = ['--user=root']
+    else:
+        # If we are not booting nspawn run as PID 2. Some commands
+        # we run directly will not work correctly as PID 1.
+        extra_nspawn_args = ['--as-pid2', f'--user={opts.user}']
 
     if opts.quiet:
         extra_nspawn_args.append('--quiet')
@@ -328,10 +338,7 @@ def nspawn_in_subvol(
         # making `artifacts-dir` fail.
 
     if opts.logs_tmpfs:
-        # Future: Don't assume that the image password DB is compatible
-        # with the host's, and look there instead.
-        pw = pwd.getpwnam(opts.user)
-        extra_nspawn_args.extend(['--tmpfs', '/logs:' + ','.join([
+        extra_nspawn_args.extend(['--tmpfs=/logs:' + ','.join([
             f'uid={pw.pw_uid}', f'gid={pw.pw_gid}', 'mode=0755', 'nodev',
             'nosuid', 'noexec',
         ])])
@@ -343,14 +350,14 @@ def nspawn_in_subvol(
     #
     # Don't require coverage in case any weird test hosts lack FUSE.
     if os.path.exists('/dev/fuse'):  # pragma: no cover
-        extra_nspawn_args.extend(['--bind-ro', '/dev/fuse'])
+        extra_nspawn_args.extend(['--bind-ro=/dev/fuse'])
 
     if opts.forward_tls_env:
+        # Add the thrit vars to the user supplied env vars at the beginning
+        # of the list so that if the user overides them, their version wins.
         for k, v in os.environ.items():
             if k.startswith('THRIFT_TLS_'):
-                extra_nspawn_args.append('--setenv={}={}'.format(k, v))
-    # This is last to let the user have final say over the environment.
-    extra_nspawn_args.extend('--setenv=' + se for se in opts.setenv)
+                opts.setenv.insert(0, f'{k}={v}')
 
     if opts.cap_net_admin:
         extra_nspawn_args.append('--capability=CAP_NET_ADMIN')
@@ -360,43 +367,167 @@ def nspawn_in_subvol(
             else nullcontext(src_subvol)
     ) as nspawn_subvol:
 
-        def popen(cmd):
+        # The `popen_` prefix is required since we use the outer
+        # scope's `stdout` and `stderr` in this nested function.
+        def popen(cmd, popen_stdout=None, popen_stderr=None):
             return nspawn_subvol.popen_as_root(
                 cmd,
                 # This is a safeguard in case `sudo` lets through these
                 # unwanted environment variables.
                 env=nspawn_sanitize_env(),
-                # `run_as_root` sends stdout to stderr by default -- avoid that
-                stdout=(1 if stdout is None else stdout),
-                stderr=stderr,
+                # popen_as_root will redirect stdout to stderr if it is None,
+                # don't do that because it will break things that don't
+                # expect that.
+                stdout=(popen_stdout if popen_stdout else (
+                    1 if stdout is None else stdout)),
+                stderr=popen_stderr if popen_stderr else stderr,
                 check=check,
             )
 
         cmd = [
-            *nspawn_cmd(nspawn_subvol),
+            *_nspawn_cmd(nspawn_subvol),
             *extra_nspawn_args,
-            *([
+        ]
+
+        if not opts.boot:
+            # This is last to let the user have final say over the environment.
+            cmd.extend(['--setenv=' + se for se in opts.setenv])
+            cmd.extend([
                 # If we have a cmd to pass to nspawn then lets tell nspawn to
                 # use the --pipe option.  This will bite us if someone tries to
-                # run an interactive repl or directly invoke a shell like
-                # /bin/bash or /bin/zsh.
-                *(['--pipe'] if version >= 242 else []),
+                # run an interactive repl or directly invoke a shell that is not
+                # the default.
+                *(['--pipe']
+                    if (version >= 242 and opts.cmd[0] != DEFAULT_SHELL)
+                    else []),
+                # Ensure that the command is not interpreted as nspawn args
                 '--', *opts.cmd
-            ] if opts.cmd else []),
-        ]
-        with (
-            # Avoid the overhead of the FD-forwarding wrapper if it's not needed
-            popen_and_inject_fds_after_sudo(
-                cmd, opts.forward_fd, popen, set_listen_fds=True,
-            ) if opts.forward_fd else popen(cmd)
-        ) as proc:
-            stdout, stderr = proc.communicate()
-        return subprocess.CompletedProcess(
-            args=proc.args,
-            returncode=proc.returncode,
-            stdout=stdout,
-            stderr=stderr,
-        )
+            ])
+
+            with (
+                popen_and_inject_fds_after_sudo(
+                    cmd,
+                    opts.forward_fd,
+                    popen,
+                    set_listen_fds=True,
+                ) if opts.forward_fd else popen(cmd)
+            ) as cmd_proc:
+                cmd_stdout, cmd_stderr = cmd_proc.communicate()
+
+            return subprocess.CompletedProcess(
+                args=cmd_proc.args,
+                returncode=cmd_proc.returncode,
+                stdout=cmd_stdout,
+                stderr=cmd_stderr,
+            )
+
+        # We want to run a command in a booted container
+        elif opts.boot:
+            def copy_wrapper_cmd(sv) -> str:
+                # Copy in the wrapper script for exfiltrating the pid of systemd
+                # to the outside world.
+                wrapper_path = sv.path('wrap_systemd_exec.sh')
+                wrapper_source = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "wrap_systemd_exec.sh"
+                )
+                sv.run_as_root(['cp', '-a', wrapper_source, wrapper_path])
+
+                # Return a path that is abs *within* the container filesystem
+                # since nspawn will execute this inside the container.
+                return os.path.join(b'/', os.path.basename(wrapper_path))
+
+            # Instead of using the `--boot` argument to `systemd-nspawn` we
+            # are going to ask systemd-nspawn to invoke a wrapper to the
+            # init system so that we can exfiltrate the process id of the
+            # process.
+            cmd.extend([
+                '--bind-ro=/proc:/outerproc',
+                '--',
+                copy_wrapper_cmd(nspawn_subvol)
+            ])
+
+            # Create a partial of the popen with stdout/stderr being captured
+            boot_popen = functools.partial(popen,
+                popen_stdout=subprocess.PIPE,
+                popen_stderr=subprocess.PIPE,
+            )
+
+            # Create a pipe that we can forward into the namespace that our
+            # wrapper can use to exfil data about the namespace we've been put
+            # into before we hand control over to the init system.
+            exfil_r, exfil_w = os.pipe()
+            with (
+                popen_and_inject_fds_after_sudo(
+                    cmd,
+                    [exfil_w],  # Forward the write fd of the pipe
+                    boot_popen,
+                    set_listen_fds=True
+                )
+            ) as boot_proc:
+                # Close the write fd of the pipe from this process so we
+                # can read from this side.
+                os.close(exfil_w)
+
+                f = os.fdopen(exfil_r, 'r')
+                try:
+                    systemd_pid = f.read().split(':')[1].strip()
+                finally:
+                    f.close()
+
+                # A set of default environment variables that should be
+                # setup for the command inside the container.  This list models
+                # what the default env looks for a shell launched inside
+                # of systemd-nspawn.
+                default_env = {
+                    'HOME': pw.pw_dir,
+                    'LOGNAME': opts.user,
+                    'PATH': '/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin',
+                    'USER': opts.user,
+                    'TERM': os.environ.get('TERM')
+                }
+                for k, v in default_env.items():
+                    opts.setenv.append(f'{k}={v}')
+
+                # Set the user properly for the nsenter'd command to run.
+                # Future: consider properly logging in as the user with su
+                # or something better so that a real user session is created
+                # within the booted container.
+                nsenter_cmd = ['nsenter', f'--target={systemd_pid}', '--all',
+                    f'--setuid={pw.pw_uid}', f'--setgid={pw.pw_gid}',
+                    # Clear and set the new env
+                    'env', '-',
+                    *opts.setenv,
+                    *opts.cmd]
+
+                with (
+                    popen_and_inject_fds_after_sudo(
+                        nsenter_cmd,
+                        opts.forward_fd,
+                        popen,
+                        set_listen_fds=True,
+                    ) if opts.forward_fd else popen(nsenter_cmd)
+                ) as nsenter_proc:
+                    nsenter_stdout, nsenter_stderr = nsenter_proc.communicate()
+
+                # Terminate the container gracefully by sending a
+                # SIGRTMIN+3 (37) directly to the systemd pid.
+                nspawn_subvol.run_as_root(
+                    ['kill', '-s', str(signal.SIGRTMIN + 3), systemd_pid])
+
+                boot_stdout, boot_stderr = boot_proc.communicate()
+
+            # What we care about is the return status/data from the cmd we
+            # wanted to execute.
+            return subprocess.CompletedProcess(
+                args=nsenter_proc.args,
+                returncode=nsenter_proc.returncode,
+                stdout=nsenter_stdout,
+                stderr=nsenter_stderr,
+            )
+
+        else:
+            raise RuntimeError("This should be impossible")  # pragma: nocover
 
 
 def parse_opts(argv):
@@ -463,7 +594,7 @@ def parse_opts(argv):
         '--user', default='nobody',
         help='Changes to the specified user once in the nspawn container. '
             'Defaults to `nobody` to give you a mostly read-only view of '
-            'the OS.',
+            'the OS.  This is honored when using the --boot option as well.',
     )
     parser.add_argument(
         '--setenv', action='append', default=[],
@@ -499,8 +630,18 @@ def parse_opts(argv):
         '--quiet', action='store_true', help='See `man systemd-nspawn`.',
     )
     parser.add_argument(
-        'cmd', nargs='*',
-        help='The command to run (as PID 2) in the container',
+        '--boot', action='store_true',
+        help='Boot the container with nspawn.  This means invoke systemd '
+            'as pid 1 and let it start up services',
+    )
+    parser.add_argument(
+        'cmd', nargs='*', default=[DEFAULT_SHELL],
+        help='The command to run in the container.  When not using '
+            '--boot the command is run as PID2.  In the booted case '
+            'the command is run using nsenter inside all the namespaces '
+            'used to construct the container with systemd-nspawn.  If '
+            'a command is not specified the default is to invoke a bash '
+            'shell.'
     )
     opts = parser.parse_args(argv)
     assert not opts.snapshot_into or opts.snapshot, opts
