@@ -108,7 +108,13 @@ int main(int argc, char **argv) {{
         "_dep_for_test_wrapper_{}".format(idx): "$(location {})".format(
             target,
         )
-        for idx, target in enumerate(wrapper_props.porcelain_deps)
+        for idx, target in enumerate(wrapper_props.porcelain_deps + [
+            # Without this extra dependency, Buck will fetch the
+            # `cpp_unittest` from cache without also fetching
+            # `wrapper_binary`.  However, `exec_nspawn_wrapper.c` needs
+            # `wrapper_binary` to be present in the local `buck-out`.
+            ":" + wrapper_binary,
+        ])
     })
 
     # This is a `cpp_unittest` for reasons very similar to why the wrapper
