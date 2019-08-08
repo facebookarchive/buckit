@@ -2,7 +2,6 @@
 import os
 import shutil
 import unittest
-import urllib.parse
 
 from ..common import temp_dir
 from ..gpg_keys import snapshot_gpg_keys
@@ -21,7 +20,7 @@ class OpenUrlTestCase(unittest.TestCase):
 
             def try_snapshot(snapshot_dir):
                 snapshot_gpg_keys(
-                    key_urls=['file://' + urllib.parse.quote(hello_path)],
+                    key_urls=[hello_path.file_url()],
                     whitelist_dir=whitelist_dir,
                     snapshot_dir=snapshot_dir,
                 )

@@ -2,7 +2,6 @@
 import subprocess
 import sys
 import unittest
-import urllib.parse
 
 from ..common import temp_dir
 from ..open_url import open_url
@@ -17,7 +16,7 @@ class OpenUrlTestCase(unittest.TestCase):
                 out_f.write('world')
 
             # First, check file:// URLs
-            with open_url('file://' + urllib.parse.quote(hello_path)) as in_f:
+            with open_url(hello_path.file_url()) as in_f:
                 self.assertEqual(b'world', in_f.read())
 
             # Now, http:// URLs

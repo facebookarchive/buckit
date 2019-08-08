@@ -8,6 +8,7 @@ import stat
 import struct
 import time
 import tempfile
+import urllib.parse
 
 from contextlib import contextmanager
 from typing import AnyStr, Callable, Iterable, List, NamedTuple, TypeVar
@@ -36,15 +37,23 @@ class Path(bytes):
     def __rtruediv__(self, left: AnyStr) -> 'Path':
         return Path(os.path.join(byteme(left), self))
 
+    def file_url(self) -> str:
+        return 'file://' + urllib.parse.quote(os.path.abspath(self))
+
     def basename(self) -> 'Path':
         return Path(os.path.basename(self))
 
     def dirname(self) -> 'Path':
         return Path(os.path.dirname(self))
 
-    def decode(self) -> str:  # Future: add other args as needed.
+    def decode(self, encoding='utf-8', errors=None) -> str:
         # Python uses `surrogateescape` for invalid UTF-8 from the filesystem.
-        return super().decode(errors='surrogateescape')
+        if errors is None:
+            errors = 'surrogateescape'
+        # Future: if there's a legitimate reason to allow other `errors`,
+        # this can be fixed -- just make `surrogatescape` a normal default.
+        assert errors == 'surrogateescape', errors
+        return super().decode(encoding, errors)
 
     @classmethod
     def from_argparse(cls, s: str) -> 'Path':

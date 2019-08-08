@@ -6,13 +6,12 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
-import urllib.parse
 
 from configparser import ConfigParser
 from contextlib import contextmanager
 from typing import Dict, List, NamedTuple, Optional
 
-from ..common import Path
+from ..common import Path, temp_dir
 
 
 def busybox_path() -> str:
@@ -151,33 +150,29 @@ SAMPLE_STEPS = [
 ]
 
 
-def build_rpm(package_dir: str, arch: str, rpm: Rpm) -> str:
+def build_rpm(package_dir: Path, arch: str, rpm: Rpm) -> bytes:
     'Returns the filename of the built RPM.'
-    with tempfile.TemporaryDirectory(dir=package_dir) as td, \
-            tempfile.NamedTemporaryFile() as tf:
+    with temp_dir(dir=package_dir) as td, tempfile.NamedTemporaryFile() as tf:
         tf.write(rpm.spec().encode())
         tf.flush()
         subprocess.run(
             [
                 rpmbuild_path(), '-bb', '--target', arch,
-                '--buildroot', os.path.join(td, 'build'), tf.name,
+                '--buildroot', td / 'build', tf.name,
             ],
-            env={'HOME': os.path.join(td, 'home')},
+            env={'HOME': td / 'home'},
             check=True,
         )
         # `rpmbuild` has a non-configurable output layout, so
         # we'll move the resulting rpm into our package dir.
-        rpms_dir = os.path.join(td, 'home/rpmbuild/RPMS', arch)
+        rpms_dir = td / 'home/rpmbuild/RPMS' / arch
         rpm_name, = os.listdir(rpms_dir)
-        os.rename(
-            os.path.join(rpms_dir, rpm_name),
-            os.path.join(package_dir, rpm_name),
-        )
+        os.rename(rpms_dir / rpm_name, package_dir / rpm_name)
         return rpm_name
 
 
 def make_repo_steps(
-    out_dir: str, repo_change_steps: List[Dict[str, Repo]], arch: str,
+    out_dir: Path, repo_change_steps: List[Dict[str, Repo]], arch: str,
     avoid_symlinks: bool = False,
 ):
     # When an RPM occurs in two different repos, we want it to be
@@ -188,51 +183,50 @@ def make_repo_steps(
     # The repos that exist at the current step.
     repos = {}
     for step, repo_changes in enumerate(repo_change_steps):
+        step = Path(str(step))
         for repo_name, repo in repo_changes.items():
             if repo is None:
                 del repos[repo_name]
             else:
                 repos[repo_name] = repo
-        step_dir = os.path.join(out_dir, str(step))
+        step_dir = out_dir / step
         os.makedirs(step_dir)
         yum_conf = ConfigParser()
         yum_conf['main'] = {}
         for repo_name, repo in repos.items():
-            repo_dir = os.path.join(step_dir, repo_name)
-            yum_conf[repo_name] = {
-                'baseurl': 'file://' + urllib.parse.quote(repo_dir),
-            }
+            repo_dir = step_dir / repo_name
+            yum_conf[repo_name] = {'baseurl': repo_dir.file_url()}
             if isinstance(repo, str):  # Alias of another repo
                 assert repo in repos
                 if avoid_symlinks:
-                    shutil.copytree(os.path.join(step_dir, repo), repo_dir)
+                    shutil.copytree(step_dir / repo, repo_dir)
                 else:
                     os.symlink(repo, repo_dir)
                 continue
             # Each repo's package dir is different to exercise the fact
             # that the same file's location may differ across repos.
-            package_dir = os.path.join(repo_dir, f'{repo_name}-pkgs')
+            package_dir = repo_dir / f'{repo_name}-pkgs'
             os.makedirs(package_dir)
             for rpm in repo.rpms:
                 prev_path = rpm_to_path.get(rpm)
                 if prev_path and avoid_symlinks:
                     shutil.copy(
-                        os.path.join(out_dir, prev_path),
-                        os.path.join(package_dir, os.path.basename(prev_path)),
+                        out_dir / prev_path,
+                        package_dir / prev_path.basename(),
                     )
                 elif prev_path:
                     os.symlink(
-                        os.path.join('../../..', prev_path),
-                        os.path.join(package_dir, os.path.basename(prev_path)),
+                        '../../..' / prev_path,
+                        package_dir / prev_path.basename(),
                     )
                 else:
-                    rpm_to_path[rpm] = os.path.join(
-                        str(step), repo_name, os.path.basename(package_dir),
-                        build_rpm(package_dir, arch, rpm),
+                    rpm_to_path[rpm] = (
+                        step / repo_name / package_dir.basename() /
+                        build_rpm(package_dir, arch, rpm)
                     )
             # Now that all RPMs were built, we can generate the Yum metadata
             subprocess.run(['createrepo_c', repo_dir], check=True)
-        with open(os.path.join(step_dir, 'yum.conf'), 'w') as out_f:
+        with open(step_dir / 'yum.conf', 'w') as out_f:
             yum_conf.write(out_f)
 
 @contextmanager
@@ -249,10 +243,10 @@ def temp_repos_steps(base_dir=None, arch: str = 'x86_64', *args, **kwargs):
         repodata/{repomd.xml,other-repodata.{xml,sqlite}.bz2}
         reponame-pkgs/rpm-test-<name>-<version>-<release>.<arch>.rpm
     '''
-    td = tempfile.mkdtemp(dir=base_dir)
+    td = Path(tempfile.mkdtemp(dir=base_dir))
     try:
         make_repo_steps(out_dir=td, arch=arch, *args, **kwargs)
-        yield Path(td)
+        yield td
     except BaseException:  # Clean up even on Ctrl-C
         shutil.rmtree(td)
         raise

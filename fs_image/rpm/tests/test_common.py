@@ -23,6 +23,7 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(b'foo/bar', Path('foo') / 'bar')
         self.assertEqual(b'/foo/bar', b'/foo' / Path('bar'))
         self.assertEqual(b'/baz', b'/be/bop' / Path(b'/baz'))
+        self.assertEqual('file:///a%2Cb', Path('/a,b').file_url())
         self.assertEqual(b'bom', Path('/bim/bom').basename())
         self.assertEqual(b'/bim', Path('/bim/bom').dirname())
 

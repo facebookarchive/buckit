@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import unittest
-import urllib.parse
 import tempfile
 
 from . import temp_repos
@@ -27,11 +26,9 @@ class SnapshotRepoTestCase(unittest.TestCase):
 
             snapshot_repo([
                 '--repo-name', 'dog',
-                '--repo-url',
-                    'file://' + urllib.parse.quote(repos_root / '0/dog'),
+                '--repo-url', (repos_root / '0/dog').file_url(),
                 '--gpg-key-whitelist-dir', whitelist_dir.decode(),
-                '--gpg-url',
-                    'file://' + urllib.parse.quote(td / 'fake_gpg_key'),
+                '--gpg-url', (td / 'fake_gpg_key').file_url(),
                 '--snapshot-dir', (td / 'snap').decode(),
                 '--storage', json.dumps({
                     'key': 'test',

@@ -128,7 +128,7 @@ class RepoDownloader:
     def __init__(
         self,
         repo_name: str,
-        repo_url: str,  # Remember to URL-quote e.g. file:// paths here
+        repo_url: str,  # Use `Path.file_url` to get correct quoting
         repo_db_ctx: RepoDBContext,
         storage: Storage,
     ):
