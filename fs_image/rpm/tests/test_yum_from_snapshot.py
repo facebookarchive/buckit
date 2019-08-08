@@ -7,6 +7,7 @@ import unittest
 from contextlib import contextmanager
 
 from ..common import init_logging, Path
+
 from .yum_from_test_snapshot import yum_from_test_snapshot
 
 _INSTALL_ARGS = ['install', '--assumeyes', 'rpm-test-carrot', 'rpm-test-milk']

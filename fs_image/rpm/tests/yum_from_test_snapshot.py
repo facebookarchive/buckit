@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''
-Runs `yum` against a snapshot of the `fs_image/rpm` test repos that are
-built by `tests/build_repos.py`.  Used in the image compiler unit tests.
+Runs `yum` against an ephemeral snapshot of the `temp_repos.py` test repos.
+Used in the image compiler & build appliance unit tests.
 '''
 import json
 import os
@@ -17,8 +17,7 @@ def yum_from_test_snapshot(
     protected_paths: List[AnyStr],
     yum_args: List[AnyStr],
 ):
-    # This works in @mode/opt since the snapshot is baked into the XAR
-    snapshot_dir = Path(os.path.dirname(__file__)) / 'snapshot'
+    snapshot_dir = Path(__file__).dirname() / 'repo_snapshot'  # via `resources`
     yum_from_snapshot(
         storage_cfg=json.dumps({
             'key': 'test',

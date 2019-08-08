@@ -21,7 +21,7 @@ class FilesystemStorage(Storage, plugin_kind='filesystem'):
 
     def __init__(self, *, key: str, base_dir: str):
         self.key = key
-        self.base_dir = base_dir
+        self.base_dir = os.path.abspath(base_dir)
 
     def _path_for_storage_id(self, sid: str) -> str:
         '''

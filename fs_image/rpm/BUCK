@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
@@ -338,15 +339,43 @@ python_binary(
 )
 
 python_binary(
+    name = "temp-snapshot",
+    srcs = ["tests/temp_snapshot.py"],
+    base_module = "rpm",
+    main_module = "rpm.tests.temp_snapshot",
+    par_style = "xar",  # Needed for `busybox` to be visible in @mode/opt
+    deps = [
+        ":db_connection",
+        ":snapshot_repos",
+        ":temp_repos",
+        "//fs_image/rpm/storage:storage",
+    ],
+)
+
+# This is a genrule for performance reasons.  Many tests depend on
+# `yum-from-test-snapshot`, but generating this snapshot takes quite a few
+# seconds -- the RPM toolchain is not blazing fast, and it does a
+# non-negligible amount of I/O.  Building this only once results massively
+# speeds up `buck test fs_image/...`.
+buck_genrule(
+    name = "repo_snapshot_dir_for_tests",
+    out = "unused",
+    bash = """
+set -ue
+logfile=\\$(mktemp)
+# Only print the logs on error.
+$(exe :temp-snapshot) "$OUT" &> "$logfile" || (cat "$logfile" 1>&2 ; exit 1)
+""",
+)
+
+python_binary(
     name = "yum-from-test-snapshot",
     srcs = ["tests/yum_from_test_snapshot.py"],
     base_module = "rpm",
     main_module = "rpm.tests.yum_from_test_snapshot",
-    par_style = "xar",  # Lets us embed `tests/snapshot`
-    # This is temporary -- once `snapshot-repos` lands, we should
-    # dynamically generate the snapshot, and test against that, rather than
-    # testing against this hardcoded thing.
-    resources = glob(["tests/snapshot/**"]),
+    # Needed for `repo_server` & `repo_snapshot` to be visible in @mode/opt
+    par_style = "xar",
+    resources = {":repo_snapshot_dir_for_tests": "tests/repo_snapshot"},
     deps = [":yum-from-snapshot-library"],
 )
 
@@ -371,6 +400,7 @@ python_library(
     base_module = "rpm",
     deps = [
         ":common",
+        ":common_args",
         ":gpg_keys",
         ":repo_db",
         ":repo_downloader",
@@ -382,10 +412,7 @@ python_library(
 python_binary(
     name = "snapshot-repos",
     main_module = "rpm.snapshot_repos",
-    deps = [
-        ":common_args",
-        ":snapshot_repos",
-    ],
+    deps = [":snapshot_repos"],
 )
 
 python_unittest(
