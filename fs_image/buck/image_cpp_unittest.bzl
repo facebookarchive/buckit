@@ -7,6 +7,7 @@ load(":image_unittest_helpers.bzl", helpers = "image_unittest_helpers")
 def image_cpp_unittest(
         name,
         layer,
+        boot = False,
         run_as_user = "nobody",
         visibility = None,
         **cpp_unittest_kwargs):
@@ -15,6 +16,7 @@ def image_cpp_unittest(
     wrapper_props = helpers.nspawn_wrapper_properties(
         name = name,
         layer = layer,
+        boot = boot,
         run_as_user = run_as_user,
         inner_test_kwargs = cpp_unittest_kwargs,
         extra_outer_kwarg_names = [],

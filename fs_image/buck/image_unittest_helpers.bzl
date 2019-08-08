@@ -43,6 +43,7 @@ def _tags_to_hide_test():
 def _nspawn_wrapper_properties(
         name,
         layer,
+        boot,
         run_as_user,
         inner_test_kwargs,
         extra_outer_kwarg_names,
@@ -91,12 +92,14 @@ def nspawn_in_subvol_args():
             '--setenv={{}}={{}}'.format(k, os.environ.get(k, ''))
                 for k in {pass_through_env_repr}
         ],
+        *[{maybe_boot}],
         '--', {binary_path_repr},
     ]
 """).format(
             user_repr = repr(run_as_user),
             pass_through_env_repr = outer_test_kwargs.get("env", []),
             binary_path_repr = repr(binary_path),
+            maybe_boot = "'--boot'" if boot else "",
         ))),
         visibility = visibility,
     )

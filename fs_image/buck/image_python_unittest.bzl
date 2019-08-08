@@ -5,6 +5,7 @@ load(":image_unittest_helpers.bzl", helpers = "image_unittest_helpers")
 def image_python_unittest(
         name,
         layer,
+        boot = False,
         run_as_user = "nobody",
         visibility = None,
         par_style = None,
@@ -14,6 +15,7 @@ def image_python_unittest(
     wrapper_props = helpers.nspawn_wrapper_properties(
         name = name,
         layer = layer,
+        boot = boot,
         run_as_user = run_as_user,
         inner_test_kwargs = python_unittest_kwargs,
         # Future: there is probably a "generically correct" way of handling
