@@ -12,4 +12,4 @@ if ! test -d "$DIR"; then
   echo Cannot locate directory containing GHCi iserv script; exit 1
 fi
 
-LD_PRELOAD=<preload_libs> PATH=<binutils_path>:"$PATH" <ghci_iserv_path> "$@"
+LD_PRELOAD="$LD_PRELOAD":<preload_libs> PATH=<binutils_path>:"$PATH" <ghci_iserv_path> "$@"
