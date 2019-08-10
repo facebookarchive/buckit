@@ -146,6 +146,13 @@ class ImageItem(type):
         )
 
 
+# A class representing arguments of build() method of an ImageItem
+class ItemBuildArgs(NamedTuple):
+    subvol: Subvol
+    target_to_path: Mapping[str, str]
+    subvolumes_dir: str
+
+
 def _make_path_normal_relative(orig_d: str) -> str:
     '''
     In image-building, we want relative paths that do not start with `..`,
@@ -248,7 +255,8 @@ class TarballItem(metaclass=ImageItem):
     def requires(self):
         yield require_directory(self.into_dir)
 
-    def build(self, subvol: Subvol):
+    def build(self, args: ItemBuildArgs):
+        subvol = args.subvol
         with _maybe_popen_zstd(self.tarball) as maybe_proc:
             subvol.run_as_root([
                 'tar',
@@ -452,7 +460,8 @@ class InstallFileItem(metaclass=ImageItem):
     def requires(self):
         yield require_directory(os.path.dirname(self.dest))
 
-    def build(self, subvol: Subvol):
+    def build(self, args: ItemBuildArgs):
+        subvol = args.subvol
         dest = subvol.path(self.dest)
         subvol.run_as_root(['cp', self.source, dest])
         build_stat_options(self, subvol, dest)
@@ -469,7 +478,8 @@ class SymlinkBase:
             kwargs['dest'], kwargs['source']
         )
 
-    def build(self, subvol: Subvol):
+    def build(self, args: ItemBuildArgs):
+        subvol = args.subvol
         dest = subvol.path(self.dest)
         # Source is always absolute inside the image subvolume
         source = os.path.join('/', self.source)
@@ -528,7 +538,8 @@ class MakeDirsItem(metaclass=ImageItem):
     def requires(self):
         yield require_directory(self.into_dir)
 
-    def build(self, subvol: Subvol):
+    def build(self, args: ItemBuildArgs):
+        subvol = args.subvol
         outer_dir = self.path_to_make.split('/', 1)[0]
         inner_dir = subvol.path(os.path.join(self.into_dir, self.path_to_make))
         subvol.run_as_root(['mkdir', '-p', inner_dir])
@@ -610,12 +621,8 @@ class MountItem(metaclass=ImageItem):
         # so this item just makes it with default permissions.
         yield require_directory(os.path.dirname(self.mountpoint))
 
-    def build_resolves_targets(
-        self, *,
-        subvol: Subvol,
-        target_to_path: Mapping[str, str],
-        subvolumes_dir: str,
-    ):
+    def build(self, args: ItemBuildArgs):
+        subvol = args.subvol
         mount_dir = os.path.join(
             mount_item.META_MOUNTS_DIR, self.mountpoint, mount_item.MOUNT_MARKER
         )
@@ -627,8 +634,8 @@ class MountItem(metaclass=ImageItem):
         ):
             procfs_serde.serialize(data, subvol, os.path.join(mount_dir, name))
         source_path = self.build_source.to_path(
-            target_to_path=target_to_path,
-            subvolumes_dir=subvolumes_dir,
+            target_to_path=args.target_to_path,
+            subvolumes_dir=args.subvolumes_dir,
         )
         # Support mounting directories and non-directories...  This check
         # follows symlinks for the mount source, which seems correct.

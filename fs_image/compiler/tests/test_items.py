@@ -23,7 +23,7 @@ from ..items import (
     MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
     RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
     SymlinkToFileItem, TarballItem, _hash_tarball, _protected_path_set,
-    tarball_item_factory,
+    tarball_item_factory, ItemBuildArgs,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory, require_file
@@ -78,6 +78,14 @@ def _tarinfo_strip_dir_prefix(dir_prefix):
         return tarinfo
 
     return strip_dir_prefix
+
+
+def _simple_item_build_args(subvol):
+    return ItemBuildArgs(
+        subvol=subvol,
+        target_to_path=None,
+        subvolumes_dir=None
+    )
 
 
 class ItemsTestCase(unittest.TestCase):
@@ -181,7 +189,7 @@ class ItemsTestCase(unittest.TestCase):
             InstallFileItem(
                 from_target='t', source='/dev/null', dest='/d/null',
                 is_executable_=False,
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m444)']}]}],
                 _render_subvol(subvol),
@@ -192,7 +200,7 @@ class ItemsTestCase(unittest.TestCase):
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest='/no_dir/null',
                     is_executable_=False,
-                ).build(subvol)
+                ).build(_simple_item_build_args(subvol))
 
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
@@ -202,7 +210,7 @@ class ItemsTestCase(unittest.TestCase):
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
                 mode='u+rw', user_group='12:34', is_executable_=False,
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m600 o12:34)']}]}],
                 _render_subvol(subvol),
@@ -223,7 +231,7 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(
                 from_target='t', path_to_make='/a/b/', into_dir='/d',
                 user_group='77:88', mode='u+rx',
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
                     'a': ['(Dir m500 o77:88)', {
@@ -239,11 +247,11 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(
                 from_target='t', path_to_make='a', into_dir='/no_dir',
                 user_group='4:0'
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             MakeDirsItem(
                 from_target='t', path_to_make='a/new', into_dir='/d',
                 user_group='5:0'
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
                     # permissions overwritten for this whole tree
@@ -287,11 +295,11 @@ class ItemsTestCase(unittest.TestCase):
 
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('mounter')
-            mount_item.build_resolves_targets(
+            mount_item.build(ItemBuildArgs(
                 subvol=subvol,
                 target_to_path={},
                 subvolumes_dir='unused',
-            )
+            ))
 
             self.assertEqual(['(Dir)', {
                 'lala': ['(File)'],  # An empty mountpoint for /dev/null
@@ -473,11 +481,11 @@ class ItemsTestCase(unittest.TestCase):
                 mount_meow.build_source.to_path(
                     target_to_path={}, subvolumes_dir=mountee_subvolumes_dir,
                 )
-            mount_meow.build_resolves_targets(
+            mount_meow.build(ItemBuildArgs(
                 subvol=mounter,
                 target_to_path={'//fake:path': source_dir},
                 subvolumes_dir=mountee_subvolumes_dir,
-            )
+            ))
 
             # This checks the subvolume **contents**, but not the mounts.
             # Ensure the build created a mountpoint, and populated metadata.
@@ -549,11 +557,11 @@ class ItemsTestCase(unittest.TestCase):
                 with self.assertRaisesRegex(
                     AssertionError, 'Refusing .* nested mount',
                 ):
-                    nested_item.build_resolves_targets(
+                    nested_item.build(ItemBuildArgs(
                         subvol=nested_mounter,
                         target_to_path={'//:fake': d},
                         subvolumes_dir=mounter_subvolumes_dir,
-                    )
+                    ))
 
     def test_symlink(self):
         self._check_item(
@@ -579,13 +587,13 @@ class ItemsTestCase(unittest.TestCase):
             InstallFileItem(
                 from_target='t', source='/dev/null', dest='/file',
                 is_executable_=False,
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             SymlinkToDirItem(
                 from_target='t', source='/dir', dest='/dir_symlink'
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             SymlinkToFileItem(
                 from_target='t', source='file', dest='/file_symlink'
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
 
             self.assertEqual(['(Dir)', {
                 'dir': ['(Dir)', {}],
@@ -692,7 +700,9 @@ class ItemsTestCase(unittest.TestCase):
                 with tarfile.TarFile(t.name, 'w') as tar_obj:
                     tar_obj.addfile(tarfile.TarInfo('exists'))
                 with self.assertRaises(subprocess.CalledProcessError):
-                    _tarball_item(t.name, '/d').build(subvol)
+                    _tarball_item(t.name, '/d').build(
+                        _simple_item_build_args(subvol)
+                    )
 
             # Adding new files & directories works. Overwriting a
             # pre-existing directory leaves the owner+mode of the original
@@ -726,7 +736,9 @@ class ItemsTestCase(unittest.TestCase):
 
                 # Fail when the destination does not exist
                 with self.assertRaises(subprocess.CalledProcessError):
-                    _tarball_item(tar_path, '/no_dir').build(subvol)
+                    _tarball_item(tar_path, '/no_dir').build(
+                        _simple_item_build_args(subvol)
+                    )
 
                 # Before unpacking the tarball
                 orig_content = ['(Dir)', {'d': ['(Dir)', {
@@ -761,7 +773,7 @@ class ItemsTestCase(unittest.TestCase):
                     ),
                 ):
                     self.assertEqual(before, _render_subvol(sv))
-                    item.build(sv)
+                    item.build(_simple_item_build_args(sv))
                     self.assertEqual(after, _render_subvol(sv))
 
     def test_parent_layer_provides(self):
@@ -793,7 +805,7 @@ class ItemsTestCase(unittest.TestCase):
             parent = temp_subvolumes.create('parent')
             MakeDirsItem(
                 from_target='t', into_dir='/', path_to_make='a/b',
-            ).build(parent)
+            ).build(_simple_item_build_args(parent))
             parent_content = ['(Dir)', {'a': ['(Dir)', {'b': ['(Dir)', {}]}]}]
             self.assertEqual(parent_content, _render_subvol(parent))
 
@@ -805,7 +817,7 @@ class ItemsTestCase(unittest.TestCase):
             )(child)
             MakeDirsItem(
                 from_target='t', into_dir='a', path_to_make='c',
-            ).build(child)
+            ).build(_simple_item_build_args(child))
 
             # The parent is unchanged.
             self.assertEqual(parent_content, _render_subvol(parent))
@@ -850,27 +862,27 @@ class ItemsTestCase(unittest.TestCase):
 
             MakeDirsItem(
                 from_target='t', path_to_make='/a/b/c', into_dir='/',
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             for d in ['d', 'e']:
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
                     is_executable_=False,
-                ).build(subvol)
+                ).build(_simple_item_build_args(subvol))
             MakeDirsItem(
                 from_target='t', path_to_make='/f/g', into_dir='/',
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             # Checks that `rm` won't follow symlinks
             SymlinkToDirItem(
                 from_target='t', source='/f', dest='/a/b/f_sym',
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             for d in ['h', 'i']:
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/f/{d}',
                     is_executable_=False,
-                ).build(subvol)
+                ).build(_simple_item_build_args(subvol))
             SymlinkToDirItem(
                 from_target='t', source='/f/i', dest='/f/i_sym',
-            ).build(subvol)
+            ).build(_simple_item_build_args(subvol))
             intact_subvol = ['(Dir)', {
                 'a': ['(Dir)', {
                     'b': ['(Dir)', {
