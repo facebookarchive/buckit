@@ -40,4 +40,9 @@ class ExecuteInstalledTestCase(unittest.TestCase):
                 ],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
-            self.assertEqual((b'ok\n', b''), (ret.stdout, ret.stderr))
+            self.assertEqual(b'ok\n', ret.stdout)
+            # systemd-nspawn >= 242 dumps out an error about capabilities when
+            # run in an environment that drops cap_sys_boot (such as the FB
+            # container runtime).
+            # T48760757
+            # self.assertEqual(b'', ret.stderr)
