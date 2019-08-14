@@ -13,8 +13,7 @@ import os
 from typing import AnyStr, Iterator, Mapping, NamedTuple
 
 from subvol_utils import Subvol
-
-from .subvolume_on_disk import SubvolumeOnDisk
+from find_built_subvol import find_built_subvol
 
 META_MOUNTS_DIR = 'meta/private/mount'
 MOUNT_MARKER = 'MOUNT'
@@ -34,18 +33,15 @@ class BuildSource(NamedTuple):
                 raise AssertionError(
                     f'MountItem could not resolve {self.source}'
                 )
-            with open(os.path.join(out_path, 'layer.json')) as infile:
-                subvol = Subvol(SubvolumeOnDisk.from_json_file(
-                    infile, subvolumes_dir,
-                ).subvolume_path(), already_exists=True)
-                # If we allowed mounting a layer that has other mounts
-                # inside, it would force us to support nested mounts.  We
-                # don't want to do this (yet).
-                if os.path.exists(subvol.path(META_MOUNTS_DIR)):
-                    raise AssertionError(
-                        f'Refusing to mount {subvol.path()} since that would '
-                        'require the tooling to support nested mounts.'
-                    )
+            subvol = find_built_subvol(out_path, subvolumes_dir=subvolumes_dir)
+            # If we allowed mounting a layer that has other mounts inside,
+            # it would force us to support nested mounts.  We don't want to
+            # do this (yet).
+            if os.path.exists(subvol.path(META_MOUNTS_DIR)):
+                raise AssertionError(
+                    f'Refusing to mount {subvol.path()} since that would '
+                    'require the tooling to support nested mounts.'
+                )
             return subvol.path()
         elif self.type == 'host':
             return self.source
