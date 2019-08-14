@@ -427,7 +427,7 @@ def _normalize_symlinks(symlinks):
     return normalized
 
 def image_feature(
-        name,
+        name = None,
         # An iterable of directories to make in the image --
         #  - `into_dir` is a image-absolute path, inside which
         #    we should create more directories. It must be created by
@@ -648,41 +648,64 @@ def image_feature(
     # (2) Builds a list of targets so that this converter can tell Buck
     #     that the `image_feature` depends on it.
     target_tagger = _target_tagger()
-    out_dict = struct(
-        # Omit the ugly suffix here since this is meant only for
-        # humans to read while debugging.
-        target = _normalize_target(":" + name),
-        make_dirs = _normalize_make_dirs(make_dirs),
-        install_files = _normalize_install_files(
-            target_tagger = target_tagger,
-            files = install_data,
-            visibility = visibility,
-            is_executable = False,
-        ) + _normalize_install_files(
-            target_tagger = target_tagger,
-            files = install_executables,
-            visibility = visibility,
-            is_executable = True,
+
+    feature = struct(
+        items = struct(
+            # For named features, omit the ugly suffix here since this is
+            # meant only for humans to read while debugging.  For inline
+            # targets, `image_layer.bzl` sets this to the layer target path.
+            target = _normalize_target(":" + name) if name else None,
+            make_dirs = _normalize_make_dirs(make_dirs),
+            install_files = _normalize_install_files(
+                target_tagger = target_tagger,
+                files = install_data,
+                visibility = visibility,
+                is_executable = False,
+            ) + _normalize_install_files(
+                target_tagger = target_tagger,
+                files = install_executables,
+                visibility = visibility,
+                is_executable = True,
+            ),
+            mounts = _normalize_mounts(target_tagger, mounts),
+            tarballs = _normalize_tarballs(target_tagger, tarballs, visibility),
+            remove_paths = _normalize_remove_paths(remove_paths),
+            # It'd be a bit expensive to do any kind of validation of RPM
+            # names right here, since we'd need the repo snapshot to decide
+            # whether the names are valid, and whether they contain a
+            # version or release number.  That'll happen later in the build.
+            rpms = _normalize_rpms(target_tagger, rpms),
+            symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
+            symlinks_to_files = _normalize_symlinks(symlinks_to_files),
+            features = [
+                _tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
+                for f in features
+            ] if features else [],
         ),
-        mounts = _normalize_mounts(target_tagger, mounts),
-        tarballs = _normalize_tarballs(target_tagger, tarballs, visibility),
-        remove_paths = _normalize_remove_paths(remove_paths),
-        # It'd be a bit expensive to do any kind of validation of RPM
-        # names right here, since we'd need the repo snapshot to decide
-        # whether the names are valid, and whether they contain a
-        # version or release number.  That'll happen later in the build.
-        rpms = _normalize_rpms(target_tagger, rpms),
-        symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
-        symlinks_to_files = _normalize_symlinks(symlinks_to_files),
-        features = [
-            _tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
-            for f in features
-        ] if features else [],
+        # We need to tell Buck that we depend on these targets, so
+        # that `image_layer` can use `deps()` to discover its
+        # transitive dependencies.
+        #
+        # This is a little hacky, because we are forcing these
+        # targets to be built or fetched from cache even though we
+        # don't actually use them until a later build step --- which
+        # might be on a different host.
+        #
+        # Future: Talk with the Buck team to see if we can eliminate
+        # this inefficiency.
+        #
+        # To understand the self-dependency, see the `fake_macro_library` doc.
+        deps = target_tagger.targets + ["//fs_image/buck:image_feature"],
     )
 
-    # Serialize the arguments and defer our computation until
-    # build-time.  This allows us to automatically infer what is
-    # provided by RPMs & TARs, and makes the implementation easier.
+    # Anonymous features do not emit a target, but can be used inline as
+    # part of an `image.layer`.
+    if not name:
+        return feature
+
+    # Serialize the arguments and defer our computation until build-time.
+    # This allows us to automatically infer what is provided by RPMs & TARs,
+    # and makes the implementation easier.
     #
     # Caveat: if the serialization exceeds the kernel's MAX_ARG_STRLEN,
     # this will fail (128KB on the Linux system I checked).
@@ -694,23 +717,16 @@ def image_feature(
         out = name + ".json",
         type = "image_feature",  # For queries
         cmd = 'echo {deps} > /dev/null; echo {out} > "$OUT"'.format(
-            # We need to tell Buck that we depend on these targets, so
-            # that `image_layer` can use `deps()` to discover its
-            # transitive dependencies.
-            #
-            # This is a little hacky, because we are forcing these
-            # targets to be built or fetched from cache even though we
-            # don't actually use them until a later build step --- which
-            # might be on a different host.
-            #
-            # Future: Talk with the Buck team to see if we can eliminate
-            # this inefficiency.
             deps = " ".join([
                 "$(location {})".format(t)
-                for t in sorted(target_tagger.targets)
-                # Add on a self-dependency (see `fake_macro_library` doc)
-            ]) + "$(location //fs_image/buck:image_feature)",
-            out = shell.quote(out_dict.to_json()),
+                for t in sorted(feature.deps)
+            ]),
+            out = shell.quote(feature.items.to_json()),
         ),
         visibility = get_visibility(visibility, name),
     )
+
+    # NB: it would be easy to return the path to the new feature target
+    # here, enabling the use of named features inside `features` lists of
+    # layers, but this seems like an unreadable pattern, so instead:
+    return None

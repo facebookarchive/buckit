@@ -2,7 +2,7 @@
 'Makes Items from the JSON that was produced by the Buck target image_feature'
 import json
 
-from typing import Iterable, Mapping, Optional
+from typing import Iterable, Mapping, Union
 
 from .items import (
     InstallFileItem, MakeDirsItem, MountItem, RemovePathItem, RpmActionItem,
@@ -40,7 +40,7 @@ def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
 
 
 def gen_items_for_features(
-    *, exit_stack, feature_paths: Iterable[str],
+    *, exit_stack, features_or_paths: Iterable[Union[str, dict]],
     target_to_path: Mapping[str, str],
 ):
     key_to_item_factory = {
@@ -54,13 +54,16 @@ def gen_items_for_features(
         'tarballs': lambda **kwargs: tarball_item_factory(exit_stack, **kwargs),
     }
 
-    for feature_path in feature_paths:
-        with open(feature_path) as f:
-            items = replace_targets_by_paths(json.load(f), target_to_path)
+    for feature_or_path in features_or_paths:
+        if isinstance(feature_or_path, str):
+            with open(feature_or_path) as f:
+                items = replace_targets_by_paths(json.load(f), target_to_path)
+        else:
+            items = feature_or_path
 
         yield from gen_items_for_features(
             exit_stack=exit_stack,
-            feature_paths=items.pop('features', []),
+            features_or_paths=items.pop('features', []),
             target_to_path=target_to_path,
         )
 

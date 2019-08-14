@@ -1,13 +1,13 @@
 """
-An `image_layer` is an `image_feature` with some additional parameters.  Its
-purpose to materialize that `image_feature` as a btrfs subvolume in the
+An `image.layer` is an `image.feature` with some additional parameters.  Its
+purpose to materialize that `image.feature` as a btrfs subvolume in the
 per-repo `buck-image/out/volume/targets`.
 
 We call the subvolume a "layer" because it can be built on top of a snapshot
 of its `parent_layer`, and thus can be represented as a btrfs send-stream for
 more efficient storage & distribution.
 
-The Buck output of an `image_layer` target is a JSON file with information
+The Buck output of an `image.layer` target is a JSON file with information
 on how to find the resulting layer in the per-repo
 `buck-image/out/volume/targets`.  See `SubvolumeOnDisk.to_json_file`.
 
@@ -36,8 +36,9 @@ thoroughly.
 
 ### Output
 
-We mark `image_layer` uncacheable, because there's no easy way to teach Buck
-to serialize a btrfs subvolume (for that, we have `image_layer_sendstream`).
+We mark `image.layer` uncacheable, because there's no easy way to teach Buck
+to serialize a btrfs subvolume (for that, we have `image.package`).
+
 That said, we should still follow best practices to avoid problems if e.g.
 the user renames their repo, or similar.  These practices include:
   - The output JSON must store no absolute paths.
@@ -45,15 +46,15 @@ the user renames their repo, or similar.  These practices include:
 
 ### Dependency resolution
 
-An `image_layer` consumes `image_feature` outputs to decide what to put into
+An `image.layer` consumes `image.feature` outputs to decide what to put into
 the btrfs subvolume.  These outputs are actually just JSON files that
 reference other targets, and do not contain the data to be written into the
 image.
 
-Therefore, `image_layer` has to explicitly tell buck that it needs all
-direct dependencies of its `image_feature`s to be present on disk -- see our
+Therefore, `image.layer` has to explicitly tell buck that it needs all
+direct dependencies of its `image.feature`s to be present on disk -- see our
 `attrfilter` queries below.  Without this, Buck would merrily fetch the just
-the `image_feature` JSONs from its cache, and not provide us with any of the
+the `image.feature` JSONs from its cache, and not provide us with any of the
 buid artifacts that comprise the image.
 
 We do NOT need the direct dependencies of the parent layer's features,
@@ -85,6 +86,7 @@ The consequences of this information hiding are:
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:config.bzl", "config")
 load(
     "@fbcode_macros//build_defs:custom_rule.bzl",
@@ -104,32 +106,43 @@ load(":image_utils.bzl", "image_utils")
 def _get_fbconfig_rule_type():
     return "image_layer"
 
-def _bare_image_layer(
-        name = None,
-        # The name of another `image_layer` target, on top of which the
-        # current layer will install its features.
-        parent_layer = None,
-        # Future: should we determine this dynamically from the installed
-        # artifacts (by totaling up the bytes needed for copied files, RPMs,
-        # tarballs, etc)?  NB: At the moment, this number doesn't work
-        # precisely as a user would want -- we just require that the base
-        # volume have at least this much space, -- but hopefully people
-        # don't have to change it too much.
-        # The string is used instead of int because build language supports
-        # only 32-bit integer values.
-        layer_size_bytes = "100" + "0" * 9,
-        visibility = None,
+def _build_opts(
+        # The name of the btrfs subvolume to create.
+        subvol_name = "volume",
         # Path to a binary target, with this CLI signature:
         #   yum_from_repo_snapshot --install-root PATH -- SOME YUM ARGS
         # Mutually exclusive with build_appliance: either
         # yum_from_repo_snapshot or build_appliance is required
         # if any dependent `image_feature` specifies `rpms`.
         yum_from_repo_snapshot = None,
+        # Path to a target outputting a btrfs send-stream of a build appliance:
+        # a self-contained file tree with /yum-from-snapshot and other tools
+        # like btrfs, yum, tar, ln used for image builds along with all
+        # their dependencies (but /usr/local/fbcode).  Mutually exclusive
+        # with yum_from_repo_snapshot: either build_appliance or
+        # yum_from_repo_snapshot is required if any dependent
+        # `image_feature` specifies `rpms`.
+        build_appliance = None):
+    return struct(
+        subvol_name = subvol_name,
+        yum_from_repo_snapshot = yum_from_repo_snapshot,
+        build_appliance = build_appliance,
+    )
+
+def _bare_image_layer(
+        name = None,
+        # The name of another `image_layer` target, on top of which the
+        # current layer will install its features.
+        parent_layer = None,
+        # List of `image.feature` target paths and/or nameless structs from
+        # `image.feature`.  Mutually exclusive with `from_sendstream`.
+        features = None,
+        # A struct containing fields accepted by `_build_opts` above.
+        # Usable only with `features`.
+        build_opts = None,
         # Path to a target outputting a btrfs send-stream of a subvolume;
-        # mutually exclusive with using any of the image_feature fields.
+        # mutually exclusive with `features`.
         from_sendstream = None,
-        # The name of the btrfs subvolume to create.
-        subvol_name = "volume",
         # Layers can be used in the `mounts` field of an `image.feature`.
         # This setting affects how **this** layer may be mounted inside
         # others.
@@ -145,15 +158,19 @@ def _bare_image_layer(
         # variety of ways, so it's not part of `image.layer` itself, and
         # must be set from outside.
         mount_config = None,
-        # Path to a target outputting a btrfs send-stream of a build appliance:
-        # a self-contained file tree with /yum-from-snapshot and other tools
-        # like btrfs, yum, tar, ln used for image builds along with all
-        # their dependencies (but /usr/local/fbcode).  Mutually exclusive
-        # with yum_from_repo_snapshot: either build_appliance or
-        # yum_from_repo_snapshot is required if any dependent
-        # `image_feature` specifies `rpms`.
-        build_appliance = None,
-        **image_feature_kwargs):
+        # Most use-cases should never need to set this.  A string is used
+        # instead of int because Skylark supports only 32-bit integers.
+        # Future:
+        #  (i) Should we determine this dynamically from the installed
+        #      artifacts (by totaling up the bytes needed for copied files,
+        #      RPMs, tarballs, etc)?  NB: At the moment, this number doesn't
+        #      work precisely as a user would want -- we just require that
+        #      the base volume have at least this much space, -- but
+        #      hopefully people don't have to change it too much.
+        # (ii) For sendstreams, it's much more plausible to correctly
+        #      estimate the size requirements, so we might do that sooner.
+        layer_size_bytes = "100" + "0" * 9,
+        visibility = None):
     visibility = get_visibility(visibility, name)
     current_target = target_utils.to_label(
         config.get_current_repo_name(),
@@ -161,22 +178,19 @@ def _bare_image_layer(
         name,
     )
 
-    # There are two independent ways to populate the resulting btrfs
-    # subvolume: (i) set `from_sendstream` and nothing else, (ii) set other
-    # arguments as desired.  These modes live in a single target type for
-    # memorability, and because much of the implementation is shared.
-    if from_sendstream != None:
-        if image_feature_kwargs or yum_from_repo_snapshot:
-            fail(
-                "cannot use `from_sendstream` with `image_feature` args " +
-                "or with `yum_from_repo_snapshot`",
-            )
+    # There are two mutually exclusive ways to populate the resulting btrfs
+    # subvolume: (i) set `from_sendstream`, (ii) set `build`.  These modes
+    # live in a single target type for memorability, and because the entire
+    # API of the resulting target, and much of the implementation is shared.
+    if from_sendstream:
+        if features or build_opts:
+            fail("cannot use `from_sendstream` with `features` or `build_opts`")
         if parent_layer != None:
-            # Mechanistically, applying a send-stream on top of an
-            # existing layer is just a regular `btrfs receive`.
-            # However, the rules in the current `receive` implementation
-            # for matching the parent to the stream are kind of awkward,
-            # and it's not clear whether they are right for us in Buck.
+            # Mechanistically, applying a send-stream on top of an existing
+            # layer is just a regular `btrfs receive`.  However, the rules
+            # in the current `receive` implementation for matching the
+            # parent to the stream are kind of awkward, and it's not clear
+            # whether they are right for us in Buck.
             fail("Not implemented")
         make_subvol_cmd = '''
             sendstream_path=$(location {from_sendstream})
@@ -197,15 +211,14 @@ def _bare_image_layer(
               "$subvolumes_dir" \
               "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
         '''.format(from_sendstream = from_sendstream)
-    else:
+    else:  # Build a new layer. It may be empty.
         make_subvol_cmd = _compile_image_features(
             current_target = current_target,
-            image_feature_kwargs = image_feature_kwargs,
             parent_layer = parent_layer,
-            rule_name = name,
-            subvol_name = subvol_name,
-            yum_from_repo_snapshot = yum_from_repo_snapshot,
-            build_appliance = build_appliance,
+            features = features,
+            build_opts = _build_opts(**(
+                build_opts._asdict() if build_opts else {}
+            )),
         )
 
     if mount_config == None:
@@ -244,7 +257,7 @@ def _bare_image_layer(
             # `exe` won't expand in \\$( ... ), so we need `binary_path`.
             binary_path=( $(exe //fs_image:subvolume-version) )
             subvolume_ver=\\$( "${{binary_path[@]}}" )
-            subvolume_wrapper_dir={rule_name_quoted}":$subvolume_ver"
+            subvolume_wrapper_dir={layer_name_quoted}":$subvolume_ver"
 
             # Do not touch $OUT until the very end so that if we
             # accidentally exit early with code 0, the rule still fails.
@@ -277,7 +290,7 @@ def _bare_image_layer(
 
             mv "$TMP/out" "$OUT"  # Allow the rule to succeed.
             '''.format(
-                rule_name_quoted = shell.quote(name),
+                layer_name_quoted = shell.quote(name),
                 refcounts_dir_quoted = paths.join(
                     "$GEN_DIR",
                     shell.quote(get_project_root_from_gen_dir()),
@@ -303,39 +316,33 @@ def _bare_image_layer(
         visibility = visibility,
     )
 
+def _query_set(target_paths):
+    'Returns `set("//foo:target1" "//bar:target2")` for use in Buck queries.'
+
+    if not target_paths:
+        return "set()"
+
+    # This does not currently escape double-quotes since Buck docs say they
+    # cannot occur: https://buck.build/concept/build_target.html
+    return 'set("' + '" "'.join(target_paths) + '")'
+
 def _compile_image_features(
-        rule_name,
         current_target,
         parent_layer,
-        image_feature_kwargs,
-        yum_from_repo_snapshot,
-        subvol_name,
-        build_appliance):
-    # For ease of use, a layer takes all the arguments of a feature, so
-    # just make an implicit feature target to implement this.
-    feature_name = rule_name + "-feature"
-    feature_target = \
-        ":" + feature_name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX
-    image_feature(
-        name = feature_name,
-        **image_feature_kwargs
-    )
-
-    # We will ask Buck to ensure that the outputs of the direct dependencies
-    # of our `image_feature`s are available on local disk.
-    #
-    # See `Implementation notes: Dependency resolution` in `__doc__` -- note
-    # that we need no special logic to exclude parent-layer features, since
-    # this query does not traverse them anyhow.
-    dep_features_query_macro = (
-        # We have two layers of quoting here.  The outer '' groups the query
-        # into a single argument for `query_targets_and_outputs`.  The inner
-        # "" allows = and a few other special characters to be used in layer
-        # target names.
-        """$(query_targets_and_outputs 'deps(""" +
-        """attrfilter(type, image_feature, deps("{}"))""" +
-        """, 1)')"""
-    ).format(feature_target)
+        features,
+        build_opts):
+    if features == None:
+        features = []
+    feature_targets = []
+    direct_deps = []
+    inline_feature_dicts = []
+    for f in features:
+        if types.is_string(f):
+            feature_targets.append(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
+        else:
+            direct_deps.extend(f.deps)
+            inline_feature_dicts.append(f.items._asdict())
+            inline_feature_dicts[-1]["target"] = current_target
 
     return '''
         {maybe_yum_from_repo_snapshot_dep}
@@ -352,50 +359,80 @@ def _compile_image_features(
           {maybe_quoted_build_appliance_args} \
           {maybe_quoted_yum_from_repo_snapshot_args} \
           --child-layer-target {current_target_quoted} \
-          --child-feature-json $(location {my_feature_target}) \
-          --child-dependencies {dep_features_query_macro} \
+          {quoted_child_feature_json_args} \
+          --child-dependencies {feature_deps_query_macro} \
               > "$layer_json"
     '''.format(
-        subvol_name_quoted = shell.quote(subvol_name),
+        subvol_name_quoted = shell.quote(build_opts.subvol_name),
         parent_layer_json_quoted = "$(location {})/layer.json".format(
             parent_layer,
         ) if parent_layer else "''",
         current_target_quoted = shell.quote(current_target),
-        my_feature_target = feature_target,
-        dep_features_query_macro = dep_features_query_macro,
-        # Future: Consider **only** emitting this flag if the image is also
-        # known to actually contain executable artifacts (via
-        # `install_executable`).  NB: This may not actually be 100% doable
-        # at macro parse time, since `install_executable_tree` does not know
-        # if it's installing an executable file or a data file until
-        # build-time.  That said, the parse-time test would already narrow
-        # the scope when the repo is mounted, and one could potentially
-        # extend the compiler to further modulate this flag upon checking
-        # whether any executables were in fact installed.
-        maybe_artifacts_require_repo = "--artifacts-may-require-repo" if built_artifacts_require_repo() else "",
+        quoted_child_feature_json_args = " ".join([
+            "--child-feature-json $(location {})".format(t)
+            for t in feature_targets
+        ] + (
+            ["--child-feature-json <(echo {})".format(shell.quote(struct(
+                target = current_target,
+                features = inline_feature_dicts,
+            ).to_json()))] if inline_feature_dicts else []
+        )),
+        # We will ask Buck to ensure that the outputs of the direct
+        # dependencies of our `image_feature`s are available on local disk.
+        #
+        # See `Implementation notes: Dependency resolution` in `__doc__` --
+        # note that we need no special logic to exclude parent-layer
+        # features, since this query does not traverse them anyhow.
+        #
+        # We have two layers of quoting here.  The outer '' groups the query
+        # into a single argument for `query_targets_and_outputs`.  Then,
+        # `_query_set` double-quotes each target name to allow the use of
+        # special characters like `=` in target names.
+        feature_deps_query_macro = """$(query_targets_and_outputs '
+            {direct_deps_set} union
+            deps(attrfilter(type, image_feature, deps({feature_set})), 1)
+        ')""".format(
+            # For inline `image.feature`s, we already know the direct deps.
+            direct_deps_set = _query_set(direct_deps),
+            # We will query the direct deps of the features that are targets.
+            feature_set = _query_set(feature_targets),
+        ),
+        maybe_artifacts_require_repo = (
+            "--artifacts-may-require-repo" if
+            # Future: Consider **only** emitting this flag if the image is
+            # actually contains executables (via `install_executable`).
+            # NB: This may not actually be 100% doable at macro parse time,
+            # since `install_executable_tree` does not know if it is
+            # installing an executable file or a data file until build-time.
+            # That said, the parse-time test would already narrow the scope
+            # when the repo is mounted, and one could potentially extend the
+            # compiler to further modulate this flag upon checking whether
+            # any executables were in fact installed.
+            built_artifacts_require_repo() else ""
+        ),
         maybe_quoted_build_appliance_args = (
-            "" if not build_appliance else "--build-appliance-json $(location {})/layer.json".format(
-                build_appliance,
-            )
+            "--build-appliance-json $(location {})/layer.json".format(
+                build_opts.build_appliance,
+            ) if build_opts.build_appliance else ""
         ),
         maybe_quoted_yum_from_repo_snapshot_args = (
-            "" if not yum_from_repo_snapshot else
-            # In terms of **dependency** structure, we want this
-            # to be `exe` (see `image_package.py` for why).
-            # However the string output of the `exe` macro may
-            # actually be a shell snippet, which would break
-            # here.  To work around this, we add a no-op $(exe)
+            # In terms of **dependency** structure, we want this to be `exe`
+            # (see `image_package.py` for why).  However the string output
+            # of the `exe` macro may actually be a shell snippet, which
+            # would break here.  To work around this, we add a no-op $(exe)
             # dependency via `maybe_yum_from_repo_snapshot_dep`.
             "--yum-from-repo-snapshot $(location {})".format(
-                yum_from_repo_snapshot,
-            )
+                build_opts.yum_from_repo_snapshot,
+            ) if build_opts.yum_from_repo_snapshot else ""
         ),
         maybe_yum_from_repo_snapshot_dep = (
-            "" if not yum_from_repo_snapshot else
-            # Ensure that the layer directly depends on the yum target.
+            # Building the layer has a runtime depepndency on the yum
+            # target.  We don't need this for `build_appliance` because any
+            # @mode/dev executables inside a layer should already have been
+            # wrapped via `wrap_runtime_deps`.
             "echo $(exe {}) > /dev/null".format(
-                yum_from_repo_snapshot,
-            )
+                build_opts.yum_from_repo_snapshot,
+            ) if build_opts.yum_from_repo_snapshot else ""
         ),
     )
 
@@ -420,12 +457,7 @@ def image_layer(
     with the constructed subvol using `buck run //path/to:layer-{container,boot}`.
     Most of the user documentation is on `_bare_image_layer()`.
     """
-
-    # First define the actual layer
-    _bare_image_layer(
-        name = name,
-        **image_layer_kwargs
-    )
+    _bare_image_layer(name = name, **image_layer_kwargs)
 
     # Add the `-container` run target
     _add_run_in_subvol_target(name, "container")

@@ -36,44 +36,50 @@ buck_genrule(
 
 image.layer(
     name = "only-for-tests-read-only-host-clone-base",
-    make_dirs = [
-        ("/", "mnt"),
-        ("/", "var"),
-    ],
-    mounts = [image.host_dir_mount(source) for source in [
-        "/bin",
-        "/lib",
-        "/sbin",
-        "/usr",
-        # Future: move these 2 (and the `make_dirs`) into an FB-only feature.
-        "/mnt/gvfs",
-        "/var/facebook",
-    ]],
+    features = [image.feature(
+        make_dirs = [
+            ("/", "mnt"),
+            ("/", "var"),
+        ],
+        mounts = [image.host_dir_mount(source) for source in [
+            "/bin",
+            "/lib",
+            "/sbin",
+            "/usr",
+            # Future: move these 2 (and the `make_dirs`) into an FB-only feature.
+            "/mnt/gvfs",
+            "/var/facebook",
+        ]],
+    )],
 )
 
 image.layer(
     name = "only-for-tests-read-only-host-clone",
     parent_layer = ":only-for-tests-read-only-host-clone-base",
-    # `test_non_ephemeral_snapshot` needs a place to write as `nobody`.
-    make_dirs = [{
-        "into_dir": "/",
-        "mode": "u+rwx,og+rx",
-        "path_to_make": "home/nobody",
-        "user:group": "nobody:nobody",
-    }],
-    mounts = [image.host_dir_mount("/etc")],
+    features = [image.feature(
+        # `test_non_ephemeral_snapshot` needs a place to write as `nobody`.
+        make_dirs = [{
+            "into_dir": "/",
+            "mode": "u+rwx,og+rx",
+            "path_to_make": "home/nobody",
+            "user:group": "nobody:nobody",
+        }],
+        mounts = [image.host_dir_mount("/etc")],
+    )],
 )
 
 image.layer(
     name = "only-for-tests-read-only-host-clone-no-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-base",
-    # Without os-release, nspawn cannot boot into this image.
-    make_dirs = [("/", "etc")],
-    mounts = [
-        image.host_file_mount("/etc/os-release"),
-        # We use `nobody` in tests, which is presumably defined on the host.
-        image.host_file_mount("/etc/passwd"),
-    ],
+    features = [image.feature(
+        # Without os-release, nspawn cannot boot into this image.
+        make_dirs = [("/", "etc")],
+        mounts = [
+            image.host_file_mount("/etc/os-release"),
+            # We use `nobody` in tests, which is presumably defined on the host.
+            image.host_file_mount("/etc/passwd"),
+        ],
+    )],
 )
 
 export_file(name = "deadbeef-machine-id")
@@ -81,7 +87,9 @@ export_file(name = "deadbeef-machine-id")
 image.layer(
     name = "only-for-tests-read-only-host-clone-with-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
-    install_data = {":deadbeef-machine-id": "/etc/machine-id"},
+    features = [image.feature(
+        install_data = {":deadbeef-machine-id": "/etc/machine-id"},
+    )],
 )
 
 # The next 2 layers exercise the build appliance logic for RPM installation
@@ -92,27 +100,32 @@ image.layer(
 image.layer(
     name = "fake-build-appliance-from-host",
     parent_layer = ":only-for-tests-read-only-host-clone",
-    # These stub directories are needed to make `yum-from-snapshot`'s host
-    # path protection feature happy.  The alternative is to make all of
-    # these ONLY be protected if they exist, but that has safety downsides,
-    # and involves more code.
-    make_dirs = [
-        ("/var", "tmp"),
-        ("/var", "log"),
-        ("/var", "cache/yum"),
-        ("/var", "lib/rpm"),
-        ("/var/lib", "yum"),
-    ],
-    install_executables = {
-        "//fs_image/rpm:yum-from-test-snapshot": "/yum-from-snapshot",
-    },
+    features = [image.feature(
+        # These stub directories are needed to make `yum-from-snapshot`'s host
+        # path protection feature happy.  The alternative is to make all of
+        # these ONLY be protected if they exist, but that has safety downsides,
+        # and involves more code.
+        make_dirs = [
+            ("/var", "tmp"),
+            ("/var", "log"),
+            ("/var", "cache/yum"),
+            ("/var", "lib/rpm"),
+            ("/var/lib", "yum"),
+        ],
+        install_executables = {
+            "//fs_image/rpm:yum-from-test-snapshot": "/yum-from-snapshot",
+        },
+    )],
 )
 
 # Verified by `test_build_appliance` in `test-image-layer`.
 image.layer(
     name = "validates-build-appliance",
-    rpms = ["rpm-test-milk"],  # Compact syntax for RPM installation.
-    build_appliance = ":fake-build-appliance-from-host",
+    # Compact syntax for RPM installation.
+    features = [image.feature(rpms = ["rpm-test-milk"])],
+    build_opts = image.opts(
+        build_appliance = ":fake-build-appliance-from-host",
+    ),
 )
 
 # The next two targets exercise:
@@ -174,8 +187,10 @@ export_file(name = "rpm-test-cheese-3-1.rpm")
 
 image.layer(
     name = "layer-with-only-one-locally-installed-rpm",
-    build_appliance = ":fake-build-appliance-from-host",
-    rpms = [":rpm-test-cheese-2-1.rpm"],
+    features = [image.feature(rpms = [":rpm-test-cheese-2-1.rpm"])],
+    build_opts = image.opts(
+        build_appliance = ":fake-build-appliance-from-host",
+    ),
 )
 
 # Exercises:
@@ -387,17 +402,15 @@ image.layer(
 
 image.layer(
     name = "hello_world_base",
-    tarballs = [
-        {
-            "generator": ":hello_world_tar_generator.sh",
-            # Most generators would not have this API wart of externally
-            # specifying the output filename.  This mis-feature only exists
-            # to exercise `generator_args`.
-            "generator_args": ["hello_world.tar"],
-            "hash": hello_tar_hash,
-            "into_dir": "//",  # Double-slash tests path normalization
-        },
-    ],
+    features = [image.feature(tarballs = [{
+        "generator": ":hello_world_tar_generator.sh",
+        # Most generators would not have this API wart of externally
+        # specifying the output filename.  This mis-feature only exists
+        # to exercise `generator_args`.
+        "generator_args": ["hello_world.tar"],
+        "hash": hello_tar_hash,
+        "into_dir": "//",  # Double-slash tests path normalization
+    }])],
     # This tells our hypothetical runtime that in order to mount this layer,
     # it must invoke the "chicken" mount source (which might just download
     # and unpack a serialized versions of this layer).
@@ -406,56 +419,67 @@ image.layer(
 
 image.layer(
     name = "parent_layer",
-    install_data = [
-        # This directory comes from `rpm-test-carrot`. This tests that our
-        # dependency engine sees RPM contents as a "provides".
-        (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),
-        {
-            "dest": "/foo/bar/even_more_hello_world.tar",
-            "source": ":hello_world.tar",
-        },
-    ],
+    parent_layer = ":hello_world_base",
     features = [
         ":feature_dirs",
         ":feature_symlinks",
+        image.feature(
+            install_data = [
+                # This directory comes from `rpm-test-carrot`.  This tests
+                # that our dependency engine sees RPM contents as a
+                # "provides".
+                (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),
+                {
+                    "dest": "/foo/bar/even_more_hello_world.tar",
+                    "source": ":hello_world.tar",
+                },
+            ],
+            mounts = {
+                # NB: `host_dir_mount` is exercised above.
+                "/dev_null": image.host_file_mount(source = "/dev/null"),
+                "/mounted_hello": ":hello_world_base",
+            },
+            rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
+        ),
     ],
-    mounts = {
-        # NB: `host_dir_mount` is exercised above.
-        "/dev_null": image.host_file_mount(source = "/dev/null"),
-        "/mounted_hello": ":hello_world_base",
-    },
-    parent_layer = ":hello_world_base",
-    rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
-    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
 )
 
 image.layer(
     name = "child_layer",
-    features = [":feature_tar_and_rpms"],
-    make_dirs = [
-        ("/foo", "borf"),  # for :feature_tar
-        ("/foo", "extracted_hello"),
-        {
-            "into_dir": "/foo",
-            "mode": 0o711,
-            "path_to_make": "more_extracted_hello",
-            "user:group": "nobody:nobody",
-        },
-    ],
     parent_layer = ":parent_layer",
-    tarballs = [
-        {
-            "hash": hello_tar_hash,
-            "into_dir": "/foo/extracted_hello",
-            "tarball": ":hello_world.tar",
-        },
-        {
-            "hash": hello_tar_hash,
-            "into_dir": "/foo/more_extracted_hello",
-            "tarball": ":hello_world.tar",
-        },
+    features = [
+        ":feature_tar_and_rpms",
+        image.feature(
+            make_dirs = [
+                ("/foo", "borf"),  # for :feature_tar
+                ("/foo", "extracted_hello"),
+                {
+                    "into_dir": "/foo",
+                    "mode": 0o711,
+                    "path_to_make": "more_extracted_hello",
+                    "user:group": "nobody:nobody",
+                },
+            ],
+            tarballs = [
+                {
+                    "hash": hello_tar_hash,
+                    "into_dir": "/foo/extracted_hello",
+                    "tarball": ":hello_world.tar",
+                },
+                {
+                    "hash": hello_tar_hash,
+                    "into_dir": "/foo/more_extracted_hello",
+                    "tarball": ":hello_world.tar",
+                },
+            ],
+        ),
     ],
-    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
 )
 
 image.package(name = "child_layer.sendstream")
@@ -466,24 +490,30 @@ image.package(name = "child_layer.btrfs")
 image.layer(
     name = "base_cheese_layer",
     parent_layer = ":hello_world_base",
-    rpms = {":rpm-test-cheese-2-1.rpm": "install"},
-    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    features = [image.feature(rpms = {":rpm-test-cheese-2-1.rpm": "install"})],
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
 )
 
 # This downgrades and installs /usr/share/rpm_test/cheese1.txt.
 image.layer(
     name = "older_cheese_layer",
     parent_layer = ":base_cheese_layer",
-    rpms = {":rpm-test-cheese-1-1.rpm": "install"},
-    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    features = [image.feature(rpms = {":rpm-test-cheese-1-1.rpm": "install"})],
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
 )
 
 # This upgrades and installs /usr/share/rpm_test/cheese3.txt.
 image.layer(
     name = "newer_cheese_layer",
     parent_layer = ":base_cheese_layer",
-    rpms = {":rpm-test-cheese-3-1.rpm": "install"},
-    yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    features = [image.feature(rpms = {":rpm-test-cheese-3-1.rpm": "install"})],
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
 )
 
 ##

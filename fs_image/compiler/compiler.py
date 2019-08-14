@@ -87,9 +87,9 @@ def parse_args(args):
         help='The name of the Buck target describing the layer being built',
     )
     parser.add_argument(
-        '--child-feature-json', required=True,
-        help='The path of the JSON output of the `image_feature` that was '
-            'auto-generated for the layer being built',
+        '--child-feature-json', action='append', default=[],
+        help='The path of the JSON output of any `image.feature`s that are'
+            'directly included by the layer being built',
     )
     parser.add_argument(
         '--child-dependencies',
@@ -117,7 +117,7 @@ def build_image(args):
             ),
             gen_items_for_features(
                 exit_stack=exit_stack,
-                feature_paths=[args.child_feature_json],
+                features_or_paths=args.child_feature_json,
                 target_to_path=target_to_path,
             ),
         ))

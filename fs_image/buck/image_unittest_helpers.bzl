@@ -2,6 +2,7 @@ load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load(":image_feature.bzl", "image_feature")
 load(":image_layer.bzl", "image_layer")
 
 def _hidden_test_name(name):
@@ -67,8 +68,10 @@ def _nspawn_wrapper_properties(
     inner_test_target = ":" + _hidden_test_name(name)
     image_layer(
         name = test_layer,
-        install_executables = {inner_test_target: binary_path},
         parent_layer = layer,
+        features = [image_feature(
+            install_executables = {inner_test_target: binary_path},
+        )],
         visibility = visibility,
     )
 

@@ -36,6 +36,7 @@ image = struct(
     feature = image_feature,
     host_dir_mount = image_host_dir_mount,
     host_file_mount = image_host_file_mount,
+    opts = struct,
     package = image_package,
     python_unittest = image_python_unittest,
 )

@@ -5,7 +5,9 @@ import unittest
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..dep_graph import DependencyGraph
-from ..items import FilesystemRootItem, RemovePathItem, RpmActionItem
+from ..items import (
+    FilesystemRootItem, MakeDirsItem, RemovePathItem, RpmActionItem,
+)
 from ..items_for_features import gen_items_for_features
 
 from . import sample_items as si
@@ -17,24 +19,39 @@ class ImageFeatureTestCase(unittest.TestCase):
     that their outputs are correct. The install order check is incidental.
     '''
 
-    def test_serialize_deserialize(self):
+    def _items_for_features(self, target_to_path=None):
         root_feature_target = si.mangle(si.T_KITCHEN_SINK)
         self.assertIn(root_feature_target, si.TARGET_TO_PATH)
+        return set(gen_items_for_features(
+            exit_stack=None,  # unused, no `generator` TarballItems
+            features_or_paths=[
+                si.TARGET_TO_PATH[root_feature_target],
+                # Exercise inline features, including nesting
+                {
+                    'target': 't1',
+                    'make_dirs': [{'into_dir': '/a', 'path_to_make': 'b'}],
+                    'features': [{
+                        'target': 't2',
+                        'make_dirs': [{'into_dir': '/c', 'path_to_make': 'd'}],
+                    }],
+                },
+            ],
+            target_to_path=si.TARGET_TO_PATH
+                if target_to_path is None else target_to_path,
+        ))
+
+    def test_serialize_deserialize(self):
         self.assertEqual(
-            {v for k, v in si.ID_TO_ITEM.items() if k != '/'},
-            set(gen_items_for_features(
-                exit_stack=None,  # unused, no `generator` TarballItems
-                feature_paths=[si.TARGET_TO_PATH[root_feature_target]],
-                target_to_path=si.TARGET_TO_PATH,
-            )),
+            {v for k, v in si.ID_TO_ITEM.items() if k != '/'} | {
+                # These come the inline features added above.
+                MakeDirsItem(from_target='t1', into_dir='/a', path_to_make='b'),
+                MakeDirsItem(from_target='t2', into_dir='/c', path_to_make='d'),
+            },
+            self._items_for_features(),
         )
         # Fail if some target fails to resolve to a path
         with self.assertRaisesRegex(RuntimeError, f'{si.T_BASE}:[^ ]* not in'):
-            list(gen_items_for_features(
-                exit_stack=None,  # unused, no `generator` TarballItems
-                feature_paths=[si.TARGET_TO_PATH[root_feature_target]],
-                target_to_path={},
-            ))
+            self._items_for_features(target_to_path={})
 
     def test_install_order(self):
         dg = DependencyGraph(si.ID_TO_ITEM.values())
