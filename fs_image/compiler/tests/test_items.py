@@ -23,7 +23,7 @@ from ..items import (
     MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
     RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
     SymlinkToFileItem, TarballItem, _hash_tarball, _protected_path_set,
-    tarball_item_factory, ItemBuildArgs,
+    tarball_item_factory,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory, require_file
@@ -35,10 +35,14 @@ from .mock_subvolume_from_json_file import (
 
 DEFAULT_STAT_OPTS = ['--user=root', '--group=root', '--mode=0755']
 DUMMY_LAYER_OPTS = LayerOpts(
-    layer_target='t',
-    yum_from_snapshot='y',
+    layer_target='fake target',  # Only used by error messages
+    yum_from_snapshot=None,
     build_appliance=None,
+    # For a handful of tests, this must be a boolean value so the layer
+    # emits it it into /meta, but the value is not important.
     artifacts_may_require_repo=True,
+    target_to_path=None,
+    subvolumes_dir=None,
 )
 
 
@@ -78,14 +82,6 @@ def _tarinfo_strip_dir_prefix(dir_prefix):
         return tarinfo
 
     return strip_dir_prefix
-
-
-def _simple_item_build_args(subvol):
-    return ItemBuildArgs(
-        subvol=subvol,
-        target_to_path=None,
-        subvolumes_dir=None
-    )
 
 
 class ItemsTestCase(unittest.TestCase):
@@ -189,7 +185,7 @@ class ItemsTestCase(unittest.TestCase):
             InstallFileItem(
                 from_target='t', source='/dev/null', dest='/d/null',
                 is_executable_=False,
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m444)']}]}],
                 _render_subvol(subvol),
@@ -200,7 +196,7 @@ class ItemsTestCase(unittest.TestCase):
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest='/no_dir/null',
                     is_executable_=False,
-                ).build(_simple_item_build_args(subvol))
+                ).build(subvol, DUMMY_LAYER_OPTS)
 
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
@@ -210,7 +206,7 @@ class ItemsTestCase(unittest.TestCase):
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
                 mode='u+rw', user_group='12:34', is_executable_=False,
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             self.assertEqual(
                 ['(Dir)', {'d': ['(Dir)', {'null': ['(File m600 o12:34)']}]}],
                 _render_subvol(subvol),
@@ -231,7 +227,7 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(
                 from_target='t', path_to_make='/a/b/', into_dir='/d',
                 user_group='77:88', mode='u+rx',
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
                     'a': ['(Dir m500 o77:88)', {
@@ -247,11 +243,11 @@ class ItemsTestCase(unittest.TestCase):
             MakeDirsItem(
                 from_target='t', path_to_make='a', into_dir='/no_dir',
                 user_group='4:0'
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             MakeDirsItem(
                 from_target='t', path_to_make='a/new', into_dir='/d',
                 user_group='5:0'
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             self.assertEqual(['(Dir)', {
                 'd': ['(Dir)', {
                     # permissions overwritten for this whole tree
@@ -295,8 +291,7 @@ class ItemsTestCase(unittest.TestCase):
 
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('mounter')
-            mount_item.build(ItemBuildArgs(
-                subvol=subvol,
+            mount_item.build(subvol, DUMMY_LAYER_OPTS._replace(
                 target_to_path={},
                 subvolumes_dir='unused',
             ))
@@ -481,8 +476,7 @@ class ItemsTestCase(unittest.TestCase):
                 mount_meow.build_source.to_path(
                     target_to_path={}, subvolumes_dir=mountee_subvolumes_dir,
                 )
-            mount_meow.build(ItemBuildArgs(
-                subvol=mounter,
+            mount_meow.build(mounter, DUMMY_LAYER_OPTS._replace(
                 target_to_path={'//fake:path': source_dir},
                 subvolumes_dir=mountee_subvolumes_dir,
             ))
@@ -557,8 +551,7 @@ class ItemsTestCase(unittest.TestCase):
                 with self.assertRaisesRegex(
                     AssertionError, 'Refusing .* nested mount',
                 ):
-                    nested_item.build(ItemBuildArgs(
-                        subvol=nested_mounter,
+                    nested_item.build(nested_mounter, DUMMY_LAYER_OPTS._replace(
                         target_to_path={'//:fake': d},
                         subvolumes_dir=mounter_subvolumes_dir,
                     ))
@@ -587,13 +580,13 @@ class ItemsTestCase(unittest.TestCase):
             InstallFileItem(
                 from_target='t', source='/dev/null', dest='/file',
                 is_executable_=False,
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToDirItem(
                 from_target='t', source='/dir', dest='/dir_symlink'
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToFileItem(
                 from_target='t', source='file', dest='/file_symlink'
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
 
             self.assertEqual(['(Dir)', {
                 'dir': ['(Dir)', {}],
@@ -701,7 +694,7 @@ class ItemsTestCase(unittest.TestCase):
                     tar_obj.addfile(tarfile.TarInfo('exists'))
                 with self.assertRaises(subprocess.CalledProcessError):
                     _tarball_item(t.name, '/d').build(
-                        _simple_item_build_args(subvol)
+                        subvol, DUMMY_LAYER_OPTS
                     )
 
             # Adding new files & directories works. Overwriting a
@@ -737,7 +730,7 @@ class ItemsTestCase(unittest.TestCase):
                 # Fail when the destination does not exist
                 with self.assertRaises(subprocess.CalledProcessError):
                     _tarball_item(tar_path, '/no_dir').build(
-                        _simple_item_build_args(subvol)
+                        subvol, DUMMY_LAYER_OPTS
                     )
 
                 # Before unpacking the tarball
@@ -773,7 +766,7 @@ class ItemsTestCase(unittest.TestCase):
                     ),
                 ):
                     self.assertEqual(before, _render_subvol(sv))
-                    item.build(_simple_item_build_args(sv))
+                    item.build(sv, DUMMY_LAYER_OPTS)
                     self.assertEqual(after, _render_subvol(sv))
 
     def test_parent_layer_provides(self):
@@ -805,7 +798,7 @@ class ItemsTestCase(unittest.TestCase):
             parent = temp_subvolumes.create('parent')
             MakeDirsItem(
                 from_target='t', into_dir='/', path_to_make='a/b',
-            ).build(_simple_item_build_args(parent))
+            ).build(parent, DUMMY_LAYER_OPTS)
             parent_content = ['(Dir)', {'a': ['(Dir)', {'b': ['(Dir)', {}]}]}]
             self.assertEqual(parent_content, _render_subvol(parent))
 
@@ -817,7 +810,7 @@ class ItemsTestCase(unittest.TestCase):
             )(child)
             MakeDirsItem(
                 from_target='t', into_dir='a', path_to_make='c',
-            ).build(_simple_item_build_args(child))
+            ).build(child, DUMMY_LAYER_OPTS)
 
             # The parent is unchanged.
             self.assertEqual(parent_content, _render_subvol(parent))
@@ -862,27 +855,27 @@ class ItemsTestCase(unittest.TestCase):
 
             MakeDirsItem(
                 from_target='t', path_to_make='/a/b/c', into_dir='/',
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['d', 'e']:
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
                     is_executable_=False,
-                ).build(_simple_item_build_args(subvol))
+                ).build(subvol, DUMMY_LAYER_OPTS)
             MakeDirsItem(
                 from_target='t', path_to_make='/f/g', into_dir='/',
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             # Checks that `rm` won't follow symlinks
             SymlinkToDirItem(
                 from_target='t', source='/f', dest='/a/b/f_sym',
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['h', 'i']:
                 InstallFileItem(
                     from_target='t', source='/dev/null', dest=f'/f/{d}',
                     is_executable_=False,
-                ).build(_simple_item_build_args(subvol))
+                ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToDirItem(
                 from_target='t', source='/f/i', dest='/f/i_sym',
-            ).build(_simple_item_build_args(subvol))
+            ).build(subvol, DUMMY_LAYER_OPTS)
             intact_subvol = ['(Dir)', {
                 'a': ['(Dir)', {
                     'b': ['(Dir)', {
@@ -1084,14 +1077,11 @@ class ItemsTestCase(unittest.TestCase):
             }], _render_subvol(subvol))
 
     def test_rpm_action_item_yum_from_snapshot(self):
-        self._test_rpm_action_item(layer_opts=LayerOpts(
-            layer_target='fake-target',
+        self._test_rpm_action_item(layer_opts=DUMMY_LAYER_OPTS._replace(
             # This works in @mode/opt since this binary is baked into the XAR
             yum_from_snapshot=os.path.join(
                 os.path.dirname(__file__), 'yum-from-test-snapshot',
             ),
-            build_appliance=None,
-            artifacts_may_require_repo=True,  # This value is ignored.
         ))
 
     def test_rpm_action_item_build_appliance(self):
@@ -1101,9 +1091,7 @@ class ItemsTestCase(unittest.TestCase):
         for filename in [
             'fb-test-build-appliance', 'host-test-build-appliance',
         ]:
-            self._test_rpm_action_item(layer_opts=LayerOpts(
-                layer_target='fake-target',
-                yum_from_snapshot=None,
+            self._test_rpm_action_item(layer_opts=DUMMY_LAYER_OPTS._replace(
                 build_appliance=get_subvolume_path(
                             os.path.join(
                                 os.path.dirname(__file__),
@@ -1111,17 +1099,9 @@ class ItemsTestCase(unittest.TestCase):
                                 'layer.json',
                             ),
                             TEST_SUBVOLS_DIR),
-                artifacts_may_require_repo=True,  # This value is ignored.
             ))
 
     def test_rpm_action_item_auto_downgrade(self):
-        layer_opts = LayerOpts(
-            layer_target='fake-target',
-            yum_from_snapshot=Path(__file__).dirname() /
-                'yum-from-test-snapshot',
-            build_appliance=None,
-            artifacts_may_require_repo=False,  # unused
-        )
         parent_subvol = find_built_subvol(
             (Path(__file__).dirname() / 'test-with-one-local-rpm').decode()
         )
@@ -1146,7 +1126,10 @@ class ItemsTestCase(unittest.TestCase):
                         source=src_rpm.decode(),
                         action=RpmAction.install)
                 ],
-                layer_opts,
+                DUMMY_LAYER_OPTS._replace(
+                    yum_from_snapshot=Path(__file__).dirname() /
+                        'yum-from-test-snapshot',
+                ),
             )(subvol)
             subvol.run_as_root([
                 'rm', '-rf',
@@ -1165,6 +1148,9 @@ class ItemsTestCase(unittest.TestCase):
             }], _render_subvol(subvol))
 
     def test_rpm_action_conflict(self):
+        layer_opts = DUMMY_LAYER_OPTS._replace(
+            yum_from_snapshot='required but ignored'
+        )
         # Test both install-install, install-remove, and install-downgrade
         # conflicts.
         for rpm_actions in (
@@ -1181,7 +1167,7 @@ class ItemsTestCase(unittest.TestCase):
                         RpmActionItem(from_target='t', name=r, action=a)
                             for r, a in rpm_actions
                     ],
-                    DUMMY_LAYER_OPTS,
+                    layer_opts,
                 )
 
         with self.assertRaisesRegex(RuntimeError, 'RPM action conflict '):
@@ -1202,22 +1188,17 @@ class ItemsTestCase(unittest.TestCase):
                         action=RpmAction.remove_if_exists,
                     ),
                 ],
-                DUMMY_LAYER_OPTS,
+                layer_opts,
             )
 
     def test_rpm_action_no_passing_downgrade(self):
         with self.assertRaisesRegex(
             AssertionError, '\'downgrade\' cannot be passed'
         ):
-            RpmActionItem.get_phase_builder(
-                [
-                    RpmActionItem(
-                        from_target='t',
-                        name='derp',
-                        action=RpmAction.downgrade
-                    )
-                ],
-                DUMMY_LAYER_OPTS,
+            RpmActionItem(
+                from_target='t',
+                name='derp',
+                action=RpmAction.downgrade
             )
 
 

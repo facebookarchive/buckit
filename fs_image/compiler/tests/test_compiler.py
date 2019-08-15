@@ -9,7 +9,6 @@ import unittest.mock
 import subvol_utils
 
 from ..compiler import build_image, parse_args, LayerOpts
-from ..items import ItemBuildArgs
 from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
@@ -152,26 +151,25 @@ class CompilerTestCase(unittest.TestCase):
             f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}',
             already_exists=True,
         )
+        layer_opts = LayerOpts(
+            layer_target='fake-target',
+            yum_from_snapshot=self.yum_path,
+            build_appliance=None,
+            artifacts_may_require_repo=True,  # Must match CLI arg in `_compile`
+            target_to_path=si.TARGET_TO_PATH,
+            subvolumes_dir=TEST_SUBVOLS_DIR,
+        )
         phase_item_ids = set()
         for builder_maker, item_ids in si.ORDERED_PHASES:
             phase_item_ids.update(item_ids)
             builder_maker(
                 [si.ID_TO_ITEM[i] for i in item_ids],
-                LayerOpts(
-                    layer_target='fake-target',
-                    yum_from_snapshot=self.yum_path,
-                    build_appliance=None,
-                    artifacts_may_require_repo=True,  # Must match _compile
-                )
+                layer_opts,
             )(subvol)
 
         for item_id, item in si.ID_TO_ITEM.items():
             if item_id not in phase_item_ids:
-                item.build(ItemBuildArgs(
-                    subvol=subvol,
-                    target_to_path=si.TARGET_TO_PATH,
-                    subvolumes_dir=TEST_SUBVOLS_DIR,
-                ))
+                item.build(subvol, layer_opts)
         return run_as_root.call_args_list + [
             (
                 ([

@@ -20,7 +20,6 @@ from contextlib import ExitStack
 from subvol_utils import Subvol, get_subvolume_path
 
 from .dep_graph import DependencyGraph
-from .items import ItemBuildArgs
 from .items import gen_parent_layer_items, LayerOpts
 from .items_for_features import gen_items_for_features
 from .subvolume_on_disk import SubvolumeOnDisk
@@ -105,7 +104,16 @@ def parse_args(args):
 
 def build_image(args):
     subvol = Subvol(os.path.join(args.subvolumes_dir, args.subvolume_rel_path))
-    target_to_path = make_target_path_map(args.child_dependencies)
+    layer_opts = LayerOpts(
+        layer_target=args.child_layer_target,
+        yum_from_snapshot=args.yum_from_repo_snapshot,
+        build_appliance=get_subvolume_path(
+            args.build_appliance_json, args.subvolumes_dir,
+        ) if args.build_appliance_json else None,
+        artifacts_may_require_repo=args.artifacts_may_require_repo,
+        target_to_path=make_target_path_map(args.child_dependencies),
+        subvolumes_dir=args.subvolumes_dir,
+    )
 
     # This stack allows build items to hold temporary state on disk.
     with ExitStack() as exit_stack:
@@ -118,17 +126,9 @@ def build_image(args):
             gen_items_for_features(
                 exit_stack=exit_stack,
                 features_or_paths=args.child_feature_json,
-                target_to_path=target_to_path,
+                target_to_path=layer_opts.target_to_path,
             ),
         ))
-        layer_opts = LayerOpts(
-            layer_target=args.child_layer_target,
-            yum_from_snapshot=args.yum_from_repo_snapshot,
-            build_appliance=get_subvolume_path(
-                args.build_appliance_json, args.subvolumes_dir,
-            ) if args.build_appliance_json else None,
-            artifacts_may_require_repo=args.artifacts_may_require_repo,
-        )
         # Creating all the builders up-front lets phases validate their input
         for builder in [
             builder_maker(items, layer_opts)
@@ -140,11 +140,7 @@ def build_image(args):
         for item in dep_graph.gen_dependency_order_items(
             subvol.path().decode()
         ):
-            item.build(ItemBuildArgs(
-                subvol=subvol,
-                target_to_path=target_to_path,
-                subvolumes_dir=args.subvolumes_dir,
-            ))
+            item.build(subvol, layer_opts)
         # Build artifacts should never change. Run this BEFORE the exit_stack
         # cleanup to enforce that the cleanup does not touch the image.
         subvol.set_readonly(True)
