@@ -15,7 +15,10 @@ python_library(
     name = "common",
     srcs = ["common.py"],
     base_module = "rpm",
-    deps = ["//fs_image:common"],
+    deps = [
+        "//fs_image:common",
+        "//fs_image:fs_utils",
+    ],
 )
 
 python_unittest(

@@ -11,6 +11,23 @@ python_library(
 )
 
 python_library(
+    name = "fs_utils",
+    srcs = ["fs_utils.py"],
+    base_module = "fs_image",
+    deps = [":common"],
+)
+
+python_unittest(
+    name = "test-fs-utils",
+    srcs = ["tests/test_fs_utils.py"],
+    base_module = "fs_image",
+    needed_coverage = [(
+        100,
+        ":fs_utils",
+    )],
+)
+
+python_library(
     name = "testlib_temp_subvolumes",
     srcs = [
         "tests/temp_subvolumes.py",
