@@ -225,9 +225,19 @@ class NspawnTestCase(unittest.TestCase):
             '--user=root',
             '--',
             '/usr/bin/systemctl', 'is-system-running', '--wait',
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        self.assertEqual(0, ret.returncode)
-        self.assertEqual(b'running', ret.stdout.strip())
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+
+        # The assertions here are validating that the systemd instance inside
+        # the container completed its boot but *not* that it successfully
+        # started every service.  This reason for this is that it's not
+        # a gauranteed property of the image build system that the image
+        # successfully boot systemd, but simply that systemd can be properly
+        # started and 'complete' a boot.  The success of the boot is really
+        # something that can only be properly evaulated by unit tests for
+        # a specific image.
+        self.assertIn(ret.returncode, [0, 1], msg=ret.stderr.strip())
+        self.assertIn(ret.stdout.strip(),
+                [b'running', b'degraded'], msg=ret.stderr.strip())
         # T48760757
         # self.assertEqual(b'', ret.stderr)
 
