@@ -142,6 +142,7 @@ python_library(
 python_binary(
     name = "find-built-subvol",
     main_module = "find_built_subvol",
+    par_style = "zip",
     deps = [":find_built_subvol"],
 )
 
