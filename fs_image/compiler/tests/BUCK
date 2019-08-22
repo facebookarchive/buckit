@@ -546,4 +546,40 @@ image.layer(
 
 image.package(name = op + ".sendstream")
 
+##
+## Check other forms of `from_sendstream`, also verified in `test-image-layer`
+##
+
+buck_genrule(
+    name = "create_ops-dir",
+    out = op + "create_ops-dir",
+    bash = """\
+    mkdir "$OUT"
+    $(exe :save-demo-sendstream) "$OUT"/sendstream create_ops
+    """,
+)
+
+image.layer(
+    name = "create_ops-from-dir",
+    from_sendstream = image.source(
+        ":create_ops-dir",
+        path = "sendstream",
+    ),
+)
+
+image.layer(
+    name = "create_ops-layer",
+    features = [image.feature(
+        install_data = {":create_ops-original.sendstream": "/sendstream"},
+    )],
+)
+
+image.layer(
+    name = "create_ops-from-layer",
+    from_sendstream = image.source(
+        layer = ":create_ops-layer",
+        path = "sendstream",
+    ),
+)
+
 image.layer("empty")  # Just ensure this builds, not checking contents :)

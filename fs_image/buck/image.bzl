@@ -5,6 +5,7 @@ load(":image_feature.bzl", "image_feature")
 load(":image_layer.bzl", "image_layer")
 load(":image_package.bzl", "image_package")
 load(":image_python_unittest.bzl", "image_python_unittest")
+load(":image_source.bzl", "image_source")
 
 def _image_host_mount(source, mountpoint, is_directory):
     return {
@@ -39,4 +40,5 @@ image = struct(
     opts = struct,
     package = image_package,
     python_unittest = image_python_unittest,
+    source = image_source,
 )

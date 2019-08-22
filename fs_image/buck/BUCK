@@ -14,18 +14,23 @@ load(":defs.bzl", "fake_macro_library")
 # This should eventually become unnecessary, follow Q10141.
 
 fake_macro_library(
+    name = "artifacts_require_repo",
+    srcs = ["artifacts_require_repo.bzl"],
+)
+
+fake_macro_library(
     name = "crc32",
     srcs = ["crc32.bzl"],
 )
 
 fake_macro_library(
-    name = "image_utils",
-    srcs = ["image_utils.bzl"],
+    name = "image_source",
+    srcs = ["image_source.bzl"],
 )
 
 fake_macro_library(
-    name = "artifacts_require_repo",
-    srcs = ["artifacts_require_repo.bzl"],
+    name = "image_utils",
+    srcs = ["image_utils.bzl"],
 )
 
 fake_macro_library(
@@ -38,6 +43,7 @@ fake_macro_library(
     srcs = ["image_layer.bzl"],
     deps = [
         ":artifacts_require_repo",
+        ":image_source",
         ":image_utils",
     ],
 )

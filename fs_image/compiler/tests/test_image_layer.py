@@ -170,10 +170,14 @@ class ImageLayerTestCase(unittest.TestCase):
         #  - `compiler/tests/TARGETS` explains why `mutate_ops` is not here.
         #  - Currently, `mutate_ops` also uses `--no-data`, which would
         #    break this test of idempotence.
-        for op in ['create_ops']:
-            with self.target_subvol(op) as sv:
+        for original_name, subvol_name in [
+            ('create_ops', 'create_ops'),
+            ('create_ops', 'create_ops-from-dir'),
+            ('create_ops', 'create_ops-from-layer'),
+        ]:
+            with self.target_subvol(subvol_name) as sv:
                 self.assertEqual(
-                    render_demo_subvols(**{op: True}),
+                    render_demo_subvols(**{original_name: True}),
                     render_sendstream(sv.mark_readonly_and_get_sendstream()),
                 )
 

@@ -281,6 +281,8 @@ IMAGE_LAYER_DEPS = [
     "newer_cheese_layer",
     "hello_world_base",
     "create_ops",
+    "create_ops-from-dir",
+    "create_ops-from-layer",
 ]
 
 python_unittest(

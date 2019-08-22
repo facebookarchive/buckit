@@ -101,6 +101,7 @@ load(
     "image_feature",
 )
 load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
+load(":image_source.bzl", "image_source")
 load(":image_utils.bzl", "image_utils")
 
 def _get_fbconfig_rule_type():
@@ -140,8 +141,9 @@ def _bare_image_layer(
         # A struct containing fields accepted by `_build_opts` above.
         # Usable only with `features`.
         build_opts = None,
-        # Path to a target outputting a btrfs send-stream of a subvolume;
-        # mutually exclusive with `features`.
+        # `image.source` (see `image_source.bzl`) or path to a target
+        # outputting a btrfs send-stream of a subvolume; mutually exclusive
+        # with `features`.
         from_sendstream = None,
         # Layers can be used in the `mounts` field of an `image.feature`.
         # This setting affects how **this** layer may be mounted inside
@@ -183,6 +185,7 @@ def _bare_image_layer(
     # live in a single target type for memorability, and because the entire
     # API of the resulting target, and much of the implementation is shared.
     if from_sendstream:
+        from_sendstream = image_source(from_sendstream)
         if features or build_opts:
             fail("cannot use `from_sendstream` with `features` or `build_opts`")
         if parent_layer != None:
@@ -193,7 +196,8 @@ def _bare_image_layer(
             # whether they are right for us in Buck.
             fail("Not implemented")
         make_subvol_cmd = '''
-            sendstream_path=$(location {from_sendstream})
+            {set_base_path}
+            sendstream_path="$base_path"{maybe_quoted_path}
             # CAREFUL: To avoid inadvertently masking errors, we only
             # perform command substitutions with variable assignments.
             sendstream_path=\\$(readlink -f "$sendstream_path")
@@ -210,7 +214,20 @@ def _bare_image_layer(
             $(exe //fs_image/compiler:subvolume-on-disk) \
               "$subvolumes_dir" \
               "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
-        '''.format(from_sendstream = from_sendstream)
+        '''.format(
+            maybe_quoted_path = (
+                "/" + shell.quote(from_sendstream.path)
+            ) if from_sendstream.path else "",
+            set_base_path = "base_path=$(location {})".format(
+                from_sendstream.source,
+            ) if from_sendstream.source else '''\
+            # `exe` vs `location` is explained in `image_package.py`.
+            # `exe` won't expand in \\$( ... ), so we need `binary_path`.
+            binary_path=( $(exe //fs_image:find-built-subvol) )
+            layer_path=$(location {})
+            base_path=\\$( "${{binary_path[@]}}" "$layer_path" )
+            '''.format(from_sendstream.layer),
+        )
     else:  # Build a new layer. It may be empty.
         make_subvol_cmd = _compile_image_features(
             current_target = current_target,
