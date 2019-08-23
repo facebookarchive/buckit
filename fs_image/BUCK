@@ -233,7 +233,7 @@ python_unittest(
         "//fs_image/compiler/tests" +
         ":only-for-tests-read-only-host-clone-with-machine-id": "tests/host-with-machine-id",
         "//tupperware/image/slimos" +
-        ":slimos": "tests/slimos",
+        ":slimos-stable": "tests/slimos",
     },
     deps = [":nspawn_in_subvol"],
 )
