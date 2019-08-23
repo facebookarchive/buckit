@@ -198,10 +198,12 @@ ID_TO_ITEM = {
     ),
     'foo/bar/installed/print-ok-too': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={'source': (
-            TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK] if _NONPORTABLE_ARTIFACTS
-                else f'{TARGET_TO_PATH[T_DIR_PRINT_OK]}/subdir/print-ok'
-        )},
+        source={
+            'source': TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK] 
+        } if _NONPORTABLE_ARTIFACTS else {
+            'source': TARGET_TO_PATH[T_DIR_PRINT_OK],
+            'path': 'subdir/print-ok',
+        },
         dest='/foo/bar/installed/print-ok-too',
         is_executable_=True,
     ),
