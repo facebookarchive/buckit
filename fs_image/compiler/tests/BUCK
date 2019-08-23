@@ -283,16 +283,20 @@ image.feature(
         },
         {
             "dest": "/foo/bar/installed/yittal-kitteh",
-            "path_in_source": "kitteh",
-            "source": ":dir-print-ok",
+            "source": image.source(
+                ":dir-print-ok",
+                path = "kitteh",
+            ),
         },
     ],
     install_executables = [
         (":print-ok", "/foo/bar/installed/print-ok"),
         {
             "dest": "/foo/bar/installed/print-ok-too",
-            "path_in_source": "subdir/print-ok",
-            "source": ":dir-print-ok",
+            "source": image.source(
+                ":dir-print-ok",
+                path = "subdir/print-ok",
+            ),
         },
     ],
 )

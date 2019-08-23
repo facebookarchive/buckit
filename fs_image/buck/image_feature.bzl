@@ -45,6 +45,7 @@ load(
 )
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
+load(":image_source.bzl", "image_source")
 load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -117,7 +118,7 @@ targets whose paths the `image_layer` converter would need to resolve.
 _TargetTaggerInfo = provider(fields = ["targets"])
 
 def _target_tagger():
-    return _TargetTaggerInfo(targets = [])
+    return _TargetTaggerInfo(targets = {})
 
 def _normalize_target(target):
     parsed = target_utils.parse_target(
@@ -134,7 +135,7 @@ def _normalize_target(target):
 
 def _tag_target(tagger, target):
     target = _normalize_target(target)
-    tagger.targets.append(target)
+    tagger.targets[target] = 1  # Use a dict, since a target may recur
     return {"__BUCK_TARGET": target}
 
 def _tag_required_target_key(tagger, d, target_key):
@@ -245,6 +246,15 @@ def _maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
     )
     return was_wrapped, _tag_target(target_tagger, maybe_target)
 
+def _image_source_as_target_tagged_dict(target_tagger, user_source):
+    src = image_source(user_source)._asdict()
+    _tag_required_target_key(
+        target_tagger,
+        src,
+        "layer" if src["layer"] else "source",
+    )
+    return src
+
 def _normalize_install_files(target_tagger, files, visibility, is_executable):
     if files == None:
         return []
@@ -273,32 +283,39 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
                     d[1],
                 ))
         d["is_executable_"] = is_executable  # Changes default permissions
-        if is_executable:
-            was_wrapped, d["source"] = _maybe_wrap_executable_target(
+
+        # Normalize to the `image.source` interface
+        src = _image_source_as_target_tagged_dict(target_tagger, d.pop("source"))
+
+        # NB: We don't have to wrap executables because they already come
+        # from a layer, which would have wrapped them if needed.
+        #
+        # Future: If `is_executable` is not set, we might use a Buck macro
+        # that enforces that the target is non-executable, as I suggested on
+        # Q15839.  This should probably go in `_tag_required_target_key` to
+        # ensure that we avoid "unwrapped executable" bugs everywhere.  A
+        # possible reason NOT to do this is that it would require fixes to
+        # `install_data` invocations that extract non-executable contents
+        # out of a directory target that is executable.
+        if is_executable and src["source"]:
+            was_wrapped, src["source"] = _maybe_wrap_executable_target(
                 target_tagger = target_tagger,
-                target = d.pop("source"),
+                # Peel back target tagging since this helper expects untagged.
+                target = src.pop("source")["__BUCK_TARGET"],
                 wrap_prefix = "install_executables_wrap_source",
                 visibility = visibility,
                 # NB: Buck makes it hard to execute something out of an
                 # output that is a directory, but it is possible so long as
                 # the rule outputting the directory is marked executable
-                # (see e.g.  `print-ok-too` in `feature_install_files`).
-                path_in_output = d.get("path_in_source", None),
+                # (see e.g. `print-ok-too` in `feature_install_files`).
+                path_in_output = src.get("path", None),
             )
             if was_wrapped:
-                # The wrapper itself resolves `path_in_source`, so the
+                # The wrapper above has resolved `src["path"]`, so the
                 # compiler does not have to.
-                d.pop("path_in_source", None)
-        else:
-            # Future: If `is_executable` is not set, we should use a Buck
-            # macro that enforces that the target is non-executable, as I
-            # suggested on Q15839.  This should probably be done inside
-            # `_tag_required_target_key` to ensure that we avoid "unwrapped
-            # executable" bugs everywhere.  A possible reason NOT to do this
-            # is that it would require fixes to `install_data` invocations
-            # that extract non-executable contents out of a directory target
-            # that is executable.
-            _tag_required_target_key(target_tagger, d, "source")
+                src["path"] = None
+
+        d["source"] = src
         normalized.append(_normalize_stat_options(d))
     return normalized
 
@@ -373,8 +390,8 @@ def _normalize_remove_paths(remove_paths):
 
 def _rpm_name_or_source(name_source):
     # Normal RPM names cannot have a colon, whereas target paths
-    # ALWAYS have a colon.
-    if ":" in name_source:
+    # ALWAYS have a colon. `image.source` is a struct.
+    if ":" in name_source or not types.is_string(name_source):
         return "source"
     else:
         return "name"
@@ -405,7 +422,10 @@ def _normalize_rpms(target_tagger, rpms):
 
         source = dct.pop("source", None)
         if source != None:
-            dct["source"] = _tag_target(target_tagger, source)
+            dct["source"] = _image_source_as_target_tagged_dict(
+                target_tagger,
+                source,
+            )
 
         normalized.append(dct)
     return normalized
@@ -503,8 +523,11 @@ def image_feature(
         # (wholly or partially) into an image. Basic syntax:
         #
         # Each argument is an iterable of targets to copy into the image.
-        # You can supply a list mixing dicts and 2-element tuples (as
-        # below), or a dict keyed by source target (more below).
+        # Files to copy can be specified using `image.source` (use this to
+        # grab one file from a directory or layer output, docs in
+        # `image_source.bzl`), or as string target paths.  You can supply a
+        # list mixing dicts and 2-element tuples (as below), or a dict keyed
+        # by source target (more below).
         #
         # Prefer to use the shortest form possible, instead of repeating the
         # defaults in your spec.
@@ -518,11 +541,7 @@ def image_feature(
         #         'dest': 'image_absolute/dir/filename',
         #
         #         # The Buck target to copy (or to copy from).
-        #         'source': '//target/to/copy',
-        #
-        #         # If 'source' is a directory, copy just this one file.
-        #         # Defaults to `None`, since most sources are files.
-        #         'path_in_source': 'subdir/file',
+        #         'source': '//target/to/copy',  # Or an `image.source()`
         #
         #         # Please do NOT copy these defaults into your TARGETS:
         #         'user:group': 'root:root',
@@ -622,6 +641,10 @@ def image_feature(
         # may only be applied against the parent layer -- if your current
         # layer includes features both removing and installing the same
         # package, this will cause a build failure.
+        #
+        # You may also install an RPM that is the outputs of another buck
+        # rule by replacing `package-name` by an `image.source` (docs in
+        # `image_source.bzl`), or by a target path.
         rpms = None,
         # An iterable of symlinks to make in the image.  Directories and files
         # are supported independently to provide explicit handling of each
@@ -695,7 +718,7 @@ def image_feature(
         # this inefficiency.
         #
         # To understand the self-dependency, see the `fake_macro_library` doc.
-        deps = target_tagger.targets + ["//fs_image/buck:image_feature"],
+        deps = target_tagger.targets.keys() + ["//fs_image/buck:image_feature"],
     )
 
     # Anonymous features do not emit a target, but can be used inline as

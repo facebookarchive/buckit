@@ -16,11 +16,13 @@ class TestFsUtils(unittest.TestCase):
 
     def test_path_basics(self):
         self.assertEqual(b'foo/bar', Path('foo') / 'bar')
-        self.assertEqual(b'/foo/bar', b'/foo' / Path('bar'))
+        self.assertEqual(b'/foo/bar', b'/foo' / Path.or_none('bar'))
         self.assertEqual(b'/baz', b'/be/bop' / Path(b'/baz'))
         self.assertEqual('file:///a%2Cb', Path('/a,b').file_url())
         self.assertEqual(b'bom', Path('/bim/bom').basename())
         self.assertEqual(b'/bim', Path('/bim/bom').dirname())
+        self.assertEqual(b'ta/da', Path('./ta//gr/../da/').normpath())
+        self.assertIsNone(Path.or_none(None))
 
     def test_bad_utf_is_bad(self):
         with self.assertRaises(UnicodeDecodeError):

@@ -16,9 +16,12 @@ import json
 import os
 import subprocess
 import tempfile
+import shlex
 import sys
 
-from typing import Iterable, List, Mapping, NamedTuple, Optional, Set, Tuple
+from typing import (
+    Iterable, List, Mapping, NamedTuple, Optional, Set, Tuple, Union,
+)
 
 from . import mount_item
 from . import procfs_serde
@@ -31,6 +34,8 @@ from .requires import require_directory, require_file
 from .subvolume_on_disk import SubvolumeOnDisk
 
 from fs_image.common import nullcontext
+
+from find_built_subvol import find_built_subvol
 from nspawn_in_subvol import nspawn_in_subvol, \
     parse_opts as nspawn_in_subvol_parse_opts
 from rpm.common import Path
@@ -146,6 +151,54 @@ class ImageItem(type):
             metacls, classname, (PhaseOrderBase,) + bases, dct,
             customize_fields
         )
+
+
+META_ARTIFACTS_REQUIRE_REPO = os.path.join(
+    META_DIR, 'private/opts/artifacts_may_require_repo',
+)
+
+
+def _validate_artifacts_require_repo(
+    dependency: Subvol, layer_opts: LayerOpts, message: str,
+):
+    dep_arr = procfs_serde.deserialize_int(
+        dependency, META_ARTIFACTS_REQUIRE_REPO,
+    )
+    # The check is <= because we should permit building @mode/dev layers
+    # that depend on published @mode/opt images.  The CLI arg is bool.
+    assert dep_arr <= int(layer_opts.artifacts_may_require_repo), (
+        f'is trying to build a self-contained layer (layer_opts.'
+        f'artifacts_may_require_repo) with a dependency {dependency.path()} '
+        f'({message}) that was marked as requiring the repo to run ({dep_arr})'
+    )
+
+
+class ImageSource(NamedTuple):
+    source: Optional[Path]
+    layer: Optional[Path]
+    path: Optional[Path]
+
+    @classmethod
+    def new(cls, *, source=None, layer=None, path=None):
+        assert (source is None) ^ (layer is None), (source, layer, path)
+        return cls(
+            source=Path.or_none(source),
+            layer=Path.or_none(layer),
+            # Absolute `path` is still relative to `source` or `layer`
+            path=Path.or_none(path and path.lstrip('/')),
+        )
+
+    def full_path(self, layer_opts: LayerOpts) -> Path:
+        if self.layer:
+            subvol = find_built_subvol(
+                self.layer, subvolumes_dir=layer_opts.subvolumes_dir,
+            )
+            if os.path.exists(subvol.path(META_ARTIFACTS_REQUIRE_REPO)):
+                _validate_artifacts_require_repo(
+                    subvol, layer_opts, 'image.source',
+                )
+            return Path(subvol.path(self.path or '.'))
+        return (self.source / (self.path or '.')).normpath()
 
 
 def _make_path_normal_relative(orig_d: str) -> str:
@@ -430,17 +483,11 @@ class InstallFileItem(metaclass=ImageItem):
     fields = [
         'source',
         'dest',
-        # The following fields are None after `customize_fields`:
-        ('path_in_source', None),
-        'is_executable_',
+        'is_executable_',  # None after `customize_fields`
     ] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
-        path_in_source = _pop_and_make_None(kwargs, 'path_in_source', None)
-        if path_in_source is not None:
-            kwargs['source'] = os.path.normpath(
-                kwargs['source'] + '/' + path_in_source
-            )
+        kwargs['source'] = ImageSource.new(**kwargs['source'])
         _coerce_path_field_normal_relative(kwargs, 'dest')
         customize_stat_options(
             kwargs,
@@ -456,7 +503,7 @@ class InstallFileItem(metaclass=ImageItem):
 
     def build(self, subvol: Subvol, layer_opts: LayerOpts):
         dest = subvol.path(self.dest)
-        subvol.run_as_root(['cp', self.source, dest])
+        subvol.run_as_root(['cp', self.source.full_path(layer_opts), dest])
         build_stat_options(self, subvol, dest)
 
 
@@ -694,21 +741,15 @@ def _ensure_meta_dir_exists(subvol: Subvol, layer_opts: LayerOpts):
     #   - By marking the images, we avoid having to conditionally add
     #     `--bind-repo-ro` flags in a bunch of places in our codebase.  The
     #     in-image marker enables `nspawn_in_subvol` to decide.
-    arr_path = os.path.join(META_DIR, 'private/opts/artifacts_may_require_repo')
-    if os.path.exists(subvol.path(arr_path)):
-        parent_arr = procfs_serde.deserialize_int(subvol, arr_path)
-        # The check is <= because we should permit building @mode/dev
-        # children from published @mode/opt images. The CLI arg is bool.
-        assert parent_arr <= int(layer_opts.artifacts_may_require_repo), (
-            f'{subvol.path()} is trying to build a self-contained layer '
-            f'(layer_opts.artifacts_may_require_repo) from a parent that was '
-            f'marked as requiring the repo to run ({parent_arr})'
-        )
+    if os.path.exists(subvol.path(META_ARTIFACTS_REQUIRE_REPO)):
+        _validate_artifacts_require_repo(subvol, layer_opts, 'parent layer')
         # I looked into adding an `allow_overwrite` flag to `serialize`, but
         # it was too much hassle to do it right.
-        subvol.run_as_root(['rm', subvol.path(arr_path)])
+        subvol.run_as_root(['rm', subvol.path(META_ARTIFACTS_REQUIRE_REPO)])
     procfs_serde.serialize(
-        layer_opts.artifacts_may_require_repo, subvol, arr_path,
+        layer_opts.artifacts_may_require_repo,
+        subvol,
+        META_ARTIFACTS_REQUIRE_REPO,
     )
 
 
@@ -935,6 +976,46 @@ RPM_ACTION_TYPE_TO_YUM_CMD = {
 }
 
 
+class _RpmActionConflictDetector:
+
+    def __init__(self):
+        self.name_to_actions = {}
+
+    def add(self, rpm_name, item):
+        actions = self.name_to_actions.setdefault(rpm_name, [])
+        actions.append((item.action, item.from_target))
+        # Raise when a layer has multiple actions for one RPM -- even
+        # when all actions are the same.  This can be relaxed if needed.
+        if len(actions) != 1:
+            raise RuntimeError(
+                f'RPM action conflict for {rpm_name}: {actions}'
+            )
+
+
+class _LocalRpm(NamedTuple):
+    path: Path
+    metadata: RpmMetadata
+
+
+def _rpms_and_bind_ro_args(
+    names_or_rpms: List[Union[str, _LocalRpm]],
+) -> Tuple[List[str], List[str]]:
+    rpms = []
+    bind_ro_args = []
+    for idx, nor in enumerate(names_or_rpms):
+        if isinstance(nor, _LocalRpm):
+            # For custom bind mount destinations, nspawn is strict on
+            # destinations where the parent directories don't exist.
+            # Because of that, we bind all the local RPMs in "/" with
+            # uniquely prefix-ed names.
+            dest = f'/localhostrpm_{idx}_{nor.path.basename().decode()}'
+            bind_ro_args.extend(['--bindmount-ro', nor.path.decode(), dest])
+            rpms.append(dest)
+        else:
+            rpms.append(nor)
+    return rpms, bind_ro_args
+
+
 # These items are part of a phase, so they don't get dependency-sorted, so
 # there is no `requires()` or `provides()` or `build()` method.
 class RpmActionItem(metaclass=ImageItem):
@@ -950,35 +1031,14 @@ class RpmActionItem(metaclass=ImageItem):
         kwargs['action'] = RpmAction(kwargs['action'])
         assert kwargs['action'] != RpmAction.downgrade, \
             '\'downgrade\' cannot be passed'
+        if kwargs['source']:
+            kwargs['source'] = ImageSource.new(**kwargs['source'])
 
     def phase_order(self):
         return {
             RpmAction.install: PhaseOrder.RPM_INSTALL,
             RpmAction.remove_if_exists: PhaseOrder.RPM_REMOVE,
         }[self.action]
-
-    def _parse_items_to_rpms_and_bindmounts(
-        self, items: List['__class__']
-    ) -> Tuple[List[str], List[str]]:
-        cnt = 0
-        rpms = []
-        addl_bindmounts = []
-        for item in items:
-            if item.name is not None:
-                rpms.append(item.name)
-            else:
-                # For custom bind mount destinations, nspawn is strict on
-                # destinations where the parent directories don't exist.
-                # Because of that, we bind all the local RPMs in "/" with
-                # uniquely prefix-ed names.
-                basename = os.path.basename(item.source)
-                dest = f'/localhostrpm_{cnt}_{basename}'
-                addl_bindmounts += [
-                    '--bindmount-ro', f'{item.source}', dest,
-                ]
-                rpms.append(dest)
-                cnt += 1
-        return rpms, addl_bindmounts
 
     @classmethod
     def get_phase_builder(
@@ -997,53 +1057,53 @@ class RpmActionItem(metaclass=ImageItem):
             '`both yum_from_repo_snapshot and build_appliance`'
         )
 
-        action_to_items = {action: set() for action in RpmAction}
-        rpm_to_actions = {}
+        conflict_detector = _RpmActionConflictDetector()
+
+        # This Map[RpmAcition, Union[str, _LocalRpm]] powers builder() below.
+        action_to_names_or_rpms = {action: set() for action in RpmAction}
         for item in items:
             assert isinstance(item, RpmActionItem), item
-            action_to_items[item.action].add(item)
+
+            # Eagerly resolve paths & metadata for local RPMs to avoid
+            # repeating the required costly IO (or bug-prone implicit
+            # memoization).
             if item.source is not None:
-                rpm_name = RpmMetadata.from_file(Path(item.source)).name
-            else:
-                rpm_name = item.name
-            actions = rpm_to_actions.setdefault(rpm_name, [])
-            actions.append((item.action, item.from_target))
-            # Raise when a layer has multiple actions for one RPM -- even
-            # when all actions are the same.  This can be relaxed if needed.
-            if len(actions) != 1:
-                raise RuntimeError(
-                    f'RPM action conflict for {rpm_name}: {actions}'
+                rpm_path = item.source.full_path(layer_opts)
+                name_or_rpm = _LocalRpm(
+                    path=rpm_path,
+                    metadata=RpmMetadata.from_file(rpm_path),
                 )
+                conflict_detector.add(name_or_rpm.metadata.name, item)
+            else:
+                name_or_rpm = item.name
+                conflict_detector.add(item.name, item)
+
+            action_to_names_or_rpms[item.action].add(name_or_rpm)
 
         def builder(subvol: Subvol):
             # Go through the list of RPMs to install and change the action to
             # downgrade if it is a local RPM with a lower version than what is
             # installed.
             # This is done in the builder because we need access to the subvol.
-            for item in action_to_items[RpmAction.install].copy():
-                if item.source is not None:
-                    a = RpmMetadata.from_file(Path(item.source))
+            for nor in action_to_names_or_rpms[RpmAction.install].copy():
+                if isinstance(nor, _LocalRpm):
                     try:
-                        b = RpmMetadata.from_subvol(subvol, a.name)
+                        old = RpmMetadata.from_subvol(subvol, nor.metadata.name)
                     except (RuntimeError, ValueError):
                         # This can happen if the RPM DB does not exist in the
                         # subvolume or the package is not installed.
                         continue
-                    if compare_rpm_versions(a, b) <= 0:
-                        action_to_items[RpmAction.install].remove(item)
-                        action_to_items[RpmAction.downgrade].add(item)
+                    if compare_rpm_versions(nor.metadata, old) <= 0:
+                        action_to_names_or_rpms[RpmAction.install].remove(nor)
+                        action_to_names_or_rpms[RpmAction.downgrade].add(nor)
 
-            for action, items in action_to_items.items():
-                if not items:
+            for action, nors in action_to_names_or_rpms.items():
+                if not nors:
                     continue
 
                 # Future: `yum-from-snapshot` is actually designed to run
                 # unprivileged (but we have no nice abstraction for this).
                 if layer_opts.build_appliance is None:
-                    rpms = []
-                    for i in items:
-                        rpms.append(i.name if i.name is not None else i.source)
-
                     subvol.run_as_root([
                         # Since `yum-from-snapshot` variants are generally
                         # Python binaries built from this very repo, in
@@ -1068,24 +1128,14 @@ class RpmActionItem(metaclass=ImageItem):
                         RPM_ACTION_TYPE_TO_YUM_CMD[action],
                         # Sort ensures determinism even if `yum` is
                         # order-dependent
-                        '--assumeyes', '--', *sorted(rpms),
+                        '--assumeyes', '--', *sorted((
+                            nor.path if isinstance(nor, _LocalRpm)
+                                else nor.encode()
+                        ) for nor in nors),
                     ])
                 else:
-                    appliance_svol = Subvol(
-                        layer_opts.build_appliance,
-                        already_exists=True,
-                    )
-
-                    rpms, add_bindro = cls._parse_items_to_rpms_and_bindmounts(
-                        cls, items
-                    )
-
-                    protected_path_args = ' '.join(sum((
-                        ['--protected-path', d]
-                            for d in _protected_path_set(subvol)
-                    ), []))
-
-                    opts = nspawn_in_subvol_parse_opts(add_bindro + [
+                    rpms, bind_ro_args = _rpms_and_bind_ro_args(nors)
+                    opts = nspawn_in_subvol_parse_opts([
                         '--layer', 'UNUSED',
                         '--user', 'root',
                         # You can see below --no-private-network in conjunction
@@ -1096,17 +1146,22 @@ class RpmActionItem(metaclass=ImageItem):
                         '--no-private-network',
                         '--cap-net-admin',
                         '--bindmount-rw', subvol.path().decode(), '/work',
+                        *bind_ro_args,
                         '--', 'sh', '-c',
-                        (
-                            'mkdir -p /mnt/var/cache/yum; '
-                            'mount --bind /var/cache/yum /mnt/var/cache/yum; '
-                            '/yum-from-snapshot '
-                            f'{protected_path_args}'
-                            ' --install-root /work -- '
-                            f'{RPM_ACTION_TYPE_TO_YUM_CMD[action]} '
-                            '--assumeyes -- '
-                            f'{" ".join(sorted(rpms))}'
-                        )
+                        f'''
+                        mkdir -p /mnt/var/cache/yum ;
+                        mount --bind /var/cache/yum /mnt/var/cache/yum ;
+                        /yum-from-snapshot {' '.join(
+                                '--protected-path=' + shlex.quote(p)
+                                    for p in _protected_path_set(subvol)
+                            )} --install-root /work -- {
+                                RPM_ACTION_TYPE_TO_YUM_CMD[action]
+                            } --assumeyes -- {" ".join(sorted(rpms))}
+                        ''',
                     ])
-                    nspawn_in_subvol(appliance_svol, opts, stdout=sys.stderr)
+                    nspawn_in_subvol(
+                        Subvol(layer_opts.build_appliance, already_exists=True),
+                        opts,
+                        stdout=sys.stderr,
+                    )
         return builder

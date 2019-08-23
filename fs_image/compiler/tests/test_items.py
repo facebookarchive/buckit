@@ -19,11 +19,11 @@ from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..items import (
-    InstallFileItem, FilesystemRootItem, gen_parent_layer_items, LayerOpts,
-    MakeDirsItem, MountItem, ParentLayerItem, PhaseOrder, RemovePathAction,
-    RemovePathItem, RpmActionItem, RpmAction, SymlinkToDirItem,
-    SymlinkToFileItem, TarballItem, _hash_tarball, _protected_path_set,
-    tarball_item_factory,
+    InstallFileItem, ImageSource, FilesystemRootItem,
+    gen_parent_layer_items, LayerOpts, MakeDirsItem, MountItem,
+    ParentLayerItem, PhaseOrder, RemovePathAction, RemovePathItem,
+    RpmActionItem, RpmAction, SymlinkToDirItem, SymlinkToFileItem,
+    TarballItem, _hash_tarball, _protected_path_set, tarball_item_factory,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory, require_file
@@ -98,7 +98,8 @@ class ItemsTestCase(unittest.TestCase):
         self.assertIs(
             None,
             InstallFileItem(
-                from_target='t', source='a', dest='b', is_executable_=False,
+                from_target='t', source={'source': 'a'}, dest='b',
+                is_executable_=False,
             ).phase_order(),
         )
         self.assertEqual(
@@ -137,23 +138,35 @@ class ItemsTestCase(unittest.TestCase):
 
     def test_install_file(self):
         exe_item = InstallFileItem(
-            from_target='t', source='a/b/c', dest='d/c', is_executable_=True,
+            from_target='t', source={'source': 'a/b/c'}, dest='d/c',
+            is_executable_=True,
         )
         self.assertEqual(0o555, exe_item.mode)
-        self.assertEqual('a/b/c', exe_item.source)
+        self.assertEqual(
+            ImageSource(source=b'a/b/c', layer=None, path=None),
+            exe_item.source,
+        )
         self._check_item(
             exe_item,
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
         )
 
-        # Checks `path_in_source`, as well as "is_executable_=False"
+        # Checks `ImageSource.path`, as well as "is_executable_=False"
         data_item = InstallFileItem(
-            from_target='t', source='a', path_in_source='b/c', dest='d',
+            from_target='t',
+            source={'source': 'a', 'path': '/b/q'},
+            dest='d',
             is_executable_=False,
         )
         self.assertEqual(0o444, data_item.mode)
-        self.assertEqual('a/b/c', data_item.source)
+        self.assertEqual(
+            ImageSource(source=b'a', layer=None, path=b'b/q'),
+            data_item.source,
+        )
+        self.assertEqual(
+            b'a/b/q', data_item.source.full_path(DUMMY_LAYER_OPTS),
+        )
         self._check_item(
             data_item,
             {ProvidesFile(path='d')},
@@ -166,14 +179,41 @@ class ItemsTestCase(unittest.TestCase):
         # to /meta/ or other protected paths.
         with self.assertRaisesRegex(AssertionError, 'cannot start with meta/'):
             InstallFileItem(
-                from_target='t', source='a/b/c', dest='/meta/foo',
+                from_target='t', source={'source': 'a/b/c'}, dest='/meta/foo',
                 is_executable_=False,
             )
+
+    def test_install_file_from_layer(self):
+        layer_path = Path(__file__).dirname() / 'test-with-one-local-rpm'
+        path_in_layer = b'usr/share/rpm_test/cheese2.txt'
+        item = InstallFileItem(
+            from_target='t',
+            source={'layer': layer_path, 'path': '/' + path_in_layer.decode()},
+            dest='cheese2',
+            is_executable_=False,
+        )
+        self.assertEqual(0o444, item.mode)
+        self.assertEqual(
+            ImageSource(source=None, layer=layer_path, path=path_in_layer),
+            item.source,
+        )
+        self.assertEqual(
+            find_built_subvol(layer_path).path(path_in_layer),
+            # The dummy object works here because `subvolumes_dir` of `None`
+            # runs `artifacts_dir` internally, while our "prod" path uses
+            # the already-computed value.
+            item.source.full_path(DUMMY_LAYER_OPTS),
+        )
+        self._check_item(
+            item,
+            {ProvidesFile(path='cheese2')},
+            {require_directory('/')},
+        )
 
     def test_enforce_no_parent_dir(self):
         with self.assertRaisesRegex(AssertionError, r'cannot start with \.\.'):
             InstallFileItem(
-                from_target='t', source='a', dest='a/../../b',
+                from_target='t', source={'source': 'a'}, dest='a/../../b',
                 is_executable_=False,
             )
 
@@ -183,7 +223,7 @@ class ItemsTestCase(unittest.TestCase):
             subvol.run_as_root(['mkdir', subvol.path('d')])
 
             InstallFileItem(
-                from_target='t', source='/dev/null', dest='/d/null',
+                from_target='t', source={'source': '/dev/null'}, dest='/d/null',
                 is_executable_=False,
             ).build(subvol, DUMMY_LAYER_OPTS)
             self.assertEqual(
@@ -194,15 +234,15 @@ class ItemsTestCase(unittest.TestCase):
             # Fail to write to a nonexistent dir
             with self.assertRaises(subprocess.CalledProcessError):
                 InstallFileItem(
-                    from_target='t', source='/dev/null', dest='/no_dir/null',
-                    is_executable_=False,
+                    from_target='t', source={'source': '/dev/null'},
+                    dest='/no_dir/null', is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
 
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
             # check for this, and a run-time check would add overhead.
             InstallFileItem(
-                from_target='t', source='/dev/null', dest='/d/null',
+                from_target='t', source={'source': '/dev/null'}, dest='/d/null',
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.
                 mode='u+rw', user_group='12:34', is_executable_=False,
@@ -578,7 +618,7 @@ class ItemsTestCase(unittest.TestCase):
 
             # We need a source file to validate a SymlinkToFileItem
             InstallFileItem(
-                from_target='t', source='/dev/null', dest='/file',
+                from_target='t', source={'source': '/dev/null'}, dest='/file',
                 is_executable_=False,
             ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToDirItem(
@@ -858,8 +898,8 @@ class ItemsTestCase(unittest.TestCase):
             ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['d', 'e']:
                 InstallFileItem(
-                    from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
-                    is_executable_=False,
+                    from_target='t', source={'source': '/dev/null'},
+                    dest=f'/a/b/c/{d}', is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
             MakeDirsItem(
                 from_target='t', path_to_make='/f/g', into_dir='/',
@@ -870,8 +910,8 @@ class ItemsTestCase(unittest.TestCase):
             ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['h', 'i']:
                 InstallFileItem(
-                    from_target='t', source='/dev/null', dest=f'/f/{d}',
-                    is_executable_=False,
+                    from_target='t', source={'source': '/dev/null'},
+                    dest=f'/f/{d}', is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToDirItem(
                 from_target='t', source='/f/i', dest='/f/i_sym',
@@ -1031,8 +1071,10 @@ class ItemsTestCase(unittest.TestCase):
                 ] + [
                     RpmActionItem(
                         from_target='t',
-                        source=(Path(__file__).dirname() /
-                            "rpm-test-cheese-1-1.rpm").decode(),
+                        source={
+                            'source': (Path(__file__).dirname() /
+                                "rpm-test-cheese-1-1.rpm").decode(),
+                        },
                         action=RpmAction.install,
                     )
                 ],
@@ -1123,7 +1165,7 @@ class ItemsTestCase(unittest.TestCase):
                 [
                     RpmActionItem(
                         from_target='t',
-                        source=src_rpm.decode(),
+                        source={'source': src_rpm.decode()},
                         action=RpmAction.install)
                 ],
                 DUMMY_LAYER_OPTS._replace(
@@ -1177,14 +1219,18 @@ class ItemsTestCase(unittest.TestCase):
                 [
                     RpmActionItem(
                         from_target='t',
-                        source=(Path(__file__).dirname() /
-                            "rpm-test-cheese-2-1.rpm").decode(),
+                        source={
+                            'source': (Path(__file__).dirname() /
+                                "rpm-test-cheese-2-1.rpm").decode(),
+                        },
                         action=RpmAction.install,
                     ),
                     RpmActionItem(
                         from_target='t',
-                        source=(Path(__file__).dirname() /
-                            "rpm-test-cheese-1-1.rpm").decode(),
+                        source={
+                            'source': (Path(__file__).dirname() /
+                                "rpm-test-cheese-1-1.rpm").decode(),
+                        },
                         action=RpmAction.remove_if_exists,
                     ),
                 ],

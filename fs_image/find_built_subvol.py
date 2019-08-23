@@ -2,6 +2,8 @@
 import os
 import sys
 
+from fs_image.fs_utils import Path
+
 from artifacts_dir import ensure_per_repo_artifacts_dir_exists
 from compiler.subvolume_on_disk import SubvolumeOnDisk
 from subvol_utils import Subvol
@@ -32,7 +34,7 @@ def find_built_subvol(
     # It's OK for both to be None (uses the current file to find repo), but
     # it's not OK to set both.
     assert (path_in_repo is None) or (subvolumes_dir is None)
-    with open(os.path.join(layer_output, 'layer.json')) as infile:
+    with open(Path(layer_output) / 'layer.json') as infile:
         return Subvol(
             SubvolumeOnDisk.from_json_file(
                 infile,

@@ -53,6 +53,7 @@ fake_macro_library(
     srcs = ["image_feature.bzl"],
     deps = [
         ":crc32",
+        ":image_source",
         ":wrap_runtime_deps",
     ],
 )

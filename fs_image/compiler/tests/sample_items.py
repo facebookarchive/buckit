@@ -92,7 +92,7 @@ ID_TO_ITEM = {
     ),
     'foo/hello_world.tar': InstallFileItem(
         from_target=T_SYMLINKS,
-        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
         dest='/foo/hello_world.tar',
         is_executable_=False,
     ),
@@ -129,7 +129,7 @@ ID_TO_ITEM = {
     ),
     '.rpms/install/rpm-test-cheese-2-1.rpm': RpmActionItem(
         from_target=T_TAR,
-        source=TARGET_TO_PATH[T_RPM_TEST_CHEESE],
+        source={'source': TARGET_TO_PATH[T_RPM_TEST_CHEESE]},
         action=RpmAction.install,
     ),
     '.rpms/remove_if_exists/rpm-test-carrot': RpmActionItem(
@@ -163,13 +163,13 @@ ID_TO_ITEM = {
     # From `feature_install_files`:
     'foo/bar/hello_world.tar': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
         dest='/foo/bar/hello_world.tar',
         is_executable_=False,
     ),
     'foo/bar/hello_world_again.tar': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
         dest='/foo/bar/hello_world_again.tar',
         user_group='nobody:nobody',
         is_executable_=False,
@@ -181,25 +181,24 @@ ID_TO_ITEM = {
     ),
     'foo/bar/installed/yittal-kitteh': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source=TARGET_TO_PATH[T_DIR_PRINT_OK],
-        path_in_source='kitteh',
+        source={'source': TARGET_TO_PATH[T_DIR_PRINT_OK], 'path': 'kitteh'},
         dest='/foo/bar/installed/yittal-kitteh',
         is_executable_=False,
     ),
     'foo/bar/installed/print-ok': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source=TARGET_TO_PATH[
+        source={'source': TARGET_TO_PATH[
             T_EXE_WRAP_PRINT_OK if _NONPORTABLE_ARTIFACTS else T_PRINT_OK
-        ],
+        ]},
         dest='/foo/bar/installed/print-ok',
         is_executable_=True,
     ),
     'foo/bar/installed/print-ok-too': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source=(
+        source={'source': (
             TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK] if _NONPORTABLE_ARTIFACTS
                 else f'{TARGET_TO_PATH[T_DIR_PRINT_OK]}/subdir/print-ok'
-        ),
+        )},
         dest='/foo/bar/installed/print-ok-too',
         is_executable_=True,
     ),

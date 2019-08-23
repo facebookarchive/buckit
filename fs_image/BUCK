@@ -133,6 +133,7 @@ python_library(
     base_module = "",
     deps = [
         ":artifacts_dir",
+        ":fs_utils",
         ":subvol_utils",
         ":volume_for_repo",
         "//fs_image/compiler:subvolume_on_disk",

@@ -22,6 +22,12 @@ class Path(bytes):
     def __new__(cls, arg, *args, **kwargs):
         return super().__new__(cls, byteme(arg), *args, **kwargs)
 
+    @classmethod
+    def or_none(cls, arg, *args, **kwargs):
+        if arg is None:
+            return None
+        return cls(arg, *args, **kwargs)
+
     def __truediv__(self, right: AnyStr) -> 'Path':
         return Path(os.path.join(self, byteme(right)))
 
@@ -36,6 +42,9 @@ class Path(bytes):
 
     def dirname(self) -> 'Path':
         return Path(os.path.dirname(self))
+
+    def normpath(self) -> 'Path':
+        return Path(os.path.normpath(self))
 
     def decode(self, encoding='utf-8', errors=None) -> str:
         # Python uses `surrogateescape` for invalid UTF-8 from the filesystem.
