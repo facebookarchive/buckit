@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import os
 
-from ..items import (
-    InstallFileItem, FilesystemRootItem, MakeDirsItem, MountItem,
-    RemovePathAction, RemovePathItem, RpmActionItem, RpmAction,
-    SymlinkToDirItem, SymlinkToFileItem, TarballItem,
-)
+from fs_image.compiler.items.install_file import InstallFileItem
+from fs_image.compiler.items.parent_layer import FilesystemRootItem
+from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.mount import MountItem
+from fs_image.compiler.items.remove_path import RemovePathAction, RemovePathItem
+from fs_image.compiler.items.rpm_action import RpmAction, RpmActionItem
+from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
+from fs_image.compiler.items.tarball import TarballItem
 
 HELLO_TAR_HASH = 'sha256:' \
     'dd83365abc69fe39990096a9396d9d2d6fbf75f849ab1640a10fdf9614d8d03d'

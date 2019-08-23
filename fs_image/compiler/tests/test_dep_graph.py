@@ -4,11 +4,13 @@ import unittest
 
 from tests.temp_subvolumes import TempSubvolumes
 
+from fs_image.compiler.items.common import ImageItem, PhaseOrder
+from fs_image.compiler.items.install_file import InstallFileItem
+from fs_image.compiler.items.parent_layer import FilesystemRootItem
+from fs_image.compiler.items.make_dirs import MakeDirsItem
+
 from ..dep_graph import (
     DependencyGraph, ItemProv, ItemReq, ItemReqsProvs, ValidatedReqsProvs,
-)
-from ..items import (
-    InstallFileItem, FilesystemRootItem, ImageItem, MakeDirsItem, PhaseOrder,
 )
 from ..provides import ProvidesDirectory, ProvidesDoNotAccess, ProvidesFile
 from ..requires import require_directory

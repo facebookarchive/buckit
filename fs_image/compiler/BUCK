@@ -104,75 +104,10 @@ python_library(
 )
 
 python_library(
-    name = "mount_item",
-    srcs = [
-        "mount_item.py",
-    ],
-    base_module = "compiler",
-    deps = [
-        ":subvolume_on_disk",
-        "//fs_image:subvol_utils",
-    ],
-)
-
-python_library(
-    name = "items",
-    srcs = [
-        "items.py",
-    ],
-    base_module = "compiler",
-    deps = [
-        ":mount_item",
-        ":procfs_serde",
-        ":requires_provides",
-        ":subvolume_on_disk",
-        "//fs_image:nspawn_in_subvol",
-        "//fs_image:subvol_utils",
-        "//fs_image/rpm:common",
-        "//fs_image/rpm:rpm_metadata",
-    ],
-)
-
-python_unittest(
-    name = "test-items",
-    srcs = ["tests/test_items.py"],
-    base_module = "compiler",
-    needed_coverage = [
-        (
-            100,
-            ":items",
-        ),
-        (
-            100,
-            ":mount_item",
-        ),
-    ],
-    # "fastzip" would break :volume_for_repo in @mode/opt.  "xar" fails
-    # since `root` cannot access the content of an unprivileged XAR.
-    par_style = "zip",
-    resources = {
-        "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
-        "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",
-        "//fs_image/compiler/tests:layer-with-only-one-locally-installed-rpm": "tests/test-with-one-local-rpm",
-        "//fs_image/compiler/tests:rpm-test-cheese-1-1.rpm": "tests/rpm-test-cheese-1-1.rpm",
-        "//fs_image/compiler/tests:rpm-test-cheese-2-1.rpm": "tests/rpm-test-cheese-2-1.rpm",
-        "//fs_image/rpm:yum-from-test-snapshot": "tests/yum-from-test-snapshot",
-    },
-    deps = [
-        ":items",
-        ":mock_subvolume_from_json_file",
-        "//fs_image:find_built_subvol",
-        "//fs_image:testlib_temp_subvolumes",
-        "//fs_image/btrfs_diff:testlib_render_subvols",
-        "//fs_image/rpm:rpm_metadata",
-    ],
-)
-
-python_library(
     name = "dep_graph",
     srcs = ["dep_graph.py"],
     base_module = "compiler",
-    deps = [":items"],
+    deps = ["//fs_image/compiler/items:items"],
 )
 
 python_unittest(
@@ -196,14 +131,14 @@ python_library(
     name = "items_for_features",
     srcs = ["items_for_features.py"],
     base_module = "compiler",
-    deps = [":items"],
+    deps = ["//fs_image/compiler/items:items"],
 )
 
 python_library(
     name = "sample_items",
     srcs = ["tests/sample_items.py"],
     base_module = "compiler",
-    deps = [":items"],
+    deps = ["//fs_image/compiler/items:items"],
 )
 
 # Transitive deps of `tests:feature_kitchen_sink` --

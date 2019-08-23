@@ -4,10 +4,13 @@ import json
 
 from typing import Iterable, Mapping, Union
 
-from .items import (
-    InstallFileItem, MakeDirsItem, MountItem, RemovePathItem, RpmActionItem,
-    SymlinkToDirItem, SymlinkToFileItem, tarball_item_factory,
-)
+from fs_image.compiler.items.install_file import InstallFileItem
+from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.mount import MountItem
+from fs_image.compiler.items.remove_path import RemovePathItem
+from fs_image.compiler.items.rpm_action import RpmActionItem
+from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
+from fs_image.compiler.items.tarball import tarball_item_factory
 
 
 def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):

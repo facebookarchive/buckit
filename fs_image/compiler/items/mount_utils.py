@@ -1,54 +1,14 @@
 #!/usr/bin/env python3
-'''
-Implementation details of MountItem
-
-NB: Surprisingly, we don't need any special cleanup for the `mount` operations
-    performed by `build` and `clone_mounts` -- it appears that subvolume
-    deletion, as performed by `subvolume_garbage_collector.py`, implicitly
-    lazy-unmounts any mounts therein.
-'''
+'Separate from `mount.py` to avoid circular dep with `common.py`'
 import json
 import os
 
-from typing import AnyStr, Iterator, Mapping, NamedTuple
+from typing import AnyStr, Iterator
 
 from subvol_utils import Subvol
-from find_built_subvol import find_built_subvol
 
 META_MOUNTS_DIR = 'meta/private/mount'
 MOUNT_MARKER = 'MOUNT'
-
-
-class BuildSource(NamedTuple):
-    type: str
-    # This is overloaded to mean different things depending on `type`.
-    source: str
-
-    def to_path(
-        self, *, target_to_path: Mapping[str, str], subvolumes_dir: str,
-    ) -> str:
-        if self.type == 'layer':
-            out_path = target_to_path.get(self.source)
-            if out_path is None:
-                raise AssertionError(
-                    f'MountItem could not resolve {self.source}'
-                )
-            subvol = find_built_subvol(out_path, subvolumes_dir=subvolumes_dir)
-            # If we allowed mounting a layer that has other mounts inside,
-            # it would force us to support nested mounts.  We don't want to
-            # do this (yet).
-            if os.path.exists(subvol.path(META_MOUNTS_DIR)):
-                raise AssertionError(
-                    f'Refusing to mount {subvol.path()} since that would '
-                    'require the tooling to support nested mounts.'
-                )
-            return subvol.path()
-        elif self.type == 'host':
-            return self.source
-        else:  # pragma: no cover
-            raise AssertionError(
-                f'Bad mount source "{self.type}" for {self.source}'
-            )
 
 
 # Not covering, since this would require META_MOUNTS_DIR to be unreadable.

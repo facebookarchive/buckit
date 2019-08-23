@@ -10,7 +10,8 @@ sort.
 from collections import namedtuple
 from typing import Iterator
 
-from .items import ImageItem, ParentLayerItem, PhaseOrder, MountItem
+from fs_image.compiler.items.common import ImageItem, PhaseOrder
+from fs_image.compiler.items.parent_layer import ParentLayerItem
 
 
 # To build the item-to-item dependency graph, we need to first build up a

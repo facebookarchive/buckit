@@ -2,12 +2,13 @@
 import sys
 import unittest
 
+from fs_image.compiler.items.parent_layer import FilesystemRootItem
+from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.remove_path import RemovePathItem
+from fs_image.compiler.items.rpm_action import RpmActionItem
 from tests.temp_subvolumes import TempSubvolumes
 
 from ..dep_graph import DependencyGraph
-from ..items import (
-    FilesystemRootItem, MakeDirsItem, RemovePathItem, RpmActionItem,
-)
 from ..items_for_features import gen_items_for_features
 
 from . import sample_items as si

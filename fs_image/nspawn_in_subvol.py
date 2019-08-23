@@ -113,9 +113,9 @@ from contextlib import contextmanager
 
 from artifacts_dir import find_repo_root
 from compiler import procfs_serde
-from compiler.mount_item import clone_mounts
 from find_built_subvol import find_built_subvol, Subvol
 from fs_image.common import nullcontext
+from fs_image.compiler.items.mount_utils import clone_mounts
 from send_fds_and_run import popen_and_inject_fds_after_sudo
 from tests.temp_subvolumes import TempSubvolumes
 

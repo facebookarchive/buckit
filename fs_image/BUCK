@@ -186,8 +186,8 @@ python_library(
         ":find_built_subvol",
         ":send_fds_and_run",
         ":testlib_temp_subvolumes",
-        "//fs_image/compiler:mount_item",
         "//fs_image/compiler:procfs_serde",
+        "//fs_image/compiler/items:mount_utils",
     ],
 )
 
