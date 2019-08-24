@@ -2,7 +2,8 @@ def _wrap_bash_build_in_common_boilerplate(
         self_dependency,
         bash,
         volume_min_free_bytes,
-        log_description):
+        rule_type,
+        target_name):
     return """
     # CAREFUL: To avoid inadvertently masking errors, we should
     # only perform command substitutions with variable
@@ -75,7 +76,11 @@ def _wrap_bash_build_in_common_boilerplate(
     """.format(
         bash = bash,
         min_free_bytes = volume_min_free_bytes,
-        log_description = log_description,
+        log_description = "{}:{}(name={})".format(
+            native.package_name(),
+            rule_type,
+            target_name,
+        ),
         self_dependency = self_dependency,
     )
 

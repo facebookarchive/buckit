@@ -163,8 +163,8 @@ class ImageLayerTestCase(unittest.TestCase):
         # that the send-stream of the **received** volume has the same
         # rendering as the original send-stream was supposed to have.
         #
-        # In other words, besides testing `image_layer`'s `from_sendstream`,
-        # this is also a test of idempotence for btrfs send+receive.
+        # In other words, besides testing `image_sendstream_layer`, this is
+        # also a test of idempotence for btrfs send+receive.
         #
         # Notes:
         #  - `compiler/tests/TARGETS` explains why `mutate_ops` is not here.

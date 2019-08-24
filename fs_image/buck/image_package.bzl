@@ -8,8 +8,7 @@ load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":image_utils.bzl", "image_utils")
 
-def _get_fbconfig_rule_type():
-    return "image_package"
+_IMAGE_PACKAGE = "image_package"
 
 def image_package(
         # Standard naming: <image_layer_name>.<package_format>.
@@ -42,7 +41,7 @@ def image_package(
     buck_genrule(
         name = name,
         out = name,
-        type = _get_fbconfig_rule_type(),  # For queries
+        type = _IMAGE_PACKAGE,  # For queries
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
             self_dependency = "//fs_image/buck:image_package",
             # We don't need to hold any subvolume lock because we trust
@@ -79,10 +78,8 @@ def image_package(
                 # more efficient.
             ),
             volume_min_free_bytes = 0,  # We are not writing to the volume.
-            log_description = "{}(name={})".format(
-                _get_fbconfig_rule_type(),
-                name,
-            ),
+            rule_type = _IMAGE_PACKAGE,
+            target_name = name,
         ),
         visibility = visibility,
     )

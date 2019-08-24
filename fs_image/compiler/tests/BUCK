@@ -521,7 +521,7 @@ image.layer(
 )
 
 ##
-## These few rules help test the `image.layer` `from_sendstream` feature.
+## These few rules help test `image.sendstream_layer`.
 ##
 
 python_binary(
@@ -543,15 +543,15 @@ buck_genrule(
     bash = "$(exe :save-demo-sendstream) \"$OUT\" " + op,
 )
 
-image.layer(
+image.sendstream_layer(
     name = op,
-    from_sendstream = ":" + op + "-original.sendstream",
+    source = ":" + op + "-original.sendstream",
 )
 
 image.package(name = op + ".sendstream")
 
 ##
-## Check other forms of `from_sendstream`, also verified in `test-image-layer`
+## Check other forms of `sendstream_layer`, also verified in `test-image-layer`
 ##
 
 buck_genrule(
@@ -563,9 +563,9 @@ buck_genrule(
     """,
 )
 
-image.layer(
+image.sendstream_layer(
     name = "create_ops-from-dir",
-    from_sendstream = image.source(
+    source = image.source(
         ":create_ops-dir",
         path = "sendstream",
     ),
@@ -578,9 +578,9 @@ image.layer(
     )],
 )
 
-image.layer(
+image.sendstream_layer(
     name = "create_ops-from-layer",
-    from_sendstream = image.source(
+    source = image.source(
         layer = ":create_ops-layer",
         path = "sendstream",
     ),

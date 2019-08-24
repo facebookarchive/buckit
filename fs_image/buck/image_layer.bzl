@@ -98,24 +98,27 @@ load(":compile_image_features.bzl", "compile_image_features")
 load(":image_source.bzl", "image_source")
 load(":image_utils.bzl", "image_utils")
 
-def _get_fbconfig_rule_type():
-    return "image_layer"
+def _add_run_in_subvol_target(name, kind, extra_args = None):
+    buck_command_alias(
+        name = name + "-" + kind,
+        args = ["--layer", "$(location {})".format(":" + name)] + (
+            extra_args if extra_args else []
+        ),
+        exe = "//fs_image:nspawn-run-in-subvol",
+        visibility = [],
+    )
 
-def _bare_image_layer(
-        name = None,
-        # The name of another `image_layer` target, on top of which the
-        # current layer will install its features.
-        parent_layer = None,
-        # List of `image.feature` target paths and/or nameless structs from
-        # `image.feature`.  Mutually exclusive with `from_sendstream`.
-        features = None,
-        # A struct containing fields accepted by `_build_opts` above from
-        # `image_layer_compiled.bzl`.  Usable only with `features`.
-        build_opts = None,
-        # `image.source` (see `image_source.bzl`) or path to a target
-        # outputting a btrfs send-stream of a subvolume; mutually exclusive
-        # with `features`.
-        from_sendstream = None,
+def _current_target(target_name):
+    return target_utils.to_label(
+        config.get_current_repo_name(),
+        native.package_name(),
+        target_name,
+    )
+
+def _image_layer_impl(
+        _rule_type,
+        _layer_name,
+        _make_subvol_cmd,
         # Layers can be used in the `mounts` field of an `image.feature`.
         # This setting affects how **this** layer may be mounted inside
         # others.
@@ -143,70 +146,11 @@ def _bare_image_layer(
         # (ii) For sendstreams, it's much more plausible to correctly
         #      estimate the size requirements, so we might do that sooner.
         layer_size_bytes = "100" + "0" * 9,
+        # Set this to emit a `-boot` target, running which will boot
+        # `systemd` inside the image.
+        enable_boot_target = False,
         visibility = None):
-    visibility = get_visibility(visibility, name)
-    current_target = target_utils.to_label(
-        config.get_current_repo_name(),
-        native.package_name(),
-        name,
-    )
-
-    # There are two mutually exclusive ways to populate the resulting btrfs
-    # subvolume: (i) set `from_sendstream`, (ii) set `build`.  These modes
-    # live in a single target type for memorability, and because the entire
-    # API of the resulting target, and much of the implementation is shared.
-    if from_sendstream:
-        from_sendstream = image_source(from_sendstream)
-        if features or build_opts:
-            fail("cannot use `from_sendstream` with `features` or `build_opts`")
-        if parent_layer != None:
-            # Mechanistically, applying a send-stream on top of an existing
-            # layer is just a regular `btrfs receive`.  However, the rules
-            # in the current `receive` implementation for matching the
-            # parent to the stream are kind of awkward, and it's not clear
-            # whether they are right for us in Buck.
-            fail("Not implemented")
-        make_subvol_cmd = '''
-            {set_base_path}
-            sendstream_path="$base_path"{maybe_quoted_path}
-            # CAREFUL: To avoid inadvertently masking errors, we only
-            # perform command substitutions with variable assignments.
-            sendstream_path=\\$(readlink -f "$sendstream_path")
-            subvol_name=\\$(
-                cd "$subvolumes_dir/$subvolume_wrapper_dir"
-                sudo btrfs receive -f "$sendstream_path" . >&2
-                subvol=$(ls)
-                test 1 -eq $(echo "$subvol" | wc -l)  # Expect 1 subvolume
-                # Receive should always mark the result read-only.
-                test $(sudo btrfs property get -ts "$subvol" ro) = ro=true
-                echo "$subvol"
-            )
-            # `exe` vs `location` is explained in `image_package.py`
-            $(exe //fs_image/compiler:subvolume-on-disk) \
-              "$subvolumes_dir" \
-              "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
-        '''.format(
-            maybe_quoted_path = (
-                "/" + shell.quote(from_sendstream.path)
-            ) if from_sendstream.path else "",
-            set_base_path = "base_path=$(location {})".format(
-                from_sendstream.source,
-            ) if from_sendstream.source else '''\
-            # `exe` vs `location` is explained in `image_package.py`.
-            # `exe` won't expand in \\$( ... ), so we need `binary_path`.
-            binary_path=( $(exe //fs_image:find-built-subvol) )
-            layer_path=$(location {})
-            base_path=\\$( "${{binary_path[@]}}" "$layer_path" )
-            '''.format(from_sendstream.layer),
-        )
-    else:  # Build a new layer. It may be empty.
-        make_subvol_cmd = compile_image_features(
-            current_target = current_target,
-            parent_layer = parent_layer,
-            features = features,
-            build_opts = build_opts,
-        )
-
+    visibility = get_visibility(visibility, _layer_name)
     if mount_config == None:
         mount_config = {}
     for key in ("build_source", "is_directory"):
@@ -214,7 +158,7 @@ def _bare_image_layer(
             fail("`{}` cannot be customized".format(key), "mount_config")
     mount_config["is_directory"] = True
     mount_config["build_source"] = {
-        "source": current_target,
+        "source": _current_target(_layer_name),
         # The compiler knows how to resolve layer locations.  For now, we
         # don't support mounting a subdirectory of a layer because that
         # might make packaging more complicated, but it could be done.
@@ -222,7 +166,7 @@ def _bare_image_layer(
     }
 
     buck_genrule(
-        name = name,
+        name = _layer_name,
         out = "layer",
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
             self_dependency = "//fs_image/buck:image_layer",
@@ -276,57 +220,108 @@ def _bare_image_layer(
 
             mv "$TMP/out" "$OUT"  # Allow the rule to succeed.
             '''.format(
-                layer_name_quoted = shell.quote(name),
+                layer_name_quoted = shell.quote(_layer_name),
                 refcounts_dir_quoted = paths.join(
                     "$GEN_DIR",
                     shell.quote(get_project_root_from_gen_dir()),
                     "buck-out/.volume-refcount-hardlinks/",
                 ),
-                make_subvol_cmd = make_subvol_cmd,
+                make_subvol_cmd = _make_subvol_cmd,
                 # To make layers "image-mountable", provide `mountconfig.json`.
                 quoted_mountconfig_json = shell.quote(
                     struct(**mount_config).to_json(),
                 ),
             ),
             volume_min_free_bytes = layer_size_bytes,
-            log_description = "{}(name={})".format(
-                _get_fbconfig_rule_type(),
-                name,
-            ),
+            rule_type = _rule_type,
+            target_name = _layer_name,
         ),
         # Layers are only usable on the same host that built them, so
         # keep our output JSON out of the distributed Buck cache.  See
         # the docs for BuildRule::isCacheable.
         cacheable = False,
-        type = _get_fbconfig_rule_type(),  # For queries
+        type = _rule_type,  # For queries
         visibility = visibility,
     )
+    _add_run_in_subvol_target(_layer_name, "container")
+    if enable_boot_target:
+        _add_run_in_subvol_target(_layer_name, "boot", extra_args = ["--boot"])
 
-def _add_run_in_subvol_target(name, kind, layer_ext = ""):
-    buck_command_alias(
-        name = name + "-" + kind,
-        args = ["--layer", "$(location {})".format(":" + name + layer_ext)] + (
-            ["--boot"] if kind == "boot" else []
+# See the `_image_layer_impl` signature for all other supported kwargs.
+def image_layer(
+        name,
+        # The name of another `image_layer` target, on top of which the
+        # current layer will install its features.
+        parent_layer = None,
+        # List of `image.feature` target paths and/or nameless structs from
+        # `image.feature`.
+        features = None,
+        # A struct containing fields accepted by `_build_opts` above from
+        # `image_layer_compiled.bzl`.
+        build_opts = None,
+        **image_layer_kwargs):
+    _image_layer_impl(
+        _rule_type = "image_layer",
+        _layer_name = name,
+        # Build a new layer. It may be empty.
+        _make_subvol_cmd = compile_image_features(
+            current_target = _current_target(name),
+            parent_layer = parent_layer,
+            features = features,
+            build_opts = build_opts,
         ),
-        exe = "//fs_image:nspawn-run-in-subvol",
-        visibility = [],
+        **image_layer_kwargs
     )
 
-def image_layer(
-        name = None,
-        # Used to identify that this layer can be booted and will trigger
-        # the generation of a `-boot` target.
-        enable_boot_target = False,
+# See the `_image_layer_impl` signature for all other supported kwargs.
+def image_sendstream_layer(
+        name,
+        # `image.source` (see `image_source.bzl`) or path to a target
+        # outputting a btrfs send-stream of a subvolume.
+        source = None,
+        # Future: Support `parent_layer`.  Mechanistically, applying a
+        # send-stream on top of an existing layer is just a regular `btrfs
+        # receive`.  However, the rules in the current `receive`
+        # implementation for matching the parent to the stream are kind of
+        # awkward, and it's not clear whether they are right for us in Buck.
         **image_layer_kwargs):
-    """
-    Wrap the the creation of the image layer to allow users to interact
-    with the constructed subvol using `buck run //path/to:layer-{container,boot}`.
-    Most of the user documentation is on `_bare_image_layer()`.
-    """
-    _bare_image_layer(name = name, **image_layer_kwargs)
-
-    # Add the `-container` run target
-    _add_run_in_subvol_target(name, "container")
-
-    if enable_boot_target:
-        _add_run_in_subvol_target(name, "boot")
+    source = image_source(source)
+    make_subvol_cmd = '''
+        {set_base_path}
+        sendstream_path="$base_path"{maybe_quoted_path}
+        # CAREFUL: To avoid inadvertently masking errors, we only perform
+        # command substitutions with variable assignments.
+        sendstream_path=\\$(readlink -f "$sendstream_path")
+        subvol_name=\\$(
+            cd "$subvolumes_dir/$subvolume_wrapper_dir"
+            sudo btrfs receive -f "$sendstream_path" . >&2
+            subvol=$(ls)
+            test 1 -eq $(echo "$subvol" | wc -l)  # Expect 1 subvolume
+            # Receive should always mark the result read-only.
+            test $(sudo btrfs property get -ts "$subvol" ro) = ro=true
+            echo "$subvol"
+        )
+        # `exe` vs `location` is explained in `image_package.py`
+        $(exe //fs_image/compiler:subvolume-on-disk) \
+          "$subvolumes_dir" \
+          "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
+    '''.format(
+        maybe_quoted_path = (
+            "/" + shell.quote(source.path)
+        ) if source.path else "",
+        set_base_path = "base_path=$(location {})".format(
+            source.source,
+        ) if source.source else '''\
+        # `exe` vs `location` is explained in `image_package.py`.
+        # `exe` won't expand in \\$( ... ), so we need `binary_path`.
+        binary_path=( $(exe //fs_image:find-built-subvol) )
+        layer_path=$(location {})
+        base_path=\\$( "${{binary_path[@]}}" "$layer_path" )
+        '''.format(source.layer),
+    )
+    _image_layer_impl(
+        _rule_type = "image_sendstream_layer",
+        _layer_name = name,
+        _make_subvol_cmd = make_subvol_cmd,
+        **image_layer_kwargs
+    )

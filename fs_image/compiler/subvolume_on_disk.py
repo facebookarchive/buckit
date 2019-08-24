@@ -197,7 +197,7 @@ class SubvolumeOnDisk(namedtuple('SubvolumeOnDisk', [
         outfile.write(json.dumps(self.to_serializable_dict()))
 
 
-# This is tested by `test-image-layer` for `from_sendstream`.
+# This is tested by `test-image-layer` for `sendstream_layer`.
 if __name__ == '__main__':  # pragma: no cover
     import sys
     SubvolumeOnDisk.from_subvolume_path(
