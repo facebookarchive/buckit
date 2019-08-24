@@ -40,7 +40,10 @@ fake_macro_library(
 
 fake_macro_library(
     name = "image_layer",
-    srcs = ["image_layer.bzl"],
+    srcs = [
+        "compile_image_features.bzl",
+        "image_layer.bzl",
+    ],
     deps = [
         ":artifacts_require_repo",
         ":image_source",
