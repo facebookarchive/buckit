@@ -39,13 +39,9 @@ Read that target's docblock for more info, but in essence, that will:
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load(
-    "@fbcode_macros//build_defs/lib:target_utils.bzl",
-    "target_utils",
-)
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
-load(":image_source.bzl", "image_source")
+load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
 load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -93,57 +89,6 @@ DO_NOT_DEPEND_ON_FEATURES_SUFFIX = (
     "_IF_YOU_REFER_TO_THIS_RULE_YOUR_DEPENDENCIES_WILL_BE_BROKEN_" +
     "SO_DO_NOT_DO_THIS_EVER_PLEASE_KTHXBAI"
 )
-
-"""
-
-Our continuous integration system might run different build steps in
-different sandboxes, so the intermediate outputs of `image_feature`s
-must be cacheable by Buck.  In particular, they must not contain
-absolute paths to targets.
-
-However, to build a dependent `image_layer`, we will need to invoke the
-image compiler with the absolute paths of the outputs that will comprise
-the image.
-
-Therefore, we need to (a) record all the targets, for which the image
-compiler will need absolute paths, and (b) resolve them only in the
-build step that invokes the compiler.
-
-This tagging scheme makes it possible to find ALL such targets in the
-output of `image_feature` by simply traversing the JSON structure.  This
-seems more flexible and less messy than maintaining a look-aside list of
-targets whose paths the `image_layer` converter would need to resolve.
-
-"""
-_TargetTaggerInfo = provider(fields = ["targets"])
-
-def _target_tagger():
-    return _TargetTaggerInfo(targets = {})
-
-def _normalize_target(target):
-    parsed = target_utils.parse_target(
-        target,
-        # $(query_targets ...) omits the current repo/cell name
-        default_repo = "",
-        default_base_path = native.package_name(),
-    )
-    return target_utils.to_label(
-        repo = parsed.repo,
-        path = parsed.base_path,
-        name = parsed.name,
-    )
-
-def _tag_target(tagger, target):
-    target = _normalize_target(target)
-    tagger.targets[target] = 1  # Use a dict, since a target may recur
-    return {"__BUCK_TARGET": target}
-
-def _tag_required_target_key(tagger, d, target_key):
-    if target_key not in d:
-        fail(
-            "{} must contain the key {}".format(d, target_key),
-        )
-    d[target_key] = _tag_target(tagger, d[target_key])
 
 def _coerce_dict_to_items(maybe_dct):
     "Any collection that takes a list of pairs also takes a dict."
@@ -194,7 +139,7 @@ def _normalize_mounts(target_tagger, mounts):
 
         if types.is_string(source):
             dct["target"] = source
-            _tag_required_target_key(target_tagger, dct, "target")
+            tag_required_target_key(target_tagger, dct, "target")
         elif types.is_dict(source):
             # At present, we only accept dicts that carry an inline mount
             # config (identical to the `mountconfig.json` of a mountable
@@ -226,7 +171,7 @@ def _maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
     # The target to wrap may be in a different directory, so we normalize
     # its path to ensure the hashing is deterministic.  This assures reuse
     # at least within the current TARGETS files.
-    target = _normalize_target(target)
+    target = normalize_target(target)
 
     # The wrapper target is plumbing, so it will start with the provided
     # prefix to hide it from e.g.  tab-completion.  Then, it includes an
@@ -244,16 +189,7 @@ def _maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
         target = target,
         **kwargs
     )
-    return was_wrapped, _tag_target(target_tagger, maybe_target)
-
-def _image_source_as_target_tagged_dict(target_tagger, user_source):
-    src = image_source(user_source)._asdict()
-    _tag_required_target_key(
-        target_tagger,
-        src,
-        "layer" if src["layer"] else "source",
-    )
-    return src
+    return was_wrapped, tag_target(target_tagger, maybe_target)
 
 def _normalize_install_files(target_tagger, files, visibility, is_executable):
     if files == None:
@@ -285,14 +221,14 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
         d["is_executable_"] = is_executable  # Changes default permissions
 
         # Normalize to the `image.source` interface
-        src = _image_source_as_target_tagged_dict(target_tagger, d.pop("source"))
+        src = image_source_as_target_tagged_dict(target_tagger, d.pop("source"))
 
         # NB: We don't have to wrap executables because they already come
         # from a layer, which would have wrapped them if needed.
         #
         # Future: If `is_executable` is not set, we might use a Buck macro
         # that enforces that the target is non-executable, as I suggested on
-        # Q15839.  This should probably go in `_tag_required_target_key` to
+        # Q15839.  This should probably go in `tag_required_target_key` to
         # ensure that we avoid "unwrapped executable" bugs everywhere.  A
         # possible reason NOT to do this is that it would require fixes to
         # `install_data` invocations that extract non-executable contents
@@ -335,7 +271,7 @@ def _normalize_tarballs(target_tagger, tarballs, visibility):
             fail("Got `generator_args` without `generator`")
 
         if "tarball" in d:
-            _tag_required_target_key(target_tagger, d, "tarball")
+            tag_required_target_key(target_tagger, d, "tarball")
         else:
             _was_wrapped, d["generator"] = _maybe_wrap_executable_target(
                 target_tagger = target_tagger,
@@ -422,7 +358,7 @@ def _normalize_rpms(target_tagger, rpms):
 
         source = dct.pop("source", None)
         if source != None:
-            dct["source"] = _image_source_as_target_tagged_dict(
+            dct["source"] = image_source_as_target_tagged_dict(
                 target_tagger,
                 source,
             )
@@ -670,14 +606,15 @@ def image_feature(
     #     automatically enumerated from our JSON output.
     # (2) Builds a list of targets so that this converter can tell Buck
     #     that the `image_feature` depends on it.
-    target_tagger = _target_tagger()
+    target_tagger = new_target_tagger()
 
-    feature = struct(
+    feature = target_tagger_to_feature(
+        target_tagger,
         items = struct(
             # For named features, omit the ugly suffix here since this is
             # meant only for humans to read while debugging.  For inline
             # targets, `image_layer.bzl` sets this to the layer target path.
-            target = _normalize_target(":" + name) if name else None,
+            target = normalize_target(":" + name) if name else None,
             make_dirs = _normalize_make_dirs(make_dirs),
             install_files = _normalize_install_files(
                 target_tagger = target_tagger,
@@ -701,7 +638,7 @@ def image_feature(
             symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
             symlinks_to_files = _normalize_symlinks(symlinks_to_files),
             features = [
-                _tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
+                tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
                 for f in features
             ] if features else [],
         ),
@@ -718,7 +655,7 @@ def image_feature(
         # this inefficiency.
         #
         # To understand the self-dependency, see the `fake_macro_library` doc.
-        deps = target_tagger.targets.keys() + ["//fs_image/buck:image_feature"],
+        extra_deps = ["//fs_image/buck:image_feature"],
     )
 
     # Anonymous features do not emit a target, but can be used inline as

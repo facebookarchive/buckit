@@ -34,6 +34,12 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "target_tagger",
+    srcs = ["target_tagger.bzl"],
+    deps = [":image_source"],
+)
+
+fake_macro_library(
     name = "wrap_runtime_deps",
     srcs = ["wrap_runtime_deps.bzl"],
 )
@@ -46,8 +52,8 @@ fake_macro_library(
     ],
     deps = [
         ":artifacts_require_repo",
-        ":image_source",
         ":image_utils",
+        ":target_tagger",
     ],
 )
 
@@ -56,7 +62,7 @@ fake_macro_library(
     srcs = ["image_feature.bzl"],
     deps = [
         ":crc32",
-        ":image_source",
+        ":target_tagger",
         ":wrap_runtime_deps",
     ],
 )
