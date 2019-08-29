@@ -12,11 +12,10 @@ top of `provides.py`.
 import enum
 import os
 
-from typing import NamedTuple, Mapping, Optional, Set
+from typing import AnyStr, Mapping, NamedTuple, Optional, Set
 
 from compiler import procfs_serde
 from compiler.enriched_namedtuple import metaclass_new_enriched_namedtuple
-from find_built_subvol import find_built_subvol
 from fs_image.fs_utils import Path
 from subvol_utils import Subvol
 
@@ -155,29 +154,28 @@ def _validate_artifacts_require_repo(
 
 class ImageSource(NamedTuple):
     source: Optional[Path]
-    layer: Optional[Path]
+    layer: Optional[Subvol]
     path: Optional[Path]
 
     @classmethod
-    def new(cls, *, source=None, layer=None, path=None):
+    def new(
+        cls, *, source: AnyStr = None, layer: Subvol = None, path: AnyStr = None
+    ):
         assert (source is None) ^ (layer is None), (source, layer, path)
         return cls(
             source=Path.or_none(source),
-            layer=Path.or_none(layer),
+            layer=layer,
             # Absolute `path` is still relative to `source` or `layer`
             path=Path.or_none(path and path.lstrip('/')),
         )
 
     def full_path(self, layer_opts: LayerOpts) -> Path:
         if self.layer:
-            subvol = find_built_subvol(
-                self.layer, subvolumes_dir=layer_opts.subvolumes_dir,
-            )
-            if os.path.exists(subvol.path(META_ARTIFACTS_REQUIRE_REPO)):
+            if os.path.exists(self.layer.path(META_ARTIFACTS_REQUIRE_REPO)):
                 _validate_artifacts_require_repo(
-                    subvol, layer_opts, 'image.source',
+                    self.layer, layer_opts, 'image.source',
                 )
-            return Path(subvol.path(self.path or '.'))
+            return Path(self.layer.path(self.path or '.'))
         return (self.source / (self.path or '.')).normpath()
 
 

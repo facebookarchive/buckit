@@ -42,24 +42,31 @@ def normalize_target(target):
         name = parsed.name,
     )
 
-def tag_target(target_tagger, target):
+def tag_target(target_tagger, target, is_layer = False):
     target = normalize_target(target)
     target_tagger.targets[target] = 1  # Use a dict, since a target may recur
-    return {"__BUCK_TARGET": target}
+    return {("__BUCK_LAYER_TARGET" if is_layer else "__BUCK_TARGET"): target}
 
-def tag_required_target_key(tagger, d, target_key):
+def extract_tagged_target(tagged_target):
+    if "__BUCK_TARGET" in tagged_target:
+        return tagged_target["__BUCK_TARGET"]
+    return tagged_target["__BUCK_LAYER_TARGET"]
+
+def tag_required_target_key(tagger, d, target_key, is_layer = False):
     if target_key not in d:
         fail(
             "{} must contain the key {}".format(d, target_key),
         )
-    d[target_key] = tag_target(tagger, d[target_key])
+    d[target_key] = tag_target(tagger, target = d[target_key], is_layer = is_layer)
 
 def image_source_as_target_tagged_dict(target_tagger, user_source):
     src = image_source(user_source)._asdict()
+    is_layer = src["layer"] != None
     tag_required_target_key(
         target_tagger,
         src,
-        "layer" if src["layer"] else "source",
+        "layer" if is_layer else "source",
+        is_layer = is_layer,
     )
     return src
 

@@ -4,6 +4,9 @@ import json
 
 from typing import Iterable, Mapping, Union
 
+from find_built_subvol import find_built_subvol
+
+from fs_image.compiler.items.common import LayerOpts
 from fs_image.compiler.items.install_file import InstallFileItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
 from fs_image.compiler.items.mount import MountItem
@@ -13,30 +16,35 @@ from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
 from fs_image.compiler.items.tarball import tarball_item_factory
 
 
-def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
+def replace_targets_by_paths(x, layer_opts: LayerOpts):
     '''
+    Converts target_tagger.bzl sigils to buck-out paths or Subvol objects.
+
     JSON-serialized image features store single-item dicts of the form
-    {'__BUCK_TARGET': '//target:path'} whenever the compiler requires a path
-    to another target.  This is because actual paths would break Buck
-    caching, and would not survive repo moves.  Then, at runtime, the
-    compiler receives a dictionary of target-to-path mappings as
+    {'__BUCK{_LAYER,}_TARGET': '//target:path'} whenever the compiler
+    requires a path to another target.  This is because actual paths would
+    break Buck caching, and would not survive repo moves.  Then, at runtime,
+    the compiler receives a dictionary of target-to-path mappings as
     `--child-dependencies`, and performs the substitution in any image
     feature JSON it consumes.
     '''
     if type(x) is dict:
-        if '__BUCK_TARGET' in x:
+        if '__BUCK_TARGET' in x or '__BUCK_LAYER_TARGET' in x:
             assert len(x) == 1, x
-            (_, target), = x.items()
-            path = target_to_path.get(target)
+            (sigil, target), = x.items()
+            path = layer_opts.target_to_path.get(target)
             if not path:
-                raise RuntimeError(f'{target} not in {target_to_path}')
-            return path
+                raise RuntimeError(
+                    f'{target} not in {layer_opts.target_to_path}'
+                )
+            return path if sigil == '__BUCK_TARGET' else find_built_subvol(
+                path, subvolumes_dir=layer_opts.subvolumes_dir,
+            )
         return {
-            k: replace_targets_by_paths(v, target_to_path)
-                for k, v in x.items()
+            k: replace_targets_by_paths(v, layer_opts) for k, v in x.items()
         }
     elif type(x) is list:
-        return [replace_targets_by_paths(v, target_to_path) for v in x]
+        return [replace_targets_by_paths(v, layer_opts) for v in x]
     elif type(x) in [int, float, str, bool, type(None)]:
         return x
     assert False, f'Unknown {type(x)} for {x}'  # pragma: no cover
@@ -44,7 +52,7 @@ def replace_targets_by_paths(x, target_to_path: Mapping[str, str]):
 
 def gen_items_for_features(
     *, exit_stack, features_or_paths: Iterable[Union[str, dict]],
-    target_to_path: Mapping[str, str],
+    layer_opts: LayerOpts,
 ):
     key_to_item_factory = {
         'install_files': InstallFileItem,
@@ -60,14 +68,14 @@ def gen_items_for_features(
     for feature_or_path in features_or_paths:
         if isinstance(feature_or_path, str):
             with open(feature_or_path) as f:
-                items = replace_targets_by_paths(json.load(f), target_to_path)
+                items = replace_targets_by_paths(json.load(f), layer_opts)
         else:
             items = feature_or_path
 
         yield from gen_items_for_features(
             exit_stack=exit_stack,
             features_or_paths=items.pop('features', []),
-            target_to_path=target_to_path,
+            layer_opts=layer_opts,
         )
 
         target = items.pop('target')

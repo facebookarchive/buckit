@@ -61,8 +61,8 @@ def compile_image_features(
     return '''
         {maybe_yum_from_repo_snapshot_dep}
         # Take note of `targets_and_outputs` below -- this enables the
-        # compiler to map the `__BUCK_TARGET`s in the outputs of
-        # `image_feature` to those targets' outputs.
+        # compiler to map the `target_tagger` target sigils in the outputs
+        # of `image_feature` to those targets' outputs.
         #
         # `exe` vs `location` is explained in `image_package.py`.
         $(exe //fs_image:compiler) {maybe_artifacts_require_repo} \

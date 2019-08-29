@@ -158,6 +158,10 @@ def _image_layer_impl(
             fail("`{}` cannot be customized".format(key), "mount_config")
     mount_config["is_directory"] = True
     mount_config["build_source"] = {
+        # Don't attempt to target-tag this because this would complicate
+        # MountItem, which would have to contain `Subvol` and know how to
+        # serialize it (P106589820).  This is much messier than the current
+        # approach of explicit target & layer lookups in `_BuildSource`.
         "source": _current_target(_layer_name),
         # The compiler knows how to resolve layer locations.  For now, we
         # don't support mounting a subdirectory of a layer because that

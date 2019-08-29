@@ -127,7 +127,7 @@ def build_image(args):
             gen_items_for_features(
                 exit_stack=exit_stack,
                 features_or_paths=args.child_feature_json,
-                target_to_path=layer_opts.target_to_path,
+                layer_opts=layer_opts,
             ),
         ))
         # Creating all the builders up-front lets phases validate their input

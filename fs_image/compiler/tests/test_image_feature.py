@@ -2,6 +2,7 @@
 import sys
 import unittest
 
+from fs_image.compiler.items.common import LayerOpts
 from fs_image.compiler.items.parent_layer import FilesystemRootItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
 from fs_image.compiler.items.remove_path import RemovePathItem
@@ -37,8 +38,15 @@ class ImageFeatureTestCase(unittest.TestCase):
                     }],
                 },
             ],
-            target_to_path=si.TARGET_TO_PATH
-                if target_to_path is None else target_to_path,
+            layer_opts=LayerOpts(
+                layer_target='for error messages only',
+                yum_from_snapshot=None,
+                build_appliance=None,
+                artifacts_may_require_repo=None,
+                target_to_path=si.TARGET_TO_PATH
+                    if target_to_path is None else target_to_path,
+                subvolumes_dir=None,
+            ),
         ))
 
     def test_serialize_deserialize(self):

@@ -64,21 +64,23 @@ class InstallFileItemTestCase(BaseItemTestCase):
             )
 
     def test_install_file_from_layer(self):
-        layer_path = Path(__file__).dirname() / 'test-with-one-local-rpm'
+        layer = find_built_subvol(
+            Path(__file__).dirname() / 'test-with-one-local-rpm'
+        )
         path_in_layer = b'usr/share/rpm_test/cheese2.txt'
         item = InstallFileItem(
             from_target='t',
-            source={'layer': layer_path, 'path': '/' + path_in_layer.decode()},
+            source={'layer': layer, 'path': '/' + path_in_layer.decode()},
             dest='cheese2',
             is_executable_=False,
         )
         self.assertEqual(0o444, item.mode)
         self.assertEqual(
-            ImageSource(source=None, layer=layer_path, path=path_in_layer),
+            ImageSource(source=None, layer=layer, path=path_in_layer),
             item.source,
         )
         self.assertEqual(
-            find_built_subvol(layer_path).path(path_in_layer),
+            layer.path(path_in_layer),
             # The dummy object works here because `subvolumes_dir` of `None`
             # runs `artifacts_dir` internally, while our "prod" path uses
             # the already-computed value.

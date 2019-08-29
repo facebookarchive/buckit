@@ -41,7 +41,7 @@ load("@bazel_skylib//lib:types.bzl", "types")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
-load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
+load(":target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
 load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # ## Why are `image_feature`s forbidden as dependencies?
@@ -237,7 +237,7 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
             was_wrapped, src["source"] = _maybe_wrap_executable_target(
                 target_tagger = target_tagger,
                 # Peel back target tagging since this helper expects untagged.
-                target = src.pop("source")["__BUCK_TARGET"],
+                target = extract_tagged_target(src.pop("source")),
                 wrap_prefix = "install_executables_wrap_source",
                 visibility = visibility,
                 # NB: Buck makes it hard to execute something out of an
