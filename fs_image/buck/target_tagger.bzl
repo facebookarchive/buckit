@@ -47,10 +47,8 @@ def tag_target(target_tagger, target, is_layer = False):
     target_tagger.targets[target] = 1  # Use a dict, since a target may recur
     return {("__BUCK_LAYER_TARGET" if is_layer else "__BUCK_TARGET"): target}
 
-def extract_tagged_target(tagged_target):
-    if "__BUCK_TARGET" in tagged_target:
-        return tagged_target["__BUCK_TARGET"]
-    return tagged_target["__BUCK_LAYER_TARGET"]
+def extract_tagged_target(tagged):
+    return tagged.get("__BUCK_TARGET") or tagged["__BUCK_LAYER_TARGET"]
 
 def tag_required_target_key(tagger, d, target_key, is_layer = False):
     if target_key not in d:
