@@ -177,7 +177,7 @@ class ImageLayerTestCase(unittest.TestCase):
         ]:
             with self.target_subvol(subvol_name) as sv:
                 self.assertEqual(
-                    render_demo_subvols(**{original_name: True}),
+                    render_demo_subvols(**{original_name: original_name}),
                     render_sendstream(sv.mark_readonly_and_get_sendstream()),
                 )
 

@@ -232,10 +232,13 @@ def get_filtered_and_expected_items(
     ]
 
 
-def render_demo_subvols(*, create_ops=False, mutate_ops=False):
+def render_demo_subvols(*, create_ops=None, mutate_ops=None):
     '''
     Test-friendly renderings of the subvolume contents that should be
     produced by the commands in `demo_sendstreams.py`.
+
+    Set the `{create,mutate}_ops` kwargs to None to exclude that subvolume
+    from the rendering.  Otherwise, they specify a name for that subvol.
 
     Read carefully: the return type depends on the args!
     '''
@@ -290,43 +293,43 @@ def render_demo_subvols(*, create_ops=False, mutate_ops=False):
     # requires work, and the cost of uglier subvolume rendering is currently
     # too low to bother.  When it does bite us, we can fix it.
     create = (
-        f'create_ops@56KB_nuls:0+{FILE_SZ1}@0/'
-        f'create_ops@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+        f'{create_ops}@56KB_nuls:0+{FILE_SZ1}@0/'
+        f'{create_ops}@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
     )
     create_clone = (
-        f'create_ops@56KB_nuls_clone:0+{FILE_SZ1}@0/'
-        f'create_ops@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+        f'{create_ops}@56KB_nuls_clone:0+{FILE_SZ1}@0/'
+        f'{create_ops}@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
     )
     mutate = (
-        f'mutate_ops@56KB_nuls:0+{FILE_SZ1}@0/'
-        f'mutate_ops@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+        f'{mutate_ops}@56KB_nuls:0+{FILE_SZ1}@0/'
+        f'{mutate_ops}@56KB_nuls:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
     )
     mutate_clone = (
-        f'mutate_ops@56KB_nuls_clone:0+{FILE_SZ1}@0/'
-        f'mutate_ops@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
+        f'{mutate_ops}@56KB_nuls_clone:0+{FILE_SZ1}@0/'
+        f'{mutate_ops}@56KB_nuls_clone:{FILE_SZ1}+{FILE_SZ2}@{FILE_SZ1}'
     )
     if create_ops and mutate_ops:
         # Rendering both subvolumes together shows all the clones.
         return {
-            'create_ops': render_create_ops(
+            create_ops: render_create_ops(
                 kb_nuls=f'{create_clone}/{mutate}/{mutate_clone}',
                 kb_nuls_clone=f'{create}/{mutate}/{mutate_clone}',
                 zeros_holes_zeros=(
-                    'd16384(mutate_ops@zeros_hole_zeros:0+16384@0)'
-                    'h16384(mutate_ops@zeros_hole_zeros:16384+16384@0)'
-                    'd16384(mutate_ops@zeros_hole_zeros:32768+16384@0)'
+                    f'd16384({mutate_ops}@zeros_hole_zeros:0+16384@0)'
+                    f'h16384({mutate_ops}@zeros_hole_zeros:16384+16384@0)'
+                    f'd16384({mutate_ops}@zeros_hole_zeros:32768+16384@0)'
                 ),
-                big_hole='(mutate_ops@hello_big_hole:0+2@0)',
+                big_hole=f'({mutate_ops}@hello_big_hole:0+2@0)',
             ),
-            'mutate_ops': render_mutate_ops(
+            mutate_ops: render_mutate_ops(
                 kb_nuls=f'{create}/{create_clone}/{mutate_clone}',
                 kb_nuls_clone=f'{create}/{create_clone}/{mutate}',
                 zeros_holes_zeros=(
-                    'd16384(create_ops@zeros_hole_zeros:0+16384@0)'
-                    'h16384(create_ops@zeros_hole_zeros:16384+16384@0)'
-                    'd16384(create_ops@zeros_hole_zeros:32768+16384@0)'
+                    f'd16384({create_ops}@zeros_hole_zeros:0+16384@0)'
+                    f'h16384({create_ops}@zeros_hole_zeros:16384+16384@0)'
+                    f'd16384({create_ops}@zeros_hole_zeros:32768+16384@0)'
                 ),
-                big_hole='(create_ops@hello_big_hole:0+2@0)',
+                big_hole=f'({create_ops}@hello_big_hole:0+2@0)',
             ),
         }
     elif create_ops:
