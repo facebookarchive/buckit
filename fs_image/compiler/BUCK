@@ -13,12 +13,6 @@ python_library(
     base_module = "compiler",
 )
 
-python_binary(
-    name = "subvolume-on-disk",
-    main_module = "compiler.subvolume_on_disk",
-    deps = [":subvolume_on_disk"],
-)
-
 python_unittest(
     name = "test-subvolume-on-disk",
     srcs = ["tests/test_subvolume_on_disk.py"],

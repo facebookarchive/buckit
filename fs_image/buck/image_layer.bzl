@@ -97,6 +97,7 @@ load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":compile_image_features.bzl", "compile_image_features")
 load(":image_source.bzl", "image_source")
 load(":image_utils.bzl", "image_utils")
+load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger")
 
 def _add_run_in_subvol_target(name, kind, extra_args = None):
     buck_command_alias(
@@ -260,7 +261,7 @@ def image_layer(
         # List of `image.feature` target paths and/or nameless structs from
         # `image.feature`.
         features = None,
-        # A struct containing fields accepted by `_build_opts` above from
+        # A struct containing fields accepted by `_build_opts` from
         # `image_layer_compiled.bzl`.
         build_opts = None,
         **image_layer_kwargs):
@@ -283,49 +284,34 @@ def image_sendstream_layer(
         # `image.source` (see `image_source.bzl`) or path to a target
         # outputting a btrfs send-stream of a subvolume.
         source = None,
+        # A struct containing fields accepted by `_build_opts` from
+        # `image_layer_compiled.bzl`.
+        build_opts = None,
         # Future: Support `parent_layer`.  Mechanistically, applying a
         # send-stream on top of an existing layer is just a regular `btrfs
         # receive`.  However, the rules in the current `receive`
         # implementation for matching the parent to the stream are kind of
         # awkward, and it's not clear whether they are right for us in Buck.
         **image_layer_kwargs):
-    source = image_source(source)
-    make_subvol_cmd = '''
-        {set_base_path}
-        sendstream_path="$base_path"{maybe_quoted_path}
-        # CAREFUL: To avoid inadvertently masking errors, we only perform
-        # command substitutions with variable assignments.
-        sendstream_path=\\$(readlink -f "$sendstream_path")
-        subvol_name=\\$(
-            cd "$subvolumes_dir/$subvolume_wrapper_dir"
-            sudo btrfs receive -f "$sendstream_path" . >&2
-            subvol=$(ls)
-            test 1 -eq $(echo "$subvol" | wc -l)  # Expect 1 subvolume
-            # Receive should always mark the result read-only.
-            test $(sudo btrfs property get -ts "$subvol" ro) = ro=true
-            echo "$subvol"
-        )
-        # `exe` vs `location` is explained in `image_package.py`
-        $(exe //fs_image/compiler:subvolume-on-disk) \
-          "$subvolumes_dir" \
-          "$subvolume_wrapper_dir/$subvol_name" > "$layer_json"
-    '''.format(
-        maybe_quoted_path = (
-            "/" + shell.quote(source.path)
-        ) if source.path else "",
-        set_base_path = "base_path=$(location {})".format(
-            source.source,
-        ) if source.source else '''\
-        # `exe` vs `location` is explained in `image_package.py`.
-        # `exe` won't expand in \\$( ... ), so we need `binary_path`.
-        binary_path=( $(exe //fs_image:find-built-subvol) )
-        layer_path=$(location {})
-        base_path=\\$( "${{binary_path[@]}}" "$layer_path" )
-        '''.format(source.layer),
-    )
+    target_tagger = new_target_tagger()
     _image_layer_impl(
         _rule_type = "image_sendstream_layer",
         _layer_name = name,
-        _make_subvol_cmd = make_subvol_cmd,
+        _make_subvol_cmd = compile_image_features(
+            current_target = _current_target(name),
+            parent_layer = None,
+            features = [struct(
+                items = struct(
+                    receive_sendstreams = [{
+                        "source": image_source_as_target_tagged_dict(
+                            target_tagger,
+                            source,
+                        ),
+                    }],
+                ),
+                deps = target_tagger.targets.keys(),
+            )],
+            build_opts = build_opts,
+        ),
         **image_layer_kwargs
     )

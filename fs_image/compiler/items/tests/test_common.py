@@ -22,14 +22,6 @@ class ItemsCommonTestCase(BaseItemTestCase):
                 is_executable_=False,
             ).phase_order(),
         )
-        self.assertEqual(
-            PhaseOrder.MAKE_SUBVOL,
-            FilesystemRootItem(from_target='t').phase_order(),
-        )
-        self.assertEqual(
-            PhaseOrder.MAKE_SUBVOL,
-            ParentLayerItem(from_target='t', subvol=None).phase_order(),
-        )
         self.assertEqual(PhaseOrder.RPM_INSTALL, RpmActionItem(
             from_target='t', name='n', action=RpmAction.install,
         ).phase_order())

@@ -7,7 +7,9 @@ from typing import Iterable
 
 from subvol_utils import Subvol
 
-from .common import ensure_meta_dir_exists, ImageItem, LayerOpts, PhaseOrder
+from .common import (
+    ensure_meta_dir_exists, ImageItem, ImageSource, LayerOpts, PhaseOrder,
+)
 from .mount_utils import clone_mounts
 
 
@@ -54,5 +56,28 @@ class FilesystemRootItem(metaclass=ImageItem):
             subvol.run_as_root(['chmod', '0755', subvol.path()])
             subvol.run_as_root(['chown', 'root:root', subvol.path()])
             ensure_meta_dir_exists(subvol, layer_opts)
+
+        return builder
+
+
+class ReceiveSendstreamItem(metaclass=ImageItem):
+    fields = ['source']
+
+    def customize_fields(kwargs):  # noqa: B902
+        kwargs['source'] = ImageSource.new(**kwargs['source'])
+
+    def phase_order(self):
+        return PhaseOrder.MAKE_SUBVOL
+
+    @classmethod
+    def get_phase_builder(
+        cls, items: Iterable['ReceiveSendstreamItem'], layer_opts: LayerOpts,
+    ):
+        item, = items
+
+        def builder(subvol: Subvol):
+            with open(item.source.full_path(layer_opts), 'r') as sendstream, \
+                    subvol.receive(sendstream):
+                pass
 
         return builder

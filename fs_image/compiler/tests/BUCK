@@ -546,6 +546,7 @@ buck_genrule(
 image.sendstream_layer(
     name = op,
     source = ":" + op + "-original.sendstream",
+    build_opts = image.opts(subvol_name = op),
 )
 
 image.package(name = op + ".sendstream")
@@ -569,6 +570,7 @@ image.sendstream_layer(
         ":create_ops-dir",
         path = "sendstream",
     ),
+    build_opts = image.opts(subvol_name = "create_ops"),
 )
 
 image.layer(
@@ -584,6 +586,7 @@ image.sendstream_layer(
         layer = ":create_ops-layer",
         path = "sendstream",
     ),
+    build_opts = image.opts(subvol_name = "create_ops"),
 )
 
 image.layer("empty")  # Just ensure this builds, not checking contents :)

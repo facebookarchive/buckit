@@ -9,7 +9,9 @@ from find_built_subvol import find_built_subvol
 from fs_image.compiler.items.common import LayerOpts
 from fs_image.compiler.items.install_file import InstallFileItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
-from fs_image.compiler.items.make_subvol import ParentLayerItem
+from fs_image.compiler.items.make_subvol import (
+    ParentLayerItem, ReceiveSendstreamItem,
+)
 from fs_image.compiler.items.mount import MountItem
 from fs_image.compiler.items.remove_path import RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmActionItem
@@ -65,6 +67,7 @@ def gen_items_for_features(
         'symlinks_to_dirs': SymlinkToDirItem,
         'symlinks_to_files': SymlinkToFileItem,
         'tarballs': lambda **kwargs: tarball_item_factory(exit_stack, **kwargs),
+        'receive_sendstreams': ReceiveSendstreamItem,
     }
 
     for feature_or_path in features_or_paths:
@@ -72,6 +75,10 @@ def gen_items_for_features(
             with open(feature_or_path) as f:
                 items = replace_targets_by_paths(json.load(f), layer_opts)
         else:
+            # An inline features would have had its target paths unwrapped
+            # by the outer feature that contains it.  That's always true
+            # because the compiler gets the root features on the command
+            # line as paths to JSON.
             items = feature_or_path
 
         yield from gen_items_for_features(

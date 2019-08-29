@@ -65,6 +65,7 @@ python_unittest(
     par_style = "zip",
     resources = {
         "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
+        "//fs_image/compiler/tests:create_ops-original.sendstream": "tests/create_ops.sendstream",
         "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",
         "//fs_image/compiler/tests:layer-with-only-one-locally-installed-rpm": "tests/test-with-one-local-rpm",
         "//fs_image/compiler/tests:rpm-test-cheese-1-1.rpm": "tests/rpm-test-cheese-1-1.rpm",
@@ -75,6 +76,7 @@ python_unittest(
         ":items",
         "//fs_image:find_built_subvol",
         "//fs_image:testlib_temp_subvolumes",
+        "//fs_image/btrfs_diff:testlib_demo_sendstreams",
         "//fs_image/btrfs_diff:testlib_render_subvols",
         "//fs_image/rpm:rpm_metadata",
     ],
