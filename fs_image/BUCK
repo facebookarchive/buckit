@@ -3,6 +3,8 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("//fs_image/buck:image.bzl", "image")
 
+TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
+
 python_library(
     name = "common",
     srcs = ["common.py"],
@@ -72,6 +74,7 @@ python_library(
     deps = [
         ":btrfs_loopback",
         ":common",
+        ":fs_utils",
         ":unshare",
         "//fs_image/compiler:subvolume_on_disk",
     ],
@@ -88,10 +91,13 @@ python_unittest(
     par_style = "zip",  # "fastzip" won't work because of `set_up_volume.sh`
     resources = {
         "//fs_image/compiler/tests:hello_world_base": "tests/hello-layer",
+        TEST_TARGET_PREFIX + "create_ops-original.sendstream": "tests/create_ops.sendstream",
     },
     deps = [
         ":subvol_utils",
         ":testlib_temp_subvolumes",
+        "//fs_image/btrfs_diff:testlib_demo_sendstreams",
+        "//fs_image/btrfs_diff:testlib_render_subvols",
     ],
 )
 
@@ -377,8 +383,6 @@ python_binary(
         "//fs_image/compiler:subvolume_on_disk",
     ],
 )
-
-TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 
 # Also tests the Buck macro `image_package.bzl`, but we cannot assert coverage.
 python_unittest(

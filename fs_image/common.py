@@ -139,3 +139,14 @@ def pipe():
     r_fd, w_fd = os.pipe2(os.O_CLOEXEC)
     with os.fdopen(r_fd, 'rb') as r, os.fdopen(w_fd, 'wb') as w:
         yield r, w
+
+
+@contextmanager
+def open_fd(path: AnyStr, flags) -> int:
+    # If you ever need **NOT** to set one of these very sane defaults, add a
+    # clearly named keyword-only arg.
+    fd = os.open(path, flags=flags | os.O_NOCTTY | os.O_CLOEXEC)
+    try:
+        yield fd
+    finally:
+        os.close(fd)

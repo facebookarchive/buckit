@@ -5,9 +5,11 @@ import tempfile
 import unittest
 import unittest.mock
 
-from subvol_utils import Subvol, SubvolOpts, get_subvolume_path
-
+from btrfs_diff.tests.render_subvols import render_sendstream
+from btrfs_diff.tests.demo_sendstreams_expected import render_demo_subvols
 from find_built_subvol import subvolumes_dir
+from fs_image.fs_utils import Path, temp_dir
+from subvol_utils import Subvol, SubvolOpts, get_subvolume_path
 
 from .temp_subvolumes import with_temp_subvols
 
@@ -16,6 +18,10 @@ class SubvolTestCase(unittest.TestCase):
     NB: The test here is partially redundant with demo_sendstreams, but
     coverage easier to manage when there's a clean, separate unit test.
     '''
+
+    def setUp(self):  # More output for easier debugging
+        unittest.util._MAX_LENGTH = 12345
+        self.maxDiff = 12345
 
     @with_temp_subvols
     def test_create_and_snapshot_and_already_exists(self, temp_subvols):
@@ -34,10 +40,10 @@ class SubvolTestCase(unittest.TestCase):
                 sv.run_as_root(['true'])
 
     def test_out_of_subvol_symlink(self):
-        with tempfile.TemporaryDirectory() as td:
-            os.symlink('/dev/null', os.path.join(td, 'my_null'))
+        with temp_dir() as td:
+            os.symlink('/dev/null', td / 'my_null')
             self.assertEqual(
-                os.path.join(td, 'my_null').encode(),
+                td / 'my_null',
                 Subvol(td).path('my_null', no_dereference_leaf=True),
             )
             with self.assertRaisesRegex(AssertionError, 'outside the subvol'):
@@ -147,3 +153,15 @@ class SubvolTestCase(unittest.TestCase):
         )
         path = get_subvolume_path(layer_json, subvolumes_dir())
         self.assertTrue(os.path.exists(os.path.join(path, 'hello_world')))
+
+    @with_temp_subvols
+    def test_receive(self, temp_subvols):
+        new_subvol_name = 'differs_from_create_ops'
+        sv = temp_subvols.caller_will_create(new_subvol_name)
+        with open(Path(__file__).dirname() / 'create_ops.sendstream') as f, \
+                sv.receive(f):
+            pass
+        self.assertEqual(
+            render_demo_subvols(create_ops=new_subvol_name),
+            render_sendstream(sv.mark_readonly_and_get_sendstream()),
+        )

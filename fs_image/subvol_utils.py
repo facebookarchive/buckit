@@ -9,8 +9,9 @@ from typing import AnyStr, BinaryIO, Iterator, NamedTuple
 
 from btrfs_loopback import LoopbackVolume, run_stdout_to_err
 from fs_image.common import (
-    byteme, check_popen_returncode, get_file_logger, pipe,
+    byteme, check_popen_returncode, get_file_logger, open_fd, pipe,
 )
+from fs_image.fs_utils import Path
 from unshare import Namespace, nsenter_as_root, nsenter_as_user, Unshare
 
 from compiler.subvolume_on_disk import SubvolumeOnDisk
@@ -169,6 +170,18 @@ class Subvol:
                 'a symlink from inside the container and touch the host '
                 'filesystem. Best practice: wrap your path with '
                 'Subvol.path() as close as possible to its site of use.'
+            )
+        if 'pass_fds' in kwargs:
+            # Future: if you add support for this, see the note on how to
+            # improve `receive`, too.
+            #
+            # Why doesn't `pass_fds` just work?  `sudo` closes all FDs in a
+            # (likely misguided) attempt to improve security.  `sudo -C` can
+            # help here, but it's disabled by default.
+            raise NotImplementedError(  # pragma: no cover
+                'But there is a straightforward fix -- you would need to '
+                'move the usage of our FD-passing wrapper from '
+                'nspawn_in_subvol.py to this function.'
             )
         if _subvol_exists != self._exists:
             raise AssertionError(
@@ -545,3 +558,36 @@ class Subvol:
                     )).check_returncode()
             loop_vol.minimize_size()
             return True
+
+    @contextmanager
+    def receive(self, from_file):
+        # At present, we always have an empty wrapper dir to receive into.
+        # If this changes, we could make a tempdir inside `parent_fd`.
+        with open_fd(
+            os.path.dirname(self.path()), os.O_RDONLY | os.O_DIRECTORY,
+        ) as parent_fd:
+            wrapper_dir_contents = os.listdir(parent_fd)
+            assert wrapper_dir_contents == [], wrapper_dir_contents
+            try:
+                with self.popen_as_root([
+                    'btrfs', 'receive',
+                    # Future: If we get `pass_fds` support, use `/proc/self/fd'
+                    Path('/proc') / str(os.getpid()) / 'fd' / str(parent_fd),
+                ], _subvol_exists=False, stdin=from_file):
+                    yield
+            finally:
+                received_names = os.listdir(parent_fd)
+                assert len(received_names) <= 1, received_names
+                if received_names:
+                    os.rename(
+                        received_names[0],
+                        os.path.basename(self.path()),
+                        src_dir_fd=parent_fd,
+                        dst_dir_fd=parent_fd,
+                    )
+                    # This may be a **partially received** subvol.  If these
+                    # semantics turn out to be broken for our purposes, we
+                    # can try to clean up the subvolume on error instead,
+                    # but at present it seems easier to leak it, and let the
+                    # GC code delete it later.
+                    self._exists = True
