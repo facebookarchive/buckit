@@ -42,6 +42,7 @@ fake_macro_library(
 fake_macro_library(
     name = "wrap_runtime_deps",
     srcs = ["wrap_runtime_deps.bzl"],
+    deps = [":artifacts_require_repo"],
 )
 
 fake_macro_library(
@@ -77,6 +78,7 @@ fake_macro_library(
     name = "image_unittest_helpers",
     srcs = ["image_unittest_helpers.bzl"],
     deps = [
+        ":image_feature",
         ":image_layer",
     ],
 )

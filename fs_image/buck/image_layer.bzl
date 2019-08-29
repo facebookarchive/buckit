@@ -95,7 +95,6 @@ load("@fbcode_macros//build_defs:native_rules.bzl", "buck_command_alias", "buck_
 load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
 load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 load(":compile_image_features.bzl", "compile_image_features")
-load(":image_source.bzl", "image_source")
 load(":image_utils.bzl", "image_utils")
 load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger")
 
