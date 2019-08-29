@@ -9,8 +9,9 @@ from compiler.requires import require_directory
 from compiler.subvolume_on_disk import SubvolumeOnDisk
 from tests.temp_subvolumes import TempSubvolumes
 
+from ..make_subvol import FilesystemRootItem, ParentLayerItem
 from ..mount import MountItem
-from ..parent_layer import FilesystemRootItem, ParentLayerItem
+from ..phases_provide import PhasesProvideItem
 
 from .common import BaseItemTestCase, DUMMY_LAYER_OPTS, render_subvol
 
@@ -275,9 +276,8 @@ class MountItemTestCase(BaseItemTestCase):
 
             # Check that we read back the `mounter` metadata, mark `/meow`
             # inaccessible, and do not emit a `ProvidesFile` for `kitteh`.
-            pi = ParentLayerItem(from_target='t', path=mounter.path().decode())
             self._check_item(
-                pi,
+                PhasesProvideItem(from_target='t', subvol=mounter),
                 {
                     ProvidesDirectory(path='/'),
                     ProvidesDoNotAccess(path='/meta'),
@@ -287,7 +287,10 @@ class MountItemTestCase(BaseItemTestCase):
             )
             # Check that we successfully clone mounts from the parent layer.
             mounter_child = temp_subvolumes.caller_will_create('child/volume')
-            pi.get_phase_builder([pi], DUMMY_LAYER_OPTS)(mounter_child)
+            ParentLayerItem.get_phase_builder(
+                [ParentLayerItem(from_target='t', subvol=mounter)],
+                DUMMY_LAYER_OPTS,
+            )(mounter_child)
 
             # The child has the same mount, and the same metadata
             self._check_subvol_mounts_meow(mounter_child)

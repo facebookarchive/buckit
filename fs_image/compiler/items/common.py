@@ -74,8 +74,9 @@ class PhaseOrder(enum.Enum):
     paths (as is done today in `yum-from-snapshot`), then it would not be
     necessary for the compiler to know about them.
     '''
-    # This actually creates the subvolume, so it must preced all others.
-    PARENT_LAYER = enum.auto()
+    # This phase creates the subvolume, so it must precede all others.
+    # There can only ever be one item in this phase.
+    MAKE_SUBVOL = enum.auto()
     # Precedes REMOVE_PATHS because RPM removes **might** be conditional on
     # the presence or absence of files, and we don't want that extra entropy
     # -- whereas file removes fail or succeed predictably.  Precedes

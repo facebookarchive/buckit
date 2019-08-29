@@ -3,8 +3,7 @@ import os
 import subprocess
 import sys
 
-from compiler.tests.mock_subvolume_from_json_file import TEST_SUBVOLS_DIR
-from find_built_subvol import find_built_subvol
+from find_built_subvol import find_built_subvol, subvolumes_dir
 from fs_image.fs_utils import Path
 from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from subvol_utils import get_subvolume_path
@@ -137,12 +136,13 @@ class RpmActionItemTestCase(BaseItemTestCase):
         ]:
             self._test_rpm_action_item(layer_opts=DUMMY_LAYER_OPTS._replace(
                 build_appliance=get_subvolume_path(
-                            os.path.join(
-                                os.path.dirname(__file__),
-                                filename,
-                                'layer.json',
-                            ),
-                            TEST_SUBVOLS_DIR),
+                    os.path.join(
+                        os.path.dirname(__file__),
+                        filename,
+                        'layer.json',
+                    ),
+                    subvolumes_dir(),
+                ),
             ))
 
     def test_rpm_action_item_auto_downgrade(self):

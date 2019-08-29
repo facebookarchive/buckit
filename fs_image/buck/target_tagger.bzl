@@ -70,8 +70,8 @@ def image_source_as_target_tagged_dict(target_tagger, user_source):
     )
     return src
 
-def target_tagger_to_feature(target_tagger, items, extra_deps):
+def target_tagger_to_feature(target_tagger, items, extra_deps = None):
     return struct(
         items = items,
-        deps = target_tagger.targets.keys() + extra_deps,
+        deps = target_tagger.targets.keys() + (extra_deps or []),
     )

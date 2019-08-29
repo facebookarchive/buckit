@@ -3,8 +3,9 @@ import sys
 import unittest
 
 from fs_image.compiler.items.common import LayerOpts
-from fs_image.compiler.items.parent_layer import FilesystemRootItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.make_subvol import FilesystemRootItem
+from fs_image.compiler.items.phases_provide import PhasesProvideItem
 from fs_image.compiler.items.remove_path import RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmActionItem
 from tests.temp_subvolumes import TempSubvolumes
@@ -63,7 +64,7 @@ class ImageFeatureTestCase(unittest.TestCase):
             self._items_for_features(target_to_path={})
 
     def test_install_order(self):
-        dg = DependencyGraph(si.ID_TO_ITEM.values())
+        dg = DependencyGraph(si.ID_TO_ITEM.values(), layer_target='ttt')
         builders_and_phases = list(dg.ordered_phases())
         self.assertEqual([
             (
@@ -98,7 +99,9 @@ class ImageFeatureTestCase(unittest.TestCase):
         phase_items = [i for _, items in builders_and_phases for i in items]
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             subvol = temp_subvolumes.create('subvol')
-            doi = list(dg.gen_dependency_order_items(subvol.path().decode()))
+            doi = list(dg.gen_dependency_order_items(
+                PhasesProvideItem(from_target='t', subvol=subvol),
+            ))
         self.assertEqual(set(si.ID_TO_ITEM.values()), set(doi + phase_items))
         self.assertEqual(
             len(si.ID_TO_ITEM),

@@ -1,23 +1,36 @@
 #!/usr/bin/env python3
 import itertools
+import json
 import os
 import subprocess
-import tempfile
 import unittest
 import unittest.mock
+import sys
+
+from contextlib import contextmanager
 
 import subvol_utils
+
+from find_built_subvol import subvolumes_dir
+from fs_image.fs_utils import Path, temp_dir
+from tests.temp_subvolumes import TempSubvolumes
 
 from ..compiler import build_image, parse_args, LayerOpts
 from .. import subvolume_on_disk as svod
 
 from . import sample_items as si
-from .mock_subvolume_from_json_file import (
-    TEST_SUBVOLS_DIR, mock_subvolume_from_json_file,
-)
 
 _orig_btrfs_get_volume_props = svod._btrfs_get_volume_props
-FAKE_SUBVOL = 'FAKE_SUBVOL'
+# We need the actual subvolume directory for this mock because the
+# `MountItem` build process in `test_compiler.py` loads a real subvolume
+# through this path (`:hello_world_base`).
+_SUBVOLS_DIR = subvolumes_dir()
+_FAKE_SUBVOL = 'FAKE_SUBVOL'
+_FIND_ARGS = [
+    'find', '-P', f'{_SUBVOLS_DIR}/{_FAKE_SUBVOL}'.encode(), '(',
+    '-path', f'{_SUBVOLS_DIR}/{_FAKE_SUBVOL}/meta'.encode(),
+    ')', '-prune', '-o', '-printf', '%y %p\\0',
+]
 
 
 def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
@@ -34,22 +47,15 @@ def _subvol_mock_lexists_is_btrfs_and_run_as_root(fn):
     return fn
 
 
-_FIND_ARGS = [
-    'find', '-P', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}', '(',
-    '-path', f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}/meta',
-    ')', '-prune', '-o', '-printf', '%y %p\\0',
-]
-
-
 def _run_as_root(args, **kwargs):
     '''
-    DependencyGraph adds a ParentLayerItem to traverse the subvolume, as
+    DependencyGraph adds a PhasesProvideItem to traverse the subvolume, as
     modified by the phases. This ensures the traversal produces a subvol /
     '''
     if args[0] == 'find':
         assert args == _FIND_ARGS, args
         ret = unittest.mock.Mock()
-        ret.stdout = f'd {TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}\0'.encode()
+        ret.stdout = f'd {_SUBVOLS_DIR}/{_FAKE_SUBVOL}\0'.encode()
         return ret
 
 
@@ -64,10 +70,48 @@ def _os_path_lexists(path):
 
 
 def _btrfs_get_volume_props(subvol_path):
-    if subvol_path == os.path.join(TEST_SUBVOLS_DIR, FAKE_SUBVOL):
+    if subvol_path == os.path.join(_SUBVOLS_DIR, _FAKE_SUBVOL):
         # We don't have an actual btrfs subvolume, so make up a UUID.
         return {'UUID': 'fake uuid', 'Parent UUID': None}
     return _orig_btrfs_get_volume_props(subvol_path)
+
+
+@contextmanager
+def mock_layer_dir_access(test_case, subvolume_path):
+    '''
+    `SubvolumeOnDisk` does a ton of validation, which makes it hard to
+    use it to read or write subvols that are not actual target outputs.
+
+    Instead, this yields a fake layer directory path, and mocks
+    `SubvolumeOnDisk.from_json_file` **only** for calls querying the fake
+    path.  For those calls, it returns a fake `SubvolumeOnDisk` pointing at
+    the supplied `subvolume_path`.
+    '''
+    sigil_dirname = b'fake-parent-layer'
+    orig_from_json_file = svod.SubvolumeOnDisk.from_json_file
+    with unittest.mock.patch.object(
+        svod.SubvolumeOnDisk, 'from_json_file'
+    ) as from_json_file, temp_dir() as td:
+        parent_layer_file = td / sigil_dirname / 'layer.json'
+        os.mkdir(parent_layer_file.dirname())
+        with open(parent_layer_file, 'w') as f:
+            f.write('this will never be read')
+
+        def check_call(infile, subvolumes_dir):
+            if Path(infile.name).dirname().basename() != sigil_dirname:
+                return orig_from_json_file(infile, subvolumes_dir)
+
+            test_case.assertEqual(parent_layer_file, infile.name)
+            test_case.assertEqual(_SUBVOLS_DIR, subvolumes_dir)
+
+            class FakeSubvolumeOnDisk:
+                def subvolume_path(self):
+                    return subvolume_path.decode()
+
+            return FakeSubvolumeOnDisk()
+
+        from_json_file.side_effect = check_call
+        yield parent_layer_file.dirname()
 
 
 class CompilerTestCase(unittest.TestCase):
@@ -95,8 +139,8 @@ class CompilerTestCase(unittest.TestCase):
         is_btrfs.return_value = True
         return build_image(parse_args([
             '--artifacts-may-require-repo',  # Must match LayerOpts below
-            '--subvolumes-dir', TEST_SUBVOLS_DIR,
-            '--subvolume-rel-path', FAKE_SUBVOL,
+            '--subvolumes-dir', _SUBVOLS_DIR,
+            '--subvolume-rel-path', _FAKE_SUBVOL,
             '--yum-from-repo-snapshot', self.yum_path,
             '--child-layer-target', 'CHILD_TARGET',
             '--child-feature-json',
@@ -115,7 +159,7 @@ class CompilerTestCase(unittest.TestCase):
         ):
             self._compile([])
 
-    def _compiler_run_as_root_calls(self, *, parent_args):
+    def _compiler_run_as_root_calls(self, *, parent_feature_json, parent_dep):
         '''
         Invoke the compiler on the targets from the "sample_items" test
         example, and ensure that the commands that the compiler would run
@@ -129,16 +173,17 @@ class CompilerTestCase(unittest.TestCase):
         final state of a compiled, live subvolume.
         '''
         res, run_as_root_calls = self._compile([
-            *parent_args,
+            *parent_feature_json,
             '--child-dependencies',
             *itertools.chain.from_iterable(si.TARGET_TO_PATH.items()),
+            *parent_dep,
         ])
         self.assertEqual(svod.SubvolumeOnDisk(**{
             svod._BTRFS_UUID: 'fake uuid',
             svod._BTRFS_PARENT_UUID: None,
             svod._HOSTNAME: 'fake host',
-            svod._SUBVOLUMES_BASE_DIR: TEST_SUBVOLS_DIR,
-            svod._SUBVOLUME_REL_PATH: FAKE_SUBVOL,
+            svod._SUBVOLUMES_BASE_DIR: _SUBVOLS_DIR,
+            svod._SUBVOLUME_REL_PATH: _FAKE_SUBVOL,
         }), res._replace(**{svod._HOSTNAME: 'fake host'}))
         return run_as_root_calls
 
@@ -148,7 +193,7 @@ class CompilerTestCase(unittest.TestCase):
         lexists.side_effect = _os_path_lexists
         is_btrfs.return_value = True
         subvol = subvol_utils.Subvol(
-            f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}',
+            f'{_SUBVOLS_DIR}/{_FAKE_SUBVOL}',
             already_exists=True,
         )
         layer_opts = LayerOpts(
@@ -157,7 +202,7 @@ class CompilerTestCase(unittest.TestCase):
             build_appliance=None,
             artifacts_may_require_repo=True,  # Must match CLI arg in `_compile`
             target_to_path=si.TARGET_TO_PATH,
-            subvolumes_dir=TEST_SUBVOLS_DIR,
+            subvolumes_dir=_SUBVOLS_DIR,
         )
         phase_item_ids = set()
         for builder_maker, item_ids in si.ORDERED_PHASES:
@@ -174,7 +219,7 @@ class CompilerTestCase(unittest.TestCase):
             (
                 ([
                     'btrfs', 'property', 'set', '-ts',
-                    f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}'.encode(), 'ro', 'true',
+                    f'{_SUBVOLS_DIR}/{_FAKE_SUBVOL}'.encode(), 'ro', 'true',
                 ],),
             ),
             ((_FIND_ARGS,), {'stdout': subprocess.PIPE}),
@@ -205,15 +250,18 @@ class CompilerTestCase(unittest.TestCase):
             len(expected_calls), len(si.ID_TO_ITEM),
         )
         self._assert_equal_call_sets(
-            expected_calls, self._compiler_run_as_root_calls(parent_args=[]),
+            expected_calls,
+            self._compiler_run_as_root_calls(
+                parent_feature_json=[], parent_dep=[],
+            ),
         )
 
         # Now, add an empty parent layer
-        with tempfile.TemporaryDirectory() as parent, \
-             mock_subvolume_from_json_file(self, path=parent) as parent_json:
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            parent = temp_subvolumes.create('parent')
             # Manually add/remove some commands from the "expected" set to
             # accommodate the fact that we have a parent subvolume.
-            subvol_path = f'{TEST_SUBVOLS_DIR}/{FAKE_SUBVOL}'.encode()
+            subvol_path = f'{_SUBVOLS_DIR}/{_FAKE_SUBVOL}'.encode()
             # Our unittest.mock.call objects are (args, kwargs) pairs.
             expected_calls_with_parent = [
                 c for c in expected_calls if c not in [
@@ -231,8 +279,8 @@ class CompilerTestCase(unittest.TestCase):
                 ),
                 (
                     ([
-                        'btrfs', 'subvolume', 'snapshot',
-                        parent.encode(), subvol_path,
+                        'btrfs', 'subvolume', 'snapshot', parent.path(),
+                        subvol_path,
                     ],),
                     {'_subvol_exists': False},
                 ),
@@ -240,13 +288,24 @@ class CompilerTestCase(unittest.TestCase):
             self.assertEqual(  # We should've removed 3, and added 2 commands
                 len(expected_calls_with_parent) + 1, len(expected_calls),
             )
-            self._assert_equal_call_sets(
-                expected_calls_with_parent,
-                self._compiler_run_as_root_calls(parent_args=[
-                    '--parent-layer-json', parent_json,
-                ]),
-            )
-
+            with mock_layer_dir_access(self, parent.path()) as parent_dir:
+                with open(parent_dir / 'feature.json', 'w') as out_f:
+                    json.dump({
+                        'parent_layer': [{
+                            'subvol': {'__BUCK_LAYER_TARGET': '//fake:parent'},
+                        }],
+                        'target': '//ignored:target',
+                    }, out_f)
+                self._assert_equal_call_sets(
+                    expected_calls_with_parent,
+                    self._compiler_run_as_root_calls(
+                        parent_feature_json=[
+                            '--child-feature-json',
+                            (parent_dir / 'feature.json').decode(),
+                        ],
+                        parent_dep=['//fake:parent', parent_dir.decode()],
+                    ),
+                )
 
 if __name__ == '__main__':
     unittest.main()

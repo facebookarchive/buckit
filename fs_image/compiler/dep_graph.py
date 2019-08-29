@@ -11,7 +11,8 @@ from collections import namedtuple
 from typing import Iterator
 
 from fs_image.compiler.items.common import ImageItem, PhaseOrder
-from fs_image.compiler.items.parent_layer import ParentLayerItem
+from fs_image.compiler.items.make_subvol import FilesystemRootItem
+from fs_image.compiler.items.phases_provide import PhasesProvideItem
 
 
 # To build the item-to-item dependency graph, we need to first build up a
@@ -114,9 +115,11 @@ class DependencyGraph:
     '''
 
     # Consumes a mix of dependency-ordered and `PhaseOrder`ed `ImageItem`s.
-    def __init__(self, iter_items: {'Iterator of ImageItems'}):
+    def __init__(
+        self, iter_items: {'Iterator of ImageItems'}, layer_target: str,
+    ):
         # Without deduping, dependency diamonds would cause a lot of
-        # redundant work below.  Below, we also rely on mutating this set.
+        # redundant work below.  `_prep_item_predecessors` mutates this.
         self.items = set()
         # While deduplicating `ImageItem`s, let's also split out the phases.
         self.order_to_phase_items = {}
@@ -127,6 +130,12 @@ class DependencyGraph:
                 self.order_to_phase_items.setdefault(
                     item.phase_order(), [],
                 ).append(item)
+        # If there is no MAKE_SUBVOL item, create an empty subvolume.
+        make_subvol_items = self.order_to_phase_items.setdefault(
+            PhaseOrder.MAKE_SUBVOL,
+            [FilesystemRootItem(from_target=layer_target)],
+        )
+        assert len(make_subvol_items) == 1, make_subvol_items
 
     # Like ImageItems, the generated phases have a build(s: Subvol) operation.
     def ordered_phases(self):
@@ -140,25 +149,15 @@ class DependencyGraph:
             yield all_builder_makers.pop(), tuple(items)
 
     # Separated so that unit tests can check the internal state.
-    def _prep_item_predecessors(self, sv_path: str):
-        # The `ImageItem` part of the build needs a PARENT_LAYER to know
-        # what is provided by the parent layer, and any subsequent phases.
-        parent_layer, = self.order_to_phase_items[PhaseOrder.PARENT_LAYER]
-        self.items.add(
-            # If there are no other phases, `ImageItem`s would only have
-            # access to what is provided by the existing PARENT_LAYER.
-            parent_layer if len(self.order_to_phase_items) == 1 else
-            # Hack: Phases may change the original parent layer, so we'll
-            # compute `provides()` for dependency resolution using the
-            # mutated subvolume.  This isn't too scary since the rest of
-            # this function is guaranteed to evaluate the parent's
-            # `provides()` before any `ImageItem.build()`.
-            #
-            # NB: By passing it a raw path to the subvolume root, we trust
-            # ParentLayerItem to appropriately handle any symlinks inside
-            # (i.e. not to mistakenly follow them outside of the subvol).
-            ParentLayerItem(from_target='fake', path=sv_path),
-        )
+    def _prep_item_predecessors(self, phases_provide: PhasesProvideItem):
+        # The `ImageItem` part of the build needs an item that `provides`
+        # the filesystem as it exists after the phases get built.
+        #
+        # This item computes `provides()` for dependency resolution using
+        # the modified subvolume.  This isn't too scary since the rest of
+        # this function is guaranteed to evaluate this item's `provides()`
+        # before any `ImageItem.build()`.
+        self.items.add(phases_provide)
 
         class Namespace:
             pass
@@ -189,20 +188,20 @@ class DependencyGraph:
 
         return ns
 
-    def gen_dependency_order_items(self, sv_path: str) -> Iterator[ImageItem]:
-        '''
-        IMPORTANT: See the docblock of Subvol.path before using `sv_path`,
-        and consider passing a `Subvol` in here if appropriate.
-        '''
-        ns = self._prep_item_predecessors(sv_path)
+    def gen_dependency_order_items(
+        self, phases_provide: PhasesProvideItem,
+    ) -> Iterator[ImageItem]:
+        ns = self._prep_item_predecessors(phases_provide)
         yield_idx = 0
         while ns.items_without_predecessors:
             # "Install" an item that has no unsatisfied dependencies.
             item = ns.items_without_predecessors.pop()
-            # The parent layer is built as part of `ordered_phases()`, it is
-            # only added to `items` so its `provides()` fulfills requirements.
-            if item.phase_order() is PhaseOrder.PARENT_LAYER:
-                assert yield_idx == 0, f'{item}: the parent layer must be 1st'
+            # `_prep_item_predecessors` ensures that we will encounter
+            # `phases_provide` whose `provides` describes the state of the
+            # layer after the phases had run (before we build items).
+            if item is phases_provide:
+                # This item deliberately lacks `build()`, so don't yield it.
+                assert yield_idx == 0, f'{item}: PhasesProvideItem must be 1st'
             else:
                 yield item
             yield_idx += 1

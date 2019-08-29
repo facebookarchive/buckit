@@ -3,6 +3,7 @@ load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("//fs_image/buck:image_feature.bzl", "DO_NOT_DEPEND_ON_FEATURES_SUFFIX")
 load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
+load(":target_tagger.bzl", "new_target_tagger", "tag_target", "target_tagger_to_feature")
 
 def _build_opts(
         # The name of the btrfs subvolume to create.
@@ -50,7 +51,15 @@ def compile_image_features(
     feature_targets = []
     direct_deps = []
     inline_feature_dicts = []
-    for f in features:
+    target_tagger = new_target_tagger()
+    for f in features + (
+        [target_tagger_to_feature(
+            target_tagger,
+            items = struct(parent_layer = [{
+                "subvol": tag_target(target_tagger, parent_layer, is_layer = True),
+            }]),
+        )] if parent_layer else []
+    ):
         if types.is_string(f):
             feature_targets.append(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
         else:
@@ -69,7 +78,6 @@ def compile_image_features(
           --subvolumes-dir "$subvolumes_dir" \
           --subvolume-rel-path \
             "$subvolume_wrapper_dir/"{subvol_name_quoted} \
-          --parent-layer-json {parent_layer_json_quoted} \
           {maybe_quoted_build_appliance_args} \
           {maybe_quoted_yum_from_repo_snapshot_args} \
           --child-layer-target {current_target_quoted} \
@@ -78,9 +86,6 @@ def compile_image_features(
               > "$layer_json"
     '''.format(
         subvol_name_quoted = shell.quote(build_opts.subvol_name),
-        parent_layer_json_quoted = "$(location {})/layer.json".format(
-            parent_layer,
-        ) if parent_layer else "''",
         current_target_quoted = shell.quote(current_target),
         quoted_child_feature_json_args = " ".join([
             "--child-feature-json $(location {})".format(t)
@@ -94,9 +99,10 @@ def compile_image_features(
         # We will ask Buck to ensure that the outputs of the direct
         # dependencies of our `image_feature`s are available on local disk.
         #
-        # See `Implementation notes: Dependency resolution` in `__doc__` --
-        # note that we need no special logic to exclude parent-layer
-        # features, since this query does not traverse them anyhow.
+        # See `Implementation notes: Dependency resolution` in `__doc__`.
+        # Note that we need no special logic to exclude parent-layer
+        # features -- this query does not traverse them anyhow, since the
+        # the parent layer feature is added as an "inline feature" above.
         #
         # We have two layers of quoting here.  The outer '' groups the query
         # into a single argument for `query_targets_and_outputs`.  Then,

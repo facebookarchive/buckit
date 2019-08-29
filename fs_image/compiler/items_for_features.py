@@ -9,6 +9,7 @@ from find_built_subvol import find_built_subvol
 from fs_image.compiler.items.common import LayerOpts
 from fs_image.compiler.items.install_file import InstallFileItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.make_subvol import ParentLayerItem
 from fs_image.compiler.items.mount import MountItem
 from fs_image.compiler.items.remove_path import RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmActionItem
@@ -58,6 +59,7 @@ def gen_items_for_features(
         'install_files': InstallFileItem,
         'make_dirs': MakeDirsItem,
         'mounts': MountItem,
+        'parent_layer': ParentLayerItem,
         'rpms': RpmActionItem,
         'remove_paths': RemovePathItem,
         'symlinks_to_dirs': SymlinkToDirItem,

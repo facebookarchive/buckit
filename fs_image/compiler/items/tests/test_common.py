@@ -5,9 +5,7 @@ from compiler.requires import require_directory
 from ..common import PhaseOrder
 from ..install_file import InstallFileItem
 from ..make_dirs import MakeDirsItem
-from ..parent_layer import (
-    FilesystemRootItem, ParentLayerItem,
-)
+from ..make_subvol import FilesystemRootItem, ParentLayerItem
 from ..rpm_action import RpmAction, RpmActionItem
 
 from .common import BaseItemTestCase
@@ -15,6 +13,7 @@ from .common import BaseItemTestCase
 
 class ItemsCommonTestCase(BaseItemTestCase):
 
+    # Future: move these into the per-item TestCases, reuse existing items
     def test_phase_orders(self):
         self.assertIs(
             None,
@@ -24,12 +23,12 @@ class ItemsCommonTestCase(BaseItemTestCase):
             ).phase_order(),
         )
         self.assertEqual(
-            PhaseOrder.PARENT_LAYER,
+            PhaseOrder.MAKE_SUBVOL,
             FilesystemRootItem(from_target='t').phase_order(),
         )
         self.assertEqual(
-            PhaseOrder.PARENT_LAYER,
-            ParentLayerItem(from_target='t', path='unused').phase_order(),
+            PhaseOrder.MAKE_SUBVOL,
+            ParentLayerItem(from_target='t', subvol=None).phase_order(),
         )
         self.assertEqual(PhaseOrder.RPM_INSTALL, RpmActionItem(
             from_target='t', name='n', action=RpmAction.install,

@@ -2,8 +2,8 @@
 import os
 
 from fs_image.compiler.items.install_file import InstallFileItem
-from fs_image.compiler.items.parent_layer import FilesystemRootItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
+from fs_image.compiler.items.make_subvol import FilesystemRootItem
 from fs_image.compiler.items.mount import MountItem
 from fs_image.compiler.items.remove_path import RemovePathAction, RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmAction, RpmActionItem

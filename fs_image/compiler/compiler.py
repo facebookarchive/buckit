@@ -11,7 +11,6 @@ and invokes `.build()` to apply each item to actually construct the subvol.
 '''
 
 import argparse
-import itertools
 import os
 import sys
 
@@ -19,7 +18,7 @@ from contextlib import ExitStack
 
 from compiler.items_for_features import gen_items_for_features
 from fs_image.compiler.items.common import LayerOpts
-from fs_image.compiler.items.parent_layer import gen_parent_layer_items
+from fs_image.compiler.items.phases_provide import PhasesProvideItem
 from subvol_utils import Subvol, get_subvolume_path
 
 from .dep_graph import DependencyGraph
@@ -57,10 +56,6 @@ def parse_args(args):
         help='Path underneath --subvolumes-dir where we should create '
             'the subvolume. Note that all path components but the basename '
             'should already exist.',
-    )
-    parser.add_argument(
-        '--parent-layer-json',
-        help='Path to the JSON output of the parent `image_layer` target',
     )
     parser.add_argument(
         '--yum-from-repo-snapshot',
@@ -118,18 +113,11 @@ def build_image(args):
 
     # This stack allows build items to hold temporary state on disk.
     with ExitStack() as exit_stack:
-        dep_graph = DependencyGraph(itertools.chain(
-            gen_parent_layer_items(
-                args.child_layer_target,
-                args.parent_layer_json,
-                args.subvolumes_dir,
-            ),
-            gen_items_for_features(
-                exit_stack=exit_stack,
-                features_or_paths=args.child_feature_json,
-                layer_opts=layer_opts,
-            ),
-        ))
+        dep_graph = DependencyGraph(gen_items_for_features(
+            exit_stack=exit_stack,
+            features_or_paths=args.child_feature_json,
+            layer_opts=layer_opts,
+        ), layer_target=args.child_layer_target)
         # Creating all the builders up-front lets phases validate their input
         for builder in [
             builder_maker(items, layer_opts)
@@ -138,9 +126,10 @@ def build_image(args):
             builder(subvol)
         # We cannot validate or sort `ImageItem`s until the phases are
         # materialized since the items may depend on the output of the phases.
-        for item in dep_graph.gen_dependency_order_items(
-            subvol.path().decode()
-        ):
+        for item in dep_graph.gen_dependency_order_items(PhasesProvideItem(
+            from_target=args.child_layer_target,
+            subvol=subvol,
+        )):
             item.build(subvol, layer_opts)
         # Build artifacts should never change. Run this BEFORE the exit_stack
         # cleanup to enforce that the cleanup does not touch the image.
