@@ -21,7 +21,7 @@ class RpmMetadataTestCase(unittest.TestCase):
         self.assertEqual(a.release, 'a')
 
         # not installed
-        with self.assertRaisesRegex(RuntimeError, '^Could not query RPM info'):
+        with self.assertRaises(RuntimeError):
             a = RpmMetadata.from_subvol(child_subvol, 'rpm-test-carrot')
 
         # subvol with no RPM DB
