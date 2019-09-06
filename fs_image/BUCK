@@ -401,6 +401,7 @@ python_unittest(
     deps = [
         ":find_built_subvol",
         ":package-image-library",
+        ":testlib_temp_subvolumes",
         ":unshare",
         "//fs_image/btrfs_diff:testlib_render_subvols",
     ],

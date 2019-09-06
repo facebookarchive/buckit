@@ -273,6 +273,20 @@ class SendstreamZst(Format, format_name='sendstream.zst'):
         check_popen_returncode(zst)
 
 
+class SquashfsImage(Format, format_name='squashfs'):
+    '''
+    Packages the subvolume as a squashfs-formatted disk image, usage:
+      mount -t squashfs image.squashfs dest/ -o loop
+    '''
+
+    def package_full(self, subvol: Subvol, output_path: str, opts: _Opts):
+        create_ro(output_path, 'wb').close()  # Ensure non-root ownership
+        subvol.run_as_root([
+            'mksquashfs', subvol.path(), output_path, '-comp', 'zstd',
+            '-noappend',
+        ])
+
+
 class BtrfsImage(Format, format_name='btrfs'):
     '''
     Packages the subvolume as a btrfs-formatted disk image, usage:

@@ -13,6 +13,18 @@ from btrfs_diff.tests.render_subvols import render_sendstream
 from find_built_subvol import subvolumes_dir
 from package_image import package_image, Format
 from unshare import Namespace, nsenter_as_root, Unshare
+from tests.temp_subvolumes import TempSubvolumes
+
+
+def _render_sendstream_path(path):
+    if path.endswith('.zst'):
+        data = subprocess.check_output(
+            ['zstd', '--decompress', '--stdout', path]
+        )
+    else:
+        with open(path, 'rb') as infile:
+            data = infile.read()
+    return render_sendstream(data)
 
 
 class PackageImageTestCase(unittest.TestCase):
@@ -48,18 +60,9 @@ class PackageImageTestCase(unittest.TestCase):
         return os.path.join(self.my_dir, rel_path)
 
     def _assert_sendstream_files_equal(self, path1: str, path2: str):
-        renders = []
-        for path in [path1, path2]:
-            if path.endswith('.zst'):
-                data = subprocess.check_output(
-                    ['zstd', '--decompress', '--stdout', path]
-                )
-            else:
-                with open(path, 'rb') as infile:
-                    data = infile.read()
-            renders.append(render_sendstream(data))
-
-        self.assertEqual(*renders)
+        self.assertEqual(
+            _render_sendstream_path(path1), _render_sendstream_path(path2),
+        )
 
     # This tests `image_package.bzl` by consuming its output.
     def test_packaged_sendstream_matches_original(self):
@@ -96,7 +99,6 @@ class PackageImageTestCase(unittest.TestCase):
                 #     os.path.join(mount_dir.fd_path(), 'create_ops'),
                 #     already_exists=True,
                 # ).mark_readonly_and_write_sendstream_to_file(temp_sendstream)
-                # temp_sendstream.flush()
                 subprocess.check_call(nsenter_as_root(
                     unshare, 'btrfs', 'send', '-f', temp_sendstream.name,
                     os.path.join(mount_dir, 'create_ops'),
@@ -139,3 +141,50 @@ class PackageImageTestCase(unittest.TestCase):
 
             class BadFormat(Format, format_name='sendstream'):
                 pass
+
+    def test_package_image_as_squashfs(self):
+        with self._package_image(
+            self._sibling_path('create_ops.layer'), 'squashfs',
+        ) as out_path, TempSubvolumes(sys.argv[0]) as temp_subvolumes, \
+                tempfile.NamedTemporaryFile() as temp_sendstream:
+            subvol = temp_subvolumes.create('subvol')
+            with Unshare([Namespace.MOUNT, Namespace.PID]) as unshare, \
+                    tempfile.TemporaryDirectory() as mount_dir:
+                subprocess.check_call(nsenter_as_root(
+                    unshare, 'mount', '-t', 'squashfs', '-o', 'loop',
+                    out_path, mount_dir,
+                ))
+                # `unsquashfs` would have been cleaner than `mount` +
+                # `rsync`, and faster too, but unfortunately it corrupts
+                # device nodes as of v4.3.
+                subprocess.check_call(nsenter_as_root(
+                    unshare, 'rsync', '--archive', '--hard-links',
+                    '--sparse', '--xattrs', mount_dir + '/', subvol.path(),
+                ))
+            with subvol.mark_readonly_and_write_sendstream_to_file(
+                temp_sendstream
+            ):
+                pass
+            original_render = _render_sendstream_path(
+                self._sibling_path('create_ops-original.sendstream'),
+            )
+            # SquashFS does not preserve the original's cloned extents of
+            # zeros, nor the zero-hole-zero patter.  In all cases, it
+            # (efficiently) transmutes the whole file into 1 sparse hole.
+            self.assertEqual(original_render[1].pop('56KB_nuls'), [
+                '(File d57344(create_ops@56KB_nuls_clone:0+49152@0/' +
+                'create_ops@56KB_nuls_clone:49152+8192@49152))'
+            ])
+            original_render[1]['56KB_nuls'] = ['(File h57344)']
+            self.assertEqual(original_render[1].pop('56KB_nuls_clone'), [
+                '(File d57344(create_ops@56KB_nuls:0+49152@0/' +
+                'create_ops@56KB_nuls:49152+8192@49152))'
+            ])
+            original_render[1]['56KB_nuls_clone'] = ['(File h57344)']
+            self.assertEqual(original_render[1].pop('zeros_hole_zeros'), [
+                '(File d16384h16384d16384)'
+            ])
+            original_render[1]['zeros_hole_zeros'] = ['(File h49152)']
+            self.assertEqual(
+                original_render, _render_sendstream_path(temp_sendstream.name),
+            )
