@@ -58,7 +58,7 @@ def image_package(
             # wants either.
             $(exe //fs_image:package-image) \
               --subvolumes-dir "$subvolumes_dir" \
-              --subvolume-json $(query_outputs {layer})/layer.json \
+              --layer-path $(query_outputs {layer}) \
               --format {format} \
               --output-path "$OUT" \
               {rw}

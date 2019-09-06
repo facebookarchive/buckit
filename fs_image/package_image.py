@@ -215,11 +215,16 @@ import os
 import stat
 import subprocess
 
-from typing import Mapping
+from typing import Mapping, NamedTuple
 
-from compiler.subvolume_on_disk import SubvolumeOnDisk
+from find_built_subvol import find_built_subvol
+from fs_image.fs_utils import create_ro
 from fs_image.common import init_logging, check_popen_returncode
 from subvol_utils import Subvol, SubvolOpts
+
+
+class _Opts(NamedTuple):
+    subvol_opts: SubvolOpts
 
 
 class Format:
@@ -245,18 +250,9 @@ class Sendstream(Format, format_name='sendstream'):
     See the script-level docs for details on supporting incremental ones.
     '''
 
-    def package_full(
-        self,
-        svod: SubvolumeOnDisk,
-        output_path: str,
-        subvol_opts: SubvolOpts,
-    ):
-        # Future: rpm.common.create_ro, but it's kind of a big dep.
-        # Luckily `image_package` will promptly mark this read-only.
-        assert not os.path.exists(output_path)
-        with open(output_path, 'wb') as outfile, Subvol(
-            svod.subvolume_path(), already_exists=True,
-        ).mark_readonly_and_write_sendstream_to_file(outfile):
+    def package_full(self, subvol: Subvol, output_path: str, opts: _Opts):
+        with create_ro(output_path, 'wb') as outfile, \
+                subvol.mark_readonly_and_write_sendstream_to_file(outfile):
             pass
 
 
@@ -269,20 +265,12 @@ class SendstreamZst(Format, format_name='sendstream.zst'):
     `TarballZst`, `SendstreamGz`, etc.
     '''
 
-    def package_full(
-        self,
-        svod: SubvolumeOnDisk,
-        output_path: str,
-        subvol_opts: SubvolOpts,
-    ):
-        assert not os.path.exists(output_path)
-        with open(output_path, 'wb') as outfile, subprocess.Popen(
-                ['zstd', '--stdout'], stdin=subprocess.PIPE, stdout=outfile
-        ) as zstd, Subvol(
-            svod.subvolume_path(), already_exists=True,
-        ).mark_readonly_and_write_sendstream_to_file(zstd.stdin):
+    def package_full(self, subvol: Subvol, output_path: str, opts: _Opts):
+        with create_ro(output_path, 'wb') as outfile, subprocess.Popen(
+            ['zstd', '--stdout'], stdin=subprocess.PIPE, stdout=outfile
+        ) as zst, subvol.mark_readonly_and_write_sendstream_to_file(zst.stdin):
             pass
-        check_popen_returncode(zstd)
+        check_popen_returncode(zst)
 
 
 class BtrfsImage(Format, format_name='btrfs'):
@@ -290,23 +278,10 @@ class BtrfsImage(Format, format_name='btrfs'):
     Packages the subvolume as a btrfs-formatted disk image, usage:
       mount -t btrfs image.btrfs dest/ -o loop
     '''
-    def package_full(
-        self,
-        svod: SubvolumeOnDisk,
-        output_path: str,
-        subvol_opts: SubvolOpts,
-    ):
-        Subvol(
-            svod.subvolume_path(), already_exists=True,
-        ).mark_readonly_and_send_to_new_loopback(
+    def package_full(self, subvol: Subvol, output_path: str, opts: _Opts):
+        subvol.mark_readonly_and_send_to_new_loopback(
             output_path,
-            subvol_opts=subvol_opts
-        )
-        # Paranoia: images are read-only after being built
-        os.chmod(
-            output_path,
-            stat.S_IMODE(os.stat(output_path).st_mode)
-                & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH),
+            subvol_opts=opts.subvol_opts
         )
 
 
@@ -321,9 +296,8 @@ def parse_args(argv):
             'directories reside.',
     )
     parser.add_argument(
-        '--subvolume-json', required=True,
-        help='A SubvolumeOnDisk JSON output from the `image_layer` we need '
-            'to package',
+        '--layer-path', required=True,
+        help='A directory output from the `image_layer` we need to package',
     )
     parser.add_argument(
         '--format', choices=Format.NAME_TO_CLASS.keys(), required=True,
@@ -393,13 +367,20 @@ def parse_args(argv):
 
 def package_image(argv):
     args = parse_args(argv)
-    opts = SubvolOpts(readonly=not args.writable_subvolume)
-    with open(args.subvolume_json) as infile:
-        Format.make(args.format).package_full(
-            SubvolumeOnDisk.from_json_file(infile, args.subvolumes_dir),
-            output_path=args.output_path,
-            subvol_opts=opts,
-        )
+    assert not os.path.exists(args.output_path)
+    Format.make(args.format).package_full(
+        find_built_subvol(args.layer_path, subvolumes_dir=args.subvolumes_dir),
+        output_path=args.output_path,
+        opts=_Opts(
+            subvol_opts=SubvolOpts(readonly=not args.writable_subvolume),
+        ),
+    )
+    # Paranoia: images are read-only after being built
+    os.chmod(
+        args.output_path,
+        stat.S_IMODE(os.stat(args.output_path).st_mode)
+            & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH),
+    )
 
 
 if __name__ == '__main__':  # pragma: no cover

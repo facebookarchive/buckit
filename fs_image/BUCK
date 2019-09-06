@@ -35,6 +35,7 @@ python_library(
     base_module = "",
     deps = [
         ":find_built_subvol",
+        ":fs_utils",
         ":subvol_utils",
     ],
 )
@@ -377,8 +378,8 @@ python_binary(
     base_module = "",
     main_module = "package_image",
     deps = [
+        ":find_built_subvol",
         ":subvol_utils",
-        "//fs_image/compiler:subvolume_on_disk",
     ],
 )
 

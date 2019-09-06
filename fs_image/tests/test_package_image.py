@@ -29,7 +29,7 @@ class PackageImageTestCase(unittest.TestCase):
     @contextmanager
     def _package_image(
         self,
-        json_path: str,
+        layer_path: str,
         format: str,
         writable_subvolume: bool = False
     ) -> Iterator[str]:
@@ -37,7 +37,7 @@ class PackageImageTestCase(unittest.TestCase):
             out_path = os.path.join(td, format)
             package_image([
                 '--subvolumes-dir', self.subvolumes_dir,
-                '--subvolume-json', json_path,
+                '--layer-path', layer_path,
                 '--format', format,
                 '--output-path', out_path,
                 *(['--writable-subvolume'] if writable_subvolume else []),
@@ -71,7 +71,7 @@ class PackageImageTestCase(unittest.TestCase):
     def test_package_image_as_sendstream(self):
         for format in ['sendstream', 'sendstream.zst']:
             with self._package_image(
-                self._sibling_path('create_ops.layer/layer.json'), format,
+                self._sibling_path('create_ops.layer'), format,
             ) as out_path:
                 self._assert_sendstream_files_equal(
                     self._sibling_path('create_ops-original.sendstream'),
@@ -80,7 +80,7 @@ class PackageImageTestCase(unittest.TestCase):
 
     def test_package_image_as_btrfs_loopback(self):
         with self._package_image(
-            self._sibling_path('create_ops.layer/layer.json'), 'btrfs',
+            self._sibling_path('create_ops.layer'), 'btrfs',
         ) as out_path, \
                 Unshare([Namespace.MOUNT, Namespace.PID]) as unshare, \
                 tempfile.TemporaryDirectory() as mount_dir, \
@@ -110,7 +110,7 @@ class PackageImageTestCase(unittest.TestCase):
 
     def test_package_image_as_btrfs_loopback_writable(self):
         with self._package_image(
-            self._sibling_path('create_ops.layer/layer.json'),
+            self._sibling_path('create_ops.layer'),
             'btrfs',
             writable_subvolume=True,
         ) as out_path, \
