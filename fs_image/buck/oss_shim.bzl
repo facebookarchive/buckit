@@ -26,8 +26,7 @@ def python_binary(*args, **kwargs):
     shim.python_binary(**kwargs)
 
 _PYTHON_LIBRARY_KWARGS = _setify(
-    # Future: do we really need `gen_srcs`?
-    ["name", "base_module", "deps", "gen_srcs", "resources", "srcs"],
+    ["name", "base_module", "deps", "resources", "srcs"],
 )
 
 def python_library(*args, **kwargs):

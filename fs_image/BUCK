@@ -178,7 +178,7 @@ python_library(
     # Separate so we can put `sudo` alone in its own directory
     name = "fake_sudo",
     base_module = "fake_sudo",
-    gen_srcs = {":fake_sudo.sh": "sudo"},
+    resources = {":fake_sudo.sh": "sudo"},
 )
 
 python_library(

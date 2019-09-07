@@ -171,7 +171,7 @@ export_file(
 )
 
 # If you depend on this, you must set `par_style = "zip"`.  "fastzip" won't
-# work because it will prevent us from accessing the `gen_srcs` from this
+# work because it will prevent us from accessing the `resources` from this
 # target and from `:volume_for_repo` via filesystem APIs.
 python_library(
     name = "testlib_demo_sendstreams",
@@ -180,7 +180,7 @@ python_library(
         "tests/demo_sendstreams_expected.py",
     ],
     base_module = "btrfs_diff",
-    gen_srcs = {
+    resources = {
         ":gold_demo_sendstreams.pickle": "tests/gold_demo_sendstreams.pickle",
     },
     deps = [

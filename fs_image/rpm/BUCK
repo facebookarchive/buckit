@@ -325,7 +325,7 @@ python_unittest(
 python_library(
     name = "repo_server_binary",
     base_module = "rpm",
-    gen_srcs = {":repo-server": "repo-server"},
+    resources = {":repo-server": "repo-server"},
 )
 
 python_binary(
