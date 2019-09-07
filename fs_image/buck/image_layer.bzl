@@ -86,14 +86,7 @@ The consequences of this information hiding are:
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:config.bzl", "config")
-load(
-    "@fbcode_macros//build_defs:custom_rule.bzl",
-    "get_project_root_from_gen_dir",
-)
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_command_alias", "buck_genrule")
-load("@fbcode_macros//build_defs/lib:target_utils.bzl", "target_utils")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "buck_command_alias", "buck_genrule", "config", "get_visibility", "target_utils")
 load(":compile_image_features.bzl", "compile_image_features")
 load(":image_utils.bzl", "image_utils")
 load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger")
@@ -227,7 +220,7 @@ def _image_layer_impl(
                 layer_name_quoted = shell.quote(_layer_name),
                 refcounts_dir_quoted = paths.join(
                     "$GEN_DIR",
-                    shell.quote(get_project_root_from_gen_dir()),
+                    shell.quote(config.get_project_root_from_gen_dir()),
                     "buck-out/.volume-refcount-hardlinks/",
                 ),
                 make_subvol_cmd = _make_subvol_cmd,

@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "get_visibility", "python_unittest")
 load(":image_unittest_helpers.bzl", helpers = "image_unittest_helpers")
 
 def image_python_unittest(

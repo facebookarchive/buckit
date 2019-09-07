@@ -1,7 +1,5 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load(":oss_shim.bzl", "buck_genrule", "python_library")
 load(":image_feature.bzl", "image_feature")
 load(":image_layer.bzl", "image_layer")
 

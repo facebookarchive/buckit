@@ -4,8 +4,7 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule", "buck_sh_binary")
-load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "buck_sh_binary", "python_binary")
 load("//fs_image/buck:image.bzl", "image")
 load("//fs_image/buck:wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 

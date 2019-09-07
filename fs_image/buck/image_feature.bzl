@@ -38,8 +38,7 @@ Read that target's docblock for more info, but in essence, that will:
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "buck_genrule", "get_visibility")
 load(":crc32.bzl", "hex_crc32")
 load(":target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
 load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")

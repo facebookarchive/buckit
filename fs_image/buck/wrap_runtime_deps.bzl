@@ -1,6 +1,5 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "buck_genrule", "get_visibility")
 load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 
 _ARTIFACTS_REQUIRE_REPO = built_artifacts_require_repo()

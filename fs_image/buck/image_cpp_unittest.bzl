@@ -1,7 +1,4 @@
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "buck_genrule", "cpp_unittest", "get_visibility", "python_binary")
 load(":image_unittest_helpers.bzl", helpers = "image_unittest_helpers")
 
 def image_cpp_unittest(

@@ -18,10 +18,7 @@ seems more flexible and less messy than maintaining a look-aside list of
 targets whose paths the `image_layer` converter would need to resolve.
 """
 
-load(
-    "@fbcode_macros//build_defs/lib:target_utils.bzl",
-    "target_utils",
-)
+load(":oss_shim.bzl", "target_utils")
 load(":image_source.bzl", "image_source")
 
 _TargetTaggerInfo = provider(fields = ["targets"])

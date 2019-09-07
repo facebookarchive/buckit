@@ -4,8 +4,7 @@ files, as described by the specified `format`.
 """
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
+load(":oss_shim.bzl", "buck_genrule", "get_visibility")
 load(":image_utils.bzl", "image_utils")
 
 _IMAGE_PACKAGE = "image_package"

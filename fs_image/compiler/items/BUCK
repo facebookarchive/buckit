@@ -1,5 +1,4 @@
-load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("//fs_image/buck:oss_shim.bzl", "python_library", "python_unittest")
 
 # Split out since `nspawn-in-subvol` depends on it.
 python_library(

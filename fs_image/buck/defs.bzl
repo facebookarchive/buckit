@@ -1,4 +1,4 @@
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load(":oss_shim.bzl", "buck_genrule")
 
 def fake_macro_library(name, srcs, deps = None):
     """

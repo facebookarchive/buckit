@@ -1,8 +1,5 @@
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
+load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "python_binary", "python_library", "python_unittest")
 load("@fbcode_macros//build_defs:platform_utils.bzl", "platform_utils")
-load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
-load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
-load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbcode_macros//build_defs/lib:third_party.bzl", "third_party")
 
 python_library(
