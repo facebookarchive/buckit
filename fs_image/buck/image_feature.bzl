@@ -607,13 +607,29 @@ def image_feature(
     #     that the `image_feature` depends on it.
     target_tagger = new_target_tagger()
 
+    # For named features, omit the ugly suffix here since this is
+    # meant only for humans to read while debugging.  For inline
+    # targets, `image_layer.bzl` sets this to the layer target path.
+    human_readable_target = normalize_target(":" + name) if name else None
+
+    # To understand the self-dependency, see the `fake_macro_library` doc.
+    deps = ["//fs_image/buck:image_feature"]
+    normalized_features = []
+    for f in (features or []):
+        # NB: If you change this logic, also update compile_image_features.bzl
+        if types.is_string(f):
+            normalized_features.append(
+                tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX),
+            )
+        else:
+            deps.extend(f.deps)
+            normalized_features.append(f.items._asdict())
+            normalized_features[-1]["target"] = human_readable_target
+
     feature = target_tagger_to_feature(
         target_tagger,
         items = struct(
-            # For named features, omit the ugly suffix here since this is
-            # meant only for humans to read while debugging.  For inline
-            # targets, `image_layer.bzl` sets this to the layer target path.
-            target = normalize_target(":" + name) if name else None,
+            target = human_readable_target,
             make_dirs = _normalize_make_dirs(make_dirs),
             install_files = _normalize_install_files(
                 target_tagger = target_tagger,
@@ -636,25 +652,9 @@ def image_feature(
             rpms = _normalize_rpms(target_tagger, rpms),
             symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
             symlinks_to_files = _normalize_symlinks(symlinks_to_files),
-            features = [
-                tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
-                for f in features
-            ] if features else [],
+            features = normalized_features,
         ),
-        # We need to tell Buck that we depend on these targets, so
-        # that `image_layer` can use `deps()` to discover its
-        # transitive dependencies.
-        #
-        # This is a little hacky, because we are forcing these
-        # targets to be built or fetched from cache even though we
-        # don't actually use them until a later build step --- which
-        # might be on a different host.
-        #
-        # Future: Talk with the Buck team to see if we can eliminate
-        # this inefficiency.
-        #
-        # To understand the self-dependency, see the `fake_macro_library` doc.
-        extra_deps = ["//fs_image/buck:image_feature"],
+        extra_deps = deps,
     )
 
     # Anonymous features do not emit a target, but can be used inline as

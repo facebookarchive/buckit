@@ -427,15 +427,19 @@ image.layer(
         ":feature_dirs",
         ":feature_symlinks",
         image.feature(
+            features = [image.feature(
+                # Test an inline feature nested in another feature. Also
+                # check the long form of `install_data`.
+                install_data = [{
+                    "dest": "/foo/bar/even_more_hello_world.tar",
+                    "source": ":hello_world.tar",
+                }],
+            )],
             install_data = [
                 # This directory comes from `rpm-test-carrot`.  This tests
                 # that our dependency engine sees RPM contents as a
                 # "provides".
                 (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),
-                {
-                    "dest": "/foo/bar/even_more_hello_world.tar",
-                    "source": ":hello_world.tar",
-                },
             ],
             mounts = {
                 # NB: `host_dir_mount` is exercised above.

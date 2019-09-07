@@ -68,5 +68,16 @@ def image_source_as_target_tagged_dict(target_tagger, user_source):
 def target_tagger_to_feature(target_tagger, items, extra_deps = None):
     return struct(
         items = items,
+        # We need to tell Buck that we depend on these targets, so
+        # that `image_layer` can use `deps()` to discover its
+        # transitive dependencies.
+        #
+        # This is a little hacky, because we are forcing these
+        # targets to be built or fetched from cache even though we
+        # don't actually use them until a later build step --- which
+        # might be on a different host.
+        #
+        # Future: Talk with the Buck team to see if we can eliminate
+        # this inefficiency.
         deps = target_tagger.targets.keys() + (extra_deps or []),
     )

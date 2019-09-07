@@ -60,6 +60,7 @@ def compile_image_features(
             }]),
         )] if parent_layer else []
     ):
+        # NB: If you change this logic, also update image_feature.bzl
         if types.is_string(f):
             feature_targets.append(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
         else:
