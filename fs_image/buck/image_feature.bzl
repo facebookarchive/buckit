@@ -381,6 +381,23 @@ def _normalize_symlinks(symlinks):
         normalized.append(d)
     return normalized
 
+def normalize_features(porcelain_targets_or_structs, human_readable_target):
+    targets = []
+    inline_dicts = []
+    direct_deps = []
+    for f in porcelain_targets_or_structs:
+        if types.is_string(f):
+            targets.append(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
+        else:
+            direct_deps.extend(f.deps)
+            inline_dicts.append(f.items._asdict())
+            inline_dicts[-1]["target"] = human_readable_target
+    return struct(
+        targets = targets,
+        inline_dicts = inline_dicts,
+        direct_deps = direct_deps,
+    )
+
 def image_feature(
         name = None,
         # An iterable of directories to make in the image --
@@ -612,19 +629,10 @@ def image_feature(
     # targets, `image_layer.bzl` sets this to the layer target path.
     human_readable_target = normalize_target(":" + name) if name else None
 
-    # To understand the self-dependency, see the `fake_macro_library` doc.
-    deps = ["//fs_image/buck:image_feature"]
-    normalized_features = []
-    for f in (features or []):
-        # NB: If you change this logic, also update compile_image_features.bzl
-        if types.is_string(f):
-            normalized_features.append(
-                tag_target(target_tagger, f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX),
-            )
-        else:
-            deps.extend(f.deps)
-            normalized_features.append(f.items._asdict())
-            normalized_features[-1]["target"] = human_readable_target
+    normalized_features = normalize_features(
+        features or [],
+        human_readable_target,
+    )
 
     feature = target_tagger_to_feature(
         target_tagger,
@@ -652,9 +660,15 @@ def image_feature(
             rpms = _normalize_rpms(target_tagger, rpms),
             symlinks_to_dirs = _normalize_symlinks(symlinks_to_dirs),
             symlinks_to_files = _normalize_symlinks(symlinks_to_files),
-            features = normalized_features,
+            features = [
+                tag_target(target_tagger, t)
+                for t in normalized_features.targets
+            ] + normalized_features.inline_dicts,
         ),
-        extra_deps = deps,
+        extra_deps = normalized_features.direct_deps + [
+            # The `fake_macro_library` docblock explains this self-dependency
+            "//fs_image/buck:image_feature",
+        ],
     )
 
     # Anonymous features do not emit a target, but can be used inline as

@@ -1,7 +1,7 @@
 # Implementation detail for `image_layer.bzl`, see its docs.
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("//fs_image/buck:image_feature.bzl", "DO_NOT_DEPEND_ON_FEATURES_SUFFIX")
+load(":image_feature.bzl", "normalize_features")
 load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load(":target_tagger.bzl", "new_target_tagger", "tag_target", "target_tagger_to_feature")
 
@@ -48,25 +48,21 @@ def compile_image_features(
     build_opts = _build_opts(**(
         build_opts._asdict() if build_opts else {}
     ))
-    feature_targets = []
-    direct_deps = []
-    inline_feature_dicts = []
+
     target_tagger = new_target_tagger()
-    for f in features + (
-        [target_tagger_to_feature(
-            target_tagger,
-            items = struct(parent_layer = [{
-                "subvol": tag_target(target_tagger, parent_layer, is_layer = True),
-            }]),
-        )] if parent_layer else []
-    ):
-        # NB: If you change this logic, also update image_feature.bzl
-        if types.is_string(f):
-            feature_targets.append(f + DO_NOT_DEPEND_ON_FEATURES_SUFFIX)
-        else:
-            direct_deps.extend(f.deps)
-            inline_feature_dicts.append(f.items._asdict())
-            inline_feature_dicts[-1]["target"] = current_target
+    normalized_features = normalize_features(
+        features + (
+            [target_tagger_to_feature(
+                target_tagger,
+                items = struct(parent_layer = [{"subvol": tag_target(
+                    target_tagger,
+                    parent_layer,
+                    is_layer = True,
+                )}]),
+            )] if parent_layer else []
+        ),
+        current_target,
+    )
 
     return '''
         {maybe_yum_from_repo_snapshot_dep}
@@ -90,12 +86,12 @@ def compile_image_features(
         current_target_quoted = shell.quote(current_target),
         quoted_child_feature_json_args = " ".join([
             "--child-feature-json $(location {})".format(t)
-            for t in feature_targets
+            for t in normalized_features.targets
         ] + (
             ["--child-feature-json <(echo {})".format(shell.quote(struct(
                 target = current_target,
-                features = inline_feature_dicts,
-            ).to_json()))] if inline_feature_dicts else []
+                features = normalized_features.inline_dicts,
+            ).to_json()))] if normalized_features.inline_dicts else []
         )),
         # We will ask Buck to ensure that the outputs of the direct
         # dependencies of our `image_feature`s are available on local disk.
@@ -114,9 +110,9 @@ def compile_image_features(
             deps(attrfilter(type, image_feature, deps({feature_set})), 1)
         ')""".format(
             # For inline `image.feature`s, we already know the direct deps.
-            direct_deps_set = _query_set(direct_deps),
+            direct_deps_set = _query_set(normalized_features.direct_deps),
             # We will query the direct deps of the features that are targets.
-            feature_set = _query_set(feature_targets),
+            feature_set = _query_set(normalized_features.targets),
         ),
         maybe_artifacts_require_repo = (
             "--artifacts-may-require-repo" if
