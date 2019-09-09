@@ -2,7 +2,7 @@
 'Makes Items from the JSON that was produced by the Buck target image_feature'
 import json
 
-from typing import Iterable, Mapping, Union
+from typing import Iterable, Union
 
 from find_built_subvol import find_built_subvol
 
@@ -14,7 +14,7 @@ from fs_image.compiler.items.make_subvol import (
 )
 from fs_image.compiler.items.mount import MountItem
 from fs_image.compiler.items.remove_path import RemovePathItem
-from fs_image.compiler.items.rpm_action import RpmActionItem
+from fs_image.compiler.items.rpm_action import RpmActionItem, RpmBuildItem
 from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
 from fs_image.compiler.items.tarball import tarball_item_factory
 
@@ -68,6 +68,7 @@ def gen_items_for_features(
         'symlinks_to_files': SymlinkToFileItem,
         'tarballs': lambda **kwargs: tarball_item_factory(exit_stack, **kwargs),
         'receive_sendstreams': ReceiveSendstreamItem,
+        'rpm_build': RpmBuildItem,
     }
 
     for feature_or_path in features_or_paths:

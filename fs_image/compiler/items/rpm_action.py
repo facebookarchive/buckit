@@ -226,3 +226,40 @@ class RpmActionItem(metaclass=ImageItem):
                         stdout=sys.stderr,
                     )
         return builder
+
+
+class RpmBuildItem(metaclass=ImageItem):
+    fields = ['rpmbuild_dir']
+
+    def phase_order(self):
+        return PhaseOrder.RPM_BUILD
+
+    @classmethod
+    def get_phase_builder(
+        cls, items: Iterable['RpmBuildItem'], layer_opts: LayerOpts,
+    ):
+        item, = items
+        assert isinstance(item, RpmBuildItem), item
+
+        def builder(subvol: Subvol):
+            # Untar the sources into the SOURCES dir
+            # For rpmbuild:
+            #   - define _topdir to move where the RPM gets built
+            #   - use -bb so it only builds from the specfile
+            build_cmd = (
+                f"tar -C {item.rpmbuild_dir}/SOURCES -zxf "
+                    f"{item.rpmbuild_dir}/SOURCES/source.tgz ."
+                "&& "
+                f"rpmbuild --define '_topdir {item.rpmbuild_dir}' "
+                    f"-bb {item.rpmbuild_dir}/SPECS/specfile.spec"
+            )
+            opts = nspawn_in_subvol_parse_opts([
+                '--layer', 'UNUSED',
+                '--user', 'root',
+                '--no-snapshot',
+                '--',
+                'sh', '-c', f'{build_cmd}',
+            ])
+            nspawn_in_subvol(subvol, opts, stdout=sys.stderr)
+
+        return builder

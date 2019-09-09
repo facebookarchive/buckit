@@ -63,6 +63,7 @@ python_unittest(
     # since `root` cannot access the content of an unprivileged XAR.
     par_style = "zip",
     resources = {
+        "//fs_image/buck/tests:toy-rpm-build-rpmbuild-setup": "tests/toy-rpmbuild-setup",
         "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
         "//fs_image/compiler/tests:create_ops-original.sendstream": "tests/create_ops.sendstream",
         "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",

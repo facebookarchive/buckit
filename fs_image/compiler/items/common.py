@@ -84,6 +84,9 @@ class PhaseOrder(enum.Enum):
     # prevents install-remove conflicts between features.
     RPM_REMOVE = enum.auto()
     RPM_INSTALL = enum.auto()
+    # Building RPMs should be close to last as it expects all other actions to
+    # set up for the RPM build.
+    RPM_BUILD = enum.auto()
     # This MUST be a separate phase that comes after all the regular items
     # because the dependency sorter has no provisions for eliminating
     # something that another item `provides()`.

@@ -9,9 +9,10 @@ from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from subvol_utils import get_subvolume_path
 from tests.temp_subvolumes import TempSubvolumes
 
-from ..rpm_action import RpmAction, RpmActionItem
+from ..rpm_action import RpmAction, RpmActionItem, RpmBuildItem
 
 from .common import BaseItemTestCase, DUMMY_LAYER_OPTS, render_subvol
+from ..common import PhaseOrder
 
 
 class RpmActionItemTestCase(BaseItemTestCase):
@@ -247,4 +248,32 @@ class RpmActionItemTestCase(BaseItemTestCase):
                 from_target='t',
                 name='derp',
                 action=RpmAction.downgrade
+            )
+
+    def test_rpm_build_item(self):
+        parent_subvol = find_built_subvol(
+            (Path(__file__).dirname() / 'toy-rpmbuild-setup').decode()
+        )
+
+        with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
+            assert os.path.isfile(
+                parent_subvol.path('/rpmbuild/SOURCES/source.tgz')
+            )
+            assert os.path.isfile(
+                parent_subvol.path('/rpmbuild/SPECS/specfile.spec')
+            )
+
+            subvol = temp_subvolumes.snapshot(parent_subvol, 'rpm_build')
+            item = RpmBuildItem(from_target='t', rpmbuild_dir='/rpmbuild')
+            RpmBuildItem.get_phase_builder(
+                [item],
+                DUMMY_LAYER_OPTS,
+            )(subvol)
+
+            self.assertEqual(item.phase_order(), PhaseOrder.RPM_BUILD)
+            assert os.path.isfile(
+                subvol.path('/rpmbuild/SOURCES/toy_src_file')
+            )
+            assert os.path.isfile(
+                subvol.path('/rpmbuild/RPMS/noarch/toy-1.0-1.noarch.rpm')
             )
