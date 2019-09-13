@@ -45,7 +45,7 @@ class RpmMetadataTestCase(unittest.TestCase):
             self.assertEqual(a.release, 'l33t.deadbeef.777')
 
         # non-existent file
-        with self.assertRaisesRegex(RuntimeError, '^Error querying RPM info'):
+        with self.assertRaisesRegex(RuntimeError, '^Error querying RPM:'):
             a = RpmMetadata.from_file(b'idontexist.rpm')
 
         # missing extension

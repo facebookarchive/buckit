@@ -64,11 +64,7 @@ class RpmMetadata(NamedTuple):
                 stderr=subprocess.PIPE,
             ).decode().strip("'\"")
         except subprocess.CalledProcessError as e:
-            if e.stderr:
-                raise RuntimeError(f"Error querying RPM info: {e.stderr}")
-            else:
-                err_stdout = e.output.decode().strip("'\"")
-                raise RuntimeError(f"Could not query RPM info: {err_stdout}")
+            raise RuntimeError(f"Error querying RPM: {e.stdout}, {e.stderr}")
 
         n, e, v, r = result.split(":")
         return RpmMetadata(name=n, epoch=int(e), version=v, release=r)
