@@ -9,12 +9,9 @@ from rpm.rpm_metadata import RpmMetadata
 class ToyRpmBuildUnittestTest(unittest.TestCase):
 
     def test_built_files(self):
-        # Files copied during rpmbuild_layer
-        self.assertTrue(os.path.exists('/rpmbuild/SOURCES/source.tgz'))
-        self.assertTrue(os.path.exists('/rpmbuild/SPECS/specfile.spec'))
-
-        # Extracted from the tarball
+        # Files added as part of the rpmbuild_layer
         self.assertTrue(os.path.exists('/rpmbuild/SOURCES/toy_src_file'))
+        self.assertTrue(os.path.exists('/rpmbuild/SPECS/specfile.spec'))
 
         # Built from rpmbuild
         rpm_path = b'/rpmbuild/RPMS/noarch/toy-1.0-1.noarch.rpm'

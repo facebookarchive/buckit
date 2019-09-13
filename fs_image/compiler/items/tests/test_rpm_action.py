@@ -257,7 +257,7 @@ class RpmActionItemTestCase(BaseItemTestCase):
 
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             assert os.path.isfile(
-                parent_subvol.path('/rpmbuild/SOURCES/source.tgz')
+                parent_subvol.path('/rpmbuild/SOURCES/toy_src_file')
             )
             assert os.path.isfile(
                 parent_subvol.path('/rpmbuild/SPECS/specfile.spec')
@@ -271,9 +271,6 @@ class RpmActionItemTestCase(BaseItemTestCase):
             )(subvol)
 
             self.assertEqual(item.phase_order(), PhaseOrder.RPM_BUILD)
-            assert os.path.isfile(
-                subvol.path('/rpmbuild/SOURCES/toy_src_file')
-            )
             assert os.path.isfile(
                 subvol.path('/rpmbuild/RPMS/noarch/toy-1.0-1.noarch.rpm')
             )

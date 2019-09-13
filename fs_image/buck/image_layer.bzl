@@ -352,12 +352,7 @@ def image_rpmbuild_layer(
         name = setup_layer,
         parent_layer = parent_layer,
         features = [image_feature(
-            install_data = {
-                # Not using the tarball feature since this is dynamically
-                # generated (so the hash is unknown).
-                ":" + source_tarball: "/rpmbuild/SOURCES/source.tgz",
-                specfile: "/rpmbuild/SPECS/specfile.spec",
-            },
+            install_data = {specfile: "/rpmbuild/SPECS/specfile.spec"},
             make_dirs = [
                 ("/", "rpmbuild"),
                 ("/rpmbuild", "BUILD"),
@@ -366,6 +361,10 @@ def image_rpmbuild_layer(
                 ("/rpmbuild", "SOURCES"),
                 ("/rpmbuild", "SPECS"),
             ],
+            tarballs = [{
+                "into_dir": "/rpmbuild/SOURCES",
+                "source": ":" + source_tarball,
+            }],
         )],
         **image_layer_kwargs
     )
