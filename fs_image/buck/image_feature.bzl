@@ -614,16 +614,10 @@ def image_feature(
     # this will fail (128KB on the Linux system I checked).
     #
     # TODO: Print friendlier error messages on user error.
-    buck_genrule(
-        # The constant declaration explains the reason for the name change.
-        name = name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX,
-        out = name + ".json",
-        type = "image_feature",  # For queries
-        cmd = 'echo {deps} > /dev/null; echo {out} > "$OUT"'.format(
-            deps = " ".join([
-                "$(location {})".format(t)
-                for t in sorted(feature.deps)
-            ]),
+    private_do_not_use_feature_json_genrule(
+        name = name,
+        deps = feature.deps,
+        output_feature_cmd = 'echo {out} > "$OUT"'.format(
             out = shell.quote(feature.items.to_json()),
         ),
         visibility = get_visibility(visibility, name),
@@ -633,3 +627,29 @@ def image_feature(
     # here, enabling the use of named features inside `features` lists of
     # layers, but this seems like an unreadable pattern, so instead:
     return None
+
+def private_do_not_use_feature_json_genrule(
+        name,
+        deps,
+        output_feature_cmd,
+        visibility):
+    buck_genrule(
+        # The constant declaration explains the reason for the name change.
+        name = name + DO_NOT_DEPEND_ON_FEATURES_SUFFIX,
+        out = "feature.json",
+        type = "image_feature",  # For queries
+        # Future: It'd be nice to refactor `image_utils.bzl` and to use the
+        # log-on-error wrapper here (for `published_package_version`).
+        bash = """
+        # {deps}
+        set -ue -o pipefail
+        {output_feature_cmd}
+        """.format(
+            deps = " ".join([
+                "$(location {})".format(t)
+                for t in sorted(deps)
+            ]),
+            output_feature_cmd = output_feature_cmd,
+        ),
+        visibility = visibility,
+    )
