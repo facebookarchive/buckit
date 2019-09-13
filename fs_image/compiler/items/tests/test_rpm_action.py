@@ -12,7 +12,7 @@ from tests.temp_subvolumes import TempSubvolumes
 from ..rpm_action import RpmAction, RpmActionItem, RpmBuildItem
 
 from .common import BaseItemTestCase, DUMMY_LAYER_OPTS, render_subvol
-from ..common import PhaseOrder
+from ..common import image_source_item, PhaseOrder
 
 
 class RpmActionItemTestCase(BaseItemTestCase):
@@ -37,9 +37,16 @@ class RpmActionItemTestCase(BaseItemTestCase):
             # Specifying RPM versions is prohibited
             with self.assertRaises(subprocess.CalledProcessError):
                 RpmActionItem.get_phase_builder(
-                    [RpmActionItem(
+                    # This could have been RpmActionItem(), but I want to
+                    # test `image_source_item` with `source=None`.
+                    [image_source_item(
+                        RpmActionItem,
+                        exit_stack=None,
+                        layer_opts=DUMMY_LAYER_OPTS,
+                    )(
                         from_target='m',
                         name='rpm-test-milk-2.71',
+                        source=None,
                         action=RpmAction.install,
                     )],
                     layer_opts,
@@ -73,10 +80,8 @@ class RpmActionItemTestCase(BaseItemTestCase):
                 ] + [
                     RpmActionItem(
                         from_target='t',
-                        source={
-                            'source': (Path(__file__).dirname() /
-                                "rpm-test-cheese-1-1.rpm").decode(),
-                        },
+                        source=Path(__file__).dirname() /
+                            "rpm-test-cheese-1-1.rpm",
                         action=RpmAction.install,
                     )
                 ],
@@ -165,12 +170,11 @@ class RpmActionItemTestCase(BaseItemTestCase):
 
             subvol = temp_subvolumes.snapshot(parent_subvol, 'rpm_action')
             RpmActionItem.get_phase_builder(
-                [
-                    RpmActionItem(
-                        from_target='t',
-                        source={'source': src_rpm.decode()},
-                        action=RpmAction.install)
-                ],
+                [RpmActionItem(
+                    from_target='t',
+                    source=src_rpm,
+                    action=RpmAction.install,
+                )],
                 DUMMY_LAYER_OPTS._replace(
                     yum_from_snapshot=Path(__file__).dirname() /
                         'yum-from-test-snapshot',
@@ -222,18 +226,14 @@ class RpmActionItemTestCase(BaseItemTestCase):
                 [
                     RpmActionItem(
                         from_target='t',
-                        source={
-                            'source': (Path(__file__).dirname() /
-                                "rpm-test-cheese-2-1.rpm").decode(),
-                        },
+                        source=Path(__file__).dirname() /
+                            "rpm-test-cheese-2-1.rpm",
                         action=RpmAction.install,
                     ),
                     RpmActionItem(
                         from_target='t',
-                        source={
-                            'source': (Path(__file__).dirname() /
-                                "rpm-test-cheese-1-1.rpm").decode(),
-                        },
+                        source=Path(__file__).dirname() /
+                            "rpm-test-cheese-1-1.rpm",
                         action=RpmAction.remove_if_exists,
                     ),
                 ],

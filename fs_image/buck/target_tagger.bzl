@@ -18,8 +18,10 @@ seems more flexible and less messy than maintaining a look-aside list of
 targets whose paths the `image_layer` converter would need to resolve.
 """
 
+load(":crc32.bzl", "hex_crc32")
 load(":oss_shim.bzl", "target_utils")
 load(":image_source.bzl", "image_source")
+load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 _TargetTaggerInfo = provider(fields = ["targets"])
 
@@ -54,15 +56,47 @@ def tag_required_target_key(tagger, d, target_key, is_layer = False):
         )
     d[target_key] = tag_target(tagger, target = d[target_key], is_layer = is_layer)
 
+def tag_and_maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
+    # The target to wrap may be in a different directory, so we normalize
+    # its path to ensure the hashing is deterministic.  This assures reuse
+    # at least within the current TARGETS files.
+    target = normalize_target(target)
+
+    # The wrapper target is plumbing, so it will start with the provided
+    # prefix to hide it from e.g.  tab-completion.  Then, it includes an
+    # excerpt of the original target name to ease debugging.  Lastly, a hash
+    # of the full target path accounts for identically-named targets from
+    # different directories.
+    _, name = target.split(":")
+    wrapped_target = wrap_prefix + "__" + (
+        name if len(name) < 15 else (name[:6] + "..." + name[-6:])
+    ) + "__" + hex_crc32(target)
+
+    # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
+    was_wrapped, maybe_target = maybe_wrap_runtime_deps_as_build_time_deps(
+        name = wrapped_target,
+        target = target,
+        **kwargs
+    )
+    return was_wrapped, tag_target(target_tagger, maybe_target)
+
 def image_source_as_target_tagged_dict(target_tagger, user_source):
     src = image_source(user_source)._asdict()
-    is_layer = src["layer"] != None
-    tag_required_target_key(
-        target_tagger,
-        src,
-        "layer" if is_layer else "source",
-        is_layer = is_layer,
-    )
+    if src.get("generator"):
+        _was_wrapped, src["generator"] = tag_and_maybe_wrap_executable_target(
+            target_tagger = target_tagger,
+            target = src.pop("generator"),
+            wrap_prefix = "image_source_wrap_generator",
+            visibility = [],  # Not visible outside of project
+        )
+    else:
+        is_layer = src["layer"] != None
+        tag_required_target_key(
+            target_tagger,
+            src,
+            "layer" if is_layer else "source",
+            is_layer = is_layer,
+        )
     return src
 
 def target_tagger_to_feature(target_tagger, items, extra_deps = None):

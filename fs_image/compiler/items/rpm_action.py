@@ -11,9 +11,7 @@ from nspawn_in_subvol import nspawn_in_subvol, \
 from rpm.rpm_metadata import RpmMetadata, compare_rpm_versions
 from subvol_utils import Subvol
 
-from .common import (
-    ImageItem, ImageSource, LayerOpts, PhaseOrder, protected_path_set,
-)
+from .common import ImageItem, LayerOpts, PhaseOrder, protected_path_set
 
 
 class RpmAction(enum.Enum):
@@ -92,8 +90,6 @@ class RpmActionItem(metaclass=ImageItem):
         kwargs['action'] = RpmAction(kwargs['action'])
         assert kwargs['action'] != RpmAction.downgrade, \
             '\'downgrade\' cannot be passed'
-        if kwargs['source']:
-            kwargs['source'] = ImageSource.new(**kwargs['source'])
 
     def phase_order(self):
         return {
@@ -129,7 +125,7 @@ class RpmActionItem(metaclass=ImageItem):
             # repeating the required costly IO (or bug-prone implicit
             # memoization).
             if item.source is not None:
-                rpm_path = item.source.full_path(layer_opts)
+                rpm_path = item.source
                 name_or_rpm = _LocalRpm(
                     path=rpm_path,
                     metadata=RpmMetadata.from_file(rpm_path),

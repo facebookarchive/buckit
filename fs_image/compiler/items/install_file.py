@@ -6,9 +6,7 @@ from subvol_utils import Subvol
 from compiler.provides import ProvidesFile
 from compiler.requires import require_directory
 
-from .common import (
-    coerce_path_field_normal_relative, ImageItem, ImageSource, LayerOpts,
-)
+from .common import coerce_path_field_normal_relative, ImageItem, LayerOpts
 from .stat_options import (
     build_stat_options, customize_stat_options, STAT_OPTION_FIELDS,
 )
@@ -31,7 +29,6 @@ class InstallFileItem(metaclass=ImageItem):
     ] + STAT_OPTION_FIELDS
 
     def customize_fields(kwargs):  # noqa: B902
-        kwargs['source'] = ImageSource.new(**kwargs['source'])
         coerce_path_field_normal_relative(kwargs, 'dest')
         customize_stat_options(
             kwargs,
@@ -47,5 +44,5 @@ class InstallFileItem(metaclass=ImageItem):
 
     def build(self, subvol: Subvol, layer_opts: LayerOpts):
         dest = subvol.path(self.dest)
-        subvol.run_as_root(['cp', self.source.full_path(layer_opts), dest])
+        subvol.run_as_root(['cp', self.source, dest])
         build_stat_options(self, subvol, dest)

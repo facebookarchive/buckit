@@ -209,14 +209,16 @@ image.feature(
     },
     tarballs = [
         {
-            "hash": hello_tar_hash,
             "into_dir": "foo/borf",
-            "tarball": ":hello_world.tar",
+            "source": image.source(
+                # Check hash validation
+                ":hello_world.tar",
+                content_hash = hello_tar_hash,
+            ),
         },
         {
-            "hash": hello_tar_hash,
             "into_dir": "foo",
-            "tarball": ":hello_world.tar",
+            "source": ":hello_world.tar",  # Hash validation is optional
         },
     ],
 )
@@ -406,12 +408,14 @@ image.layer(
 image.layer(
     name = "hello_world_base",
     features = [image.feature(tarballs = [{
-        "generator": ":hello_world_tar_generator.sh",
-        # Most generators would not have this API wart of externally
-        # specifying the output filename.  This mis-feature only exists
-        # to exercise `generator_args`.
-        "generator_args": ["hello_world.tar"],
-        "hash": hello_tar_hash,
+        "source": image.source(
+            generator = ":hello_world_tar_generator.sh",
+            # Most generators would not have this API wart of externally
+            # specifying the output filename.  This mis-feature only exists
+            # to exercise `generator_args`.
+            generator_args = ["hello_world.tar"],
+            content_hash = hello_tar_hash,
+        ),
         "into_dir": "//",  # Double-slash tests path normalization
     }])],
     # This tells our hypothetical runtime that in order to mount this layer,
@@ -472,14 +476,12 @@ image.layer(
             ],
             tarballs = [
                 {
-                    "hash": hello_tar_hash,
                     "into_dir": "/foo/extracted_hello",
-                    "tarball": ":hello_world.tar",
+                    "source": ":hello_world.tar",
                 },
                 {
-                    "hash": hello_tar_hash,
                     "into_dir": "/foo/more_extracted_hello",
-                    "tarball": ":hello_world.tar",
+                    "source": ":hello_world.tar",
                 },
             ],
         ),

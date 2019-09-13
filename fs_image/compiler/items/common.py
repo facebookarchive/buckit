@@ -10,9 +10,12 @@ dependency resolution / installation order, start with the docblock at the
 top of `provides.py`.
 '''
 import enum
+import hashlib
 import os
+import subprocess
+import tempfile
 
-from typing import AnyStr, Mapping, NamedTuple, Optional, Set
+from typing import AnyStr, List, Mapping, NamedTuple, Optional, Set
 
 from compiler import procfs_serde
 from compiler.enriched_namedtuple import metaclass_new_enriched_namedtuple
@@ -156,33 +159,6 @@ def _validate_artifacts_require_repo(
     )
 
 
-class ImageSource(NamedTuple):
-    source: Optional[Path]
-    layer: Optional[Subvol]
-    path: Optional[Path]
-
-    @classmethod
-    def new(
-        cls, *, source: AnyStr = None, layer: Subvol = None, path: AnyStr = None
-    ):
-        assert (source is None) ^ (layer is None), (source, layer, path)
-        return cls(
-            source=Path.or_none(source),
-            layer=layer,
-            # Absolute `path` is still relative to `source` or `layer`
-            path=Path.or_none(path and path.lstrip('/')),
-        )
-
-    def full_path(self, layer_opts: LayerOpts) -> Path:
-        if self.layer:
-            if os.path.exists(self.layer.path(META_ARTIFACTS_REQUIRE_REPO)):
-                _validate_artifacts_require_repo(
-                    self.layer, layer_opts, 'image.source',
-                )
-            return Path(self.layer.path(self.path or '.'))
-        return (self.source / (self.path or '.')).normpath()
-
-
 def make_path_normal_relative(orig_d: str) -> str:
     '''
     In image-building, we want relative paths that do not start with `..`,
@@ -269,4 +245,117 @@ def ensure_meta_dir_exists(subvol: Subvol, layer_opts: LayerOpts):
         layer_opts.artifacts_may_require_repo,
         subvol,
         META_ARTIFACTS_REQUIRE_REPO,
+    )
+
+
+def _hash_path(path: str, algorithm: str) -> str:
+    'Returns the hex digest'
+    algo = hashlib.new(algorithm)
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            algo.update(chunk)
+    return algo.hexdigest()
+
+
+def _generate_file(
+    temp_dir: str, generator: bytes, generator_args: List[str],
+) -> str:
+    # API design notes:
+    #
+    #  1) The generator takes an output directory, not a file, because we
+    #     prefer not to have to hardcode the name of the output file in the
+    #     TARGETS file -- that would make it more laborious to change the
+    #     compression format for tarballs, e.g.  Instead, the generator
+    #     prints the name of the created file to stdout.  This does not
+    #     introduce nondeterminism for current consumers of `image.source`:
+    #       - A tarball name cannot affect the result of its extraction.
+    #       - `yum` ignores the RPM name, and reads metadata from its content.
+    #       - `install_file` specifies the destination filename in `TARGETS`.
+    #
+    #     Since TARGETS already hardcodes a content hash, requiring the name
+    #     would not be far-fetched, this approach just seemed cleaner.
+    #
+    #  2) `temp_dir` is last since this allows the use of inline scripts via
+    #     `generator_args` with e.g. `/bin/bash`.
+    #
+    # Future: it would be best to sandbox the generator to limit its
+    # filesystem writes.  At the moment, we trust rule authors not to abuse
+    # this feature and write stuff outside the given directory.
+    output_filename = subprocess.check_output([
+        generator, *generator_args, temp_dir,
+    ]).decode()
+    assert output_filename.endswith('\n'), (generator, output_filename)
+    output_filename = os.path.normpath(output_filename[:-1])
+    assert (
+        not output_filename.startswith('/')
+        and not output_filename.startswith('../')
+    ), output_filename
+    return os.path.join(temp_dir, output_filename)
+
+
+def _image_source_path(
+    layer_opts: LayerOpts, *,
+    source: AnyStr = None, layer: Subvol = None, path: AnyStr = None,
+) -> Path:
+    assert (source is None) ^ (layer is None), (source, layer, path)
+    source = Path.or_none(source)
+    # Absolute `path` is still relative to `source` or `layer`
+    path = Path((path and path.lstrip('/')) or '.')
+
+    if source:
+        return (source / path).normpath()
+
+    if os.path.exists(layer.path(META_ARTIFACTS_REQUIRE_REPO)):
+        _validate_artifacts_require_repo(layer, layer_opts, 'image.source')
+    return Path(layer.path(path))
+
+
+def _make_image_source_item(
+    item_cls, exit_stack, layer_opts: LayerOpts, *,
+    source: Optional[Mapping[str, str]], **kwargs,
+):
+    if source is None:
+        return item_cls(**kwargs, source=None)
+
+    assert 1 == (
+        bool(source.get('generator')) + bool(source.get('source')) +
+        bool(source.get('layer'))
+    ), source
+
+    # `generator` dynamically creates a temporary source file for the item
+    # being constructed.  The file is deleted when the `exit_stack` context
+    # exits.
+    #
+    # NB: With `generator`, identical constructor arguments to this factory
+    # will create different items, so if we needed item deduplication to
+    # work across inputs, this is broken.  However, I don't believe the
+    # compiler relies on that.  If we need it, it should not be too hard to
+    # share the same source file for all generates with the same command --
+    # you'd add a global map of (generator, args) -> output, perhaps using
+    # weakref hooks to refcount output files and GC them.
+    generator = source.pop('generator', None)
+    generator_args = source.pop('generator_args', [])
+    if generator or generator_args:
+        source['source'] = _generate_file(
+            exit_stack.enter_context(tempfile.TemporaryDirectory()),
+            generator,
+            generator_args,
+        )
+
+    algo_and_hash = source.pop('content_hash', None)
+    source_path = _image_source_path(layer_opts, **source)
+    if algo_and_hash:
+        algorithm, expected_hash = algo_and_hash.split(':')
+        actual_hash = _hash_path(source_path, algorithm)
+        if actual_hash != expected_hash:
+            raise AssertionError(
+                f'{item_cls} {kwargs} failed hash validation, got {actual_hash}'
+            )
+
+    return item_cls(**kwargs, source=source_path)
+
+
+def image_source_item(item_cls, exit_stack, layer_opts: LayerOpts):
+    return lambda **kwargs: _make_image_source_item(
+        item_cls, exit_stack, layer_opts, **kwargs,
     )

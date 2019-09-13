@@ -7,9 +7,7 @@ from typing import Iterable
 
 from subvol_utils import Subvol
 
-from .common import (
-    ensure_meta_dir_exists, ImageItem, ImageSource, LayerOpts, PhaseOrder,
-)
+from .common import ensure_meta_dir_exists, ImageItem, LayerOpts, PhaseOrder
 from .mount_utils import clone_mounts
 
 
@@ -63,9 +61,6 @@ class FilesystemRootItem(metaclass=ImageItem):
 class ReceiveSendstreamItem(metaclass=ImageItem):
     fields = ['source']
 
-    def customize_fields(kwargs):  # noqa: B902
-        kwargs['source'] = ImageSource.new(**kwargs['source'])
-
     def phase_order(self):
         return PhaseOrder.MAKE_SUBVOL
 
@@ -76,7 +71,7 @@ class ReceiveSendstreamItem(metaclass=ImageItem):
         item, = items
 
         def builder(subvol: Subvol):
-            with open(item.source.full_path(layer_opts), 'r') as sendstream, \
+            with open(item.source, 'r') as sendstream, \
                     subvol.receive(sendstream):
                 pass
 

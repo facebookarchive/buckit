@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import hashlib
 import os
 import subprocess
-import tempfile
 
 from typing import List
 
@@ -20,7 +18,7 @@ from .common import (
 
 def _maybe_popen_zstd(path):
     'Use this as a context manager.'
-    if path.endswith('.zst'):
+    if path.endswith(b'.zst'):
         return subprocess.Popen([
             'zstd', '--decompress', '--stdout', path,
         ], stdout=subprocess.PIPE)
@@ -37,30 +35,15 @@ def _open_tarfile(path):
             return tarfile.open(fileobj=maybe_proc.stdout, mode='r|')
 
 
-def _hash_tarball(tarball: str, algorithm: str) -> str:
-    'Returns the hex digest'
-    algo = hashlib.new(algorithm)
-    with open(tarball, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            algo.update(chunk)
-    return algo.hexdigest()
-
-
 class TarballItem(metaclass=ImageItem):
-    fields = ['into_dir', 'tarball', 'hash', 'force_root_ownership']
+    fields = ['into_dir', 'source', 'force_root_ownership']
 
     def customize_fields(kwargs):  # noqa: B902
-        algorithm, expected_hash = kwargs['hash'].split(':')
-        actual_hash = _hash_tarball(kwargs['tarball'], algorithm)
-        if actual_hash != expected_hash:
-            raise AssertionError(
-                f'{kwargs} failed hash validation, got {actual_hash}'
-            )
         coerce_path_field_normal_relative(kwargs, 'into_dir')
         assert kwargs['force_root_ownership'] in [True, False], kwargs
 
     def provides(self):
-        with _open_tarfile(self.tarball) as f:
+        with _open_tarfile(self.source) as f:
             for item in f:
                 path = os.path.join(
                     self.into_dir, make_path_normal_relative(item.name),
@@ -81,7 +64,7 @@ class TarballItem(metaclass=ImageItem):
         yield require_directory(self.into_dir)
 
     def build(self, subvol: Subvol, layer_opts: LayerOpts):
-        with _maybe_popen_zstd(self.tarball) as maybe_proc:
+        with _maybe_popen_zstd(self.source) as maybe_proc:
             subvol.run_as_root([
                 'tar',
                 # Future: Bug: `tar` unfortunately FOLLOWS existing symlinks
@@ -141,63 +124,5 @@ class TarballItem(metaclass=ImageItem):
                 #        drwx------. 2 lesha users 17 Sep 11 21:50 IN
                 #        drwxr-xr-x. 2 lesha users 17 Sep 11 21:54 OUT
                 '--keep-old-files',
-                '-f', ('-' if maybe_proc else self.tarball),
+                '-f', ('-' if maybe_proc else self.source),
             ], stdin=(maybe_proc.stdout if maybe_proc else None))
-
-
-def _generate_tarball(
-    temp_dir: str, generator: bytes, generator_args: List[str],
-) -> str:
-    # API design notes:
-    #
-    #  1) The generator takes an output directory, not a file, because we
-    #     prefer not to have to hardcode the extension of the output file in
-    #     the TARGETS file -- that would make it more laborious to change
-    #     the compression format.  Instead, the generator prints the path to
-    #     the created tarball to stdout.  This does not introduce
-    #     nondeterminism, since the tarball name cannot affect the result of
-    #     its extraction.
-    #
-    #     Since TARGETS already hardcodes a content hash, requiring the name
-    #     would not be far-fetched, this approach just seemed cleaner.
-    #
-    #  2) `temp_dir` is last since this allows the use of inline scripts via
-    #     `generator_args` with e.g. `/bin/bash`.
-    #
-    # Future: it would be best to sandbox the generator to limit its
-    # filesystem writes.  At the moment, we trust rule authors not to abuse
-    # this feature and write stuff outside the given directory.
-    tarball_filename = subprocess.check_output([
-        generator, *generator_args, temp_dir,
-    ]).decode()
-    assert tarball_filename.endswith('\n'), (generator, tarball_filename)
-    tarball_filename = os.path.normpath(tarball_filename[:-1])
-    assert (
-        not tarball_filename.startswith('/')
-        and not tarball_filename.startswith('../')
-    ), tarball_filename
-    return os.path.join(temp_dir, tarball_filename)
-
-
-def tarball_item_factory(
-    exit_stack, *, generator: str = None, tarball: str = None,
-    generator_args: List[str] = None, **kwargs,
-):
-    assert (generator is not None) ^ (tarball is not None)
-    # Uses `generator` to generate a temporary `tarball` for `TarballItem`.
-    # The file is deleted when the `exit_stack` context exits.
-    #
-    # NB: With `generator`, identical constructor arguments to this factory
-    # will create different `TarballItem`s, so if we needed item
-    # deduplication to work across inputs, this is broken.  However, I don't
-    # believe the compiler relies on that.  If we need it, it should not be
-    # too hard to share the same tarball for all generates with the same
-    # command -- you'd add a global map of ('into_dir', 'command') ->
-    # tarball, perhaps using weakref hooks to refcount tarballs and GC them.
-    if generator:
-        tarball = _generate_tarball(
-            exit_stack.enter_context(tempfile.TemporaryDirectory()),
-            generator,
-            generator_args or [],
-        )
-    return TarballItem(**kwargs, tarball=tarball)

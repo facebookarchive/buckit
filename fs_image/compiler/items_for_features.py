@@ -6,7 +6,7 @@ from typing import Iterable, Union
 
 from find_built_subvol import find_built_subvol
 
-from fs_image.compiler.items.common import LayerOpts
+from fs_image.compiler.items.common import LayerOpts, image_source_item
 from fs_image.compiler.items.install_file import InstallFileItem
 from fs_image.compiler.items.make_dirs import MakeDirsItem
 from fs_image.compiler.items.make_subvol import (
@@ -16,7 +16,7 @@ from fs_image.compiler.items.mount import MountItem
 from fs_image.compiler.items.remove_path import RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmActionItem, RpmBuildItem
 from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
-from fs_image.compiler.items.tarball import tarball_item_factory
+from fs_image.compiler.items.tarball import TarballItem
 
 
 def replace_targets_by_paths(x, layer_opts: LayerOpts):
@@ -57,17 +57,22 @@ def gen_items_for_features(
     *, exit_stack, features_or_paths: Iterable[Union[str, dict]],
     layer_opts: LayerOpts,
 ):
+    def image_sourcify(item_cls):
+        return image_source_item(
+            item_cls, exit_stack=exit_stack, layer_opts=layer_opts,
+        )
+
     key_to_item_factory = {
-        'install_files': InstallFileItem,
+        'install_files': image_sourcify(InstallFileItem),
         'make_dirs': MakeDirsItem,
         'mounts': MountItem,
         'parent_layer': ParentLayerItem,
-        'rpms': RpmActionItem,
+        'rpms': image_sourcify(RpmActionItem),
         'remove_paths': RemovePathItem,
         'symlinks_to_dirs': SymlinkToDirItem,
         'symlinks_to_files': SymlinkToFileItem,
-        'tarballs': lambda **kwargs: tarball_item_factory(exit_stack, **kwargs),
-        'receive_sendstreams': ReceiveSendstreamItem,
+        'tarballs': image_sourcify(TarballItem),
+        'receive_sendstreams': image_sourcify(ReceiveSendstreamItem),
         'rpm_build': RpmBuildItem,
     }
 

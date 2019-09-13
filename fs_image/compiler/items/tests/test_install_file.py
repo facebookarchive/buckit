@@ -8,45 +8,46 @@ from find_built_subvol import find_built_subvol
 from fs_image.fs_utils import Path
 from tests.temp_subvolumes import TempSubvolumes
 
-from ..common import ImageSource
+from ..common import image_source_item
 from ..install_file import InstallFileItem
 
 from .common import BaseItemTestCase, DUMMY_LAYER_OPTS, render_subvol
 
 
+def _install_file_item(**kwargs):
+    # The dummy object works here because `subvolumes_dir` of `None` runs
+    # `artifacts_dir` internally, while our "prod" path uses the
+    # already-computed value.
+    return image_source_item(
+        InstallFileItem, exit_stack=None, layer_opts=DUMMY_LAYER_OPTS,
+    )(**kwargs)
+
+
 class InstallFileItemTestCase(BaseItemTestCase):
 
     def test_install_file(self):
-        exe_item = InstallFileItem(
+        exe_item = _install_file_item(
             from_target='t', source={'source': 'a/b/c'}, dest='d/c',
             is_executable_=True,
         )
         self.assertEqual(0o555, exe_item.mode)
-        self.assertEqual(
-            ImageSource(source=b'a/b/c', layer=None, path=None),
-            exe_item.source,
-        )
+        self.assertEqual(b'a/b/c', exe_item.source)
         self._check_item(
             exe_item,
             {ProvidesFile(path='d/c')},
             {require_directory('d')},
         )
 
-        # Checks `ImageSource.path`, as well as "is_executable_=False"
-        data_item = InstallFileItem(
+        # Checks `image.source(path=...)`, as well as "is_executable_=False"
+        data_item = _install_file_item(
             from_target='t',
             source={'source': 'a', 'path': '/b/q'},
             dest='d',
             is_executable_=False,
         )
         self.assertEqual(0o444, data_item.mode)
-        self.assertEqual(
-            ImageSource(source=b'a', layer=None, path=b'b/q'),
-            data_item.source,
-        )
-        self.assertEqual(
-            b'a/b/q', data_item.source.full_path(DUMMY_LAYER_OPTS),
-        )
+        self.assertEqual(b'a/b/q', data_item.source)
+        self.assertEqual(b'a/b/q', data_item.source)
         self._check_item(
             data_item,
             {ProvidesFile(path='d')},
@@ -58,7 +59,7 @@ class InstallFileItemTestCase(BaseItemTestCase):
         # safeguard -- e.g. that's what prevents TarballItem from writing
         # to /meta/ or other protected paths.
         with self.assertRaisesRegex(AssertionError, 'cannot start with meta/'):
-            InstallFileItem(
+            _install_file_item(
                 from_target='t', source={'source': 'a/b/c'}, dest='/meta/foo',
                 is_executable_=False,
             )
@@ -68,24 +69,15 @@ class InstallFileItemTestCase(BaseItemTestCase):
             Path(__file__).dirname() / 'test-with-one-local-rpm'
         )
         path_in_layer = b'usr/share/rpm_test/cheese2.txt'
-        item = InstallFileItem(
+        item = _install_file_item(
             from_target='t',
             source={'layer': layer, 'path': '/' + path_in_layer.decode()},
             dest='cheese2',
             is_executable_=False,
         )
         self.assertEqual(0o444, item.mode)
-        self.assertEqual(
-            ImageSource(source=None, layer=layer, path=path_in_layer),
-            item.source,
-        )
-        self.assertEqual(
-            layer.path(path_in_layer),
-            # The dummy object works here because `subvolumes_dir` of `None`
-            # runs `artifacts_dir` internally, while our "prod" path uses
-            # the already-computed value.
-            item.source.full_path(DUMMY_LAYER_OPTS),
-        )
+        self.assertEqual(Path(layer.path(path_in_layer)), item.source)
+        self.assertEqual(layer.path(path_in_layer), item.source)
         self._check_item(
             item,
             {ProvidesFile(path='cheese2')},
@@ -97,7 +89,7 @@ class InstallFileItemTestCase(BaseItemTestCase):
             subvol = temp_subvolumes.create('tar-sv')
             subvol.run_as_root(['mkdir', subvol.path('d')])
 
-            InstallFileItem(
+            _install_file_item(
                 from_target='t', source={'source': '/dev/null'}, dest='/d/null',
                 is_executable_=False,
             ).build(subvol, DUMMY_LAYER_OPTS)
@@ -108,7 +100,7 @@ class InstallFileItemTestCase(BaseItemTestCase):
 
             # Fail to write to a nonexistent dir
             with self.assertRaises(subprocess.CalledProcessError):
-                InstallFileItem(
+                _install_file_item(
                     from_target='t', source={'source': '/dev/null'},
                     dest='/no_dir/null', is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
@@ -116,7 +108,7 @@ class InstallFileItemTestCase(BaseItemTestCase):
             # Running a second copy to the same destination. This just
             # overwrites the previous file, because we have a build-time
             # check for this, and a run-time check would add overhead.
-            InstallFileItem(
+            _install_file_item(
                 from_target='t', source={'source': '/dev/null'}, dest='/d/null',
                 # A non-default mode & owner shows that the file was
                 # overwritten, and also exercises HasStatOptions.

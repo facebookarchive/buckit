@@ -25,8 +25,8 @@ class RemovePathItemTestCase(BaseItemTestCase):
             ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['d', 'e']:
                 InstallFileItem(
-                    from_target='t', source={'source': '/dev/null'},
-                    dest=f'/a/b/c/{d}', is_executable_=False,
+                    from_target='t', source='/dev/null', dest=f'/a/b/c/{d}',
+                    is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
             MakeDirsItem(
                 from_target='t', path_to_make='/f/g', into_dir='/',
@@ -37,8 +37,8 @@ class RemovePathItemTestCase(BaseItemTestCase):
             ).build(subvol, DUMMY_LAYER_OPTS)
             for d in ['h', 'i']:
                 InstallFileItem(
-                    from_target='t', source={'source': '/dev/null'},
-                    dest=f'/f/{d}', is_executable_=False,
+                    from_target='t', source='/dev/null', dest=f'/f/{d}',
+                    is_executable_=False,
                 ).build(subvol, DUMMY_LAYER_OPTS)
             SymlinkToDirItem(
                 from_target='t', source='/f/i', dest='/f/i_sym',

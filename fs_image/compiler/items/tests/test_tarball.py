@@ -11,7 +11,8 @@ from contextlib import ExitStack
 from compiler.requires import require_directory
 from tests.temp_subvolumes import TempSubvolumes
 
-from ..tarball import _hash_tarball, tarball_item_factory, TarballItem
+from ..common import image_source_item, _hash_path
+from ..tarball import TarballItem
 
 from .common import (
     BaseItemTestCase, DUMMY_LAYER_OPTS, render_subvol, temp_filesystem,
@@ -23,12 +24,15 @@ def _tarball_item(
     tarball: str, into_dir: str, force_root_ownership: bool = False,
 ) -> TarballItem:
     'Constructs a common-case TarballItem'
-    return tarball_item_factory(
-        exit_stack=None,  # unused
+    return image_source_item(
+        TarballItem, exit_stack=None, layer_opts=DUMMY_LAYER_OPTS,
+    )(
         from_target='t',
         into_dir=into_dir,
-        tarball=tarball,
-        hash='sha256:' + _hash_tarball(tarball, 'sha256'),
+        source={
+            'source': tarball,
+            'content_hash': 'sha256:' + _hash_path(tarball, 'sha256'),
+        },
         force_root_ownership=force_root_ownership,
     )
 
@@ -71,11 +75,15 @@ class TarballItemTestCase(BaseItemTestCase):
 
             # Test a hash validation failure, follows the item above
             with self.assertRaisesRegex(AssertionError, 'failed hash vali'):
-                TarballItem(
+                image_source_item(
+                    TarballItem, exit_stack=None, layer_opts=DUMMY_LAYER_OPTS,
+                )(
                     from_target='t',
                     into_dir='y',
-                    tarball=tar_path,
-                    hash='sha256:deadbeef',
+                    source={
+                        'source': tar_path,
+                        'content_hash': 'sha256:deadbeef',
+                    },
                     force_root_ownership=False,
                 )
 
@@ -88,18 +96,24 @@ class TarballItemTestCase(BaseItemTestCase):
             with tarfile.TarFile(t.name, 'w') as tar_obj:
                 tar_obj.add(fs_path, filter=_tarinfo_strip_dir_prefix(fs_path))
             self._check_item(
-                tarball_item_factory(
+                image_source_item(
+                    TarballItem,
                     exit_stack=exit_stack,
+                    layer_opts=DUMMY_LAYER_OPTS,
+                )(
                     from_target='t',
                     into_dir='y',
-                    generator='/bin/bash',
-                    generator_args=[
-                        '-c',
-                        'cp "$1" "$2"; basename "$1"',
-                        'test_tarball_generator',  # $0
-                        t.name,  # $1, making $2 the output directory
-                    ],
-                    hash='sha256:' + _hash_tarball(t.name, 'sha256'),
+                    source={
+                        'generator': '/bin/bash',
+                        'generator_args': [
+                            '-c',
+                            'cp "$1" "$2"; basename "$1"',
+                            'test_tarball_generator',  # $0
+                            t.name,  # $1, making $2 the output directory
+                        ],
+                        'content_hash':
+                            'sha256:' + _hash_path(t.name, 'sha256'),
+                    },
                     force_root_ownership=False,
                 ),
                 temp_filesystem_provides('y'),

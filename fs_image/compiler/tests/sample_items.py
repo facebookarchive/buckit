@@ -9,9 +9,7 @@ from fs_image.compiler.items.remove_path import RemovePathAction, RemovePathItem
 from fs_image.compiler.items.rpm_action import RpmAction, RpmActionItem
 from fs_image.compiler.items.symlink import SymlinkToDirItem, SymlinkToFileItem
 from fs_image.compiler.items.tarball import TarballItem
-
-HELLO_TAR_HASH = 'sha256:' \
-    'dd83365abc69fe39990096a9396d9d2d6fbf75f849ab1640a10fdf9614d8d03d'
+from fs_image.fs_utils import Path
 
 _NONPORTABLE_ARTIFACTS = int(os.environ.get(
     'test_image_feature_built_artifacts_require_repo'
@@ -95,7 +93,7 @@ ID_TO_ITEM = {
     ),
     'foo/hello_world.tar': InstallFileItem(
         from_target=T_SYMLINKS,
-        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
+        source=Path(TARGET_TO_PATH[T_HELLO_WORLD_TAR]),
         dest='/foo/hello_world.tar',
         is_executable_=False,
     ),
@@ -113,16 +111,14 @@ ID_TO_ITEM = {
     # From `feature_tar_and_rpms`:
     'foo/borf/hello_world': TarballItem(
         from_target=T_TAR,
-        tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        source=Path(TARGET_TO_PATH[T_HELLO_WORLD_TAR]),
         into_dir='foo/borf',
-        hash=HELLO_TAR_HASH,
         force_root_ownership=False,
     ),
     'foo/hello_world': TarballItem(
         from_target=T_TAR,
-        tarball=TARGET_TO_PATH[T_HELLO_WORLD_TAR],
+        source=Path(TARGET_TO_PATH[T_HELLO_WORLD_TAR]),
         into_dir='foo',
-        hash=HELLO_TAR_HASH,
         force_root_ownership=False,
     ),
     '.rpms/install/rpm-test-mice': RpmActionItem(
@@ -132,7 +128,7 @@ ID_TO_ITEM = {
     ),
     '.rpms/install/rpm-test-cheese-2-1.rpm': RpmActionItem(
         from_target=T_TAR,
-        source={'source': TARGET_TO_PATH[T_RPM_TEST_CHEESE]},
+        source=Path(TARGET_TO_PATH[T_RPM_TEST_CHEESE]),
         action=RpmAction.install,
     ),
     '.rpms/remove_if_exists/rpm-test-carrot': RpmActionItem(
@@ -166,13 +162,13 @@ ID_TO_ITEM = {
     # From `feature_install_files`:
     'foo/bar/hello_world.tar': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
+        source=Path(TARGET_TO_PATH[T_HELLO_WORLD_TAR]),
         dest='/foo/bar/hello_world.tar',
         is_executable_=False,
     ),
     'foo/bar/hello_world_again.tar': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={'source': TARGET_TO_PATH[T_HELLO_WORLD_TAR]},
+        source=Path(TARGET_TO_PATH[T_HELLO_WORLD_TAR]),
         dest='/foo/bar/hello_world_again.tar',
         user_group='nobody:nobody',
         is_executable_=False,
@@ -184,26 +180,24 @@ ID_TO_ITEM = {
     ),
     'foo/bar/installed/yittal-kitteh': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={'source': TARGET_TO_PATH[T_DIR_PRINT_OK], 'path': 'kitteh'},
+        source=Path(TARGET_TO_PATH[T_DIR_PRINT_OK]) / 'kitteh',
         dest='/foo/bar/installed/yittal-kitteh',
         is_executable_=False,
     ),
     'foo/bar/installed/print-ok': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={'source': TARGET_TO_PATH[
+        source=Path(TARGET_TO_PATH[
             T_EXE_WRAP_PRINT_OK if _NONPORTABLE_ARTIFACTS else T_PRINT_OK
-        ]},
+        ]),
         dest='/foo/bar/installed/print-ok',
         is_executable_=True,
     ),
     'foo/bar/installed/print-ok-too': InstallFileItem(
         from_target=T_INSTALL_FILES,
-        source={
-            'source': TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK] 
-        } if _NONPORTABLE_ARTIFACTS else {
-            'source': TARGET_TO_PATH[T_DIR_PRINT_OK],
-            'path': 'subdir/print-ok',
-        },
+        source=Path(TARGET_TO_PATH[T_EXE_WRAP_DIR_PRINT_OK])
+            if _NONPORTABLE_ARTIFACTS else (
+                Path(TARGET_TO_PATH[T_DIR_PRINT_OK]) / 'subdir/print-ok'
+            ),
         dest='/foo/bar/installed/print-ok-too',
         is_executable_=True,
     ),

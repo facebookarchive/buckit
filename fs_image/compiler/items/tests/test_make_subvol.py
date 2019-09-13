@@ -65,9 +65,10 @@ class MakeSubvolItemsTestCase(BaseItemTestCase):
             self.assertEqual(child_content, render_subvol(child))
 
     def test_receive_sendstream(self):
-        item = ReceiveSendstreamItem(from_target='t', source={
-            'source': Path(__file__).dirname() / 'create_ops.sendstream'
-        })
+        item = ReceiveSendstreamItem(
+            from_target='t',
+            source=Path(__file__).dirname() / 'create_ops.sendstream',
+        )
         self.assertEqual(PhaseOrder.MAKE_SUBVOL, item.phase_order())
         with TempSubvolumes(sys.argv[0]) as temp_subvolumes:
             new_subvol_name = 'differs_from_create_ops'

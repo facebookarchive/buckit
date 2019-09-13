@@ -39,9 +39,7 @@ Read that target's docblock for more info, but in essence, that will:
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
 load(":oss_shim.bzl", "buck_genrule", "get_visibility")
-load(":crc32.bzl", "hex_crc32")
-load(":target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
-load(":wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
+load(":target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_and_maybe_wrap_executable_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -166,30 +164,6 @@ def _normalize_mounts(target_tagger, mounts):
 
     return normalized
 
-def _maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **kwargs):
-    # The target to wrap may be in a different directory, so we normalize
-    # its path to ensure the hashing is deterministic.  This assures reuse
-    # at least within the current TARGETS files.
-    target = normalize_target(target)
-
-    # The wrapper target is plumbing, so it will start with the provided
-    # prefix to hide it from e.g.  tab-completion.  Then, it includes an
-    # excerpt of the original target name to ease debugging.  Lastly, a hash
-    # of the full target path accounts for identically-named targets from
-    # different directories.
-    _, name = target.split(":")
-    wrapped_target = wrap_prefix + "__" + (
-        name if len(name) < 15 else (name[:6] + "..." + name[-6:])
-    ) + "__" + hex_crc32(target)
-
-    # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
-    was_wrapped, maybe_target = maybe_wrap_runtime_deps_as_build_time_deps(
-        name = wrapped_target,
-        target = target,
-        **kwargs
-    )
-    return was_wrapped, tag_target(target_tagger, maybe_target)
-
 def _normalize_install_files(target_tagger, files, visibility, is_executable):
     if files == None:
         return []
@@ -233,7 +207,7 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
         # `install_data` invocations that extract non-executable contents
         # out of a directory target that is executable.
         if is_executable and src["source"]:
-            was_wrapped, src["source"] = _maybe_wrap_executable_target(
+            was_wrapped, src["source"] = tag_and_maybe_wrap_executable_target(
                 target_tagger = target_tagger,
                 # Peel back target tagging since this helper expects untagged.
                 target = extract_tagged_target(src.pop("source")),
@@ -263,29 +237,12 @@ def _normalize_tarballs(target_tagger, tarballs, visibility):
         if not types.is_dict(d):
             fail("`tarballs` must contain only dicts")
 
-        # Skylark linters crash on seeing the XOR operator :/
-        if (("generator" in d) + ("tarball" in d)) != 1:
-            fail("Exactly one of `generator`, `tarball` must be set")
-        if "generator_args" in d and "generator" not in d:
-            fail("Got `generator_args` without `generator`")
+        # Normalize to the `image.source` interface
+        d["source"] = image_source_as_target_tagged_dict(
+            target_tagger,
+            d.pop("source"),
+        )
 
-        if "tarball" in d:
-            tag_required_target_key(target_tagger, d, "tarball")
-        else:
-            _was_wrapped, d["generator"] = _maybe_wrap_executable_target(
-                target_tagger = target_tagger,
-                target = d.pop("generator"),
-                wrap_prefix = "tarball_wrap_generator",
-                visibility = visibility,
-            )
-
-        if "hash" not in d:
-            fail(
-                "To ensure that tarballs are repo-hermetic, you must pass " +
-                '`hash = "algorithm:hexdigest"` (checked via Python hashlib)',
-            )
-
-        d.setdefault("generator_args", [])
         d.setdefault("force_root_ownership", False)
 
         normalized.append(d)
@@ -355,11 +312,10 @@ def _normalize_rpms(target_tagger, rpms):
         if dct["action"] not in valid_actions:
             fail("Action for rpm {} must be in {}".format(rpm, valid_actions))
 
-        source = dct.pop("source", None)
-        if source != None:
+        if dct.setdefault("source") != None:
             dct["source"] = image_source_as_target_tagged_dict(
                 target_tagger,
-                source,
+                dct["source"],
             )
 
         normalized.append(dct)
@@ -531,47 +487,21 @@ def image_feature(
         install_executables = None,
         # An iterable of tarballs to extract inside the image.
         #
-        # Each item must specify EXACTLY ONE of `tarball`, `generator`:
+        # The tarball is specified via the "source" field, which is either:
+        #  - an `image.source` (docs in `image_source.bzl`), or
+        #  - a path of a target outputting a tarball target path, e.g.
+        #    an `export_file` or a `genrule`.
         #
-        #   - EITHER: `tarball`, a Buck target that outputs a tarball.  You
-        #     might consider `export_file` or `genrule`.
-        #
-        #   - OR: `generator`, a path to an executable target, which
-        #     will run every time the layer is built.  It is supposed to
-        #     generate a deterministic tarball.  The script's contract is:
-        #       * Its arguments are the strings from `generator_args`,
-        #         followed by one last argument that is a path to an
-        #         `image.layer`-provided temporary directory, into which the
-        #         generator must write its tarball.
-        #       * The generator must print the filename of the tarball,
-        #         followed by a single newline, to stdout.  The filename
-        #         MUST be relative to the provided temporary directory.
-        #
-        # In deciding between `tarball` and `generator*`, you are trading
-        # off disk space in the Buck cache for the resources (e.g. latency,
-        # CPU usage, or network usage) needed to re-generate the tarball.
-        # For example, using `generator*` is a good choice when it simply
-        # performs a download from a fast immutable blob store.
-        #
-        # Note that a single script can potentially be used both as a
-        # generator, and to produce cached artifacts, see how the compiler
-        # test `TARGETS` uses `hello_world_tar_generator.sh` in a genrule.
-        #
-        # Additionally, every item must contain these keys:
-        #   - `hash`, of the format `<python hashlib algo>:<hex digest>`,
-        #     which is the hash of the content of the tarball before any
-        #     decompression or unpacking.
-        #   - `into_dir`, the destination of the unpacked tarball in the
-        #     image.  This is an image-absolute path to a directory that
-        #     must be created by another `image_feature` item.
+        # You must additionally specify `into_dir`, the destination of the
+        # unpacked tarball in the image.  This is an image-absolute path to
+        # a directory that must be created by another `image_feature` item.
         #
         # As with other `image.feature` items, order is not signficant, the
         # image compiler will sort the items automatically.  Tarball items
         # must be dicts -- example:
         #     {
-        #         'hash': 'sha256:deadbeef...',
         #         'into_dir': 'image_absolute/dir',
-        #         'tarball': '//target/to:extract',
+        #         'source': '//target/to:extract',
         #     }
         tarballs = None,
         # An iterable of paths to files or directories to (recursively)
