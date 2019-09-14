@@ -103,7 +103,7 @@ class ImageLayerTestCase(unittest.TestCase):
             b'foo/hello_world',
             b'usr/share/rpm_test/mice.txt',
             b'usr/share/rpm_test/cheese2.txt',
-            # :child_layer
+            # :child/layer
             b'foo/extracted_hello/hello_world',
             b'foo/more_extracted_hello/hello_world',
         ]:
@@ -130,7 +130,7 @@ class ImageLayerTestCase(unittest.TestCase):
             self.assertTrue(os.path.isfile(
                 subvol.path('usr/share/rpm_test/carrot.txt')
             ))
-        with self.target_subvol('child_layer') as subvol:
+        with self.target_subvol('child/layer') as subvol:
             self._check_child(subvol.path())
         with self.target_subvol('base_cheese_layer') as subvol:
             self._check_hello(subvol.path())

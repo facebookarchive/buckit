@@ -39,7 +39,7 @@ def image_package(
         layer = ":" + local_layer_rule
     buck_genrule(
         name = name,
-        out = name,
+        out = "layer." + format,
         type = _IMAGE_PACKAGE,  # For queries
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
             self_dependency = "//fs_image/buck:image_package",

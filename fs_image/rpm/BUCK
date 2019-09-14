@@ -451,7 +451,7 @@ python_unittest(
     ],
     par_style = "zip",
     resources = {
-        "//fs_image/compiler/tests:child_layer": "tests/child-layer",
+        "//fs_image/compiler/tests:child/layer": "tests/child-layer",
         "//fs_image/compiler/tests:hello_world_base": "tests/hello-layer",
     },
     deps = [

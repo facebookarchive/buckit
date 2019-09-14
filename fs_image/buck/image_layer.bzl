@@ -185,7 +185,7 @@ def _image_layer_impl(
             # `exe` won't expand in \\$( ... ), so we need `binary_path`.
             binary_path=( $(exe //fs_image:subvolume-version) )
             subvolume_ver=\\$( "${{binary_path[@]}}" )
-            subvolume_wrapper_dir={layer_name_quoted}":$subvolume_ver"
+            subvolume_wrapper_dir={layer_name_mangled_quoted}":$subvolume_ver"
 
             # Do not touch $OUT until the very end so that if we
             # accidentally exit early with code 0, the rule still fails.
@@ -218,7 +218,12 @@ def _image_layer_impl(
 
             mv "$TMP/out" "$OUT"  # Allow the rule to succeed.
             '''.format(
-                layer_name_quoted = shell.quote(_layer_name),
+                # Buck target names permit `/`, but we want a 1-level
+                # hierarchy for layer wrapper directories in
+                # `buck-image-out`, so mangle `/`.
+                layer_name_mangled_quoted = shell.quote(
+                    _layer_name.replace("/", "=="),
+                ),
                 refcounts_dir_quoted = paths.join(
                     "$GEN_DIR",
                     shell.quote(config.get_project_root_from_gen_dir()),

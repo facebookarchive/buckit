@@ -204,7 +204,7 @@ image.feature(
         ":rpm-test-cheese-2-1.rpm": "install",
         "rpm-test-carrot": "remove_if_exists",  # Installed by `parent_layer`
         "rpm-test-mice": "install",
-        # No-op in `child_layer` -- it was never installed
+        # No-op in `child/layer` -- it was never installed
         "rpm-test-milk": "remove_if_exists",
     },
     tarballs = [
@@ -459,7 +459,7 @@ image.layer(
 )
 
 image.layer(
-    name = "child_layer",
+    name = "child/layer",  # Checks that `/` is allowed in layer names
     parent_layer = ":parent_layer",
     features = [
         ":feature_tar_and_rpms",
@@ -491,9 +491,9 @@ image.layer(
     ),
 )
 
-image.package(name = "child_layer.sendstream")
+image.package(name = "child/layer.sendstream")
 
-image.package(name = "child_layer.btrfs")
+image.package(name = "child/layer.btrfs")
 
 # This will install /usr/share/rpm_test/cheese2.txt.
 image.layer(
