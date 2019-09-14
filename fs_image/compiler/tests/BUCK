@@ -424,6 +424,12 @@ image.layer(
     mount_config = {"runtime_source": {"type": "chicken"}},
 )
 
+buck_genrule(
+    name = "turkey_mount_config",
+    out = "ignored",
+    bash = '''echo '{"runtime_source": {"type": "turkey"}}' > "$OUT"''',
+)
+
 image.layer(
     name = "parent_layer",
     parent_layer = ":hello_world_base",
@@ -456,6 +462,8 @@ image.layer(
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
     ),
+    # Unlike `hello_world_base`, this checks dynamically generated mount configs
+    mount_config = ":turkey_mount_config",
 )
 
 image.layer(

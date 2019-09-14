@@ -86,6 +86,7 @@ The consequences of this information hiding are:
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
+load("@bazel_skylib//lib:types.bzl", "types")
 load(":oss_shim.bzl", "buck_command_alias", "buck_genrule", "config", "get_visibility", "target_utils")
 load(":compile_image_features.bzl", "compile_image_features")
 load(":image_feature.bzl", "image_feature")
@@ -117,6 +118,10 @@ def _image_layer_impl(
         # This setting affects how **this** layer may be mounted inside
         # others.
         #
+        # This argument may be a dict, or a target path whose outputs is a
+        # JSON dict of the same form.  The latter as added to allow
+        # generating mount configs for fetched packages.
+        #
         # The default mount config for a layer only provides a
         # `build_source`, specifying how the layer should be mounted at
         # development time inside the in-repo `buck-image-out` subtree.
@@ -147,21 +152,6 @@ def _image_layer_impl(
     visibility = get_visibility(visibility, _layer_name)
     if mount_config == None:
         mount_config = {}
-    for key in ("build_source", "is_directory"):
-        if key in mount_config:
-            fail("`{}` cannot be customized".format(key), "mount_config")
-    mount_config["is_directory"] = True
-    mount_config["build_source"] = {
-        # Don't attempt to target-tag this because this would complicate
-        # MountItem, which would have to contain `Subvol` and know how to
-        # serialize it (P106589820).  This is much messier than the current
-        # approach of explicit target & layer lookups in `_BuildSource`.
-        "source": _current_target(_layer_name),
-        # The compiler knows how to resolve layer locations.  For now, we
-        # don't support mounting a subdirectory of a layer because that
-        # might make packaging more complicated, but it could be done.
-        "type": "layer",
-    }
 
     # IMPORTANT: If you touch this genrule, update `image_layer_alias`.
     buck_genrule(
@@ -191,7 +181,9 @@ def _image_layer_impl(
             # Do not touch $OUT until the very end so that if we
             # accidentally exit early with code 0, the rule still fails.
             mkdir "$TMP/out"
-            echo {quoted_mountconfig_json} > "$TMP/out/mountconfig.json"
+            {print_mount_config} |
+                $(exe //fs_image:layer-mount-config) {layer_target_quoted} \
+                    > "$TMP/out/mountconfig.json"
             # "layer.json" points at the subvolume inside `buck-image-out`.
             layer_json="$TMP/out/layer.json"
 
@@ -225,6 +217,7 @@ def _image_layer_impl(
                 layer_name_mangled_quoted = shell.quote(
                     _layer_name.replace("/", "=="),
                 ),
+                layer_target_quoted = shell.quote(_current_target(_layer_name)),
                 refcounts_dir_quoted = paths.join(
                     "$GEN_DIR",
                     shell.quote(config.get_project_root_from_gen_dir()),
@@ -232,8 +225,14 @@ def _image_layer_impl(
                 ),
                 make_subvol_cmd = _make_subvol_cmd,
                 # To make layers "image-mountable", provide `mountconfig.json`.
-                quoted_mountconfig_json = shell.quote(
-                    struct(**mount_config).to_json(),
+                print_mount_config = (
+                    # `mount_config` was a target path
+                    "cat $(location {})".format(mount_config)
+                ) if types.is_string(mount_config) else (
+                    # inline `mount_config` dict
+                    "echo {}".format(
+                        shell.quote(struct(**mount_config).to_json()),
+                    )
                 ),
             ),
             volume_min_free_bytes = layer_size_bytes,

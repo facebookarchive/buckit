@@ -123,7 +123,10 @@ class ImageLayerTestCase(unittest.TestCase):
             mount_config={'runtime_source': {'type': 'chicken'}},
         ) as subvol:
             self._check_hello(subvol.path())
-        with self.target_subvol('parent_layer') as subvol:
+        with self.target_subvol(
+            'parent_layer',
+            mount_config={'runtime_source': {'type': 'turkey'}},
+        ) as subvol:
             self._check_parent(subvol.path())
             # Cannot check this in `_check_parent`, since that gets called
             # by `_check_child`, but the RPM gets removed in the child.

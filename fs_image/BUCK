@@ -169,6 +169,20 @@ python_unittest(
     deps = [":find_built_subvol"],
 )
 
+python_binary(
+    name = "layer-mount-config",
+    srcs = ["layer_mount_config.py"],
+    base_module = "fs_image",
+    main_module = "fs_image.layer_mount_config",
+)
+
+python_unittest(
+    name = "test-layer-mount-config",
+    srcs = ["tests/test_layer_mount_config.py"],
+    base_module = "fs_image",
+    needed_coverage = [(100, ":layer-mount-config-library")],
+)
+
 export_file(
     name = "fake_sudo.sh",
     src = "tests/fake_sudo.sh",
