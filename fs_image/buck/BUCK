@@ -59,6 +59,12 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "image_layer_alias",
+    srcs = ["image_layer_alias.bzl"],
+    deps = [],
+)
+
+fake_macro_library(
     name = "image_feature",
     srcs = ["image_feature.bzl"],
     deps = [

@@ -163,6 +163,7 @@ def _image_layer_impl(
         "type": "layer",
     }
 
+    # IMPORTANT: If you touch this genrule, update `image_layer_alias`.
     buck_genrule(
         name = _layer_name,
         out = "layer",

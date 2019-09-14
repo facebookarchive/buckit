@@ -197,6 +197,7 @@ IMAGE_LAYER_DEPS = [
     "create_ops",
     "create_ops-from-dir",
     "create_ops-from-layer",
+    "create_ops-alias",
 ]
 
 python_unittest(

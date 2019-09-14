@@ -594,4 +594,9 @@ image.sendstream_layer(
     build_opts = image.opts(subvol_name = "create_ops"),
 )
 
+image.layer_alias(
+    name = "create_ops-alias",
+    layer = ":create_ops",
+)
+
 image.layer("empty")  # Just ensure this builds, not checking contents :)
