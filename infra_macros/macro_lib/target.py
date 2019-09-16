@@ -24,22 +24,22 @@ except NameError:
     def allow_unsafe_import(*args, **kwargs):
         yield
 
-import collections
-from typing import Optional, Tuple, Union  # noqa F401
+from typing import NamedTuple, Optional, Tuple, Union  # noqa F401
 
 with allow_unsafe_import():
     import sys
 
 
 RuleTarget = (
-    collections.namedtuple(
+    NamedTuple(
         'RuleTarget',
         [
-            'repo',
-            'base_path',
-            'name',
+            ('repo', str),
+            ('base_path', str),
+            ('name', str),
         ],
     ))
+RuleTarget.__str__ = lambda self: "//{self.base_path}:{self.name}".format(self=self)
 
 
 def parse_target(
