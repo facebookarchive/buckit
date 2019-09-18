@@ -639,7 +639,7 @@ def private_do_not_use_feature_json_genrule(
         out = "feature.json",
         type = "image_feature",  # For queries
         # Future: It'd be nice to refactor `image_utils.bzl` and to use the
-        # log-on-error wrapper here (for `published_package_version`).
+        # log-on-error wrapper here (for `fetched_package_layer`).
         bash = """
         # {deps}
         set -ue -o pipefail

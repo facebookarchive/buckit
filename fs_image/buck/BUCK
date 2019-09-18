@@ -75,6 +75,16 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "fetched_package_layer",
+    srcs = ["fetched_package_layer.bzl"],
+    deps = [
+        ":image_feature",
+        ":image_layer",
+        ":target_tagger",
+    ],
+)
+
+fake_macro_library(
     name = "image_package",
     srcs = ["image_package.bzl"],
     deps = [":image_utils"],

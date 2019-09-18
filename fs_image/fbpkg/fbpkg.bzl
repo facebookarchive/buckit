@@ -1,4 +1,3 @@
-"This provides a single entry point for the fbpkg_* macros."
 # IMPORTANT: This file is temporarily being synced to open-source. Do
 # not put any implementation details in here.
 #
@@ -9,9 +8,6 @@
 # configuration.  The timeline for fixing this SNAFU is whenever `fs_image`
 # moves to its own repo.  Details on how to update the ShipIt config:
 # https://fburl.com/r6rq0vtw
+load("//fs_image/fbpkg/facebook:fbpkg.bzl", _fbpkg = "fbpkg")
 
-load("//fs_image/fbpkg/facebook/build:fbpkg_builder.bzl", "fbpkg_builder")
-
-fbpkg = struct(
-    builder = fbpkg_builder,
-)
+fbpkg = _fbpkg
