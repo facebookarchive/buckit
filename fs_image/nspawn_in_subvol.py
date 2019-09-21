@@ -278,6 +278,17 @@ def _snapshot_subvol(src_subvol, snapshot_into):
             yield nspawn_subvol
 
 
+class BootedCompletedProcess(subprocess.CompletedProcess):
+    def __init__(self, boot_proc, args, returncode, stdout, stderr):
+        self.boot = boot_proc
+        super().__init__(
+            args=args,
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr
+        )
+
+
 def nspawn_in_subvol(
     src_subvol, opts, *,
     # These keyword-only arguments generally follow those of `subprocess.run`.
@@ -447,7 +458,8 @@ def nspawn_in_subvol(
                 copy_wrapper_cmd(nspawn_subvol)
             ])
 
-            # Create a partial of the popen with stdout/stderr being captured
+            # Create a partial of the popen with stdout/stderr setup as
+            # requested for the boot process.
             boot_popen = functools.partial(popen,
                 popen_stdout=subprocess.PIPE,
                 popen_stderr=subprocess.PIPE,
@@ -517,9 +529,20 @@ def nspawn_in_subvol(
 
                 boot_stdout, boot_stderr = boot_proc.communicate()
 
+                # this is uncovered because this is only useful for manually
+                # debugging
+                if opts.boot_console_stdout:  # pragma: no cover
+                    sys.stdout.buffer.write(boot_stdout)
+
             # What we care about is the return status/data from the cmd we
             # wanted to execute.
-            return subprocess.CompletedProcess(
+            return BootedCompletedProcess(
+                boot_proc=subprocess.CompletedProcess(
+                    args=boot_proc.args,
+                    returncode=boot_proc.returncode,
+                    stdout=boot_stdout,
+                    stderr=boot_stderr,
+                ),
                 args=nsenter_proc.args,
                 returncode=nsenter_proc.returncode,
                 stdout=nsenter_stdout,
@@ -633,6 +656,12 @@ def parse_opts(argv):
         '--boot', action='store_true',
         help='Boot the container with nspawn.  This means invoke systemd '
             'as pid 1 and let it start up services',
+    )
+    parser.add_argument(
+        '--boot-console-stdout', action='store_true',
+        help='Print console output on stdout after the booted container has '
+             'exited. This only matters when using the --boot option and is '
+             'really only useful for manual debugging.',
     )
     parser.add_argument(
         'cmd', nargs='*', default=[DEFAULT_SHELL],

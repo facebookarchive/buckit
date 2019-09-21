@@ -295,3 +295,18 @@ class NspawnTestCase(unittest.TestCase):
         self.assertIn(b'LOGNAME', ret.stdout)
         self.assertIn(b'USER', ret.stdout)
         self.assertIn(b'TERM', ret.stdout)
+
+    def test_boot_proc_results(self):
+        ret = self._nspawn_in('slimos', [
+            '--boot',
+            '--',
+            '/bin/true',
+        ], stdout=subprocess.PIPE, check=True)
+        self.assertEqual(0, ret.returncode)
+
+        self.assertIsNotNone(ret.boot)
+        self.assertIsNotNone(ret.boot.returncode)
+        self.assertEqual(0, ret.boot.returncode)
+        self.assertIn(b'Welcome to', ret.boot.stdout)
+        self.assertIn(b'Reached target', ret.boot.stdout)
+        self.assertIn(b'Stopped target', ret.boot.stdout)
