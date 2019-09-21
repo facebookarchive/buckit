@@ -523,9 +523,9 @@ def nspawn_in_subvol(
                     nsenter_stdout, nsenter_stderr = nsenter_proc.communicate()
 
                 # Terminate the container gracefully by sending a
-                # SIGRTMIN+3 (37) directly to the systemd pid.
+                # SIGRTMIN+4 directly to the systemd pid.
                 nspawn_subvol.run_as_root(
-                    ['kill', '-s', str(signal.SIGRTMIN + 3), systemd_pid])
+                    ['kill', '-s', str(signal.SIGRTMIN + 4), systemd_pid])
 
                 boot_stdout, boot_stderr = boot_proc.communicate()
 
