@@ -14,7 +14,7 @@ class ToyRpmBuildUnittestTest(unittest.TestCase):
         self.assertTrue(os.path.exists('/rpmbuild/SPECS/specfile.spec'))
 
         # Built from rpmbuild
-        rpm_path = b'/rpmbuild/RPMS/noarch/toy-1.0-1.noarch.rpm'
+        rpm_path = b'/rpmbuild/RPMS/toy.rpm'
         self.assertTrue(os.path.exists(rpm_path))
 
         a = RpmMetadata.from_file(rpm_path)

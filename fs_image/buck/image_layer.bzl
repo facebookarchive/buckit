@@ -330,10 +330,10 @@ def image_rpmbuild_layer(
         # have the intended directory structure (i.e. may or may not include
         # the top directory) when installed in the layer. You can look at the
         # test TARGETS for "toy-rpm" to see how the sources target is set up
+        # so that there is no "toy_srcs" top directory.
         # It can be helpful to do
         # `buck run //path/to:<name>-rpmbuild-setup-container` to inspect the
         # setup layer and experiment with building.
-        # so that there is no "toy_srcs" top directory.
         source,
         **image_layer_kwargs):
     if "features" in image_layer_kwargs:

@@ -241,10 +241,13 @@ class RpmBuildItem(metaclass=ImageItem):
             # For rpmbuild:
             #   - define _topdir to move where the RPM gets built
             #   - use -bb so it only builds from the specfile
+            #   - define _rpmfilename to strip version from the result files
             build_cmd = (
                 f"rpmbuild --define '_topdir {item.rpmbuild_dir}' "
+                    "--define '_rpmfilename %%{NAME}.rpm' "
                     f"-bb {item.rpmbuild_dir}/SPECS/specfile.spec"
             )
+
             opts = nspawn_in_subvol_parse_opts([
                 '--layer', 'UNUSED',
                 '--user', 'root',

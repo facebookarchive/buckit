@@ -272,5 +272,5 @@ class RpmActionItemTestCase(BaseItemTestCase):
 
             self.assertEqual(item.phase_order(), PhaseOrder.RPM_BUILD)
             assert os.path.isfile(
-                subvol.path('/rpmbuild/RPMS/noarch/toy-1.0-1.noarch.rpm')
+                subvol.path('/rpmbuild/RPMS/toy.rpm')
             )
