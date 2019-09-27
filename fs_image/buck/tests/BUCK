@@ -49,27 +49,10 @@ python_unittest(
     env = {"kitteh": "meow"},
 )
 
-# The following rules will build a basic RPM in an rpmbuild_layer and test that
-# the RPM and sources are as expected (in the layer).
-export_file(name = "toy.spec")
-
-# Using export file like this (note the trailing slash) for sources means that
-# it won't have the top dir (toy_srcs/) included as part of the sources tarball.
-export_file(
-    name = "toy_srcs",
-    src = "toy_srcs/",
-)
-
-image.rpmbuild_layer(
-    name = "toy-rpm-build",
-    parent_layer = "//tupperware/image/slimos:slimos-rpmbuild-base",
-    specfile = ":toy.spec",
-    source = ":toy_srcs",
-)
-
+# Tests that the internals of rpmbuild_layer are as we expect.
 image.python_unittest(
     name = "test-toy-rpm-build",
     srcs = ["test_toy_rpm_build_unittest.py"],
-    layer = ":toy-rpm-build",
+    layer = "//fs_image/compiler/tests:toy-rpm-build",
     deps = ["//fs_image/rpm:rpm_metadata"],
 )

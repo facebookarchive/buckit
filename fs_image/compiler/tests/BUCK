@@ -533,6 +533,23 @@ image.layer(
     ),
 )
 
+# The following rules will build a basic RPM in an rpmbuild_layer.
+export_file(name = "toy.spec")
+
+# Using export file like this (note the trailing slash) for sources means that
+# it won't have the top dir (toy_srcs/) included as part of the sources tarball.
+export_file(
+    name = "toy_srcs",
+    src = "toy_srcs/",
+)
+
+image.rpmbuild_layer(
+    name = "toy-rpm-build",
+    parent_layer = "//tupperware/image/slimos:slimos-rpmbuild-base",
+    specfile = ":toy.spec",
+    source = ":toy_srcs",
+)
+
 ##
 ## These few rules help test `image.sendstream_layer`.
 ##
