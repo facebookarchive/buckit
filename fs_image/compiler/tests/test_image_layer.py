@@ -158,6 +158,11 @@ class ImageLayerTestCase(unittest.TestCase):
             self.assertFalse(os.path.isfile(
                 subvol.path('/usr/share/rpm_test/cheese2.txt')
             ))
+        with self.target_subvol('install_toy_rpm') as subvol:
+            self._check_hello(subvol.path())
+            self.assertTrue(os.path.isfile(
+                subvol.path('/usr/bin/toy_src_file')
+            ))
 
     def test_layer_from_demo_sendstreams(self):
         # `btrfs_diff.demo_sendstream` produces a subvolume send-stream with

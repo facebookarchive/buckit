@@ -89,7 +89,7 @@ def _image_source_impl(
         layer = layer,
         path = path,
         generator = generator,
-        generator_args = generator_args or [],
+        generator_args = tuple(generator_args or []),
         content_hash = content_hash,
     )
 

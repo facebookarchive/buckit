@@ -550,6 +550,24 @@ image.rpmbuild_layer(
     source = ":toy_srcs",
 )
 
+# This tests installing an RPM from image.rpmbuild_layer into another layer with
+# image.source
+image.layer(
+    name = "install_toy_rpm",
+    parent_layer = ":hello_world_base",
+    features = [image.feature(
+        rpms = {
+            image.source(
+                layer = ":toy-rpm-build",
+                path = "rpmbuild/RPMS/toy.rpm",
+            ): "install",
+        },
+    )],
+    build_opts = image.opts(
+        yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
+    ),
+)
+
 ##
 ## These few rules help test `image.sendstream_layer`.
 ##

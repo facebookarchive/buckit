@@ -334,7 +334,8 @@ def _make_image_source_item(
     # you'd add a global map of (generator, args) -> output, perhaps using
     # weakref hooks to refcount output files and GC them.
     generator = source.pop('generator', None)
-    generator_args = source.pop('generator_args', [])
+    generator_args = source.pop('generator_args', None)
+    generator_args = list(generator_args) if generator_args is not None else []
     if generator or generator_args:
         source['source'] = _generate_file(
             exit_stack.enter_context(tempfile.TemporaryDirectory()),
