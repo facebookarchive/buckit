@@ -2,6 +2,7 @@
 import os
 import subprocess
 
+from contextlib import contextmanager
 from typing import List
 
 from fs_image.common import nullcontext
@@ -25,14 +26,16 @@ def _maybe_popen_zstd(path):
     return nullcontext()
 
 
+@contextmanager
 def _open_tarfile(path):
     'Wraps tarfile.open to add .zst support. Use this as a context manager.'
     import tarfile  # Lazy since only this method needs it.
     with _maybe_popen_zstd(path) as maybe_proc:
-        if maybe_proc is None:
-            return tarfile.open(path)
-        else:
-            return tarfile.open(fileobj=maybe_proc.stdout, mode='r|')
+        with (
+            tarfile.open(path) if maybe_proc is None
+            else tarfile.open(fileobj=maybe_proc.stdout, mode='r|')
+        ) as f:
+            yield f
 
 
 class TarballItem(metaclass=ImageItem):
