@@ -169,6 +169,7 @@ FBCODE_RULES = [
     'protoc_library',
     'python_binary',
     'python_library',
+    'python_testslide',
     'python_unittest',
     'remote_file',
     'rust_binary',
