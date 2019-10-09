@@ -5,6 +5,7 @@ Exactly one item must exist in this phase.  If none is specified by the
 '''
 from typing import Iterable
 
+from fs_image.fs_utils import open_for_read_decompress
 from subvol_utils import Subvol
 
 from .common import ensure_meta_dir_exists, ImageItem, LayerOpts, PhaseOrder
@@ -71,7 +72,7 @@ class ReceiveSendstreamItem(metaclass=ImageItem):
         item, = items
 
         def builder(subvol: Subvol):
-            with open(item.source, 'r') as sendstream, \
+            with open_for_read_decompress(item.source) as sendstream, \
                     subvol.receive(sendstream):
                 pass
 

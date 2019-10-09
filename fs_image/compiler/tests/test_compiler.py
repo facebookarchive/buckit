@@ -237,11 +237,25 @@ class CompilerTestCase(unittest.TestCase):
         def tuple_repr(a):
             return repr(tuple(a))
 
+        def fix_stdin(c):
+            if isinstance(c[-1], dict):
+                other = c[:-1]
+                kwargs = c[-1].copy()
+                if 'stdin' in kwargs:
+                    kwargs['stdin'] = (
+                        'this makes redirected stdins comparable',
+                        kwargs.pop('stdin').name,
+                    )
+            else:
+                other = c
+                kwargs = {}
+            return other + (kwargs,)
+
         for e, a in zip(
             sorted(expected, key=tuple_repr),
             sorted(actual, key=tuple_repr),
         ):
-            self.assertEqual(e, a)
+            self.assertEqual(fix_stdin(e), fix_stdin(a))
 
     def test_compile(self):
         # First, test compilation with no parent layer.

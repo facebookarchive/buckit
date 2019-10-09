@@ -4,13 +4,14 @@ import errno
 import os
 import shutil
 import stat
+import subprocess
 import urllib.parse
 import tempfile
 
 from contextlib import contextmanager
 from typing import AnyStr, Iterable
 
-from .common import byteme, get_file_logger
+from .common import byteme, check_popen_returncode, get_file_logger
 
 log = get_file_logger(__file__)
 
@@ -65,6 +66,25 @@ class Path(bytes):
 def temp_dir(**kwargs) -> Iterable[Path]:
     with tempfile.TemporaryDirectory(**kwargs) as td:
         yield Path(td)
+
+
+@contextmanager
+def open_for_read_decompress(path):
+    'Wraps `open(path, "rb")` to add transparent `.zst` or `.gz` decompression.'
+    path = Path(path)
+    if path.endswith(b'.zst'):
+        decompress = 'zstd'
+    elif path.endswith(b'.gz') or path.endswith(b'.tgz'):
+        decompress = 'gzip'
+    else:
+        with open(path, 'rb') as f:
+            yield f
+        return
+    with subprocess.Popen([
+        decompress, '--decompress', '--stdout', path,
+    ], stdout=subprocess.PIPE) as proc:
+        yield proc.stdout
+    check_popen_returncode(proc)
 
 
 def create_ro(path, mode):

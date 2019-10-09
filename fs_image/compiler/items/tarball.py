@@ -5,7 +5,7 @@ import subprocess
 from contextlib import contextmanager
 from typing import List
 
-from fs_image.common import nullcontext
+from fs_image.fs_utils import open_for_read_decompress
 from subvol_utils import Subvol
 
 from compiler.provides import ProvidesDirectory, ProvidesFile
@@ -17,27 +17,6 @@ from .common import (
 )
 
 
-def _maybe_popen_zstd(path):
-    'Use this as a context manager.'
-    if path.endswith(b'.zst'):
-        return subprocess.Popen([
-            'zstd', '--decompress', '--stdout', path,
-        ], stdout=subprocess.PIPE)
-    return nullcontext()
-
-
-@contextmanager
-def _open_tarfile(path):
-    'Wraps tarfile.open to add .zst support. Use this as a context manager.'
-    import tarfile  # Lazy since only this method needs it.
-    with _maybe_popen_zstd(path) as maybe_proc:
-        with (
-            tarfile.open(path) if maybe_proc is None
-            else tarfile.open(fileobj=maybe_proc.stdout, mode='r|')
-        ) as f:
-            yield f
-
-
 class TarballItem(metaclass=ImageItem):
     fields = ['into_dir', 'source', 'force_root_ownership']
 
@@ -46,7 +25,10 @@ class TarballItem(metaclass=ImageItem):
         assert kwargs['force_root_ownership'] in [True, False], kwargs
 
     def provides(self):
-        with _open_tarfile(self.source) as f:
+        # We own ZST decompression, tarfile handles other gz, bz2, etc.
+        import tarfile  # Lazy since only this method needs it.
+        with open_for_read_decompress(self.source) as tf, \
+                tarfile.open(fileobj=tf, mode='r|') as f:
             for item in f:
                 path = os.path.join(
                     self.into_dir, make_path_normal_relative(item.name),
@@ -67,7 +49,7 @@ class TarballItem(metaclass=ImageItem):
         yield require_directory(self.into_dir)
 
     def build(self, subvol: Subvol, layer_opts: LayerOpts):
-        with _maybe_popen_zstd(self.source) as maybe_proc:
+        with open_for_read_decompress(self.source) as tf:
             subvol.run_as_root([
                 'tar',
                 # Future: Bug: `tar` unfortunately FOLLOWS existing symlinks
@@ -127,5 +109,5 @@ class TarballItem(metaclass=ImageItem):
                 #        drwx------. 2 lesha users 17 Sep 11 21:50 IN
                 #        drwxr-xr-x. 2 lesha users 17 Sep 11 21:54 OUT
                 '--keep-old-files',
-                '-f', ('-' if maybe_proc else self.source),
-            ], stdin=(maybe_proc.stdout if maybe_proc else None))
+                '-f', '-',
+            ], stdin=tf)

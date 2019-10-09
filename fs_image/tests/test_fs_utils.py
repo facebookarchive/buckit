@@ -7,7 +7,11 @@ import sys
 import tempfile
 import unittest
 
-from ..fs_utils import create_ro, Path, populate_temp_dir_and_rename, temp_dir
+from ..common import check_popen_returncode
+from ..fs_utils import (
+    create_ro, open_for_read_decompress, Path, populate_temp_dir_and_rename,
+    temp_dir,
+)
 
 _BAD_UTF = b'\xc3('
 
@@ -54,6 +58,41 @@ class TestFsUtils(unittest.TestCase):
         self.assertEqual(_BAD_UTF, Path.from_argparse(
             ast.literal_eval(res.stdout.rstrip(b'\n').decode())
         ))
+
+    def test_open_for_read_decompress(self):
+        # The goal is that our stream should be bigger than any buffers
+        # involved (so we get to test edge effects), but not so big that the
+        # test takes more than 1-2 seconds.
+        n_bytes = 12 << 20  # 12MiB
+        my_line = b'kitteh' * 700 + b'\n'  # ~ 4KiB
+        for compress, ext in [('gzip', 'gz'), ('zstd', 'zst')]:
+            filename = 'kitteh.' + ext
+            with temp_dir() as td, open(td / filename, 'wb') as outf:
+                with subprocess.Popen(
+                    [compress, '-'], stdin=subprocess.PIPE, stdout=outf,
+                ) as proc:
+                    for _ in range(n_bytes // len(my_line)):
+                        proc.stdin.write(my_line)
+                check_popen_returncode(proc)
+
+                with open_for_read_decompress(td / filename) as infile:
+                    for l in infile:
+                        self.assertEqual(my_line, l)
+
+        # Test uncompressed
+        with temp_dir() as td:
+            with open(td / 'kitteh', 'wb') as outfile:
+                outfile.write(my_line + b'meow')
+            with open_for_read_decompress(td / 'kitteh') as infile:
+                self.assertEqual(my_line + b'meow', infile.read())
+
+        # Test decompression error
+        with temp_dir() as td:
+            with open(td / 'kitteh.gz', 'wb') as outfile:
+                outfile.write(my_line)
+            with self.assertRaises(subprocess.CalledProcessError), \
+                    open_for_read_decompress(td / 'kitteh.gz') as infile:
+                infile.read()
 
     def test_create_ro(self):
         with temp_dir() as td:
