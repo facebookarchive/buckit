@@ -386,6 +386,24 @@ python_binary(
     deps = [":volume_for_repo"],
 )
 
+python_library(
+    name = "update_package_db",
+    srcs = ["update_package_db.py"],
+    base_module = "fs_image",
+    deps = [
+        "//fs_image:common",
+        "//fs_image:fs_utils",
+    ],
+)
+
+python_unittest(
+    name = "test-update-package-db",
+    srcs = ["tests/test_update_package_db.py"],
+    base_module = "fs_image",
+    needed_coverage = [(100, ":update_package_db")],
+    deps = [":update_package_db"],
+)
+
 python_binary(
     name = "package-image",
     srcs = ["package_image.py"],

@@ -172,7 +172,7 @@ def _fetched_package_layer(
             struct(**how_to_fetch).to_json(),
         )
     elif types.is_string(how_to_fetch):
-        print_how_to_fetch_json = "tail -n +2 $(location {})".format(
+        print_how_to_fetch_json = "tail -n +3 $(location {})".format(
             how_to_fetch,
         )
     else:
