@@ -13,6 +13,7 @@ from subvol_utils import Subvol, SubvolOpts, get_subvolume_path
 
 from .temp_subvolumes import with_temp_subvols
 
+
 class SubvolTestCase(unittest.TestCase):
     '''
     NB: The test here is partially redundant with demo_sendstreams, but
@@ -164,4 +165,43 @@ class SubvolTestCase(unittest.TestCase):
         self.assertEqual(
             render_demo_subvols(create_ops=new_subvol_name),
             render_sendstream(sv.mark_readonly_and_get_sendstream()),
+        )
+
+    @with_temp_subvols
+    def test_write_to_tarball(self, temp_subvols):
+        # create a subvol from a demo sendstream, tar it, untar into a new
+        # subvol, then compare the two
+        demo_sv_name = 'demo_sv'
+        demo_sv = temp_subvols.caller_will_create(demo_sv_name)
+        with open(Path(__file__).dirname() / 'create_ops.sendstream') as f, \
+                demo_sv.receive(f):
+            pass
+
+        unpacked_sv = temp_subvols.create('subvol')
+        with tempfile.NamedTemporaryFile() as tar_file:
+            with demo_sv.write_to_tarball(tar_file):
+                pass
+
+            demo_sv.run_as_root([
+                'tar',
+                'xzf',
+                tar_file.name,
+                '--xattrs',
+                '-C',
+                unpacked_sv.path(),
+            ])
+
+        demo_render = render_demo_subvols(create_ops=demo_sv_name)
+        # Tar does not preserve the original's cloned extents of
+        # zeros
+        demo_render[1]['56KB_nuls'] = ['(File d57344)']
+        demo_render[1]['56KB_nuls_clone'] = ['(File d57344)']
+        # Tar des not preserve unix domain sockets, as these are usable only for
+        # the lifetime of the associated process and should therefore be safe to
+        # ignore.
+        demo_render[1].pop('unix_sock')
+
+        self.assertEqual(
+            demo_render,
+            render_sendstream(unpacked_sv.mark_readonly_and_get_sendstream()),
         )

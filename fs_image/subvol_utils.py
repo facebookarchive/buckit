@@ -439,6 +439,19 @@ class Subvol:
         #    identical to the source subvolume.
         return attempts
 
+    @contextmanager
+    def write_to_tarball(self, outfile: BinaryIO, **kwargs) -> Iterator[None]:
+        with self.popen_as_root([
+            'tar',
+            'cz',
+            '--sparse',
+            '--xattrs',
+            '--to-stdout',
+            '-C', self.path(),
+            '.',
+        ], stdout=outfile):
+            yield
+
     def _estimate_content_bytes(self):
         '''
         Returns a (usually) tight lower-bound guess of the filesystem size
