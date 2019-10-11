@@ -305,8 +305,6 @@ def _normalize_rpms(target_tagger, rpms):
                 fail("Rpm entry {} must be (name, action)".format(rpm))
             dct = {"action": rpm[1], _rpm_name_or_source(rpm[0]): rpm[0]}
         else:
-            if not types.is_string(rpm):
-                fail("Bad rpms item {}".format(rpm))
             dct = {"action": "install", _rpm_name_or_source(rpm): rpm}
 
         if dct["action"] not in valid_actions:

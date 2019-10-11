@@ -186,7 +186,11 @@ export_file(name = "rpm-test-cheese-3-1.rpm")
 
 image.layer(
     name = "layer-with-only-one-locally-installed-rpm",
-    features = [image.feature(rpms = [":rpm-test-cheese-2-1.rpm"])],
+    features = [image.feature(rpms = [
+        # A drive-by test that `image.source` syntax works in "rpms".  This
+        # could have been just a target path, as in `feature_tar_and_rpms`.
+        image.source(":rpm-test-cheese-2-1.rpm"),
+    ])],
     build_opts = image.opts(
         build_appliance = ":fake-build-appliance-from-host",
     ),
