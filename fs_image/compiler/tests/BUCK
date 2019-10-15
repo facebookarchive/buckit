@@ -35,12 +35,12 @@ buck_genrule(
 
 image.layer(
     name = "only-for-tests-read-only-host-clone-base",
-    features = [image.feature(
-        make_dirs = [
-            ("/", "mnt"),
-            ("/", "var"),
-        ],
-        mounts = [image.host_dir_mount(source) for source in [
+    features = [
+        image.mkdir("/", "mnt"),
+        image.mkdir("/", "var"),
+    ] + [
+        image.host_dir_mount(source)
+        for source in [
             "/bin",
             "/lib",
             "/sbin",
@@ -48,37 +48,36 @@ image.layer(
             # Future: move these 2 (and the `make_dirs`) into an FB-only feature.
             "/mnt/gvfs",
             "/var/facebook",
-        ]],
-    )],
+        ]
+    ],
 )
 
 image.layer(
     name = "only-for-tests-read-only-host-clone",
     parent_layer = ":only-for-tests-read-only-host-clone-base",
-    features = [image.feature(
+    features = [
         # `test_non_ephemeral_snapshot` needs a place to write as `nobody`.
-        make_dirs = [{
-            "into_dir": "/",
-            "mode": "u+rwx,og+rx",
-            "path_to_make": "home/nobody",
-            "user:group": "nobody:nobody",
-        }],
-        mounts = [image.host_dir_mount("/etc")],
-    )],
+        image.mkdir(
+            "/",
+            "home/nobody",
+            mode = "u+rwx,og+rx",
+            user = "nobody",
+            group = "nobody",
+        ),
+        image.host_dir_mount("/etc"),
+    ],
 )
 
 image.layer(
     name = "only-for-tests-read-only-host-clone-no-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-base",
-    features = [image.feature(
+    features = [
         # Without os-release, nspawn cannot boot into this image.
-        make_dirs = [("/", "etc")],
-        mounts = [
-            image.host_file_mount("/etc/os-release"),
-            # We use `nobody` in tests, which is presumably defined on the host.
-            image.host_file_mount("/etc/passwd"),
-        ],
-    )],
+        image.mkdir("/", "etc"),
+        image.host_file_mount("/etc/os-release"),
+        # We use `nobody` in tests, which is presumably defined on the host.
+        image.host_file_mount("/etc/passwd"),
+    ],
 )
 
 export_file(name = "deadbeef-machine-id")
@@ -86,9 +85,9 @@ export_file(name = "deadbeef-machine-id")
 image.layer(
     name = "only-for-tests-read-only-host-clone-with-machine-id",
     parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
-    features = [image.feature(
-        install_data = {":deadbeef-machine-id": "/etc/machine-id"},
-    )],
+    features = [
+        image.install_data(":deadbeef-machine-id", "/etc/machine-id"),
+    ],
 )
 
 # The next 2 layers exercise the build appliance logic for RPM installation
@@ -99,29 +98,27 @@ image.layer(
 image.layer(
     name = "fake-build-appliance-from-host",
     parent_layer = ":only-for-tests-read-only-host-clone",
-    features = [image.feature(
+    features = [
         # These stub directories are needed to make `yum-from-snapshot`'s host
         # path protection feature happy.  The alternative is to make all of
         # these ONLY be protected if they exist, but that has safety downsides,
         # and involves more code.
-        make_dirs = [
-            ("/var", "tmp"),
-            ("/var", "log"),
-            ("/var", "cache/yum"),
-            ("/var", "lib/rpm"),
-            ("/var/lib", "yum"),
-        ],
-        install_executables = {
-            "//fs_image/rpm:yum-from-test-snapshot": "/yum-from-snapshot",
-        },
-    )],
+        image.mkdir("/var", "tmp"),
+        image.mkdir("/var", "log"),
+        image.mkdir("/var", "cache/yum"),
+        image.mkdir("/var", "lib/rpm"),
+        image.mkdir("/var/lib", "yum"),
+        image.install_executable("//fs_image/rpm:yum-from-test-snapshot", "/yum-from-snapshot"),
+    ],
 )
 
 # Verified by `test_build_appliance` in `test-image-layer`.
 image.layer(
     name = "validates-build-appliance",
     # Compact syntax for RPM installation.
-    features = [image.feature(rpms = ["rpm-test-milk"])],
+    features = [
+        image.install_rpms(["rpm-test-milk"]),
+    ],
     build_opts = image.opts(
         build_appliance = ":fake-build-appliance-from-host",
     ),
@@ -133,22 +130,23 @@ image.layer(
 
 image.feature(
     name = "feature_dirs",
-    make_dirs = [
-        "/foo/bar",
-        ("/foo/bar", "baz"),
+    features = [
+        image.mkdir("/", "foo/bar"),
+        image.mkdir("/foo/bar", "baz"),
     ],
 )
 
 # The permissions are bad, so any attempt to add this into a layer will fail.
 image.feature(
     name = "feature_bad_dir",
-    make_dirs = [
-        {
-            "into_dir": "/foo",
-            "mode": "mmm",
-            "path_to_make": "borf/beep",
-            "user:group": "uuu:ggg",
-        },
+    features = [
+        image.mkdir(
+            "/foo",
+            "borf/beep",
+            mode = "mmm",
+            user = "uuu",
+            group = "ggg",
+        ),
     ],
 )
 
@@ -156,21 +154,14 @@ image.feature(
 #   - all forms of specifying symlinks
 image.feature(
     name = "feature_symlinks",
-    install_data = [
-        (":hello_world.tar", "/foo/hello_world.tar"),
-    ],
-    symlinks_to_dirs = [
-        ("/foo/bar", "/foo/fighter"),
-        {
-            "dest": "/foo/face",
-            "source": "/foo/bar",
-        },
-        ("/foo/bar", "/foo/bar/baz/"),  # Rsync style
-    ],
-    symlinks_to_files = [
-        ("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
+    features = [
+        image.install_data(":hello_world.tar", "/foo/hello_world.tar"),
+        image.symlink_dir("/foo/bar", "/foo/fighter"),
+        image.symlink_dir("/foo/bar", "/foo/face"),
+        image.symlink_dir("/foo/bar", "/foo/bar/baz/"),  # Rsync style
+        image.symlink_file("/foo/hello_world.tar", "/foo/symlink_to_hello_world.tar"),
         # /dev/null is whitelisted to be a dangling symlink
-        ("/dev/null", "/foo/symlink_to_dev_null"),
+        image.symlink_file("/dev/null", "/foo/symlink_to_dev_null"),
     ],
 )
 
@@ -186,11 +177,13 @@ export_file(name = "rpm-test-cheese-3-1.rpm")
 
 image.layer(
     name = "layer-with-only-one-locally-installed-rpm",
-    features = [image.feature(rpms = [
-        # A drive-by test that `image.source` syntax works in "rpms".  This
-        # could have been just a target path, as in `feature_tar_and_rpms`.
-        image.source(":rpm-test-cheese-2-1.rpm"),
-    ])],
+    features = [
+        image.install_rpms([
+            # A drive-by test that `image.source` syntax works in "rpms".  This
+            # could have been just a target path, as in `feature_tar_and_rpms`.
+            image.source(":rpm-test-cheese-2-1.rpm"),
+        ]),
+    ],
     build_opts = image.opts(
         build_appliance = ":fake-build-appliance-from-host",
     ),
@@ -203,36 +196,38 @@ image.layer(
 # feature to provide directories `/foo/borf/`.
 image.feature(
     name = "feature_tar_and_rpms",
-    rpms = {
-        # Local RPM file that is not (yet) installed or published
-        ":rpm-test-cheese-2-1.rpm": "install",
-        "rpm-test-carrot": "remove_if_exists",  # Installed by `parent_layer`
-        "rpm-test-mice": "install",
-        # No-op in `child/layer` -- it was never installed
-        "rpm-test-milk": "remove_if_exists",
-    },
-    tarballs = [
-        {
-            "into_dir": "foo/borf",
-            "source": image.source(
+    features = [
+        image.install_rpms([
+            # Local RPM file that is not (yet) installed or published
+            ":rpm-test-cheese-2-1.rpm",
+            "rpm-test-mice",
+        ]),
+        image.uninstall_rpms([
+            "rpm-test-carrot",  # Installed by `parent_layer`
+            # No-op in `child/layer` -- it was never installed
+            "rpm-test-milk",
+        ]),
+        image.tarball(
+            image.source(
                 # Check hash validation
                 ":hello_world.tar",
                 content_hash = hello_tar_hash,
             ),
-        },
-        {
-            "into_dir": "foo",
-            "source": ":hello_world.tar",  # Hash validation is optional
-        },
+            "foo/borf",
+        ),
+        image.tarball(
+            ":hello_world.tar",  # Hash validation is optional
+            "foo",
+        ),
     ],
 )
 
 image.feature(
     name = "feature_mount",
-    mounts = {
-        "/host_etc": image.host_dir_mount("/etc"),
-        "/meownt": ":hello_world_base",
-    },
+    features = [
+        image.host_dir_mount("/etc", "/host_etc"),
+        image.layer_mount(":hello_world_base", "/meownt"),
+    ],
 )
 
 python_binary(
@@ -277,32 +272,31 @@ buck_genrule(
 # case where the same feature is pulled in via several dependency paths.
 image.feature(
     name = "feature_install_files",
-    features = [":feature_dirs"],  # We use /foo/bar for a couple of installs.
-    make_dirs = [("/foo/bar/", "installed")],  # Most things will go here.
-    install_data = [
-        (":hello_world.tar", "/foo/bar/hello_world.tar"),
-        {
-            "dest": "/foo/bar/hello_world_again.tar",
-            "source": ":hello_world.tar",
-            "user:group": "nobody:nobody",
-        },
-        {
-            "dest": "/foo/bar/installed/yittal-kitteh",
-            "source": image.source(
+    features = [
+        ":feature_dirs",  # We use /foo/bar for a couple of installs.
+        image.mkdir("/foo/bar", "installed"),  # Most things will go here.
+        image.install_data(":hello_world.tar", "/foo/bar/hello_world.tar"),
+        image.install_data(
+            ":hello_world.tar",
+            "/foo/bar/hello_world_again.tar",
+            user = "nobody",
+            group = "nobody",
+        ),
+        image.install_data(
+            image.source(
                 ":dir-print-ok",
                 path = "kitteh",
             ),
-        },
-    ],
-    install_executables = [
-        (":print-ok", "/foo/bar/installed/print-ok"),
-        {
-            "dest": "/foo/bar/installed/print-ok-too",
-            "source": image.source(
+            "/foo/bar/installed/yittal-kitteh",
+        ),
+        image.install_executable(":print-ok", "/foo/bar/installed/print-ok"),
+        image.install_executable(
+            image.source(
                 ":dir-print-ok",
                 path = "subdir/print-ok",
             ),
-        },
+            "/foo/bar/installed/print-ok-too",
+        ),
     ],
 )
 
@@ -326,15 +320,13 @@ image.layer(
 #    something installed by an RPM, add T_REMOVE_PATHS to sample_items, etc
 image.feature(
     name = "feature_kitchen_sink",
-    remove_paths = [
-        "/path/to/remove",
-        ("/path/to/remove", "if_exists"),
-        {
-            "action": "assert_exists",
-            "path": "/another/path/to/remove",
-        },
-    ],
     features = [
+        image.remove("/path/to/remove"),
+        image.remove(
+            "/path/to/remove",
+            must_exist = False,
+        ),
+        image.remove("/another/path/to/remove"),
         ":feature_bad_dir",
         ":feature_dirs",
         ":feature_install_files",
@@ -354,17 +346,26 @@ image.feature(
 
 image.feature(
     name = "feature_addremove_conflict_add",
-    make_dirs = [("/", "a/b")],
+    features = [
+        image.mkdir("/", "a/b"),
+    ],
 )
 
 image.feature(
     name = "feature_addremove_conflict_remove",
-    remove_paths = ["/a"],
+    features = [
+        image.remove("/a"),
+    ],
 )
 
 image.feature(
     name = "feature_remove_nonexistent",
-    remove_paths = [("/does/not/exist", "if_exists")],
+    features = [
+        image.remove(
+            "/does/not/exist",
+            must_exist = False,
+        ),
+    ],
 )
 
 # This feature is added to both layers, which validates that `image.layer`
@@ -411,17 +412,19 @@ image.layer(
 
 image.layer(
     name = "hello_world_base",
-    features = [image.feature(tarballs = [{
-        "source": image.source(
-            generator = ":hello_world_tar_generator.sh",
-            # Most generators would not have this API wart of externally
-            # specifying the output filename.  This mis-feature only exists
-            # to exercise `generator_args`.
-            generator_args = ["hello_world.tar"],
-            content_hash = hello_tar_hash,
+    features = [
+        image.tarball(
+            image.source(
+                generator = ":hello_world_tar_generator.sh",
+                # Most generators would not have this API wart of externally
+                # specifying the output filename.  This mis-feature only exists
+                # to exercise `generator_args`.
+                generator_args = ["hello_world.tar"],
+                content_hash = hello_tar_hash,
+            ),
+            "//",  # Double-slash tests path normalization
         ),
-        "into_dir": "//",  # Double-slash tests path normalization
-    }])],
+    ],
     # This tells our hypothetical runtime that in order to mount this layer,
     # it must invoke the "chicken" mount source (which might just download
     # and unpack a serialized versions of this layer).
@@ -441,27 +444,22 @@ image.layer(
         ":feature_dirs",
         ":feature_symlinks",
         image.feature(
-            features = [image.feature(
-                # Test an inline feature nested in another feature. Also
-                # check the long form of `install_data`.
-                install_data = [{
-                    "dest": "/foo/bar/even_more_hello_world.tar",
-                    "source": ":hello_world.tar",
-                }],
-            )],
-            install_data = [
-                # This directory comes from `rpm-test-carrot`.  This tests
-                # that our dependency engine sees RPM contents as a
-                # "provides".
-                (":hello_world.tar", "/usr/share/rpm_test/hello_world.tar"),
+            features = [
+                # Test an inline feature nested in another feature.
+                image.install_data(":hello_world.tar", "/foo/bar/even_more_hello_world.tar"),
             ],
-            mounts = {
-                # NB: `host_dir_mount` is exercised above.
-                "/dev_null": image.host_file_mount(source = "/dev/null"),
-                "/mounted_hello": ":hello_world_base",
-            },
-            rpms = ["rpm-test-carrot"],  # Compact syntax for RPM installation.
         ),
+        image.install_data(
+            ":hello_world.tar",
+            # This directory comes from `rpm-test-carrot`.  This tests
+            # that our dependency engine sees RPM contents as a
+            # "provides".
+            "/usr/share/rpm_test/hello_world.tar",
+        ),
+        # NB: `host_dir_mount` is exercised above.
+        image.host_file_mount("/dev/null", "/dev_null"),
+        image.layer_mount(":hello_world_base", "/mounted_hello"),
+        image.install_rpms(["rpm-test-carrot"]),  # Compact syntax for RPM installation.
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -475,28 +473,17 @@ image.layer(
     parent_layer = ":parent_layer",
     features = [
         ":feature_tar_and_rpms",
-        image.feature(
-            make_dirs = [
-                ("/foo", "borf"),  # for :feature_tar
-                ("/foo", "extracted_hello"),
-                {
-                    "into_dir": "/foo",
-                    "mode": 0o711,
-                    "path_to_make": "more_extracted_hello",
-                    "user:group": "nobody:nobody",
-                },
-            ],
-            tarballs = [
-                {
-                    "into_dir": "/foo/extracted_hello",
-                    "source": ":hello_world.tar",
-                },
-                {
-                    "into_dir": "/foo/more_extracted_hello",
-                    "source": ":hello_world.tar",
-                },
-            ],
+        image.mkdir("/foo", "borf"),  # for :feature_tar
+        image.mkdir("/foo", "extracted_hello"),
+        image.mkdir(
+            "/foo",
+            "more_extracted_hello",
+            mode = 0o711,
+            user = "nobody",
+            group = "nobody",
         ),
+        image.tarball(":hello_world.tar", "/foo/extracted_hello"),
+        image.tarball(":hello_world.tar", "/foo/more_extracted_hello"),
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -511,7 +498,9 @@ image.package(name = "child/layer.btrfs")
 image.layer(
     name = "base_cheese_layer",
     parent_layer = ":hello_world_base",
-    features = [image.feature(rpms = {":rpm-test-cheese-2-1.rpm": "install"})],
+    features = [
+        image.install_rpms([":rpm-test-cheese-2-1.rpm"]),
+    ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
     ),
@@ -521,7 +510,9 @@ image.layer(
 image.layer(
     name = "older_cheese_layer",
     parent_layer = ":base_cheese_layer",
-    features = [image.feature(rpms = {":rpm-test-cheese-1-1.rpm": "install"})],
+    features = [
+        image.install_rpms([":rpm-test-cheese-1-1.rpm"]),
+    ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
     ),
@@ -531,7 +522,9 @@ image.layer(
 image.layer(
     name = "newer_cheese_layer",
     parent_layer = ":base_cheese_layer",
-    features = [image.feature(rpms = {":rpm-test-cheese-3-1.rpm": "install"})],
+    features = [
+        image.install_rpms([":rpm-test-cheese-3-1.rpm"]),
+    ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
     ),
@@ -559,14 +552,14 @@ image.rpmbuild_layer(
 image.layer(
     name = "install_toy_rpm",
     parent_layer = ":hello_world_base",
-    features = [image.feature(
-        rpms = {
+    features = [
+        image.install_rpms([
             image.source(
                 layer = ":toy-rpm-build",
                 path = "rpmbuild/RPMS/toy.rpm",
-            ): "install",
-        },
-    )],
+            ),
+        ]),
+    ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
     ),
@@ -627,9 +620,9 @@ image.sendstream_layer(
 
 image.layer(
     name = "create_ops-layer",
-    features = [image.feature(
-        install_data = {":create_ops-original.sendstream": "/sendstream"},
-    )],
+    features = [
+        image.install_data(":create_ops-original.sendstream", "/sendstream"),
+    ],
 )
 
 image.sendstream_layer(

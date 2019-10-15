@@ -9,7 +9,12 @@ load("//fs_image/buck:image.bzl", "image")
 #    the considerable space savings justifies the loss of debuggability.
 image.feature(
     name = "rpm_cleanup",
-    remove_paths = {"/var/cache/yum": "if_exists"},
+    features = [
+        image.remove(
+            "/var/cache/yum",
+            must_exist = False,
+        ),
+    ],
 )
 
 # Remove filesystem items that should ONLY be created at runtime, but might
@@ -23,5 +28,10 @@ image.feature(
     # that they do NOT contain a machine-id.  The concern is that the fixed
     # machine ID would leak into other filesystem artifacts, which would
     # then break when the machine-id inevitably gets changed at run-time.
-    remove_paths = {"/etc/machine-id": "if_exists"},
+    features = [
+        image.remove(
+            "/etc/machine-id",
+            must_exist = False,
+        ),
+    ],
 )

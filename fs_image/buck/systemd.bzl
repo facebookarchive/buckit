@@ -5,7 +5,10 @@ def _mask_units(
         # list of systemd units to mask (e.g. sshd.service)
         units):
     return image.feature(
-        symlinks_to_files = [("/dev/null", "/etc/systemd/system/" + unit) for unit in units],
+        features = [
+            image.symlink_file("/dev/null", "/etc/systemd/system/" + unit)
+            for unit in units
+        ],
     )
 
 # Create an image feature that enables a unit in the specified target.
@@ -16,13 +19,9 @@ def _enable_unit(
 
         # The target to enable the unit in.
         target):
-    return image.feature(
-        symlinks_to_files = [
-            (
-                "/usr/lib/systemd/system/" + unit,
-                "/usr/lib/systemd/system/" + target + ".wants/" + unit,
-            ),
-        ],
+    return image.symlink_file(
+        "/usr/lib/systemd/system/" + unit,
+        "/usr/lib/systemd/system/" + target + ".wants/" + unit,
     )
 
 systemd = struct(
