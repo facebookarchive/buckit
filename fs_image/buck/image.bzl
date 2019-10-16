@@ -1,5 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
+load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
 load(
@@ -73,14 +74,6 @@ def _add_stat_options(d, mode, user, group):
         if group == None:
             group = "root"
         d["user_group"] = "{}:{}".format(user, group)
-
-def image_mkdir(parent, dest, mode = None, user = None, group = None):
-    dir_spec = {
-        "into_dir": parent,
-        "path_to_make": dest,
-    }
-    _add_stat_options(dir_spec, mode, user, group)
-    return image_feature(make_dirs = [dir_spec])
 
 def image_install_data(source, dest, mode = None, user = None, group = None):
     install_spec = {

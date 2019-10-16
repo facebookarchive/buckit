@@ -34,6 +34,11 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "add_stat_options",
+    srcs = ["add_stat_options.bzl"],
+)
+
+fake_macro_library(
     name = "target_tagger",
     srcs = ["target_tagger.bzl"],
     deps = [":image_source"],
