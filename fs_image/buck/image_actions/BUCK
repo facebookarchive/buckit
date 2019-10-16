@@ -8,3 +8,11 @@ fake_macro_library(
         "//fs_image/buck:image_feature",
     ],
 )
+
+fake_macro_library(
+    name = "remove",
+    srcs = ["remove.bzl"],
+    deps = [
+        "//fs_image/buck:image_feature",
+    ],
+)

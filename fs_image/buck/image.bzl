@@ -1,6 +1,7 @@
 "This provides a more friendly UI to the image_* macros."
 
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
+load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
 load(
@@ -98,13 +99,6 @@ def image_tarball(source, dest, force_root_ownership = False):
         "source": source,
     }
     return image_feature(tarballs = [tarball_spec])
-
-def image_remove(dest, must_exist = True):
-    remove_spec = {
-        "action": "assert_exists" if must_exist else "if_exists",
-        "path": dest,
-    }
-    return image_feature(remove_paths = [remove_spec])
 
 def image_install_rpms(rpmlist):
     rpm_spec = {p: "install" for p in rpmlist}
