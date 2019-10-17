@@ -2,6 +2,7 @@
 
 load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_install_executable")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
+load("//fs_image/buck/image_actions:named_feature.bzl", "image_named_feature")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
 load("//fs_image/buck/image_actions:rpms.bzl", "image_install_rpms", "image_uninstall_rpms")
 load("//fs_image/buck/image_actions:symlink.bzl", "image_symlink_dir", "image_symlink_file")
@@ -49,26 +50,6 @@ def image_host_file_mount(source, mountpoint = None):
         mountpoint,
         is_directory = False,
     )])
-
-def image_named_feature(name = None, features = None, visibility = None):
-    """This is the main image.feature() interface.
-
-    It doesn't define any actions itself (there are more specific rules for the
-    actions), but image.feature() serves three purposes:
-
-    1) To group multiple features, using the features = [...] argument.
-
-    2) To give the features a name, so they can be referred to using a
-       ":buck_target" notation.
-
-    3) To specify a custom visibility for a set of features.
-
-    For features that execute actions that are used to build the container
-    (install RPMs, remove files/directories, create symlinks or directories,
-    copy executable or data files, declare mounts), see the more specific
-    features meant for a specific purpose.
-    """
-    return image_feature(name = name, features = features, visibility = visibility)
 
 image = struct(
     cpp_unittest = image_cpp_unittest,

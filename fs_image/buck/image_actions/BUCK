@@ -27,6 +27,14 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "named_feature",
+    srcs = ["named_feature.bzl"],
+    deps = [
+        "//fs_image/buck:image_feature",
+    ],
+)
+
+fake_macro_library(
     name = "remove",
     srcs = ["remove.bzl"],
     deps = [
