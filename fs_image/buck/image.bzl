@@ -1,5 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
+load("//fs_image/buck/image_actions:install.bzl", "image_install_data")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
@@ -76,14 +77,6 @@ def _add_stat_options(d, mode, user, group):
         if group == None:
             group = "root"
         d["user_group"] = "{}:{}".format(user, group)
-
-def image_install_data(source, dest, mode = None, user = None, group = None):
-    install_spec = {
-        "dest": dest,
-        "source": source,
-    }
-    _add_stat_options(install_spec, mode, user, group)
-    return image_feature(install_data = [install_spec])
 
 def image_install_executable(source, dest, mode = None, user = None, group = None):
     install_spec = {
