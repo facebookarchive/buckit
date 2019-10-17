@@ -35,6 +35,14 @@ fake_macro_library(
 )
 
 fake_macro_library(
+    name = "symlink",
+    srcs = ["symlink.bzl"],
+    deps = [
+        "//fs_image/buck:image_feature",
+    ],
+)
+
+fake_macro_library(
     name = "tarball",
     srcs = ["tarball.bzl"],
     deps = [

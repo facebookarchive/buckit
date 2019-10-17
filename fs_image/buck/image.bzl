@@ -4,6 +4,7 @@ load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_i
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
 load("//fs_image/buck/image_actions:rpms.bzl", "image_install_rpms", "image_uninstall_rpms")
+load("//fs_image/buck/image_actions:symlink.bzl", "image_symlink_dir")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
@@ -68,9 +69,6 @@ def image_named_feature(name = None, features = None, visibility = None):
     features meant for a specific purpose.
     """
     return image_feature(name = name, features = features, visibility = visibility)
-
-def image_symlink_dir(link_target, link_name):
-    return image_feature(symlinks_to_dirs = {link_target: link_name})
 
 def image_symlink_file(link_target, link_name):
     return image_feature(symlinks_to_files = {link_target: link_name})
