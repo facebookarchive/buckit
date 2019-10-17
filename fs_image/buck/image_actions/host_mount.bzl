@@ -10,6 +10,13 @@ def _image_host_mount(source, mountpoint, is_directory):
         },
     }
 
+def image_host_dir_mount(source, mountpoint = None):
+    return image_feature(mounts = [_image_host_mount(
+        source,
+        mountpoint,
+        is_directory = True,
+    )])
+
 def image_host_file_mount(source, mountpoint = None):
     return image_feature(mounts = [_image_host_mount(
         source,

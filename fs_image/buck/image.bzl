@@ -1,6 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
-load("//fs_image/buck/image_actions:host_mount.bzl", "image_host_file_mount")
+load("//fs_image/buck/image_actions:host_mount.bzl", "image_host_dir_mount", "image_host_file_mount")
 load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_install_executable")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:named_feature.bzl", "image_named_feature")
@@ -21,29 +21,12 @@ load(":image_package.bzl", "image_package")
 load(":image_python_unittest.bzl", "image_python_unittest")
 load(":image_source.bzl", "image_source")
 
-def _image_host_mount(source, mountpoint, is_directory):
-    return {
-        "mount_config": {
-            "build_source": {"source": source, "type": "host"},
-            # For `host` mounts, `runtime_source` is required to be empty.
-            "default_mountpoint": source if mountpoint == None else mountpoint,
-            "is_directory": is_directory,
-        },
-    }
-
 def image_layer_mount(source, mountpoint = None):
     if mountpoint == None:
         mount_spec = [source]
     else:
         mount_spec = [(mountpoint, source)]
     return image_feature(mounts = mount_spec)
-
-def image_host_dir_mount(source, mountpoint = None):
-    return image_feature(mounts = [_image_host_mount(
-        source,
-        mountpoint,
-        is_directory = True,
-    )])
 
 image = struct(
     cpp_unittest = image_cpp_unittest,
