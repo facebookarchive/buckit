@@ -1,14 +1,6 @@
 load("//fs_image/buck:defs.bzl", "fake_macro_library")
 
 fake_macro_library(
-    name = "host_mount",
-    srcs = ["host_mount.bzl"],
-    deps = [
-        "//fs_image/buck:image_feature",
-    ],
-)
-
-fake_macro_library(
     name = "install",
     srcs = ["install.bzl"],
     deps = [
@@ -30,6 +22,14 @@ fake_macro_library(
     srcs = ["mkdir.bzl"],
     deps = [
         "//fs_image/buck:add_stat_options",
+        "//fs_image/buck:image_feature",
+    ],
+)
+
+fake_macro_library(
+    name = "mount",
+    srcs = ["mount.bzl"],
+    deps = [
         "//fs_image/buck:image_feature",
     ],
 )
