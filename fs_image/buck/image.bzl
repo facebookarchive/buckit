@@ -3,6 +3,7 @@
 load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_install_executable")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
+load("//fs_image/buck/image_actions:rpms.bzl", "image_install_rpms")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
@@ -67,10 +68,6 @@ def image_named_feature(name = None, features = None, visibility = None):
     features meant for a specific purpose.
     """
     return image_feature(name = name, features = features, visibility = visibility)
-
-def image_install_rpms(rpmlist):
-    rpm_spec = {p: "install" for p in rpmlist}
-    return image_feature(rpms = rpm_spec)
 
 def image_uninstall_rpms(rpmlist):
     rpm_spec = {p: "remove_if_exists" for p in rpmlist}
