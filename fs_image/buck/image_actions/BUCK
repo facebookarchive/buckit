@@ -16,3 +16,11 @@ fake_macro_library(
         "//fs_image/buck:image_feature",
     ],
 )
+
+fake_macro_library(
+    name = "tarball",
+    srcs = ["tarball.bzl"],
+    deps = [
+        "//fs_image/buck:image_feature",
+    ],
+)

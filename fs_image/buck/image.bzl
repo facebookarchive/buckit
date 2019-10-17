@@ -2,6 +2,7 @@
 
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
+load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
 load(":image_feature.bzl", "image_feature")
 load(
@@ -91,14 +92,6 @@ def image_install_executable(source, dest, mode = None, user = None, group = Non
     }
     _add_stat_options(install_spec, mode, user, group)
     return image_feature(install_executables = [install_spec])
-
-def image_tarball(source, dest, force_root_ownership = False):
-    tarball_spec = {
-        "force_root_ownership": force_root_ownership,
-        "into_dir": dest,
-        "source": source,
-    }
-    return image_feature(tarballs = [tarball_spec])
 
 def image_install_rpms(rpmlist):
     rpm_spec = {p: "install" for p in rpmlist}
