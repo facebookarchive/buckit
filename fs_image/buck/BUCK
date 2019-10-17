@@ -60,6 +60,9 @@ fake_macro_library(
         ":artifacts_require_repo",
         ":image_utils",
         ":target_tagger",
+        "//fs_image/buck/image_actions:install",
+        "//fs_image/buck/image_actions:mkdir",
+        "//fs_image/buck/image_actions:tarball",
     ],
 )
 
@@ -99,8 +102,8 @@ fake_macro_library(
     name = "image_unittest_helpers",
     srcs = ["image_unittest_helpers.bzl"],
     deps = [
-        ":image_feature",
         ":image_layer",
+        "//fs_image/buck/image_actions:install",
     ],
 )
 

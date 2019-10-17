@@ -87,10 +87,12 @@ The consequences of this information hiding are:
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load(":oss_shim.bzl", "buck_command_alias", "buck_genrule", "config", "get_visibility", "target_utils")
+load("//fs_image/buck/image_actions:install.bzl", "image_install_data")
+load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
+load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":compile_image_features.bzl", "compile_image_features")
-load(":image_feature.bzl", "image_feature")
 load(":image_utils.bzl", "image_utils")
+load(":oss_shim.bzl", "buck_command_alias", "buck_genrule", "config", "get_visibility", "target_utils")
 load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger")
 
 def _add_run_in_subvol_target(name, kind, extra_args = None):
@@ -356,21 +358,16 @@ def image_rpmbuild_layer(
     image_layer(
         name = setup_layer,
         parent_layer = parent_layer,
-        features = [image_feature(
-            install_data = {specfile: "/rpmbuild/SPECS/specfile.spec"},
-            make_dirs = [
-                ("/", "rpmbuild"),
-                ("/rpmbuild", "BUILD"),
-                ("/rpmbuild", "BUILDROOT"),
-                ("/rpmbuild", "RPMS"),
-                ("/rpmbuild", "SOURCES"),
-                ("/rpmbuild", "SPECS"),
-            ],
-            tarballs = [{
-                "into_dir": "/rpmbuild/SOURCES",
-                "source": ":" + source_tarball,
-            }],
-        )],
+        features = [
+            image_install_data(specfile, "/rpmbuild/SPECS/specfile.spec"),
+            image_mkdir("/", "rpmbuild"),
+            image_mkdir("/rpmbuild", "BUILD"),
+            image_mkdir("/rpmbuild", "BUILDROOT"),
+            image_mkdir("/rpmbuild", "RPMS"),
+            image_mkdir("/rpmbuild", "SOURCES"),
+            image_mkdir("/rpmbuild", "SPECS"),
+            image_tarball(":" + source_tarball, "/rpmbuild/SOURCES"),
+        ],
         **image_layer_kwargs
     )
 

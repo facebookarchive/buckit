@@ -1,7 +1,7 @@
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load(":oss_shim.bzl", "buck_genrule", "python_library")
-load(":image_feature.bzl", "image_feature")
+load("//fs_image/buck/image_actions:install.bzl", "image_install_executable")
 load(":image_layer.bzl", "image_layer")
+load(":oss_shim.bzl", "buck_genrule", "python_library")
 
 def _hidden_test_name(name):
     # This is the test binary that is supposed to run inside the image.  The
@@ -67,9 +67,7 @@ def _nspawn_wrapper_properties(
     image_layer(
         name = test_layer,
         parent_layer = layer,
-        features = [image_feature(
-            install_executables = {inner_test_target: binary_path},
-        )],
+        features = [image_install_executable(inner_test_target, binary_path)],
         visibility = visibility,
     )
 
