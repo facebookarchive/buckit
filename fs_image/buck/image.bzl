@@ -1,6 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
-load("//fs_image/buck/image_actions:install.bzl", "image_install_data")
+load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_install_executable")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
@@ -67,24 +67,6 @@ def image_named_feature(name = None, features = None, visibility = None):
     features meant for a specific purpose.
     """
     return image_feature(name = name, features = features, visibility = visibility)
-
-def _add_stat_options(d, mode, user, group):
-    if mode != None:
-        d["mode"] = mode
-    if user != None or group != None:
-        if user == None:
-            user = "root"
-        if group == None:
-            group = "root"
-        d["user_group"] = "{}:{}".format(user, group)
-
-def image_install_executable(source, dest, mode = None, user = None, group = None):
-    install_spec = {
-        "dest": dest,
-        "source": source,
-    }
-    _add_stat_options(install_spec, mode, user, group)
-    return image_feature(install_executables = [install_spec])
 
 def image_install_rpms(rpmlist):
     rpm_spec = {p: "install" for p in rpmlist}
