@@ -1,5 +1,6 @@
 "This provides a more friendly UI to the image_* macros."
 
+load("//fs_image/buck/image_actions:host_mount.bzl", "image_host_file_mount")
 load("//fs_image/buck/image_actions:install.bzl", "image_install_data", "image_install_executable")
 load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:named_feature.bzl", "image_named_feature")
@@ -42,13 +43,6 @@ def image_host_dir_mount(source, mountpoint = None):
         source,
         mountpoint,
         is_directory = True,
-    )])
-
-def image_host_file_mount(source, mountpoint = None):
-    return image_feature(mounts = [_image_host_mount(
-        source,
-        mountpoint,
-        is_directory = False,
     )])
 
 image = struct(
