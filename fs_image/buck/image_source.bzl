@@ -1,4 +1,5 @@
 load("@bazel_skylib//lib:types.bzl", "types")
+load(":maybe_export_file.bzl", "maybe_export_file")
 
 def _image_source_impl(
         # Buck target outputting file or directory, conflicts with `layer`.
@@ -85,7 +86,7 @@ def _image_source_impl(
             "hashlib)",
         )
     return struct(
-        source = source,
+        source = maybe_export_file(source),
         layer = layer,
         path = path,
         generator = generator,

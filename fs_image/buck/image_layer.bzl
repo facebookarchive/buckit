@@ -92,6 +92,7 @@ load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":compile_image_features.bzl", "compile_image_features")
 load(":image_utils.bzl", "image_utils")
+load(":maybe_export_file.bzl", "maybe_export_file")
 load(":oss_shim.bzl", "buck_command_alias", "buck_genrule", "config", "get_visibility", "target_utils")
 load(":target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger")
 
@@ -351,7 +352,7 @@ def image_rpmbuild_layer(
         bash = '''
             tar --sort=name --mtime=2018-01-01 --owner=0 --group=0 \
                 --numeric-owner -C $(location {source}) -czf "$OUT" .
-        '''.format(source = source),
+        '''.format(source = maybe_export_file(source)),
     )
 
     setup_layer = name + "-rpmbuild-setup"

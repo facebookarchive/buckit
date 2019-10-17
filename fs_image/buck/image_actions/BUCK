@@ -6,6 +6,7 @@ fake_macro_library(
     deps = [
         "//fs_image/buck:add_stat_options",
         "//fs_image/buck:image_feature",
+        "//fs_image/buck:maybe_export_file",
     ],
 )
 
@@ -63,5 +64,6 @@ fake_macro_library(
     srcs = ["tarball.bzl"],
     deps = [
         "//fs_image/buck:image_feature",
+        "//fs_image/buck:maybe_export_file",
     ],
 )
