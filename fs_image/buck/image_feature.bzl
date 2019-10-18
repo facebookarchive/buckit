@@ -19,7 +19,7 @@ building filesystem images.
 A feature specifies a set of **items**, each of which describes some aspect
 **of a desired end state** for the filesystem.  Examples:
  - A directory must exist.
- - A taraball must be extracted at this location.
+ - A tarball must be extracted at this location.
  - An RPM must be installed, or must be **ABSENT** from the filesystem.
  - Other `image_feature` that must be installed.
 
@@ -100,20 +100,7 @@ def _normalize_stat_options(d):
 def _normalize_make_dirs(make_dirs):
     if make_dirs == None:
         return []
-
-    normalized = []
-    for d in _coerce_dict_to_items(make_dirs):
-        if types.is_string(d):
-            d = {"into_dir": "/", "path_to_make": d}
-        elif types.is_tuple(d):
-            if len(d) != 2:
-                fail(
-                    "make_dirs tuples must have the form: " +
-                    "(working_dir, dirs_to_create)",
-                )
-            d = {"into_dir": d[0], "path_to_make": d[1]}
-        normalized.append(_normalize_stat_options(d))
-    return normalized
+    return [_normalize_stat_options(d) for d in make_dirs]
 
 def _normalize_mounts(target_tagger, mounts):
     if mounts == None:
@@ -169,28 +156,8 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
         return []
 
     normalized = []
-    kwarg_name = "install_executables" if is_executable else "install_data"
 
-    for d in _coerce_dict_to_items(files):
-        if types.is_tuple(d):
-            if len(d) != 2:
-                fail(
-                    "`{}` tuples must have the form: ".format(kwarg_name) +
-                    "(target_to_copy, destination_path)",
-                )
-            if types.is_string(d[1]):
-                d = {"dest": d[1], "source": d[0]}
-            elif types.is_dict(d[1]):
-                rest_of_d = d[1]
-                if "source" in rest_of_d:
-                    fail('"source": {...} must not set source in the dict')
-                d = {"source": d[0]}
-                d.update(rest_of_d)
-            else:
-                fail("Tuple element in `{}` has unexpected type: {}".format(
-                    kwarg_name,
-                    d[1],
-                ))
+    for d in files:
         d["is_executable_"] = is_executable  # Changes default permissions
 
         # Normalize to the `image.source` interface
@@ -228,57 +195,24 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
         normalized.append(_normalize_stat_options(d))
     return normalized
 
-def _normalize_tarballs(target_tagger, tarballs, visibility):
+def _normalize_tarballs(target_tagger, tarballs):
     if tarballs == None:
         return []
 
     normalized = []
-    for d in _coerce_dict_to_items(tarballs):
-        if not types.is_dict(d):
-            fail("`tarballs` must contain only dicts")
-
+    for d in tarballs:
         # Normalize to the `image.source` interface
         d["source"] = image_source_as_target_tagged_dict(
             target_tagger,
             d.pop("source"),
         )
-
-        d.setdefault("force_root_ownership", False)
-
         normalized.append(d)
     return normalized
 
 def _normalize_remove_paths(remove_paths):
     if remove_paths == None:
         return []
-
-    normalized = []
-    required_keys = sorted(["action", "path"])
-    valid_actions = ("assert_exists", "if_exists")
-    for path in _coerce_dict_to_items(remove_paths):
-        if types.is_dict(path):
-            if required_keys != sorted(path.keys()):
-                fail("remove_paths {} must have keys {}".format(
-                    path,
-                    required_keys,
-                ))
-            dct = path
-        elif types.is_tuple(path):
-            if len(path) != 2:
-                fail("remove_paths item {} must be (path, action)".format(path))
-            dct = {"action": path[1], "path": path[0]}
-        else:
-            if not types.is_string(path):
-                fail("`remove_paths` item must be string, not {}".format(path))
-            dct = {"action": "assert_exists", "path": path}
-        if dct["action"] not in valid_actions:
-            fail("Action for remove_paths {} must be in {}".format(
-                path,
-                valid_actions,
-            ))
-        normalized.append(dct)
-
-    return normalized
+    return remove_paths
 
 def _rpm_name_or_source(name_source):
     # Normal RPM names cannot have a colon, whereas target paths
@@ -293,47 +227,20 @@ def _normalize_rpms(target_tagger, rpms):
         return []
 
     normalized = []
-    required_keys = sorted(["name", "action"])
-    valid_actions = ("install", "remove_if_exists")
     for rpm in _coerce_dict_to_items(rpms):
-        if types.is_dict(rpm):
-            if required_keys != sorted(rpm.keys()):
-                fail("Rpm {} must have keys {}".format(rpm, required_keys))
-            dct = rpm
-        elif types.is_tuple(rpm):  # Handles `rpms` being a dict, too
-            if len(rpm) != 2:
-                fail("Rpm entry {} must be (name, action)".format(rpm))
-            dct = {"action": rpm[1], _rpm_name_or_source(rpm[0]): rpm[0]}
-        else:
-            dct = {"action": "install", _rpm_name_or_source(rpm): rpm}
-
-        if dct["action"] not in valid_actions:
-            fail("Action for rpm {} must be in {}".format(rpm, valid_actions))
-
+        dct = {"action": rpm[1], _rpm_name_or_source(rpm[0]): rpm[0]}
         if dct.setdefault("source") != None:
             dct["source"] = image_source_as_target_tagged_dict(
                 target_tagger,
                 dct["source"],
             )
-
         normalized.append(dct)
     return normalized
 
 def _normalize_symlinks(symlinks):
     if symlinks == None:
         return []
-
-    normalized = []
-    for d in _coerce_dict_to_items(symlinks):
-        if types.is_tuple(d):
-            if len(d) != 2:
-                fail(
-                    "symlink tuples must have the form: " +
-                    "(symlink_source, symlink_dest)",
-                )
-            d = {"dest": d[1], "source": d[0]}
-        normalized.append(d)
-    return normalized
+    return symlinks
 
 def normalize_features(porcelain_targets_or_structs, human_readable_target):
     targets = []
@@ -579,7 +486,7 @@ def image_feature_INTERNAL_ONLY(
                 is_executable = True,
             ),
             mounts = _normalize_mounts(target_tagger, mounts),
-            tarballs = _normalize_tarballs(target_tagger, tarballs, visibility),
+            tarballs = _normalize_tarballs(target_tagger, tarballs),
             remove_paths = _normalize_remove_paths(remove_paths),
             # It'd be a bit expensive to do any kind of validation of RPM
             # names right here, since we'd need the repo snapshot to decide
