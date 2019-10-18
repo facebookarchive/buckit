@@ -1,4 +1,4 @@
-load("//fs_image/buck:image_feature.bzl", "image_feature")
+load("//fs_image/buck:image_feature.bzl", "image_feature_INTERNAL_ONLY")
 
 def _image_host_mount(source, mountpoint, is_directory):
     return {
@@ -11,14 +11,14 @@ def _image_host_mount(source, mountpoint, is_directory):
     }
 
 def image_host_dir_mount(source, mountpoint = None):
-    return image_feature(mounts = [_image_host_mount(
+    return image_feature_INTERNAL_ONLY(mounts = [_image_host_mount(
         source,
         mountpoint,
         is_directory = True,
     )])
 
 def image_host_file_mount(source, mountpoint = None):
-    return image_feature(mounts = [_image_host_mount(
+    return image_feature_INTERNAL_ONLY(mounts = [_image_host_mount(
         source,
         mountpoint,
         is_directory = False,
@@ -29,4 +29,4 @@ def image_layer_mount(source, mountpoint = None):
         mount_spec = [source]
     else:
         mount_spec = [(mountpoint, source)]
-    return image_feature(mounts = mount_spec)
+    return image_feature_INTERNAL_ONLY(mounts = mount_spec)

@@ -1,4 +1,4 @@
-load("//fs_image/buck:image_feature.bzl", "image_feature")
+load("//fs_image/buck:image_feature.bzl", "image_feature_INTERNAL_ONLY")
 
 def image_named_feature(name = None, features = None, visibility = None):
     """This is the main image.feature() interface.
@@ -18,4 +18,4 @@ def image_named_feature(name = None, features = None, visibility = None):
     copy executable or data files, declare mounts), see the more specific
     features meant for a specific purpose.
     """
-    return image_feature(name = name, features = features, visibility = visibility)
+    return image_feature_INTERNAL_ONLY(name = name, features = features, visibility = visibility)

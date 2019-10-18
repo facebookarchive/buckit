@@ -352,7 +352,7 @@ def normalize_features(porcelain_targets_or_structs, human_readable_target):
         direct_deps = direct_deps,
     )
 
-def image_feature(
+def image_feature_INTERNAL_ONLY(
         name = None,
         # An iterable of directories to make in the image --
         #  - `into_dir` is a image-absolute path, inside which
