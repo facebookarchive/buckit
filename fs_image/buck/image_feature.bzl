@@ -204,11 +204,6 @@ def _normalize_tarballs(target_tagger, tarballs):
         normalized.append(d)
     return normalized
 
-def _normalize_remove_paths(remove_paths):
-    if remove_paths == None:
-        return []
-    return remove_paths
-
 def _rpm_name_or_source(name_source):
     # Normal RPM names cannot have a colon, whereas target paths
     # ALWAYS have a colon. `image.source` is a struct.
@@ -392,19 +387,6 @@ def image_feature_INTERNAL_ONLY(
         #         'source': '//target/to:extract',
         #     }
         tarballs = None,
-        # An iterable of paths to files or directories to (recursively)
-        # remove from the layer.  These are allowed to remove paths
-        # inherited from the parent layer, or those installed by RPMs even
-        # in this layer.  However, removing other items explicitly added by
-        # the current layer is currently not supported since that seems like
-        # a design smell -- you should probably refactor the constituent
-        # `image.feature`s not to conflict with each other.
-        #
-        # By default, it is an error if the specified paths are missing from
-        # the image.  This form is also supported:
-        #     [('/path/to/remove', 'assert_exists|if_exists')],
-        # which allows you to explicitly ignore missing paths.
-        remove_paths = None,
         # An iterable of RPM package names to install, **without** version
         # or release numbers.  Order is not significant.  Also supported:
         # {'package-name': 'install|remove_if_exists'}.  Note that removals
@@ -469,7 +451,6 @@ def image_feature_INTERNAL_ONLY(
             ),
             mounts = _normalize_mounts(target_tagger, mounts),
             tarballs = _normalize_tarballs(target_tagger, tarballs),
-            remove_paths = _normalize_remove_paths(remove_paths),
             # It'd be a bit expensive to do any kind of validation of RPM
             # names right here, since we'd need the repo snapshot to decide
             # whether the names are valid, and whether they contain a
