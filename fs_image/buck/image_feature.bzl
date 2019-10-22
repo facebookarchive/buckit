@@ -97,11 +97,6 @@ def _normalize_stat_options(d):
         d["user_group"] = d.pop("user:group")
     return d
 
-def _normalize_make_dirs(make_dirs):
-    if make_dirs == None:
-        return []
-    return [_normalize_stat_options(d) for d in make_dirs]
-
 def _normalize_mounts(target_tagger, mounts):
     if mounts == None:
         return []
@@ -261,18 +256,6 @@ def normalize_features(porcelain_targets_or_structs, human_readable_target):
 
 def image_feature_INTERNAL_ONLY(
         name = None,
-        # An iterable of directories to make in the image --
-        #  - `into_dir` is a image-absolute path, inside which
-        #    we should create more directories. It must be created by
-        #    another `image_feature` item.
-        #  - `path_to_make` is a path relative to `into_dir`, which will be
-        #    created.
-        # Order is not significant, the image compiler will sort the actions
-        # automatically.  Supported formats for the items:
-        #  - string: 'image_absolute/path/to/make'
-        #  - tuple: ('into/image_absolute/dir', 'path/to/make')
-        #  - dict: {'into_dir': '...', 'path_to_make': '...'}
-        make_dirs = None,
         # An iterable or dictionary of targets that provide in-container
         # mounts of subtrees or files.  Two* syntax variants are allowed:
         #
@@ -473,7 +456,6 @@ def image_feature_INTERNAL_ONLY(
         target_tagger,
         items = struct(
             target = human_readable_target,
-            make_dirs = _normalize_make_dirs(make_dirs),
             install_files = _normalize_install_files(
                 target_tagger = target_tagger,
                 files = install_data,

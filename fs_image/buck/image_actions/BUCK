@@ -23,7 +23,7 @@ fake_macro_library(
     srcs = ["mkdir.bzl"],
     deps = [
         "//fs_image/buck:add_stat_options",
-        "//fs_image/buck:image_feature",
+        "//fs_image/buck:target_tagger",
     ],
 )
 
