@@ -5,7 +5,7 @@ load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
 load("//fs_image/buck/image_actions:mount.bzl", "image_host_dir_mount", "image_host_file_mount", "image_layer_mount")
 load("//fs_image/buck/image_actions:named_feature.bzl", "image_named_feature")
 load("//fs_image/buck/image_actions:remove.bzl", "image_remove")
-load("//fs_image/buck/image_actions:rpms.bzl", "image_install_rpms", "image_uninstall_rpms")
+load("//fs_image/buck/image_actions:rpms.bzl", "image_rpms_install", "image_rpms_remove_if_exists")
 load("//fs_image/buck/image_actions:symlink.bzl", "image_symlink_dir", "image_symlink_file")
 load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
 load(":image_cpp_unittest.bzl", "image_cpp_unittest")
@@ -28,8 +28,8 @@ image = struct(
     install_executable = image_install_executable,
     tarball = image_tarball,
     remove = image_remove,
-    install_rpms = image_install_rpms,
-    uninstall_rpms = image_uninstall_rpms,
+    rpms_install = image_rpms_install,
+    rpms_remove_if_exists = image_rpms_remove_if_exists,
     symlink_dir = image_symlink_dir,
     symlink_file = image_symlink_file,
     host_dir_mount = image_host_dir_mount,

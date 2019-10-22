@@ -4,8 +4,8 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
-load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "buck_sh_binary", "python_binary")
 load("//fs_image/buck:image.bzl", "image")
+load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "buck_sh_binary", "python_binary")
 load("//fs_image/buck:wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # The rule `hello_world.tar` must be deterministic to be used in images.
@@ -115,7 +115,7 @@ image.layer(
     name = "validates-build-appliance",
     # Compact syntax for RPM installation.
     features = [
-        image.install_rpms(["rpm-test-milk"]),
+        image.rpms_install(["rpm-test-milk"]),
     ],
     build_opts = image.opts(
         build_appliance = ":fake-build-appliance-from-host",
@@ -176,7 +176,7 @@ export_file(name = "rpm-test-cheese-3-1.rpm")
 image.layer(
     name = "layer-with-only-one-locally-installed-rpm",
     features = [
-        image.install_rpms([
+        image.rpms_install([
             # A drive-by test that `image.source` syntax works in "rpms".  This
             # could have been just a target path, as in `feature_tar_and_rpms`.
             image.source(":rpm-test-cheese-2-1.rpm"),
@@ -195,12 +195,12 @@ image.layer(
 image.feature(
     name = "feature_tar_and_rpms",
     features = [
-        image.install_rpms([
+        image.rpms_install([
             # Local RPM file that is not (yet) installed or published
             ":rpm-test-cheese-2-1.rpm",
             "rpm-test-mice",
         ]),
-        image.uninstall_rpms([
+        image.rpms_remove_if_exists([
             "rpm-test-carrot",  # Installed by `parent_layer`
             # No-op in `child/layer` -- it was never installed
             "rpm-test-milk",
@@ -457,7 +457,7 @@ image.layer(
         # NB: `host_dir_mount` is exercised above.
         image.host_file_mount("/dev/null", "/dev_null"),
         image.layer_mount(":hello_world_base", "/mounted_hello"),
-        image.install_rpms(["rpm-test-carrot"]),  # Compact syntax for RPM installation.
+        image.rpms_install(["rpm-test-carrot"]),  # Compact syntax for RPM installation.
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -497,7 +497,7 @@ image.layer(
     name = "base_cheese_layer",
     parent_layer = ":hello_world_base",
     features = [
-        image.install_rpms([":rpm-test-cheese-2-1.rpm"]),
+        image.rpms_install([":rpm-test-cheese-2-1.rpm"]),
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -509,7 +509,7 @@ image.layer(
     name = "older_cheese_layer",
     parent_layer = ":base_cheese_layer",
     features = [
-        image.install_rpms([":rpm-test-cheese-1-1.rpm"]),
+        image.rpms_install([":rpm-test-cheese-1-1.rpm"]),
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -521,7 +521,7 @@ image.layer(
     name = "newer_cheese_layer",
     parent_layer = ":base_cheese_layer",
     features = [
-        image.install_rpms([":rpm-test-cheese-3-1.rpm"]),
+        image.rpms_install([":rpm-test-cheese-3-1.rpm"]),
     ],
     build_opts = image.opts(
         yum_from_repo_snapshot = "//fs_image/rpm:yum-from-test-snapshot",
@@ -545,7 +545,7 @@ image.layer(
     name = "install_toy_rpm",
     parent_layer = ":hello_world_base",
     features = [
-        image.install_rpms([
+        image.rpms_install([
             image.source(
                 layer = ":toy-rpm-build",
                 path = "rpmbuild/RPMS/toy.rpm",
