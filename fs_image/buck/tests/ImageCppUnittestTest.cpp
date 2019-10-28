@@ -6,7 +6,6 @@
 #include <set>
 #include <string>
 
-using namespace ::testing;
 
 TEST(ImageCppUnittest, TestContainer) {
   ASSERT_STREQ("nobody", ::getenv("USER"));
