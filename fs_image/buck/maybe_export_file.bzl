@@ -1,19 +1,26 @@
 """
-`maybe_export_file()` is used to generate an `export_file()` for files in the
-source repository referenced directly by an item such as `install_data()` or a
-similar rule that can take a local file as input.
+`maybe_export_file()` helps implement syntax sugar so that users of image
+items like `install_data` can write `install_data("repo/path", ...)` instead
+of the more verbose:
 
-In order to use these files from the source repository, we need Buck to export
-them (using `export_file()`, but for an user of the Buck language, that feels
-like an implementation detail.
+    export_file("file_in_repo")
+    ... install_data(":file_in_repo", ...) ...
 
-So we do it transparently from here, if we encounter a name that looks like a
-local file name (more specifically, something that doesn't match a Buck rule,
-which we detect by looking at whether it contains a `:`.
+The implementation of `install_data` (and of other image items) invokes this
+helper to accept:
+  - a target path (must contain a `:`) OR 
+  - a path to a repo-relative file or directory (must NOT contain a `:`).
+
+For the corner case of a a repo path that contains a colon, an explicit
+`export_file` must still be used.
 
 When generating an `export_file()` under the hood, we use a sigil prefix of
 `_IMAGE_EXPORT_FILE__` for the Buck target name, in order to avoid possible
 conflicts with targets defined by the user.
+
+In the future, it would be possible to expose a helper function to let users
+refer to these export targets (e.g.  `image.exported_file`), but it is
+probably better if they just type `export_file("their/file")` instead.
 """
 
 load("@bazel_skylib//lib:types.bzl", "types")
@@ -21,6 +28,9 @@ load("@bazel_skylib//lib:types.bzl", "types")
 def maybe_export_file(source):
     if source == None or not types.is_string(source) or ":" in source:
         return source
+
+    # `source` may contain slashes, and that's fine because Buck target
+    # names are allowed to contain slashes.
     buck_target_name = "_IMAGE_EXPORT_FILE__" + source
     if native.rule_exists(buck_target_name):
         return ":" + buck_target_name
