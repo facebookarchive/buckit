@@ -190,20 +190,6 @@ def _normalize_install_files(target_tagger, files, visibility, is_executable):
         normalized.append(_normalize_stat_options(d))
     return normalized
 
-def _normalize_tarballs(target_tagger, tarballs):
-    if tarballs == None:
-        return []
-
-    normalized = []
-    for d in tarballs:
-        # Normalize to the `image.source` interface
-        d["source"] = image_source_as_target_tagged_dict(
-            target_tagger,
-            d.pop("source"),
-        )
-        normalized.append(d)
-    return normalized
-
 def normalize_features(porcelain_targets_or_structs, human_readable_target):
     targets = []
     inline_dicts = []
@@ -340,25 +326,6 @@ def image_feature_INTERNAL_ONLY(
         # automatically at parse-time.
         install_data = None,
         install_executables = None,
-        # An iterable of tarballs to extract inside the image.
-        #
-        # The tarball is specified via the "source" field, which is either:
-        #  - an `image.source` (docs in `image_source.bzl`), or
-        #  - a path of a target outputting a tarball target path, e.g.
-        #    an `export_file` or a `genrule`.
-        #
-        # You must additionally specify `into_dir`, the destination of the
-        # unpacked tarball in the image.  This is an image-absolute path to
-        # a directory that must be created by another `image_feature` item.
-        #
-        # As with other `image.feature` items, order is not signficant, the
-        # image compiler will sort the items automatically.  Tarball items
-        # must be dicts -- example:
-        #     {
-        #         'into_dir': 'image_absolute/dir',
-        #         'source': '//target/to:extract',
-        #     }
-        tarballs = None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features = None,
@@ -397,7 +364,6 @@ def image_feature_INTERNAL_ONLY(
                 is_executable = True,
             ),
             mounts = _normalize_mounts(target_tagger, mounts),
-            tarballs = _normalize_tarballs(target_tagger, tarballs),
             features = [
                 tag_target(target_tagger, t)
                 for t in normalized_features.targets

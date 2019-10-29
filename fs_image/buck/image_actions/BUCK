@@ -63,7 +63,7 @@ fake_macro_library(
     name = "tarball",
     srcs = ["tarball.bzl"],
     deps = [
-        "//fs_image/buck:image_feature",
         "//fs_image/buck:maybe_export_file",
+        "//fs_image/buck:target_tagger",
     ],
 )
