@@ -204,29 +204,6 @@ def _normalize_tarballs(target_tagger, tarballs):
         normalized.append(d)
     return normalized
 
-def _rpm_name_or_source(name_source):
-    # Normal RPM names cannot have a colon, whereas target paths
-    # ALWAYS have a colon. `image.source` is a struct.
-    if ":" in name_source or not types.is_string(name_source):
-        return "source"
-    else:
-        return "name"
-
-def _normalize_rpms(target_tagger, rpms):
-    if rpms == None:
-        return []
-
-    normalized = []
-    for rpm in _coerce_dict_to_items(rpms):
-        dct = {"action": rpm[1], _rpm_name_or_source(rpm[0]): rpm[0]}
-        if dct.setdefault("source") != None:
-            dct["source"] = image_source_as_target_tagged_dict(
-                target_tagger,
-                dct["source"],
-            )
-        normalized.append(dct)
-    return normalized
-
 def normalize_features(porcelain_targets_or_structs, human_readable_target):
     targets = []
     inline_dicts = []
@@ -382,17 +359,6 @@ def image_feature_INTERNAL_ONLY(
         #         'source': '//target/to:extract',
         #     }
         tarballs = None,
-        # An iterable of RPM package names to install, **without** version
-        # or release numbers.  Order is not significant.  Also supported:
-        # {'package-name': 'install|remove_if_exists'}.  Note that removals
-        # may only be applied against the parent layer -- if your current
-        # layer includes features both removing and installing the same
-        # package, this will cause a build failure.
-        #
-        # You may also install an RPM that is the outputs of another buck
-        # rule by replacing `package-name` by an `image.source` (docs in
-        # `image_source.bzl`), or by a target path.
-        rpms = None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features = None,
@@ -432,11 +398,6 @@ def image_feature_INTERNAL_ONLY(
             ),
             mounts = _normalize_mounts(target_tagger, mounts),
             tarballs = _normalize_tarballs(target_tagger, tarballs),
-            # It'd be a bit expensive to do any kind of validation of RPM
-            # names right here, since we'd need the repo snapshot to decide
-            # whether the names are valid, and whether they contain a
-            # version or release number.  That'll happen later in the build.
-            rpms = _normalize_rpms(target_tagger, rpms),
             features = [
                 tag_target(target_tagger, t)
                 for t in normalized_features.targets

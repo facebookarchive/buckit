@@ -11,14 +11,6 @@ fake_macro_library(
 )
 
 fake_macro_library(
-    name = "rpms",
-    srcs = ["rpms.bzl"],
-    deps = [
-        "//fs_image/buck:image_feature",
-    ],
-)
-
-fake_macro_library(
     name = "mkdir",
     srcs = ["mkdir.bzl"],
     deps = [
@@ -46,6 +38,14 @@ fake_macro_library(
 fake_macro_library(
     name = "remove",
     srcs = ["remove.bzl"],
+    deps = [
+        "//fs_image/buck:target_tagger",
+    ],
+)
+
+fake_macro_library(
+    name = "rpms",
+    srcs = ["rpms.bzl"],
     deps = [
         "//fs_image/buck:target_tagger",
     ],
