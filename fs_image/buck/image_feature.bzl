@@ -39,7 +39,7 @@ Read that target's docblock for more info, but in essence, that will:
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
 load(":oss_shim.bzl", "buck_genrule", "get_visibility")
-load(":target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "normalize_target", "tag_and_maybe_wrap_executable_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
+load(":target_tagger.bzl", "new_target_tagger", "normalize_target", "tag_required_target_key", "tag_target", "target_tagger_to_feature")
 
 # ## Why are `image_feature`s forbidden as dependencies?
 #
@@ -91,12 +91,6 @@ def _coerce_dict_to_items(maybe_dct):
     "Any collection that takes a list of pairs also takes a dict."
     return maybe_dct.items() if types.is_dict(maybe_dct) else maybe_dct
 
-def _normalize_stat_options(d):
-    if "user:group" in d:
-        # enriched namedtuples cannot deal with colons in names
-        d["user_group"] = d.pop("user:group")
-    return d
-
 def _normalize_mounts(target_tagger, mounts):
     if mounts == None:
         return []
@@ -144,50 +138,6 @@ def _normalize_mounts(target_tagger, mounts):
 
         normalized.append(dct)
 
-    return normalized
-
-def _normalize_install_files(target_tagger, files, visibility, is_executable):
-    if files == None:
-        return []
-
-    normalized = []
-
-    for d in files:
-        d["is_executable_"] = is_executable  # Changes default permissions
-
-        # Normalize to the `image.source` interface
-        src = image_source_as_target_tagged_dict(target_tagger, d.pop("source"))
-
-        # NB: We don't have to wrap executables because they already come
-        # from a layer, which would have wrapped them if needed.
-        #
-        # Future: If `is_executable` is not set, we might use a Buck macro
-        # that enforces that the target is non-executable, as I suggested on
-        # Q15839.  This should probably go in `tag_required_target_key` to
-        # ensure that we avoid "unwrapped executable" bugs everywhere.  A
-        # possible reason NOT to do this is that it would require fixes to
-        # `install_data` invocations that extract non-executable contents
-        # out of a directory target that is executable.
-        if is_executable and src["source"]:
-            was_wrapped, src["source"] = tag_and_maybe_wrap_executable_target(
-                target_tagger = target_tagger,
-                # Peel back target tagging since this helper expects untagged.
-                target = extract_tagged_target(src.pop("source")),
-                wrap_prefix = "install_executables_wrap_source",
-                visibility = visibility,
-                # NB: Buck makes it hard to execute something out of an
-                # output that is a directory, but it is possible so long as
-                # the rule outputting the directory is marked executable
-                # (see e.g. `print-ok-too` in `feature_install_files`).
-                path_in_output = src.get("path", None),
-            )
-            if was_wrapped:
-                # The wrapper above has resolved `src["path"]`, so the
-                # compiler does not have to.
-                src["path"] = None
-
-        d["source"] = src
-        normalized.append(_normalize_stat_options(d))
     return normalized
 
 def normalize_features(porcelain_targets_or_structs, human_readable_target):
@@ -268,64 +218,6 @@ def image_feature_INTERNAL_ONLY(
         # Future: we may need another feature for removing mounts provided
         # by parent layers.
         mounts = None,
-        # The `install_` arguments are used to copy Buck build artifacts
-        # (wholly or partially) into an image. Basic syntax:
-        #
-        # Each argument is an iterable of targets to copy into the image.
-        # Files to copy can be specified using `image.source` (use this to
-        # grab one file from a directory or layer output, docs in
-        # `image_source.bzl`), or as string target paths.  You can supply a
-        # list mixing dicts and 2-element tuples (as below), or a dict keyed
-        # by source target (more below).
-        #
-        # Prefer to use the shortest form possible, instead of repeating the
-        # defaults in your spec.
-        #
-        # If you are supplying a list, here is what it can contain:
-        #   - tuple: ('//source/to:copy', 'image_absolute/dest/filename')
-        #   - dict: {
-        #         # An image-absolute path, including a filename for the
-        #         # file being copied.  The directory of `dest` must get
-        #         # created by another `image_feature` item.
-        #         'dest': 'image_absolute/dir/filename',
-        #
-        #         # The Buck target to copy (or to copy from).
-        #         'source': '//target/to/copy',  # Or an `image.source()`
-        #
-        #         # Please do NOT copy these defaults into your TARGETS:
-        #         'user:group': 'root:root',
-        #         'mode': 'a+r',  # or 'a+rx' for `install_executables`
-        #     }
-        #
-        # If your iterable is a dict, you can use items of two types:
-        #   - `'//source/to:copy': 'image/dest',`
-        #   - `'//source/to:copy': { ... dict as above, minus `source` ... },`
-        #
-        # The iterable's order is not signficant, the image compiler will
-        # sort the actions automatically.
-        #
-        # If the file being copied is an executable (e.g. `cpp_binary`,
-        # `python_binary`), use `install_executable`.  Ditto for copying
-        # executable files from inside directories output by other (custom?)
-        # executable rules. For everything else, use `install_data` [1].
-        #
-        # The implementation of `install_executables` differs significantly
-        # in `@mode/dev` in order to support the execution of in-place
-        # binaries (dynamically linked C++, linktree Python) from within an
-        # image.  Internal implementation differences aside, the resulting
-        # image should "quack" like your real, production `@mode/opt`.
-        #
-        # [1] Corner case: if you want to copy a non-executable file from
-        # inside a directory output by a Buck target, which is marked
-        # executable, then you should use `install_data`, even though the
-        # underlying rule is executable.
-        #
-        # Design note: This API forces you to distinguish between source
-        # targets that are executable and those that are not, because (until
-        # Buck supports providers), it is not possible to deduce this
-        # automatically at parse-time.
-        install_data = None,
-        install_executables = None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features = None,
@@ -352,17 +244,6 @@ def image_feature_INTERNAL_ONLY(
         target_tagger,
         items = struct(
             target = human_readable_target,
-            install_files = _normalize_install_files(
-                target_tagger = target_tagger,
-                files = install_data,
-                visibility = visibility,
-                is_executable = False,
-            ) + _normalize_install_files(
-                target_tagger = target_tagger,
-                files = install_executables,
-                visibility = visibility,
-                is_executable = True,
-            ),
             mounts = _normalize_mounts(target_tagger, mounts),
             features = [
                 tag_target(target_tagger, t)
