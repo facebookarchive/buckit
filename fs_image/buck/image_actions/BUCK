@@ -23,7 +23,7 @@ fake_macro_library(
     name = "mount",
     srcs = ["mount.bzl"],
     deps = [
-        "//fs_image/buck:image_feature",
+        "//fs_image/buck:target_tagger",
     ],
 )
 

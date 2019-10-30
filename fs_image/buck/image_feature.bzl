@@ -87,59 +87,6 @@ DO_NOT_DEPEND_ON_FEATURES_SUFFIX = (
     "SO_DO_NOT_DO_THIS_EVER_PLEASE_KTHXBAI"
 )
 
-def _coerce_dict_to_items(maybe_dct):
-    "Any collection that takes a list of pairs also takes a dict."
-    return maybe_dct.items() if types.is_dict(maybe_dct) else maybe_dct
-
-def _normalize_mounts(target_tagger, mounts):
-    if mounts == None:
-        return []
-
-    normalized = []
-    for mnt in _coerce_dict_to_items(mounts):
-        dct = {"mount_config": None, "mountpoint": None, "target": None}
-        source = None
-        if types.is_tuple(mnt):
-            if len(mnt) != 2:
-                fail((
-                    "`mounts` item {} must be " +
-                    "(mountpoint, target OR dict)"
-                ).format(mnt))
-            dct["mountpoint"] = mnt[0]
-            source = mnt[1]
-        else:
-            source = mnt
-
-        if types.is_string(source):
-            dct["target"] = source
-            tag_required_target_key(target_tagger, dct, "target")
-        elif types.is_dict(source):
-            # At present, we only accept dicts that carry an inline mount
-            # config (identical to the `mountconfig.json` of a mountable
-            # target, but without the overhead of having an on-disk target
-            # output). These two equivalent examples illustrate the usage:
-            #
-            #     mounts = {"/path/to": image.host_dir_mount(
-            #         source = "/home/banana/rama",
-            #     )}
-            #
-            #     mounts = [image.host_dir_mount(
-            #         mountpoint = "/path/to",
-            #         source = "/home/banana/rama",
-            #     )]
-            #
-            # In the future, we might accept other keys here, e.g. to
-            # override mount options or similar.
-            if sorted(list(source.keys())) != ["mount_config"]:
-                fail("bad keys in `mounts` item {}".format(mnt))
-            dct["mount_config"] = source["mount_config"]
-        else:
-            fail("`mounts` item {} lacks a mount source".format(mnt))
-
-        normalized.append(dct)
-
-    return normalized
-
 def normalize_features(porcelain_targets_or_structs, human_readable_target):
     targets = []
     inline_dicts = []
@@ -159,65 +106,6 @@ def normalize_features(porcelain_targets_or_structs, human_readable_target):
 
 def image_feature_INTERNAL_ONLY(
         name = None,
-        # An iterable or dictionary of targets that provide in-container
-        # mounts of subtrees or files.  Two* syntax variants are allowed:
-        #
-        #    # Implies the target-specified "conventional" mount-point.
-        #    mounts = [
-        #        "//path/to:name_of_mount",
-        #        "//path/to:another_mount_name",
-        #    ],
-        #
-        #    # Explicit mount-points, overriding whatever the target
-        #    # recommends as the default.
-        #    mounts = {
-        #        "/mount/point": "//path/to:name_of_mount",
-        #        "/mount/point": "//path/to:name_of_mount",
-        #    }
-        #
-        # Shadowing mountpoints will never be allowed. Additionally, for now:
-        #
-        #   - The mountpoint must not exist, and is automatically created as
-        #     an empty directory or file with root:root ownership.  If
-        #     needed, we may add a flag to accept pre-existing empty
-        #     mountpoints (`remove_paths` is a workaround).  The motivation
-        #     for auto-creating the mountpoint is two-fold:
-        #       * This reduces boilerplate in features with `mounts` -- the
-        #         properties of the mountpoint don't matter.
-        #       * This guarantees the mounpoint is empty.
-        #
-        #   - Nesting mountpoints is forbidden. If support is ever added,
-        #     we should make the intent to nest very explicit (syntax TBD).
-        #
-        #   - All mounts are read-only.
-        #
-        # A mount target, roughly, is a JSON blob with a "type" string, a
-        # "source" location interpretable by that type, and a
-        # "default_mountpoint".  We use targets as mount sources because:
-        #
-        #   - This allows mounts to be materialized, flexibly, at build-time,
-        #     and allows us to provide a cheap "development time" proxy for
-        #     mounts that might be distributed in a more costly way at
-        #     deployment time.
-        #
-        #   - This allows us Buck to cleanly cache mounts fetched from
-        #     package distribution systems -- i.e.  we can use the local
-        #     Buck cache the same way that Docker caches downloaded images.
-        #
-        # Adding a mount has two side effects on the `image.layer`:
-        #   - The mount will be materialized in the `buck-image-out` cache
-        #     of the local repo, so your filesystem acts as WYSIWIG.
-        #   - The mount will be recorded in `/meta/private/mount`.  PLEASE,
-        #     do not rely on this serializaation format for now, it will
-        #     change.  That's why it's "private".
-        #
-        # * There is actually a third syntax that is accepted in order to
-        #   support helper functions for declaring mounts -- see
-        #   `_image_host_mount` for an example.
-        #
-        # Future: we may need another feature for removing mounts provided
-        # by parent layers.
-        mounts = None,
         # Iterable of `image_feature` targets that are included by this one.
         # Order is not significant.
         features = None,
@@ -244,7 +132,6 @@ def image_feature_INTERNAL_ONLY(
         target_tagger,
         items = struct(
             target = human_readable_target,
-            mounts = _normalize_mounts(target_tagger, mounts),
             features = [
                 tag_target(target_tagger, t)
                 for t in normalized_features.targets
