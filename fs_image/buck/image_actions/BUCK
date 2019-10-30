@@ -28,10 +28,10 @@ fake_macro_library(
 )
 
 fake_macro_library(
-    name = "named_feature",
-    srcs = ["named_feature.bzl"],
+    name = "feature",
+    srcs = ["feature.bzl"],
     deps = [
-        "//fs_image/buck:image_feature",
+        "//fs_image/buck:target_tagger",
     ],
 )
 

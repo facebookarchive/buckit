@@ -1,7 +1,6 @@
 # Implementation detail for `image_layer.bzl`, see its docs.
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("@bazel_skylib//lib:types.bzl", "types")
-load(":image_feature.bzl", "normalize_features")
+load("//fs_image/buck/image_actions:feature.bzl", "normalize_features")
 load(":artifacts_require_repo.bzl", "built_artifacts_require_repo")
 load(":target_tagger.bzl", "new_target_tagger", "tag_target", "target_tagger_to_feature")
 

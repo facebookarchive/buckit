@@ -1,5 +1,5 @@
-load("//fs_image/buck:oss_shim.bzl", "python_library", "python_unittest")
 load("//fs_image/buck:image.bzl", "image")
+load("//fs_image/buck:oss_shim.bzl", "python_library", "python_unittest")
 
 python_library(
     name = "coverage_test_helper",

@@ -80,7 +80,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
 load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "get_visibility")
-load(":image_feature.bzl", "private_do_not_use_feature_json_genrule")
+load("//fs_image/buck/image_actions:feature.bzl", "private_do_not_use_feature_json_genrule")
 load(":image_layer.bzl", "image_layer")
 load(":target_tagger.bzl", "normalize_target")
 
