@@ -1,5 +1,6 @@
 load("//fs_image/buck:image.bzl", "image")
-load("//fs_image/buck:oss_shim.bzl", "python_library", "python_unittest")
+load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "python_library", "python_unittest")
+load("//fs_image/buck:systemd.bzl", "systemd")
 
 python_library(
     name = "coverage_test_helper",
@@ -55,4 +56,68 @@ image.python_unittest(
     srcs = ["test_toy_rpm_build_unittest.py"],
     layer = "//fs_image/compiler/tests:toy-rpm-build",
     deps = ["//fs_image/rpm:rpm_metadata"],
+)
+
+# systemd unit features
+export_file(name = "cheese-export.service")
+
+export_file(name = "cheese-source.service")
+
+buck_genrule(
+    name = "cheese-generator",
+    out = "dir",
+    bash = """
+    mkdir -p ${OUT}
+    cat > ${OUT}/cheese-generated.service <<'EOF'
+[Unit]
+Description=A generated cheese service.
+
+[Service]
+ExecStart=/bin/true
+EOF
+    """,
+)
+
+image.layer(
+    name = "systemd_feature-layer",
+    parent_layer = "//tupperware/image/slimos:slimos-stable",
+    features = [
+        # A target with a dest
+        systemd.install_unit(
+            ":cheese-export.service",
+            dest = "cheese-export-with-dest.service",
+        ),
+        systemd.enable_unit("cheese-export-with-dest.service"),
+
+        # A target with no dest and enabled in a non-default target
+        systemd.install_unit(":cheese-export.service"),
+        systemd.enable_unit(
+            "cheese-export.service",
+            target = "sysinit.target",
+        ),
+
+        # Local file syntax sugar with no dest
+        systemd.install_unit("cheese-file.service"),
+        systemd.enable_unit("cheese-file.service"),
+
+        # Image source from a genrule, with a path
+        systemd.install_unit(image.source(
+            ":cheese-generator",
+            path = "cheese-generated.service",
+        )),
+
+        # Image source with no path
+        systemd.install_unit(image.source(
+            ":cheese-source.service",
+        )),
+        # Mask a unit
+        systemd.mask_units(["cheese-source.service"]),
+    ],
+)
+
+image.python_unittest(
+    name = "test-systemd-features",
+    layer = ":systemd_feature-layer",
+    srcs = ["test_systemd_features.py"],
+    deps = ["//fs_image:fs_utils"],
 )

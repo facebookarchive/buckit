@@ -8,7 +8,7 @@ of the more verbose:
 
 The implementation of `install_data` (and of other image items) invokes this
 helper to accept:
-  - a target path (must contain a `:`) OR 
+  - a target path (must contain a `:`) OR
   - a path to a repo-relative file or directory (must NOT contain a `:`).
 
 For the corner case of a a repo path that contains a colon, an explicit
@@ -34,6 +34,7 @@ def maybe_export_file(source):
     buck_target_name = "_IMAGE_EXPORT_FILE__" + source
     if native.rule_exists(buck_target_name):
         return ":" + buck_target_name
+
     export_file(
         name = buck_target_name,
         src = source,
