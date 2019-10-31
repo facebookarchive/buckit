@@ -113,5 +113,5 @@ def target_tagger_to_feature(target_tagger, items, extra_deps = None):
         #
         # Future: Talk with the Buck team to see if we can eliminate
         # this inefficiency.
-        deps = target_tagger.targets.keys() + (extra_deps or []),
+        deps = list(target_tagger.targets.keys()) + (extra_deps or []),
     )
