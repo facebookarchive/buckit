@@ -531,7 +531,7 @@ image.layer(
 # The following rules will build a basic RPM in an rpmbuild_layer.
 image.rpmbuild_layer(
     name = "toy-rpm-build",
-    parent_layer = "//tupperware/image/slimos:slimos-rpmbuild-base",
+    parent_layer = "//tupperware/image/base:rpmbuild-base",
     specfile = "toy.spec",
     # Using export file like this (note the trailing slash) for sources means
     # that it won't have the top dir (toy_srcs/) included as part of the

@@ -322,7 +322,7 @@ def image_rpmbuild_layer(
         # The name of another `image_layer` target, on top of which the
         # current layer will build the RPM.
         # This should have any build dependencies installed, and preferably
-        # be built on top of //tupperware/image/slimos:slimos-rpmbuild-base.
+        # be built on top of //tupperware/image/base:rpmbuild-base.
         parent_layer,
         # The name of a specfile target (i.e. a single file made accessible
         # with `export_file()`).
