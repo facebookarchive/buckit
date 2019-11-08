@@ -206,8 +206,8 @@ class RpmActionItem(metaclass=ImageItem):
                         *bind_ro_args,
                         '--', 'sh', '-c',
                         f'''
-                        mkdir -p /mnt/var/cache/yum ;
-                        mount --bind /var/cache/yum /mnt/var/cache/yum ;
+                        mkdir -p /work/var/cache/yum ;
+                        mount --bind /var/cache/yum /work/var/cache/yum ;
                         /yum-from-snapshot {' '.join(
                                 '--protected-path=' + shlex.quote(p)
                                     for p in protected_path_set(subvol)

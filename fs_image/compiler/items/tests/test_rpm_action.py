@@ -93,13 +93,20 @@ class RpmActionItemTestCase(BaseItemTestCase):
             subvol.run_as_root([
                 'rm', '-rf',
                 # Annotate all paths since `sudo rm -rf` is scary.
-                subvol.path('var/cache/yum'),
                 subvol.path('var/lib/rpm'),
                 subvol.path('var/lib/yum'),
                 subvol.path('var/log/yum.log'),
                 subvol.path('usr/lib/.build-id'),
                 subvol.path('bin/sh'),
             ])
+            # The way that RpmActionItem invokes systemd_nspawn on
+            # build_appliance must gurantee that /var/cache/yum is empty.
+            # Next two lines test that the /var/cache/yum directory is empty
+            # because rmdir fails if it is not.
+            # It is important that the yum cache of built images be empty, to
+            # avoid unnecessarily increasing the distributed image size.
+            rm_cmd = ['rmdir'] if layer_opts.build_appliance else ['rm', '-rf']
+            subvol.run_as_root(rm_cmd + [subvol.path('var/cache/yum')])
             subvol.run_as_root([
                 'rmdir',
                 subvol.path('dev'),  # made by yum_from_snapshot.py
