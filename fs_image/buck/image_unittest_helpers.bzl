@@ -47,7 +47,8 @@ def _nspawn_wrapper_properties(
         inner_test_kwargs,
         extra_outer_kwarg_names,
         caller_fake_library,
-        visibility):
+        visibility,
+        hostname):
     # These args must be on the outer wrapper test, regardless of language.
     outer_kwarg_names = ["tags", "env"]
     outer_kwarg_names.extend(extra_outer_kwarg_names)
@@ -92,6 +93,7 @@ def nspawn_in_subvol_args():
                 for k in {pass_through_env_repr}
         ],
         *[{maybe_boot}],
+        *[{maybe_hostname}],
         '--', {binary_path_repr},
     ]
 """).format(
@@ -99,6 +101,7 @@ def nspawn_in_subvol_args():
             pass_through_env_repr = outer_test_kwargs.get("env", []),
             binary_path_repr = repr(binary_path),
             maybe_boot = "'--boot'" if boot else "",
+            maybe_hostname = "'--hostname={hostname}'".format(hostname = hostname) if hostname else "",
         ))),
         visibility = visibility,
     )

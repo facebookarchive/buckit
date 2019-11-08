@@ -8,6 +8,7 @@ def image_python_unittest(
         run_as_user = "nobody",
         visibility = None,
         par_style = None,
+        hostname = None,
         **python_unittest_kwargs):
     visibility = get_visibility(visibility, name)
 
@@ -22,6 +23,7 @@ def image_python_unittest(
         extra_outer_kwarg_names = ["needed_coverage"],
         caller_fake_library = "//fs_image/buck:image_python_unittest",
         visibility = visibility,
+        hostname = hostname,
     )
 
     # `par_style` only applies to the inner test that runs the actual user

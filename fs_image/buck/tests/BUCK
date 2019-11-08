@@ -27,6 +27,13 @@ image.python_unittest(
     boot = True,
 )
 
+image.python_unittest(
+    name = "test-image-hostname-python",
+    srcs = ["test_image_hostname.py"],
+    layer = "//fs_image/compiler/tests:only-for-tests-read-only-host-clone",
+    hostname = "test-hostname.com",
+)
+
 image.cpp_unittest(
     name = "test-image-cpp-unittest",
     srcs = ["ImageCppUnittestTest.cpp"],
@@ -40,6 +47,14 @@ image.cpp_unittest(
     layer = "//tupperware/image/slimos:slimos-stable",
     env = {"kitteh": "meow"},
     boot = True,
+)
+
+image.cpp_unittest(
+    name = "test-image-hostname-cpp",
+    srcs = ["ImageHostnameTest.cpp"],
+    layer = "//fs_image/compiler/tests:only-for-tests-read-only-host-clone",
+    env = {},
+    hostname = "test-hostname.com",
 )
 
 # Ensures that BUCK_BUILD_ID isn't just missing from the container tests by

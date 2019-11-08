@@ -373,6 +373,9 @@ def nspawn_in_subvol(
     if opts.cap_net_admin:
         extra_nspawn_args.append('--capability=CAP_NET_ADMIN')
 
+    if opts.hostname:
+        extra_nspawn_args.append(f'--hostname={opts.hostname[0]}')
+
     with (
         _snapshot_subvol(src_subvol, opts.snapshot_into) if opts.snapshot
             else nullcontext(src_subvol)
@@ -662,6 +665,11 @@ def parse_opts(argv):
         help='Print console output on stdout after the booted container has '
              'exited. This only matters when using the --boot option and is '
              'really only useful for manual debugging.',
+    )
+    parser.add_argument(
+        '--hostname', action='append', default=None,
+        help='Sets hostname within the container, thus causing it to differ '
+             'from `machine`.'
     )
     parser.add_argument(
         'cmd', nargs='*', default=[DEFAULT_SHELL],

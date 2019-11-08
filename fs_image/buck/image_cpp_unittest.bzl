@@ -7,6 +7,7 @@ def image_cpp_unittest(
         boot = False,
         run_as_user = "nobody",
         visibility = None,
+        hostname = None,
         **cpp_unittest_kwargs):
     visibility = get_visibility(visibility, name)
 
@@ -19,6 +20,7 @@ def image_cpp_unittest(
         extra_outer_kwarg_names = [],
         caller_fake_library = "//fs_image/buck:image_cpp_unittest",
         visibility = visibility,
+        hostname = hostname,
     )
 
     cpp_unittest(
@@ -86,7 +88,7 @@ int main(int argc, char **argv) {{
     (void) argc;  // Many FB codebases build with -Wunused-parameter
     const char* my_dir = dirname(argv[0]);
     const char* wrapper_binary = "{wrapper_filename}";
-    // The 2 extra bytes are slash & nul 
+    // The 2 extra bytes are slash & nul
     const size_t len = strlen(my_dir) + strlen(wrapper_binary) + 2;
     char *wrapper_path = calloc(len, 1);
     strncat(wrapper_path, my_dir, len - 1);

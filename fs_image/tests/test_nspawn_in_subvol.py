@@ -150,6 +150,14 @@ class NspawnTestCase(unittest.TestCase):
             'unshare', '--net', 'ifconfig', 'lo', 'up',
         ])
 
+    def test_hostname(self):
+        ret = self._nspawn_in('host', [
+            '--hostname=test-host.com',
+            '--',
+            '/bin/hostname',
+        ], stdout=subprocess.PIPE, check=True)
+        self.assertEqual(b'test-host.com\n', ret.stdout)
+
     @unittest.mock.patch.dict('os.environ', {
         'THRIFT_TLS_KITTEH': 'meow', 'UNENCRYPTED_KITTEH': 'woof',
     })
