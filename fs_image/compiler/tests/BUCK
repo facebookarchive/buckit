@@ -68,26 +68,6 @@ image.layer(
     ],
 )
 
-image.layer(
-    name = "only-for-tests-read-only-host-clone-no-machine-id",
-    parent_layer = ":only-for-tests-read-only-host-clone-base",
-    features = [
-        # Without os-release, nspawn cannot boot into this image.
-        image.mkdir("/", "etc"),
-        image.host_file_mount("/etc/os-release"),
-        # We use `nobody` in tests, which is presumably defined on the host.
-        image.host_file_mount("/etc/passwd"),
-    ],
-)
-
-image.layer(
-    name = "only-for-tests-read-only-host-clone-with-machine-id",
-    parent_layer = ":only-for-tests-read-only-host-clone-no-machine-id",
-    features = [
-        image.install_data("deadbeef-machine-id", "/etc/machine-id"),
-    ],
-)
-
 # The next 2 layers exercise the build appliance logic for RPM installation
 # (and other items in the future?).  This powers two distinct test types:
 #  - a uni tests `test_rpm_action_item_build_appliance` in `test-items`

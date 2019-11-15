@@ -146,31 +146,6 @@ def bind_args(src, dest=None, *, readonly=True):
     ]
 
 
-def _obfuscate_machine_id_args(nspawn_subvol):
-    '''
-    Ensure that the machine ID is not known inside the container.
-
-    This is important because images are usually built to be executed on an
-    indeterminate future machine, not on a specific known machine.  Building
-    with a fixed machine ID could potentially result in that ID leaking into
-    the image content (via hashes or directly), and creating issues at
-    runtime, when that machine ID would necessarily change.
-
-    The mechanism is as follows.  First, we never pass `--uuid`.  Second, we
-    ensure that the container either lacks `/etc/machine-id`, or that this
-    file is empty.  In neither case does `nspawn` write the machine ID into
-    `/etc/machine-id`.  Instead, it sets the environment variable
-    `container_uuid` to the `machine-id` that our bind-mount has shadowed,
-    or to a random value if none was set.  We avoid this UUID leak by asking
-    `nspawn` to make `container_uuid` empty.
-    '''
-    hide_id_args = ['--setenv=container_uuid=']
-    if _exists_in_image(nspawn_subvol, '/etc/machine-id'):
-        # Shadow a pre-existing `machine-id` with an empty file.
-        return hide_id_args + bind_args('/dev/null', '/etc/machine-id')
-    return hide_id_args
-
-
 def _inject_os_release_args(subvol):
     '''
     nspawn requires os-release to be present as a "sanity check", but does
@@ -222,7 +197,6 @@ def _nspawn_cmd(nspawn_subvol):
         # hostname to influence the resulting image.
         '--machine', uuid.uuid4().hex,
         '--directory', nspawn_subvol.path(),
-        *_obfuscate_machine_id_args(nspawn_subvol),
         *_inject_os_release_args(nspawn_subvol),
         # Don't pollute the host's /var/log/journal
         '--link-journal=no',

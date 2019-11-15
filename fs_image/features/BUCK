@@ -25,9 +25,13 @@ image.feature(
 image.feature(
     name = "build_artifact_cleanup",
     # Since we generally build images for containers, we should make sure
-    # that they do NOT contain a machine-id.  The concern is that the fixed
-    # machine ID would leak into other filesystem artifacts, which would
-    # then break when the machine-id inevitably gets changed at run-time.
+    # that they do contain an empty machine-id. The system manager (PID 1)
+    # will populate the file with a generated machine-id as the container
+    # boots.
+    #
+    # The systemd RPM includes a call to `systemd-machine-id-setup` in its
+    # %post script, which leaves a concrete /etc/machine-id file around.
+    # We should truncate it here and ship an empty file instead.
     features = [
         image.remove(
             "/etc/machine-id",

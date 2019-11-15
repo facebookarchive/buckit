@@ -77,14 +77,16 @@ class NspawnTestCase(unittest.TestCase):
         self.assertIn(b'abracadabra\n', ret.stderr)
 
     def test_machine_id(self):
-        # Whether or not the layer filesystem had a machine ID, it should
-        # not be visible in the container.
-        for resource in ('host', 'host-with-machine-id', 'host-no-machine-id'):
-            self._nspawn_in(resource, [
-                '--', 'sh', '-uexc',
-                # Either the file does not exist, or it is empty.
-                'test \\! -s /etc/machine-id && test -z "$container_uuid"',
-            ])
+        # Images meant to be used as a container root should include an empty
+        # /etc/machine-id file. This file will be populated by the system
+        # manager when it first boots the container. Furthermore, this will
+        # not cause the firstboot + presets behavior that is triggered when the
+        # machine-id file does not exist.
+        self._nspawn_in('slimos', [
+            '--', 'sh', '-uexc',
+            # Ensure the machine-id file exists and is empty.
+            'test -e /etc/machine-id -a ! -s /etc/machine-id',
+        ])
 
     def test_logs_directory(self):
         # The log directory is on by default.
