@@ -1,6 +1,6 @@
-load("//fs_image/buck:image.bzl", "image")
-load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "python_library", "python_unittest")
-load("//fs_image/buck:systemd.bzl", "systemd")
+load("//fs_image/bzl:image.bzl", "image")
+load("//fs_image/bzl:oss_shim.bzl", "buck_genrule", "python_library", "python_unittest")
+load("//fs_image/bzl:systemd.bzl", "systemd")
 
 python_library(
     name = "coverage_test_helper",

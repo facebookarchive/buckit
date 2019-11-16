@@ -11,7 +11,7 @@ By default, it is an error if the specified path is missing from the image,
 though this can be avoided by setting `must_exist` to `False`.
 """
 
-load("//fs_image/buck:target_tagger.bzl", "new_target_tagger", "target_tagger_to_feature")
+load("//fs_image/bzl:target_tagger.bzl", "new_target_tagger", "target_tagger_to_feature")
 
 def image_remove(dest, must_exist = True):
     return target_tagger_to_feature(
@@ -23,5 +23,5 @@ def image_remove(dest, must_exist = True):
             },
         ]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:remove"],
+        extra_deps = ["//fs_image/bzl/image_actions:remove"],
     )

@@ -51,7 +51,7 @@ Future: we may need another feature for removing mounts provided by parent
 layers.
 """
 
-load("//fs_image/buck:target_tagger.bzl", "new_target_tagger", "tag_required_target_key", "target_tagger_to_feature")
+load("//fs_image/bzl:target_tagger.bzl", "new_target_tagger", "tag_required_target_key", "target_tagger_to_feature")
 
 def _image_host_mount(source, mountpoint, is_directory):
     return {
@@ -75,7 +75,7 @@ def image_host_dir_mount(source, mountpoint = None):
         new_target_tagger(),
         items = struct(mounts = [mount_spec]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:mount"],
+        extra_deps = ["//fs_image/bzl/image_actions:mount"],
     )
 
 def image_host_file_mount(source, mountpoint = None):
@@ -88,7 +88,7 @@ def image_host_file_mount(source, mountpoint = None):
         new_target_tagger(),
         items = struct(mounts = [mount_spec]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:mount"],
+        extra_deps = ["//fs_image/bzl/image_actions:mount"],
     )
 
 def image_layer_mount(source, mountpoint = None):
@@ -100,5 +100,5 @@ def image_layer_mount(source, mountpoint = None):
         target_tagger = target_tagger,
         items = struct(mounts = [mount_spec]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:mount"],
+        extra_deps = ["//fs_image/bzl/image_actions:mount"],
     )

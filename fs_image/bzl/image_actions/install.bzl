@@ -39,9 +39,9 @@ executable and those that are not, because (until Buck supports providers), it
 is not possible to deduce this automatically at parse-time.
 """
 
-load("//fs_image/buck:add_stat_options.bzl", "add_stat_options")
-load("//fs_image/buck:maybe_export_file.bzl", "maybe_export_file")
-load("//fs_image/buck:target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "tag_and_maybe_wrap_executable_target", "target_tagger_to_feature")
+load("//fs_image/bzl:add_stat_options.bzl", "add_stat_options")
+load("//fs_image/bzl:maybe_export_file.bzl", "maybe_export_file")
+load("//fs_image/bzl:target_tagger.bzl", "extract_tagged_target", "image_source_as_target_tagged_dict", "new_target_tagger", "tag_and_maybe_wrap_executable_target", "target_tagger_to_feature")
 
 def image_install_executable(source, dest, mode = None, user = None, group = None):
     target_tagger = new_target_tagger()
@@ -80,7 +80,7 @@ def image_install_executable(source, dest, mode = None, user = None, group = Non
         target_tagger,
         items = struct(install_files = [install_spec]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:install"],
+        extra_deps = ["//fs_image/bzl/image_actions:install"],
     )
 
 def image_install_data(source, dest, mode = None, user = None, group = None):
@@ -102,5 +102,5 @@ def image_install_data(source, dest, mode = None, user = None, group = None):
         target_tagger,
         items = struct(install_files = [install_spec]),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:install"],
+        extra_deps = ["//fs_image/bzl/image_actions:install"],
     )

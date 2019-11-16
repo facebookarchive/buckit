@@ -4,9 +4,9 @@
 ## test will then check that they become the right image compiler Items.
 ##
 
-load("//fs_image/buck:image.bzl", "image")
-load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "buck_sh_binary", "python_binary")
-load("//fs_image/buck:wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
+load("//fs_image/bzl:image.bzl", "image")
+load("//fs_image/bzl:oss_shim.bzl", "buck_genrule", "buck_sh_binary", "python_binary")
+load("//fs_image/bzl:wrap_runtime_deps.bzl", "maybe_wrap_runtime_deps_as_build_time_deps")
 
 # The rule `hello_world.tar` must be deterministic to be used in images.
 hello_tar_hash = (

@@ -37,8 +37,8 @@ Read that target's docblock for more info, but in essence, that will:
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "get_visibility")
-load("//fs_image/buck:target_tagger.bzl", "new_target_tagger", "normalize_target", "tag_target", "target_tagger_to_feature")
+load("//fs_image/bzl:oss_shim.bzl", "buck_genrule", "get_visibility")
+load("//fs_image/bzl:target_tagger.bzl", "new_target_tagger", "normalize_target", "tag_target", "target_tagger_to_feature")
 
 # ## Why are `image.feature`s forbidden as dependencies?
 #
@@ -171,7 +171,7 @@ def image_feature(name = None, features = None, visibility = None):
         ),
         extra_deps = normalized_features.direct_deps + [
             # The `fake_macro_library` docblock explains this self-dependency
-            "//fs_image/buck/image_actions:feature",
+            "//fs_image/bzl/image_actions:feature",
         ],
     )
 

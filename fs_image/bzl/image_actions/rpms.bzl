@@ -16,7 +16,7 @@ in`image_source.bzl`), or by directly providing a target path.
 """
 
 load("@bazel_skylib//lib:types.bzl", "types")
-load("//fs_image/buck:target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger", "target_tagger_to_feature")
+load("//fs_image/bzl:target_tagger.bzl", "image_source_as_target_tagged_dict", "new_target_tagger", "target_tagger_to_feature")
 
 def _rpm_name_or_source(name_source):
     # Normal RPM names cannot have a colon, whereas target paths
@@ -48,7 +48,7 @@ def _build_rpm_feature(rpmlist, action):
         target_tagger = target_tagger,
         items = struct(rpms = res_rpms),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:rpms"],
+        extra_deps = ["//fs_image/bzl/image_actions:rpms"],
     )
 
 def image_rpms_install(rpmlist):

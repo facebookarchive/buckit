@@ -79,8 +79,8 @@ To get the best of both worlds, use this pattern:
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("//fs_image/buck:oss_shim.bzl", "buck_genrule", "get_visibility")
-load("//fs_image/buck/image_actions:feature.bzl", "private_do_not_use_feature_json_genrule")
+load("//fs_image/bzl:oss_shim.bzl", "buck_genrule", "get_visibility")
+load("//fs_image/bzl/image_actions:feature.bzl", "private_do_not_use_feature_json_genrule")
 load(":image_layer.bzl", "image_layer")
 load(":target_tagger.bzl", "normalize_target")
 
@@ -184,7 +184,7 @@ def _fetched_package_layer(
         deps = [
             # We want to re-fetch packages if the fetching mechanics change.
             # `def fake_macro_library` has more details.
-            "//fs_image/buck:fetched_package_layer",
+            "//fs_image/bzl:fetched_package_layer",
         ] + fetcher.extra_deps,
         output_feature_cmd = """
         {print_how_to_fetch_json} |

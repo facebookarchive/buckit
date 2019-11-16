@@ -87,9 +87,9 @@ The consequences of this information hiding are:
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:types.bzl", "types")
-load("//fs_image/buck/image_actions:install.bzl", "image_install_data")
-load("//fs_image/buck/image_actions:mkdir.bzl", "image_mkdir")
-load("//fs_image/buck/image_actions:tarball.bzl", "image_tarball")
+load("//fs_image/bzl/image_actions:install.bzl", "image_install_data")
+load("//fs_image/bzl/image_actions:mkdir.bzl", "image_mkdir")
+load("//fs_image/bzl/image_actions:tarball.bzl", "image_tarball")
 load(":compile_image_features.bzl", "compile_image_features")
 load(":image_utils.bzl", "image_utils")
 load(":maybe_export_file.bzl", "maybe_export_file")
@@ -161,7 +161,7 @@ def _image_layer_impl(
         name = _layer_name,
         out = "layer",
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
-            self_dependency = "//fs_image/buck:image_layer",
+            self_dependency = "//fs_image/bzl:image_layer",
             bash = '''
             # We want subvolume names to be user-controllable. To permit
             # this, we wrap each subvolume in a temporary subdirectory.

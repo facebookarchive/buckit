@@ -1,12 +1,12 @@
-load("//fs_image/buck:defs.bzl", "fake_macro_library")
+load("//fs_image/bzl:defs.bzl", "fake_macro_library")
 
 fake_macro_library(
     name = "install",
     srcs = ["install.bzl"],
     deps = [
-        "//fs_image/buck:add_stat_options",
-        "//fs_image/buck:maybe_export_file",
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:add_stat_options",
+        "//fs_image/bzl:maybe_export_file",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -14,8 +14,8 @@ fake_macro_library(
     name = "mkdir",
     srcs = ["mkdir.bzl"],
     deps = [
-        "//fs_image/buck:add_stat_options",
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:add_stat_options",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -23,7 +23,7 @@ fake_macro_library(
     name = "mount",
     srcs = ["mount.bzl"],
     deps = [
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -31,7 +31,7 @@ fake_macro_library(
     name = "feature",
     srcs = ["feature.bzl"],
     deps = [
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -39,7 +39,7 @@ fake_macro_library(
     name = "remove",
     srcs = ["remove.bzl"],
     deps = [
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -47,7 +47,7 @@ fake_macro_library(
     name = "rpms",
     srcs = ["rpms.bzl"],
     deps = [
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -55,7 +55,7 @@ fake_macro_library(
     name = "symlink",
     srcs = ["symlink.bzl"],
     deps = [
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:target_tagger",
     ],
 )
 
@@ -63,7 +63,7 @@ fake_macro_library(
     name = "tarball",
     srcs = ["tarball.bzl"],
     deps = [
-        "//fs_image/buck:maybe_export_file",
-        "//fs_image/buck:target_tagger",
+        "//fs_image/bzl:maybe_export_file",
+        "//fs_image/bzl:target_tagger",
     ],
 )

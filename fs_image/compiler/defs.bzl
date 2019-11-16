@@ -1,5 +1,5 @@
-load("//fs_image/buck:oss_shim.bzl", "python_unittest")
-load("//fs_image/buck:artifacts_require_repo.bzl", "built_artifacts_require_repo")
+load("//fs_image/bzl:artifacts_require_repo.bzl", "built_artifacts_require_repo")
+load("//fs_image/bzl:oss_shim.bzl", "python_unittest")
 
 TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 

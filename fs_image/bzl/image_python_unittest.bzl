@@ -21,7 +21,7 @@ def image_python_unittest(
         # Future: there is probably a "generically correct" way of handling
         # `needed_coverage`, but we'll find it later.
         extra_outer_kwarg_names = ["needed_coverage"],
-        caller_fake_library = "//fs_image/buck:image_python_unittest",
+        caller_fake_library = "//fs_image/bzl:image_python_unittest",
         visibility = visibility,
         hostname = hostname,
     )

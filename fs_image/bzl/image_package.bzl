@@ -42,7 +42,7 @@ def image_package(
         out = "layer." + format,
         type = _IMAGE_PACKAGE,  # For queries
         bash = image_utils.wrap_bash_build_in_common_boilerplate(
-            self_dependency = "//fs_image/buck:image_package",
+            self_dependency = "//fs_image/bzl:image_package",
             # We don't need to hold any subvolume lock because we trust
             # that (a) Buck will keep our input JSON alive, and (b) the
             # existence of the JSON will keep the refcount above 1,

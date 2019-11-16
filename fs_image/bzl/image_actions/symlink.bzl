@@ -10,7 +10,7 @@
      directory of `dest` must get created by another image feature.
 """
 
-load("//fs_image/buck:target_tagger.bzl", "new_target_tagger", "target_tagger_to_feature")
+load("//fs_image/bzl:target_tagger.bzl", "new_target_tagger", "target_tagger_to_feature")
 
 def _build_symlink_feature(link_target, link_name, symlinks_to_arg):
     symlink_spec = {
@@ -21,7 +21,7 @@ def _build_symlink_feature(link_target, link_name, symlinks_to_arg):
         new_target_tagger(),
         items = struct(**{symlinks_to_arg: [symlink_spec]}),
         # The `fake_macro_library` docblock explains this self-dependency
-        extra_deps = ["//fs_image/buck/image_actions:symlink"],
+        extra_deps = ["//fs_image/bzl/image_actions:symlink"],
     )
 
 def image_symlink_dir(link_target, link_name):

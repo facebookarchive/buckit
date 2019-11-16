@@ -1,5 +1,5 @@
-load("//fs_image/buck:oss_shim.bzl", "python_binary", "python_library", "python_unittest")
-load("//fs_image/buck:image.bzl", "image")
+load("//fs_image/bzl:image.bzl", "image")
+load("//fs_image/bzl:oss_shim.bzl", "python_binary", "python_library", "python_unittest")
 
 TEST_TARGET_PREFIX = "//fs_image/compiler/tests:"
 

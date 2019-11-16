@@ -18,7 +18,7 @@ def image_cpp_unittest(
         run_as_user = run_as_user,
         inner_test_kwargs = cpp_unittest_kwargs,
         extra_outer_kwarg_names = [],
-        caller_fake_library = "//fs_image/buck:image_cpp_unittest",
+        caller_fake_library = "//fs_image/bzl:image_cpp_unittest",
         visibility = visibility,
         hostname = hostname,
     )
