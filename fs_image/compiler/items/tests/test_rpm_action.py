@@ -145,7 +145,9 @@ class RpmActionItemTestCase(BaseItemTestCase):
         # host mounts, and another FB-specific one that is an actual
         # published image used for production builds.  Let's exercise both.
         for filename in [
-            'fb-test-build-appliance', 'host-test-build-appliance',
+            'fb-test-build-appliance',
+            'host-test-build-appliance',
+            'fb-host-test-build-appliance',
         ]:
             self._test_rpm_action_item(layer_opts=DUMMY_LAYER_OPTS._replace(
                 build_appliance=get_subvolume_path(

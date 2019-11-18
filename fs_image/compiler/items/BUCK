@@ -64,6 +64,7 @@ python_unittest(
     par_style = "zip",
     resources = {
         "//fs_image/build_appliance/facebook:fb_build_appliance_testing": "tests/fb-test-build-appliance",
+        "//fs_image/build_appliance/facebook:fb_host_build_appliance_testing": "tests/fb-host-test-build-appliance",
         "//fs_image/compiler/tests:create_ops-original.sendstream": "tests/create_ops.sendstream",
         "//fs_image/compiler/tests:fake-build-appliance-from-host": "tests/host-test-build-appliance",
         "//fs_image/compiler/tests:layer-with-only-one-locally-installed-rpm": "tests/test-with-one-local-rpm",

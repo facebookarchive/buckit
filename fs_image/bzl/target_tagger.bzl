@@ -72,6 +72,9 @@ def tag_and_maybe_wrap_executable_target(target_tagger, target, wrap_prefix, **k
         name if len(name) < 15 else (name[:6] + "..." + name[-6:])
     ) + "__" + hex_crc32(target)
 
+    if native.rule_exists(wrapped_target):
+        return True, tag_target(target_tagger, ":" + wrapped_target)
+
     # The `wrap_runtime_deps_as_build_time_deps` docblock explains this:
     was_wrapped, maybe_target = maybe_wrap_runtime_deps_as_build_time_deps(
         name = wrapped_target,
