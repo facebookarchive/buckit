@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import base64
 import enum
 import shlex
 import sys
+import uuid
 
 from typing import Iterable, List, NamedTuple, Tuple, Union
 
@@ -192,36 +194,61 @@ class RpmActionItem(metaclass=ImageItem):
                     ])
                 else:
                     rpms, bind_ro_args = _rpms_and_bind_ro_args(nors)
-                    opts = nspawn_in_subvol_parse_opts([
-                        '--layer', 'UNUSED',
-                        '--user', 'root',
-                        # You can see below --no-private-network in conjunction
-                        # with --cap-net-admin. It is not intended to administer
-                        # the host's network stack. See how yum_from_snapshot()
-                        # brings loopback interface up under protection of
-                        # "unshare --net".
-                        '--no-private-network',
-                        '--cap-net-admin',
-                        '--bindmount-rw', subvol.path().decode(), '/work',
-                        *bind_ro_args,
-                        '--', 'sh', '-c',
-                        f'''
-                        mkdir -p /work/var/cache/yum ;
-                        mount --bind /var/cache/yum /work/var/cache/yum ;
-                        /yum-from-snapshot {' '.join(
-                                '--protected-path=' + shlex.quote(p)
-                                    for p in protected_path_set(subvol)
-                            )} --install-root /work -- {
-                                RPM_ACTION_TYPE_TO_YUM_CMD[action]
-                            } --assumeyes -- {" ".join(sorted(rpms))}
-                        ''',
-                    ])
-                    nspawn_in_subvol(
-                        Subvol(layer_opts.build_appliance, already_exists=True),
-                        opts,
-                        stdout=sys.stderr,
+                    _yum_using_build_appliance(
+                        build_appliance=Subvol(
+                            layer_opts.build_appliance, already_exists=True,
+                        ),
+                        nspawn_args=bind_ro_args,
+                        install_root=subvol.path(),
+                        protected_paths=protected_path_set(subvol),
+                        yum_args=[
+                            RPM_ACTION_TYPE_TO_YUM_CMD[action],
+                            '--assumeyes',
+                            # Sort ensures determinism even if `yum` is
+                            # order-dependent
+                            *sorted(rpms),
+                        ],
                     )
         return builder
+
+
+# Besides aiding readability, this is a separate helper so that
+# `test-yum-from-snapshot` can use it in the near future.
+def _yum_using_build_appliance(
+    *, build_appliance: Subvol,
+    nspawn_args: List[str],
+    install_root: Path,
+    protected_paths: Iterable[str],
+    yum_args: List[str],
+):
+    work_dir = '/work' + base64.urlsafe_b64encode(
+        uuid.uuid4().bytes  # base64 instead of hex saves 10 bytes
+    ).decode().strip('=')
+    opts = nspawn_in_subvol_parse_opts([
+        '--layer', 'UNUSED',
+        '--user', 'root',
+        # You can see below --no-private-network in conjunction with
+        # --cap-net-admin.  CAP_NET_ADMIN is not intended to administer the
+        # host's network stack.  See how yum_from_snapshot() brings loopback
+        # interface up under protection of "unshare --net".
+        '--cap-net-admin',
+        '--no-private-network',
+        '--bindmount-rw', install_root.decode(), work_dir,
+        *nspawn_args,
+        '--', 'sh', '-c',
+        f'''
+        mkdir -p {work_dir}/var/cache/yum ;
+        mount --bind /var/cache/yum {work_dir}/var/cache/yum ;
+        /yum-from-snapshot \
+            {' '.join(
+                '--protected-path=' + shlex.quote(p) for p in protected_paths
+            )} \
+            --install-root {work_dir} \
+            -- {' '.join(shlex.quote(arg) for arg in yum_args)}
+        ''',
+    ])
+    # Don't pollute stdout with logging
+    nspawn_in_subvol(build_appliance, opts, stdout=sys.stderr)
 
 
 class RpmBuildItem(metaclass=ImageItem):
