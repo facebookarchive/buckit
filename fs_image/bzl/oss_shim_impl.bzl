@@ -13,6 +13,7 @@ load("@fbcode_macros//build_defs/lib:visibility.bzl", "get_visibility")
 shim = struct(
     buck_command_alias = buck_command_alias,
     buck_genrule = buck_genrule,
+    buck_sh_binary = buck_sh_binary,
     config = struct(
         get_current_repo_name = config.get_current_repo_name,
         get_project_root_from_gen_dir = get_project_root_from_gen_dir,
