@@ -171,6 +171,7 @@ FBCODE_RULES = [
     'python_library',
     'python_testslide',
     'python_unittest',
+    'python_logger',
     'remote_file',
     'rust_binary',
     'rust_library',
