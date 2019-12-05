@@ -1,5 +1,0 @@
-[Unit]
-Description=Another Cheesy Test Service that is an implicit export_file
-
-[Service]
-ExecStart=/bin/true
