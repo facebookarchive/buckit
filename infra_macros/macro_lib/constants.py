@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # Copyright 2016-present, Facebook, Inc.
 # All rights reserved.
@@ -191,6 +191,7 @@ FBCODE_RULES = [
     'python_library',
     'python_testslide',
     'python_unittest',
+    'python_pytest',
     'python_logger',
     'remote_file',
     'rust_binary',
