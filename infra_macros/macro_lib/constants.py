@@ -213,6 +213,8 @@ FBCODE_RULES = [
     'prebuilt_jar',
     'python_wheel',
     'python_wheel_default',
+    'flow_unittest',
+    'flow_workflow_unittest',
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
