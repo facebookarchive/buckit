@@ -67,6 +67,7 @@ def parse_target(
         repo, base = target.split('//', 1)
         repo = repo or default_repo
         base, name = base.split(':', 1)
+        # pyre-fixme[6]: Expected `str` for 1st param but got `Optional[str]`.
         return RuleTarget(repo, base, name)
     else:
         raise ValueError(
@@ -97,6 +98,7 @@ def parse_target(
             '"{}"'
             .format(target))
 
+    # pyre-fixme[6]: Expected `str` for 1st param but got `Optional[str]`.
     return RuleTarget(repo, base, name)
 
 
@@ -112,6 +114,7 @@ def parse_external_dep(
         target = raw_target
     elif isinstance(
         raw_target,
+        # pyre-fixme[18]: Global name `basestring` is undefined.
         str if sys.version_info[0] >= 3 else basestring  # noqa F821
     ):
         target = (raw_target, )
@@ -147,4 +150,7 @@ def parse_external_dep(
             'elements'
             .format(raw_target))
 
+    # pyre-fixme[7]: Expected `Tuple[RuleTarget, str]` but got `Tuple[RuleTarget,
+    #  Optional[str]]`.
+    # pyre-fixme[6]: Expected `str` for 1st param but got `Optional[str]`.
     return RuleTarget(repo, base, name), version
