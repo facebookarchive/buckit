@@ -20,9 +20,9 @@ python_library(
 
 python_library(
     name = "constants",
-    srcs = [
-        "constants.py",
-    ],
+    srcs = {
+        "constants.bzl": "constants.py",
+    },
     # Buckification macros must be runnable from source tree and so *cannot*
     # have any deps.
     deps = [],

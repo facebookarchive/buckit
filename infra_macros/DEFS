@@ -8,7 +8,7 @@
 # A simple definitions file that lets us bootstrap the
 # macros library.
 
-load(":macros.py", "install_converted_rules")
+load(":macros.bzl", "install_converted_rules")
 install_converted_rules(globals())
 
 load(

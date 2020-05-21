@@ -5,11 +5,10 @@ load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 # of these files trigger thoses tests on diffs.
 python_library(
     name = "infra_macros",
-    srcs = (
-        glob(["macro_lib/**/*.py"]) + [
-            "macros.py",
-        ]
-    ),
+    srcs = glob(["macro_lib/**/*.py"]),
+    resources = [
+        "macros.bzl",
+    ],
     # Buckification macros must be runnable from source tree and so *cannot*
     # have any deps.
     deps = [],
@@ -26,9 +25,9 @@ java_library(
     resources = (
         glob([
             "macro_lib/**/*.py",
-            "macros.py",
         ]) + [
             "fbcode_macros//build_defs:all_bzl_files",
+            "macros.bzl",
         ]
     ),
     resources_root = ".",
