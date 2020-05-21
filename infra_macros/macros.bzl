@@ -180,5 +180,10 @@ def install_converted_rules(globals):
     enabled_rule_types = native.read_config("fbcode", "enabled_rule_types", None)
     if enabled_rule_types != None:
         enabled_rule_types = [r.strip() for r in enabled_rule_types.split(",")]
-        for rule_type in sets.make(all_rule_types).difference(sets.make(enabled_rule_types)):
+        for rule_type in sets.to_list(
+            sets.difference(
+                sets.make(all_rule_types),
+                sets.make(enabled_rule_types)
+            )
+        ):
             globals[rule_type] = functools.partial(ignored_buck_rule, rule_type)
