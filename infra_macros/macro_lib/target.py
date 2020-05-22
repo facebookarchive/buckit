@@ -114,7 +114,7 @@ def parse_external_dep(
         target = raw_target
     elif isinstance(
         raw_target,
-        # pyre-fixme[18]: Global name `basestring` is undefined.
+        # pyre-fixme[10]: Name `basestring` is used but not defined.
         str if sys.version_info[0] >= 3 else basestring  # noqa F821
     ):
         target = (raw_target, )
