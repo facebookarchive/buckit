@@ -208,6 +208,7 @@ FBCODE_RULES = [
     "python_wheel_default",
     "flow_unittest",
     "flow_workflow_unittest",
+    "cogwheel_test",
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
