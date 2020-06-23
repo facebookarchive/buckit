@@ -113,6 +113,7 @@ BUCK_RULES = [
     "scene_kit_assets",
     "sh_binary",
     "sh_test",
+    "supermodule_target_graph",
     "swift_library",
     "swift_toolchain",
     "test_suite",
