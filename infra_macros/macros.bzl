@@ -130,7 +130,7 @@ def rule_handler(rule_type, **kwargs):
 
     attributes = kwargs
 
-    base_path = get_base_path()
+    base_path = package_name()
 
     # Set default visibility
     attributes["visibility"] = get_visibility_for_base_path(
