@@ -209,6 +209,7 @@ FBCODE_RULES = [
     "python_wheel_default",
     "flow_unittest",
     "flow_workflow_unittest",
+    "fblearner_flow_util_python_library",
     "cogwheel_test",
 ]
 
