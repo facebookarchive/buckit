@@ -8,8 +8,9 @@
 # A simple definitions file that lets us bootstrap the
 # macros library.
 
-load(":macros.bzl", "install_converted_rules")
-install_converted_rules(globals())
+load(":macros.bzl", "get_converted_rules")
+
+load_symbols(get_converted_rules())
 
 load(
     "@fbcode_macros//build_defs:export_files.bzl",
