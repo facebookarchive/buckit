@@ -212,6 +212,7 @@ FBCODE_RULES = [
     "fblearner_flow_util_python_library",
     "cogwheel_test",
     "cpp_lionhead_harness",
+    "missing_tp2_project",
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
