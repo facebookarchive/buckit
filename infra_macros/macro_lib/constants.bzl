@@ -213,6 +213,8 @@ FBCODE_RULES = [
     "cogwheel_test",
     "cpp_lionhead_harness",
     "missing_tp2_project",
+    "dper3_library",
+    "dper3_unittest",
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
