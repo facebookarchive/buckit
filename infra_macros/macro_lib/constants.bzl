@@ -195,8 +195,6 @@ FBCODE_RULES = [
     "rust_external_library",
     "scala_library",
     "scala_test",
-    "smart_cws_agent_cxx",
-    "smart_cws_agent_py",
     "smart_service_cxx",
     "smart_service_py",
     "sphinx_wiki",
