@@ -1,4 +1,0 @@
-[repositories]
-patchelf = $(config repository_aliases.yarn|@buckpkg/patchelf)
-buckit = $(config repository_aliases.yarn|@buckpkg/buckit)
-python = $(config repository_aliases.yarn|@buckpkg/python)

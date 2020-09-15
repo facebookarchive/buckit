@@ -1,6 +1,0 @@
-include_defs("buckit//DEFS")
-
-buckit_system_binary(
-    name = "bison",
-    binary = "bison",
-)

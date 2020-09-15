@@ -1,2 +1,0 @@
-[repositories]
-buckit = $(config repository_aliases.yarn|@buckpkg/buckit)
