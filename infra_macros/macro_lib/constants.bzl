@@ -200,6 +200,7 @@ FBCODE_RULES = [
     "scala_test",
     "smart_service_cxx",
     "smart_service_py",
+    "smart_service_rust",
     "sphinx_wiki",
     "sphinx_manpage",
     "swig_library",
