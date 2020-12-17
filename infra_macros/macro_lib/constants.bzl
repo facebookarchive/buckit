@@ -212,6 +212,7 @@ FBCODE_RULES = [
     "flow_unittest",
     "flow_workflow_unittest",
     "fblearner_flow_util_python_library",
+    "cogwheel_lite_test",
     "cogwheel_test",
     "cpp_lionhead_harness",
     "missing_tp2_project",
