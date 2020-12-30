@@ -218,6 +218,7 @@ FBCODE_RULES = [
     "missing_tp2_project",
     "dper3_library",
     "dper3_unittest",
+    "f6_pipeline_library",
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
