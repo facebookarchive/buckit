@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Copyright 2016-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree. An additional grant
+# of patent rights can be found in the PATENTS file in the same directory.
+
+DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+if ! test -d "$DIR"; then
+  echo Cannot locate directory containing IDE script; exit 1
+fi
+EXPOSED_PKGS=(<exposed_packages>)
+IGNORED_PKGS=(<ignored_packages>)
+PKG_DBS=(<package_dbs>)
+IMPORT_DIRS=(<import_dirs>)
+OTHER_FLAGS=(<compiler_flags>)
+SRCS=(<srcs>)
+
+echo -pgma<cc_path>
+echo -pgml<cxx_path>
+echo -pgmc<cc_path>
+echo -pgmP<cpp_path>
+echo -opta-B<binutils_path>
+echo -optc-B<binutils_path>
+echo -this-unit-id
+echo <name>
+echo -optP-undef
+echo -optP-traditional-cpp
+echo -I.
+echo -no-global-package-db
+echo -no-user-package-db
+echo -hide-all-packages
+
+printf -- '-package\n%s\n' "${EXPOSED_PKGS[@]}"
+printf -- '-ignore-package\n%s\n' "${IGNORED_PKGS[@]}"
+printf -- '-package-db\n%s\n' "${PKG_DBS[@]}"
+printf -- '-i%s\n' "${IMPORT_DIRS[@]}"
+printf -- '%s\n' "${OTHER_FLAGS[@]}"
+printf -- '%s\n' "${SRCS[@]}"
