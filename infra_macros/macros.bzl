@@ -35,6 +35,7 @@ load("@fbcode_macros//build_defs:haskell_binary.bzl", "haskell_binary")
 load("@fbcode_macros//build_defs:haskell_external_library.bzl", "haskell_external_library")
 load("@fbcode_macros//build_defs:haskell_ghci.bzl", "haskell_ghci")
 load("@fbcode_macros//build_defs:haskell_haddock.bzl", "haskell_haddock")
+load("@fbcode_macros//build_defs:haskell_ide.bzl", "haskell_ide")
 load("@fbcode_macros//build_defs:haskell_library.bzl", "haskell_library")
 load("@fbcode_macros//build_defs:haskell_unittest.bzl", "haskell_unittest")
 load("@fbcode_macros//build_defs:js_executable.bzl", "js_executable")
@@ -94,6 +95,7 @@ _CONVERTER_MAP = {
     "haskell_external_library": haskell_external_library,
     "haskell_ghci": haskell_ghci,
     "haskell_haddock": haskell_haddock,
+    "haskell_ide": haskell_ide,
     "haskell_library": haskell_library,
     "haskell_unittest": haskell_unittest,
     "js_executable": js_executable,
