@@ -35,7 +35,13 @@ echo -hide-all-packages
 
 printf -- '-package\n%s\n' "${EXPOSED_PKGS[@]}"
 printf -- '-ignore-package\n%s\n' "${IGNORED_PKGS[@]}"
-printf -- '-package-db\n%s\n' "${PKG_DBS[@]}"
-printf -- '-i%s\n' "${IMPORT_DIRS[@]}"
 printf -- '%s\n' "${OTHER_FLAGS[@]}"
-printf -- '%s\n' "${SRCS[@]}"
+for p in ${PKG_DBS[@]}; do
+  printf -- '-package-db\n%s\n' "$(readlink -f $p)"
+done
+for p in ${IMPORT_DIRS[@]}; do
+  printf -- '-i%s\n' "$(readlink -f $p)"
+done
+for p in ${SRCS[@]}; do
+  echo "$(readlink -f $p)"
+done
