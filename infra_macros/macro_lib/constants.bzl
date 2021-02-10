@@ -31,6 +31,7 @@ BUCK_RULES = [
     "cgo_library",
     "command_alias",
     "config_setting",
+    "configured_alias",
     "constraint_setting",
     "constraint_value",
     "core_data_model",
