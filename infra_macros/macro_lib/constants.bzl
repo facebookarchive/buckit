@@ -18,6 +18,7 @@ BUCK_RULES = [
     "android_platform",
     "android_prebuilt_aar",
     "android_resource",
+    "alias",
     "apk_genrule",
     "apple_asset_catalog",
     "apple_binary",
