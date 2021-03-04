@@ -102,6 +102,8 @@ def parse_external_dep(
     elif isinstance(
         raw_target,
         # pyre-fixme[10]: Name `basestring` is used but not defined.
+        # pyre-fixme[58]: `>=` is not supported for operand types `Union[int, str]`
+        #  and `int`.
         str if sys.version_info[0] >= 3 else basestring  # noqa F821
     ):
         target = (raw_target, )
