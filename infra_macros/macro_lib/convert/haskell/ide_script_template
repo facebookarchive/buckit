@@ -18,30 +18,34 @@ IMPORT_DIRS=(<import_dirs>)
 OTHER_FLAGS=(<compiler_flags>)
 SRCS=(<srcs>)
 
-echo -pgma<cc_path>
-echo -pgml<cxx_path>
-echo -pgmc<cc_path>
-echo -pgmP<cpp_path>
-echo -opta-B<binutils_path>
-echo -optc-B<binutils_path>
-echo -this-unit-id
-echo <name>
-echo -optP-undef
-echo -optP-traditional-cpp
-echo -I.
-echo -no-global-package-db
-echo -no-user-package-db
-echo -hide-all-packages
+printf '{ "flags": \n [\n'
+echo '   "-pgma<cc_path>"'
+echo ' , "-pgml<cxx_path>"'
+echo ' , "-pgmc<cc_path>"'
+echo ' , "-pgmP<cpp_path>"'
+echo ' , "-opta-B<binutils_path>"'
+echo ' , "-optc-B<binutils_path>"'
+echo ' , "-this-unit-id"'
+echo ' , "<name>"'
+echo ' , "-optP-undef"'
+echo ' , "-optP-traditional-cpp"'
+echo ' , "-I."'
+echo ' , "-no-global-package-db"'
+echo ' , "-no-user-package-db"'
+echo ' , "-hide-all-packages"'
 
-printf -- '-package\n%s\n' "${EXPOSED_PKGS[@]}"
-printf -- '-ignore-package\n%s\n' "${IGNORED_PKGS[@]}"
-printf -- '%s\n' "${OTHER_FLAGS[@]}"
+printf -- ' , "-package"\n , "%s"\n' "${EXPOSED_PKGS[@]}"
+printf -- ' , "-ignore-package"\n , "%s"\n' "${IGNORED_PKGS[@]}"
+printf -- ' , "%s"\n' "${OTHER_FLAGS[@]}"
 for p in ${PKG_DBS[@]}; do
-  printf -- '-package-db\n%s\n' "$(readlink -f $p)"
+  printf -- ' , "-package-db"\n , "%s"\n' "$(readlink -f $p)"
 done
 for p in ${IMPORT_DIRS[@]}; do
-  printf -- '-i%s\n' "$(readlink -f $p)"
+  printf -- ' , "-i%s"\n' "$(readlink -f $p)"
 done
-for p in ${SRCS[@]}; do
-  echo "$(readlink -f $p)"
+printf ' ]\n , "targets": [\n'
+printf -- '   "%s"\n' "$(readlink -f ${SRCS[0]})"
+for p in ${SRCS[@]:1}; do
+  printf -- ' , "%s"\n' "$(readlink -f $p)"
 done
+printf ' ]}'
