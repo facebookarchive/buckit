@@ -157,6 +157,7 @@ FBCODE_RULES = [
     "d_library_external",
     "dewey_artifact",
     "export_file",
+    "fb_xplat_cxx_library",
     "gen_thrift",
     "go_binary",
     "go_library",
