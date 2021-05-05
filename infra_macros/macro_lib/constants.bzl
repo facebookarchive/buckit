@@ -224,6 +224,7 @@ FBCODE_RULES = [
     "dper3_library",
     "dper3_unittest",
     "f6_pipeline_library",
+    "cogwheel_dr_tools_e2e_test",
 ]
 
 # Maps from generic buck rules to fbcode-specific versions.
