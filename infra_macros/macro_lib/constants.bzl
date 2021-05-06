@@ -210,6 +210,7 @@ FBCODE_RULES = [
     "sphinx_manpage",
     "swig_library",
     "thrift_library",
+    "thrift_server_cpp_binary",
     "versioned_alias",
     "prebuilt_jar",
     "python_wheel",
