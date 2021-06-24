@@ -180,6 +180,7 @@ FBCODE_RULES = [
     "js_library",
     "js_node_module_external",
     "js_npm_module",
+    "ligen_client_library",
     "lua_binary",
     "lua_library",
     "lua_unittest",
