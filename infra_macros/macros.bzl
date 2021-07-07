@@ -169,13 +169,13 @@ def get_converted_rules():
     # Prevent direct access to raw BUCK UI, as it doesn't go through our
     # wrappers.
     for rule_type in BUCK_RULES:
-        # @lint-ignore BUCKFBCODENATIVE
+        # @lint-ignore BUCKLINT
         symbols[rule_type] = native.partial(invalid_buck_rule, rule_type)
 
     all_rule_types = FBCODE_RULES + \
                      ["buck_" + r for r in BUCK_RULES]
     for rule_type in all_rule_types:
-        # @lint-ignore BUCKFBCODENATIVE
+        # @lint-ignore BUCKLINT
         symbols[rule_type] = native.partial(rule_handler, rule_type)
 
     # If fbcode.enabled_rule_types is specified, then all rule types that aren't
@@ -190,6 +190,6 @@ def get_converted_rules():
                 sets.make(enabled_rule_types),
             ),
         ):
-            # @lint-ignore BUCKFBCODENATIVE
+            # @lint-ignore BUCKLINT
             symbols[rule_type] = native.partial(ignored_buck_rule, rule_type)
     return symbols
