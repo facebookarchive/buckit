@@ -14,19 +14,19 @@ from __future__ import unicode_literals
 
 
 SOURCE_EXTS = (
-    '.c',
-    '.cc',
-    '.cpp',
-    '.cu',
-    '.S',
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cu",
+    ".S",
 )
 
 HEADER_EXTS = (
-    '.h',
-    '.hh',
-    '.tcc',
-    '.hpp',
-    '.cuh',
+    ".h",
+    ".hh",
+    ".tcc",
+    ".hpp",
+    ".cuh",
 )
 
 # These header suffixes are used to logically group C/C++ source (e.g.
@@ -41,13 +41,13 @@ HEADER_EXTS = (
 # 2) Modules: This logical group can be combined into a standalone C/C++ module
 #    (when such support is available).
 HEADER_SUFFIXES = (
-    '.h',
-    '.hpp',
-    '.tcc',
-    '-inl.h',
-    '-inl.hpp',
-    '-inl.tcc',
-    '-defs.h',
-    '-defs.hpp',
-    '-defs.tcc',
+    ".h",
+    ".hpp",
+    ".tcc",
+    "-inl.h",
+    "-inl.hpp",
+    "-inl.tcc",
+    "-defs.h",
+    "-defs.hpp",
+    "-defs.tcc",
 )

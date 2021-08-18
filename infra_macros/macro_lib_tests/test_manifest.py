@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 
 class ManifestTestCase(unittest.TestCase):
-
     def test_manifest(self):
         import __manifest__
 
