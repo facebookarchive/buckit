@@ -213,6 +213,7 @@ FBCODE_RULES = [
     "swig_library",
     "thrift_library",
     "thrift_server_cpp_binary",
+    "thrift_server_cpp_library",
     "versioned_alias",
     "prebuilt_jar",
     "protobuf_library",
